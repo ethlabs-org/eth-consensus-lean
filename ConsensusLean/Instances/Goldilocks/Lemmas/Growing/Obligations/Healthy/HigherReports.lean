@@ -33,11 +33,11 @@ cut and `c_z`; each signature is then read on the prefix through its own signing
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 namespace ResetPremisesUpTo
 variable {hold : Time}

@@ -14,11 +14,11 @@ therefore have older labels, without a settled-phase premise. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The actual proposer's stored locks are older than its proposal slot.
 An optimistic write would require an honest vote before the proposal cut;
@@ -28,7 +28,7 @@ private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H t
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H)
     {s i : Nat} (hs1 : 1 ≤ s) (hcs2 : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hz : proposer s ∈ H) (hc : tr.projAC.CallAt (proposer s) i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts s)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
@@ -36,7 +36,7 @@ private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H t
   have hr := hac.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   by_contra hls
-  have hreg : ∀ {r : Nat} {ellX : ACLabel (goldilocksNode sp ro)}, r < i →
+  have hreg : ∀ {r : Nat} {ellX : ACLabel (goldilocksNode sp)}, r < i →
       ¬ AC.UpdateAt tr.projAC (proposer s) r l.slot ellX := by
     intro r ellX hri hu
     have h1 := hrun.time_mono hri.le
@@ -128,7 +128,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
     (hPK : AC.CommitteeP K tr.projAC H)
     {s₀ p i : Nat} (hp : 1 ≤ p) (hcs2 : 2 * (K.committee p ∩ Hᶜ).ncard < sp.committeeSize)
     (hmargin : s₀ + sp.k ≤ p)
-    {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer p ∈ H)
+    {ell : ACLabel (goldilocksNode sp)} (hz : proposer p ∈ H)
     (hc : tr.projAC.CallAt (proposer p) i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts p)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -158,7 +158,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
 walk cannot move further: every frame child would have a later slot. -/
 theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = e.msg.slot)
     (hPt : P ∈ ell.frame.tree)
@@ -193,7 +193,7 @@ itself frozen-viable. In head equality the upper block is P, not a transported
 lock witness. -/
 theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
@@ -217,7 +217,7 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
 the selected candidate, rather than an update-call-only residue. -/
 theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt x i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt x i ell)
     {l : AC.Lock}
     (hl : l ∈ AC.liveLocks sp (tr.projAC.state x i).locks ell.frame (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
@@ -250,7 +250,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr ini)
 other candidate of that same read. Candidacy itself is not inferred here. -/
 theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
     ∀ C ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),

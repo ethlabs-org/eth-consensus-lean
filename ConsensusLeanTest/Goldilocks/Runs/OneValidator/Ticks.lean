@@ -1068,7 +1068,7 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     · rw [honA, ht1]
     · rw [ht1]; exact hrec'
     · have hperm : A₃.mayVote = st.ac.mayVote := by
-        have hp := AC.step_mayVote ro1 v0 { st.ac with locks := L₁ }
+        have hp := AC.step_mayVote v0 { st.ac with locks := L₁ }
           fg'.toFrame ((4 * (k + 1) : Nat) : Int) (.block (blk (k + 1)))
         simpa only [goldilocksAC, ACInterface.step, hblk] using hp
       refine ⟨hperm.trans hac.permission, h3r, ?_, fun σ => ?_,

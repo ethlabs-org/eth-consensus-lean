@@ -14,18 +14,18 @@ receiver's current frame. Coherence bridges those two domains at the read cut.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 namespace Core
 
 variable
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- Compatible historical roots cannot veto a proposal in the current frame, over a run bundle
 `GoldilocksRunCore`. -/
@@ -33,7 +33,7 @@ theorem no_veto_of_lock_roots_compatible_at
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
     (hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
@@ -70,7 +70,7 @@ theorem no_veto_of_lock_roots_compatible_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
     (hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →

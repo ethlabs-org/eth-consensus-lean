@@ -16,7 +16,7 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-  (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (cutMap : Nat → Nat)
+  (tr : GoldilocksTrace (S.params (pubOf E) hn)) (cutMap : Nat → Nat)
   (pubExec : PublisherExecution S rho)
 
 /-- Acceptance by a key honest at the acceptance cut's time queues and drains a wrapper in the

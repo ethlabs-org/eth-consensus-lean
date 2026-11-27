@@ -100,7 +100,7 @@ private theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
   intro e _
   have hw : NodeAsChainShape.CanonicalTrace.wireOf e receipt = receipt :=
     NodeAsChainShape.CanonicalTrace.wireOf_eq e receipt
-  have hcan := canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
+  have hcan := canonEvent_voteObj (sp := S.params (pubOf E) hn)
     (binding := S.vote) (rho.voteIO v) (Model.digests rho.hash receipt) m z
   rw [ite_eq_left (show (rho.voteIO v).check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true
     from hcheck)] at hcan

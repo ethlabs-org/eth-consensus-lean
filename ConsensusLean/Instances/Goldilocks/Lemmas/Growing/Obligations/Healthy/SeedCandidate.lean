@@ -26,11 +26,11 @@ entry at or past it below an earlier high origin, from a high floor's signed sou
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- With a high justified height, the fork-choice root of a state of a reader honest at `t ≤ b`

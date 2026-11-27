@@ -208,17 +208,17 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote Blk goldilocksAC)
+open AC (ACParams Payload Vote Blk goldilocksAC)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {tr : GoldilocksTrace' sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 /-- The frame of an honest AC call is inside the node's tree (a copy of `frame_tree`). -/
 private theorem frame_tree' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {ℓ : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.state y i).fg.tree := by
   have hf := ((Node.cutStep'_ac _ _ _ _ _).1 (hrun.cutLaw y hy i _ (projAC_callAt.1 hc))).1
@@ -233,7 +233,7 @@ private theorem emit_voteAt' {x : Fin sp.n} {j : Nat} {v : Vote sp.n} (h : tr.Em
 
 private theorem message_vote' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksNode' sp ro)} {v : Vote sp.n}
+    {i : Nat} {ℓ : ACLabel (goldilocksNode' sp)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
   obtain ⟨j, hj, he⟩ := hrun.msg_unforgeable y hy i v ⟨ℓ, projAC_callAt.1 hc, hm⟩ hval
@@ -254,7 +254,7 @@ theorem state_pool_cap' (hrun : GoldilocksRun' proposer dg H tr ini)
       have hex := ((Node.cutStep'_ac _ _ _ _ _).1
         (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))).2.1
       rw [← projAC_state' hrun.toLocalRun' hy] at hex
-      have h := AC.step_pool_cap ro y (tr.projAC.state y k) ℓ.frame (tr.time k)
+      have h := AC.step_pool_cap y (tr.projAC.state y k) ℓ.frame (tr.time k)
         ℓ.call (ih k hk)
       rw [hex] at h
       exact h
@@ -277,25 +277,25 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
       have hex := hlaw.2.1
       rw [← projAC_state' hrun.toLocalRun' hy] at hex
       by_cases hr : ℓ.call = .restart
-      · have hs := AC.restart_state sp _ ro y (tr.projAC.state y k) ℓ.frame
+      · have hs := AC.restart_state sp _ y (tr.projAC.state y k) ℓ.frame
           (tr.time k) hΦ (hrun.time_nonneg k)
-        have hp : (AC.acRestart sp ro y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
+        have hp : (AC.acRestart sp y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
             tr.projAC.post k := by
           simpa [hr, ACInterface.step, RunTrace.projAC] using congrArg Prod.fst hex
         rw [← hp, hs.2.2.2.2.2.2.2.1 σ] at hv
         exact absurd hv List.not_mem_nil
-      · have hv' : v ∈ ((goldilocksAC sp _ ro).step y (tr.projAC.state y k) ℓ.frame (tr.time k)
+      · have hv' : v ∈ ((goldilocksAC sp _).step y (tr.projAC.state y k) ℓ.frame (tr.time k)
             ℓ.call).1.pool σ := by
           rw [hex]; exact hv
         have hσ : v.slot = σ := by
-          have hcap := AC.step_pool_cap ro y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call
+          have hcap := AC.step_pool_cap y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call
             (state_pool_cap' hrun hy k)
           exact (hcap σ).1 v hv'
         subst hσ
         by_cases hold : v ∈ (tr.projAC.state y k).pool v.slot
         · obtain ⟨j, hj, he⟩ := ih k hk hold
           exact ⟨j, hj.trans hk, he⟩
-        rcases step_pool_insertion_source (ro := ro) y _ ℓ.frame (tr.time k) ℓ.call hr v hold
+        rcases step_pool_insertion_source y _ ℓ.frame (tr.time k) ℓ.call hr v hold
           hv' with hm | ⟨e, he, hev⟩
         · obtain ⟨j, hj, he⟩ := message_vote' hrun hy hc hm hval
           exact ⟨j, hj.trans hk, he⟩
@@ -308,7 +308,7 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
 `frame_block_cases`). -/
 private theorem frame_block_cases' (hrun : GoldilocksRun' proposer dg H tr ini)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : AC.HonestFrameBlock tr.projAC H B) :
-    B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
+    B = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
   obtain ⟨y, hy, i, ℓ, hc, hB⟩ := hB
   rcases Coherence.tree_accepted' hrun.toLocalRun' hy (frame_tree' hrun hy hc hB) with
@@ -374,10 +374,10 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {tr : GoldilocksTrace' sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 /-- **The honest-object facts of a shadow run's AC projection under growing faults** (a copy of
 `Growing.goldilocks_ac_projection_from` and of the growing `ac_projection` inlined, by
@@ -387,7 +387,7 @@ theorem goldilocks_ac_projection_from'
     (hnc : NoCollRun dg tr) :
     AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
   have hpay {H' : Set (Fin sp.n)} :
-      ∀ y ∈ H', (goldilocksNode' sp ro).ReqPayloadFrom (ini y) y :=
+      ∀ y ∈ H', (goldilocksNode' sp).ReqPayloadFrom (ini y) y :=
     fun y _ U _ s Φ t₀ h' => AC.proposal_payload_valid_from _ (h.vstart y).pool y U s Φ t₀ h'
   have retained (i : Nat) :=
     Compose.goldilocks_ac_projection_from' (h.upTo (h.time_nonneg i)) (hnc.upTo _)
@@ -397,13 +397,13 @@ theorem goldilocks_ac_projection_from'
       (tr.upTo (tr.time i)).projAC.CallAt y i ℓ := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  have frame {i Φ} (hf : (goldilocksNode' sp ro).FrameIn ((tr.upTo (tr.time i)).HonestBlocks
-      (H (tr.time i))) Φ) : (goldilocksNode' sp ro).FrameIn (tr.HonestBlocksAt H) Φ :=
+  have frame {i Φ} (hf : (goldilocksNode' sp).FrameIn ((tr.upTo (tr.time i)).HonestBlocks
+      (H (tr.time i))) Φ) : (goldilocksNode' sp).FrameIn (tr.HonestBlocksAt H) Φ :=
     ⟨hf.1, fun _ hx => RunTrace.honestBlocks_upTo_subset h.time_mono (h.time_nonneg i)
       (hf.2 hx)⟩
-  have lawful {i Φ Φ' c} (hc : (goldilocksNode' sp ro).CallOK ((tr.upTo (tr.time i)).HonestBlocks
+  have lawful {i Φ Φ' c} (hc : (goldilocksNode' sp).CallOK ((tr.upTo (tr.time i)).HonestBlocks
       (H (tr.time i))) Φ (tr.time i) c Φ') :
-      (goldilocksNode' sp ro).CallOK (tr.HonestBlocksAt H) Φ (tr.time i) c Φ' :=
+      (goldilocksNode' sp).CallOK (tr.HonestBlocksAt H) Φ (tr.time i) c Φ' :=
     ⟨frame hc.1, hc.2⟩
   have emission {i v} (hv : ∃ j < i, ∃ e,
       AC.VoteAt (tr.upTo (tr.time i)).projAC v.val j e ∧ e.msg = v) :
@@ -411,7 +411,7 @@ theorem goldilocks_ac_projection_from'
     obtain ⟨j, hj, e, he, hev⟩ := hv
     rw [RunTrace.upTo_projAC] at he
     exact ⟨j, hj, e, (AC.upTo_voteAt.mp he).2, hev⟩
-  have hloc : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksNode' sp ro) H
+  have hloc : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksNode' sp) H
       (tr.HonestBlocksAt H) tr.projAC ini := by
     refine
       { antitone := h.antitone
@@ -479,7 +479,7 @@ theorem goldilocks_ac_projection_from'
     have hpi' := h.antitone (le_max_right _ _) hp
     have frame_cases {y i ℓ B} (hy : y ∈ H (tr.time i))
         (hc : tr.projAC.CallAt y i ℓ) (hB : B ∈ ℓ.frame.tree) :
-        B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
+        B = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload ∨
           ∃ k < i, tr.AcceptAt y k B := by
       have ht : B ∈ ((tr.upTo (tr.time i)).state y i).fg.tree :=
         frame_tree' (h.upTo (h.time_nonneg i)) hy (call hc) hB
@@ -489,7 +489,7 @@ theorem goldilocks_ac_projection_from'
       · exact Or.inr ⟨k, hk, ((RunTrace.upTo_acceptAt _).mp ha).2⟩
     have own {y i ℓ B} (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ℓ)
         (hB : B ∈ ℓ.frame.tree) (hp : B.proposer ∈ H (tr.time i))
-        (hng : B ≠ sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload) :
+        (hng : B ≠ sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload) :
         ∃ j acc, tr.CallAt B.proposer j (.fg (.block B acc)) ∧
           ∃ j₀, tr.TickAt' proposer dg B.proposer j₀ (sp.toParams.slotTime B.slot) ∧
             j = j₀ + 2 ∧ 0 < B.slot ∧ sp.toParams.slotTime B.slot ≤ tr.time i := by
@@ -510,14 +510,14 @@ theorem goldilocks_ac_projection_from'
         have ht'' : tr.TickAt' proposer dg B.proposer j₀ (tr.time (j₀ + 2)) := ht'.2
         rw [← htime] at ht''
         exact ht''
-    by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
-    · by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+    by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload
+    · by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload
       · exact hg.trans hg'.symm
       · obtain ⟨_, _, _, _, _, _, hs, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'
         simp only [hg, Params.genesisBlock] at hslot
         omega
     · obtain ⟨j, acc, hj, j₀, ht, hje, hs, htime⟩ := own hy hc hB hpi hg
-      by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+      by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload
       · simp only [hg', Params.genesisBlock] at hslot
         omega
       · obtain ⟨j', acc', hj', j₀', ht', hje', _, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'

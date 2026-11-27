@@ -45,16 +45,16 @@ held seed after `T` (`Continuation/SeedHeld`), and the cache facts and the full-
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- **The seeded invariant through `b`**: the `SleepyInvariantUpTo` fields relative to the healed
 family at the floors `rL`, `rO`, for the states read at times `t ∈ [t₁, b]`. -/
-structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g : Time)
+structure SeededInvariant (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g : Time)
     (rL rO : Nat) (t₁ b : Time) : Prop where
   /-- S1: any two members of the healed family within `b` are compatible. -/
   origins_compatible : ∀ C s C' s', HealedOrigin tr H g rL rO C s b →
@@ -72,7 +72,7 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
   frame (state read at `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the
   read). -/
   caches : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
-    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
     OnHealedChain tr H g rL rO (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g rL rO C s b → C ∈ (Node.frame (tr.state y i)).tree →
@@ -89,7 +89,7 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
   `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the read) is at or below
   `fc_root` or in the full viable tree. -/
   viable : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
-    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
     ∀ C, OnHealedChain tr H g rL rO C b → C ∈ (Node.frame (tr.state y i)).tree →
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
@@ -97,18 +97,18 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
   /-- The reset seed: a high origin written by `b`, in the frame of every honest call at a time in
   `[t_{rL−k−3}, b]` whose `Σ.F` it extends. -/
   seedHeld : ∃ x i j B, Healing.Growing.HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
-    ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
+    ∀ y c (ell : ACLabel (goldilocksNode sp)), y ∈ H (tr.time c) →
       tr.projAC.CallAt y c ell → sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
       Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree
 
 /-- **A block on the healed chain held in the frame is a viable-ancestor candidate**: at or below
 `fc_root`, or in the full viable tree (`SeededInvariant.viable`), for a reader honest at
 `t ∈ [t₁, b]` that has called from `t_{rL−k−3}` on before the read. -/
-theorem seeded_chain_candidate_at {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem seeded_chain_candidate_at {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {g : Time} {rL rO : Nat} {t₁ b : Time}
     (hinv : SeededInvariant tr H g rL rO t₁ b) {y : Fin sp.n} {i : Nat} {t : Time}
     (ht₁ : t₁ ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
-    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : OnHealedChain tr H g rL rO C b)
     (hCm : C ∈ (Node.frame (tr.state y i)).tree) :
@@ -116,8 +116,8 @@ theorem seeded_chain_candidate_at {tr : GoldilocksTrace sp ro} {H : Time → Set
   hinv.viable y i t ht₁ hi htb hy hcall C hC hCm
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-! ### Locks and sources: through the holder's lock write, after the drain -/
 
@@ -176,7 +176,7 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {T : Time} {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i)
-    (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : AC.ToFGAt tr.projAC y i ℓ C) :
     OnHealedChain tr H g r (r + sp.k - 1) C b := by
   obtain ⟨a, _, -, hr, hdrain⟩ := hseed.drainTime_eq
@@ -250,7 +250,7 @@ theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
-    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
@@ -274,7 +274,7 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
-    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
@@ -295,7 +295,7 @@ theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
     (hTb : T ≤ b) :
     ∃ x i j B, Healing.Growing.HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
-      ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
+      ∀ y c (ell : ACLabel (goldilocksNode sp)), y ∈ H (tr.time c) →
         tr.projAC.CallAt y c ell → sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
         Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree := by
   exact seed_held_through_at hrun hnc hseed.toHandoverCore hTb

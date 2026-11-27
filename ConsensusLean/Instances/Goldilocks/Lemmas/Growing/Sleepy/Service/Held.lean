@@ -37,11 +37,11 @@ node honest then, its `Σ.F` is at or below the proposal `P` of slot `s` by a pr
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The proposal of a proposer honest at its proposal is a block held while honest. -/
 theorem proposal_honest_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -190,7 +190,7 @@ and a compatible block of a slot at most that of `P` is below it. -/
 theorem updater_F_anc_of_compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
-    (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
     (hFR : Compatible (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
@@ -208,7 +208,7 @@ theorem updater_F_anc_of_compatible {ini} (hrun : Growing.GoldilocksRun proposer
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   -- `Σ.F` is genesis, or of a slot at most `s`
   by_cases hg : (tr.state y k₀).fg.F =
-      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+      sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
   · exact honestAt_genesis_root_anc hrun hU (hsU hFt) (by rw [hg]; rfl) hPU
   obtain ⟨B, hBt, -, hFB, hne⟩ := Store.F_lt_finalizer hR hg
   have hfr : ℓ.frame = Node.frame (tr.state y k₀) := frame_of_projAC_at hrun hy hu.1
@@ -233,7 +233,7 @@ private theorem updater_F_anc_of_rows_at {ini} (hrun : Growing.GoldilocksRun pro
     (hnc : NoCollRun dg tr) {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) (hf : 2 * (H (tr.time k₀))ᶜ.ncard < sp.n)
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
     (hsrc : HonestRowsSourced (tr.upTo (tr.time k₀)) (H (tr.time k₀))
       (fun D => Compatible (tr.HonestBlocksAt H) D P) y k₀) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
@@ -304,7 +304,7 @@ theorem updater_F_anc_proposal_at {ini} (hrun : Growing.GoldilocksRun proposer d
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
-    (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :

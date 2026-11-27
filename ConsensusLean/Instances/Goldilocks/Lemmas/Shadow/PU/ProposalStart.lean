@@ -11,16 +11,16 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 private theorem proposal_call_tick' (h : Node.LocalRun' proposer dg H
     (fun v : Vote sp.n => v.val) tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.CallAt y i (.ac ell)) (hp : ell.call = .proposal) :
     ∃ j, i = j + 1 ∧ tr.TickAt' proposer dg y j (tr.time i) := by
   obtain ⟨j, e, q, hg, rfl, hq⟩ := Coherence.call_in_group' h hy hc
@@ -28,7 +28,7 @@ private theorem proposal_call_tick' (h : Node.LocalRun' proposer dg H
   cases e with
   | tick x fgDue =>
     have hq1 : q = 1 := by
-      have hnblock (st : NodeState (goldilocksNode' sp ro)) (B) :
+      have hnblock (st : NodeState (goldilocksNode' sp)) (B) :
           ∀ ell, Cut.ac ell ∈ (Node.onBlock' y st (tr.time (j + q)) B).2 →
             ell.call ≠ .proposal := by
         intro ell hm
@@ -41,11 +41,11 @@ private theorem proposal_call_tick' (h : Node.LocalRun' proposer dg H
               Cut.ac.injEq, List.not_mem_nil, or_false] at hm
             subst hm
             simp
-      have hnatt (st : NodeState (goldilocksNode' sp ro)) (B) :
+      have hnatt (st : NodeState (goldilocksNode' sp)) (B) :
           Cut.ac ell ∉ (Node.attest y st B).2 := by
         simp only [Node.attest]
         split <;> simp
-      have hnfg (st : NodeState (goldilocksNode' sp ro)) :
+      have hnfg (st : NodeState (goldilocksNode' sp)) :
           Cut.ac ell ∈ (Node.tickStep' proposer dg y st (tr.time (j + q)) x .fgUpdate).2 →
             ell.call ≠ .proposal := by
         simp only [Node.tickStep'_eq]
@@ -59,7 +59,7 @@ private theorem proposal_call_tick' (h : Node.LocalRun' proposer dg H
             subst he
             simp
           · exact (hnatt _ _ hm).elim
-      have hprop (st : NodeState (goldilocksNode' sp ro)) {r : Nat}
+      have hprop (st : NodeState (goldilocksNode' sp)) {r : Nat}
           (hr : (Node.tickStep' proposer dg y st (tr.time (j + q)) x .proposal).2[r]? =
             some (.ac ell)) : r = 0 := by
         simp only [Node.tickStep'_eq] at hr
@@ -132,7 +132,7 @@ private theorem proposal_call_tick' (h : Node.LocalRun' proposer dg H
     cases hp
 
 private theorem proposal_before_holder' (hrun : GoldilocksRun' proposer dg H tr ini)
-    {p : Fin sp.n} (hpH : p ∈ H) {kP s : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
+    {p : Fin sp.n} (hpH : p ∈ H) {kP s : Nat} {ell : ACLabel (goldilocksNode' sp)}
     (hcP : tr.projAC.CallAt p kP ell) (hcall : ell.call = .proposal)
     (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPs : P.slot = s) (hPprop : P.proposer = p) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
@@ -159,7 +159,7 @@ private theorem proposal_before_holder' (hrun : GoldilocksRun' proposer dg H tr 
   omega
 
 private theorem frame_tree' (hrun : GoldilocksRun' proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y i ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ell.frame.tree) : B ∈ (tr.state y i).fg.tree := by
   have hf := ((Node.cutStep'_ac _ _ _ _ _).1
@@ -170,10 +170,10 @@ private theorem frame_tree' (hrun : GoldilocksRun' proposer dg H tr ini)
 /-- The shadow proposal cut precedes every honest vote of its slot. -/
 theorem proposal_cut_lt' (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {kP s : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {kP s : Nat} {ellp : ACLabel (goldilocksNode' sp)}
     (hpH : proposer s ∈ H) (hcP : tr.projAC.CallAt (proposer s) kP ellp)
     (hcall : ellp.call = .proposal) (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode' sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.CastAt tr.projAC y k ell e)
     (he : e.msg.slot = s) : kP < k := by
   have hl := hrun.toLocalRun'
@@ -203,7 +203,7 @@ private theorem stored_lock_lt_at_proposal' (hrun : GoldilocksRun' proposer dg H
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H)
     {s i : Nat} (hs1 : 1 ≤ s) (hcs2 : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
-    {ell : ACLabel (goldilocksNode' sp ro)}
+    {ell : ACLabel (goldilocksNode' sp)}
     (hz : proposer s ∈ H) (hc : tr.projAC.CallAt (proposer s) i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts s)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
@@ -211,7 +211,7 @@ private theorem stored_lock_lt_at_proposal' (hrun : GoldilocksRun' proposer dg H
   have hr := hac.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   by_contra hls
-  have hreg : ∀ {r : Nat} {ellX : ACLabel (goldilocksNode' sp ro)}, r < i →
+  have hreg : ∀ {r : Nat} {ellX : ACLabel (goldilocksNode' sp)}, r < i →
       ¬ AC.UpdateAt tr.projAC (proposer s) r l.slot ellX := by
     intro r ellX hri hu
     have h1 := hrun.time_mono hri.le
@@ -294,7 +294,7 @@ theorem actual_proposal_start_live_origin' (hrun : GoldilocksRun' proposer dg H 
     (hPK : AC.CommitteeP K tr.projAC H)
     {s₀ p i : Nat} (hp : 1 ≤ p) (hcs2 : 2 * (K.committee p ∩ Hᶜ).ncard < sp.committeeSize)
     (hmargin : s₀ + sp.k ≤ p)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hz : proposer p ∈ H)
+    {ell : ACLabel (goldilocksNode' sp)} (hz : proposer p ∈ H)
     (hc : tr.projAC.CallAt (proposer p) i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts p)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}

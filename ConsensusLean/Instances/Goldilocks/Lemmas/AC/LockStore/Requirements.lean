@@ -180,11 +180,11 @@ private theorem getHead_spec {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState
 
 /-- **A duty head is good** (requirement 1) when its walk starts at the anchor of a state with
 the lock invariant and runs over the viable tree of a domain closed under ancestors. -/
-private theorem headOK_of {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU : Coherent U)
+private theorem headOK_of {U : Set (Blk sp.n FGP)} (hU : Coherent U)
     {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {A : ACState sp.n}
     (h : LockInv U A Φ) {t : Time} {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom) (V : View sp.n) (σ : Int) :
-    (goldilocksAC sp FGP ro).HeadOK Φ
+    (goldilocksAC sp FGP).HeadOK Φ
       ⟨getHead sp A Φ t (Φ.viableTree dom) V σ, getAnchor sp A Φ t, dom⟩ := by
   obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
@@ -279,11 +279,11 @@ variable (sp)
 
 /-- **A0.6** from a start up to the vote permission: the requirements 1–3 of the AC started at
 `s₀`, i.e. at the states reachable from `s₀` (`ACInterface.reachableAtFrom_iff`). -/
-theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀ : ACState sp.n}
+theorem interface_requirements_from (FGP : Type) {s₀ : ACState sp.n}
     (h₀ : VoteStart sp.genesisRoot s₀) :
-    ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
-      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
-      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs := by
+    ({ goldilocksAC sp FGP with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
+      ({ goldilocksAC sp FGP with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
+      ({ goldilocksAC sp FGP with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs := by
   have hall : ∀ (Φ : Frm sp.n FGP), ∀ B ∈ Φ.tree, ∀ X, Φ.Anc X B → X ∈ Φ.tree :=
     fun Φ B hB X hX => mem_of_anc hX hB
   refine ⟨?_, ?_, ?_⟩
@@ -298,16 +298,16 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
       split_ifs at hp
       simp only [Option.some.injEq, Prod.mk.injEq] at hp
       obtain ⟨rfl, -⟩ := hp
-      exact headOK_of (ro := ro) hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
+      exact headOK_of hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
     · rw [ACInterface.step_ofStart] at he
       replace hok := ACInterface.callOK_ofStart.1 hok
       obtain ⟨A₁, V, σ, h1, h2, rfl⟩ := (h.callOK hU ⟨hΦ, hΦU⟩ hok).step_emits hU hok.1.1
         hok.1.2 x t (ht₀.trans ht) c.ofStart e he d hd
-      have hsp := stamp_parentU sp FGP ro x U hU h₀ _ _ _
+      have hsp := stamp_parentU sp FGP x U hU h₀ _ _ _
         (ACInterface.ReachableAtFrom.step c.ofStart hr ht hok).toU
       beta_reduce at hsp
       rw [← h2] at hsp
-      exact headOK_of (ro := ro) hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)
+      exact headOK_of hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)
         (voteDomain_anc_closed (voterBlockTree_closed hsp _)) V σ
   · -- requirement 2: the block for the FG
     intro x U hU A Φ t₀ hr t ht C hC
@@ -322,7 +322,7 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
     obtain ⟨ha, -⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
     have hHt := (getHead_spec hΦ (fun _ h => h) (hall Φ) (latestView sp A Φ t).1
       (latestView sp A Φ t).2 ha).1
-    have hOK := (headOK_of (ro := ro) hU hΦ hΦU h (t := t) (fun _ h => h) (hall Φ)
+    have hOK := (headOK_of hU hΦ hΦU h (t := t) (fun _ h => h) (hall Φ)
       (latestView sp A Φ t).1 (latestView sp A Φ t).2).1
     refine ⟨hOK, ?_⟩
     unfold acConfirmed
@@ -334,8 +334,8 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
       exact ⟨hΦ.rooted.2 D hDt, hDH⟩
 
 /-- **A0.6**: `interface_requirements_from` at the initial state. -/
-theorem interface_requirements : InterfaceRequirements sp := fun FGP ro =>
-  interface_requirements_from sp FGP ro (s₀ := ACState.initial sp.genesisRoot) (voteStart_initial _)
+theorem interface_requirements : InterfaceRequirements sp := fun FGP =>
+  interface_requirements_from sp FGP (s₀ := ACState.initial sp.genesisRoot) (voteStart_initial _)
 
 end Consensus.Goldilocks.AC
 

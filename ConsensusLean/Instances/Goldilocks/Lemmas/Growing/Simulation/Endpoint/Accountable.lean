@@ -38,17 +38,17 @@ open Consensus.Model (pubOf)
 
 section Node
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **Final accountability at read points under growing faults.** If the finalized tips of two
 nodes, each honest at a time `t ≥ 0` no earlier than every cut before its read, conflict inside
 the blocks held while honest, at least `2q − n` validators each have a slashable pair among the
 attestations included on two chains the two readers hold. No fault bound. -/
-theorem finalAccountable_readPoint {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem finalAccountable_readPoint {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i j : Nat} {t t' : Time}
     (ht : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
@@ -100,7 +100,7 @@ blocks held while honest. -/
 theorem held_tree_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
     ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.Reachable
-        (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload ∧
+        (goldilocksNode (S.params (pubOf E) hn)).genesisPayload ∧
       ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree ⊆
         (simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho) := by
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh

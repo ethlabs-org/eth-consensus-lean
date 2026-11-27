@@ -20,14 +20,14 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Core
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 private theorem vote_extends_upTo
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
@@ -64,7 +64,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
     (hext : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hklo : lo ≤ tr.time k) (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ C, AC.getConfirmation sp (tr.projAC.state y k) ell.frame (s + 1) = some C ∧
@@ -85,14 +85,14 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
   have hrestart : ∀ q, ACTrace.RestartAt (tr.projAC.upTo (tr.time k)) y q →
       tr.time q ≤ gbar g := by
     intro q hq
-    obtain ⟨hqD, hq⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hq
+    obtain ⟨hqD, hq⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hq
     exact noRestartUpTo_iff.mp hnr y q (hrun.antitone hqD hy) (Compose.projAC_restartAt.mp hq)
       (hqD.trans hkb)
   have hrs : ∀ q ≤ k, ACTrace.RestartAt (tr.projAC.upTo (tr.time k)) y q →
       (tr.projAC.upTo (tr.time k)).time q < sp.ts (s + 1 : Nat) :=
     fun q _ hq => (hrestart q hq).trans_lt (by linarith)
   have hdl : ∀ q ≤ k, ∀ t, gbar g ≤ t →
-      ACTrace.deadline (A := AC.goldilocksAC sp _ ro) (tr.projAC.upTo (tr.time k)) y q t ≤
+      ACTrace.deadline (A := AC.goldilocksAC sp _) (tr.projAC.upTo (tr.time k)) y q t ≤
         max t (sp.ts (s + 1 : Nat)) + sp.Δ :=
     fun _ _ t _ => Compose.ac_deadline_le_of_restarts (a := sp.ts (s + 1 : Nat))
       (fun q _ hq => (hrestart q hq).trans (by linarith)) t
@@ -181,7 +181,7 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
     (hext₁ : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 2 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y k).locks, ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
@@ -243,14 +243,14 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
     have hrestart : ∀ q, ACTrace.RestartAt (tr.projAC.upTo (tr.time j)) y q →
         tr.time q ≤ gbar g := by
       intro q hq
-      obtain ⟨hqD, hq⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hq
+      obtain ⟨hqD, hq⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hq
       exact noRestartUpTo_iff.mp hnr y q (hrun.antitone hqD hyj) (Compose.projAC_restartAt.mp hq)
         (hqD.trans hjb)
     have hrs : ∀ q ≤ j, ACTrace.RestartAt (tr.projAC.upTo (tr.time j)) y q →
         (tr.projAC.upTo (tr.time j)).time q < sp.ts (s + 1 : Nat) :=
       fun q _ hq => (hrestart q hq).trans_lt (by linarith)
     have hdl : ∀ q ≤ j, ∀ t, gbar g ≤ t →
-        ACTrace.deadline (A := AC.goldilocksAC sp _ ro) (tr.projAC.upTo (tr.time j)) y q t ≤
+        ACTrace.deadline (A := AC.goldilocksAC sp _) (tr.projAC.upTo (tr.time j)) y q t ≤
           max t (sp.ts (s + 1 : Nat)) + sp.Δ :=
       fun _ _ t _ => Compose.ac_deadline_le_of_restarts (a := sp.ts (s + 1 : Nat))
         (fun q _ hq => (hrestart q hq).trans hgu) t
@@ -391,7 +391,7 @@ private theorem anc_of_isDeepest {FGP : Type} {Φ : AC.Frm sp.n FGP} (hΦ : Fram
 
 /-- The deepest unvetoed fast block extends every compatible unvetoed fast ancestor. -/
 theorem fast_update_of_unvetoed_at
-    {y : Fin sp.n} {k s : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k s : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time k))
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hu : AC.UpdateAt tr.projAC y k s ell)
@@ -448,7 +448,7 @@ theorem post_of_updateAt
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k s : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k s ell) :
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k s ell) :
     tr.projAC.post k =
       AC.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.time k) s := by
   have hr := (hrun.acRun_upTo hnc (hrun.time_nonneg k)).localRun
@@ -512,7 +512,7 @@ theorem toFG_candidate_of_viable_head_at {K : AC.CommitteeDict sp.n}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {r : Nat} (hgr : gbar g ≤ sp.ts (r + 1 : Nat))
     {y : Fin sp.n} {j : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfu : AC.FastUpdateAt tr.projAC y j r D CV) (hPD : Anc (tr.HonestBlocksAt H) P D)
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (hji : j < i)
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)

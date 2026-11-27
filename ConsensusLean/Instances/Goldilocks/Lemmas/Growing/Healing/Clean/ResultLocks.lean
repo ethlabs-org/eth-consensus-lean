@@ -14,11 +14,11 @@ write, and the result's supporter is transported back only to its actual voting 
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- Every older live stored lock compares with a clean raw-result prefix. -/

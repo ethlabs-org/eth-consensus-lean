@@ -166,12 +166,12 @@ end Consensus.Goldilocks.Compose.FrameGeometry
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- Two blocks below two compatible blocks of a coherent set are compatible. -/
@@ -250,7 +250,7 @@ theorem Outcome.no_high_contest_at'
 
 /-- An older fast-lock label written by the late-vote deadline was written before the slot
 (`Outcome.fastLock_time_lt_at`, the stock proof). -/
-theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
@@ -262,7 +262,7 @@ a pre-slot origin bound and a label-bounded cover bound reach the voter's height
 theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
@@ -320,7 +320,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
 theorem ProposalImpl.held_high_origin_viable_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt p c ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) (_ht : sp.ts (j + 1 : Nat) ≤ tr.time c)

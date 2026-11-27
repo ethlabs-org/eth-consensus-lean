@@ -53,21 +53,21 @@ The signing calendar of a shadow run, `RunTrace.SignCalendarAt'`, is in `SignCal
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Healing.Growing (ResetService CatchRun NoRestartAfter
   CommitteeHalfUpTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The actual candidate behind a report (`toFG_fast_candidate_origin_at` over the shadow run):
 its own earlier fast write, or a deep candidate under a deep anchor whose live locks are slow. -/
 private theorem toFG_fast_candidate_origin_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp)}
     {R : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC y i ell R) :
     (∃ a < i, ∃ j ellw D CV, y ∈ H (tr.time a) ∧
       tr.projAC.CallAt y a ellw ∧ D ∈ ellw.frame.tree ∧
@@ -128,7 +128,7 @@ private theorem toFG_fast_candidate_origin_at'
 /-- The raw fast selection's block is no newer than its lock label (`fast_selection_slot_le`
 over the static shadow run). -/
 private theorem fast_selection_slot_le' {H₀ : Set (Fin sp.n)}
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : GoldilocksRun' proposer dg H₀ tr ini)
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H₀)
@@ -144,10 +144,10 @@ private theorem fast_selection_slot_le' {H₀ : Set (Fin sp.n)}
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)
 
 /-- Frame blocks of an honest call are no newer than its slot (`frame_slot_le_at`). -/
-private theorem frame_slot_le_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem frame_slot_le_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
   AC.frame_slot_leU sp (Shadow.PU.acRun_upTo' hrun hnc (hrun.time_nonneg i)).localRun.toU hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -168,12 +168,12 @@ theorem toFG_later_proposal_head_after_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode' sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     {r : Nat} (ht : tr.time i < sp.ts r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode' sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -314,13 +314,13 @@ theorem toFG_later_proposal_head_within_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode' sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
     {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode' sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -353,7 +353,7 @@ theorem toFG_later_proposal_head_after_stock_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode' sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     {p : Fin sp.n} {kP : Nat} (hp : p ∈ H (tr.time kP)) (hPp : P ∈ (tr.state p kP).fg.tree)
     (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
@@ -361,7 +361,7 @@ theorem toFG_later_proposal_head_after_stock_at'
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     {r : Nat} (ht : tr.time i < sp.ts r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode' sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -507,7 +507,7 @@ theorem toFG_later_proposal_head_within_stock_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode' sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     {p : Fin sp.n} {kP : Nat} (hp : p ∈ H (tr.time kP)) (hPp : P ∈ (tr.state p kP).fg.tree)
     (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
@@ -516,7 +516,7 @@ theorem toFG_later_proposal_head_within_stock_at'
     (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
     {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode' sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -533,7 +533,7 @@ theorem toFG_later_proposal_head_within_stock_at'
 
 /-- At a public signing time after a warm update deadline, a node honest then executes a joined
 `ac_to_fg` call (`toFG_call_of_sign_at` over the shadow run and its calendar). -/
-theorem toFG_call_of_sign_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem toFG_call_of_sign_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time} (hnr : NoRestartAfter tr H (gbar g))
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
@@ -554,10 +554,10 @@ theorem toFG_call_of_sign_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
 
 /-- A block of an honest frame above a non-genesis block is not genesis
 (`root_ne_genesis_of_anc` over the shadow run). -/
-private theorem root_ne_genesis_of_anc' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem root_ne_genesis_of_anc' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     {P B : AC.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
     (hPB : Anc (tr.HonestBlocksAt H) P B) (hB : B ∈ ell.frame.tree) :
     B.root ≠ sp.genesisRoot := by

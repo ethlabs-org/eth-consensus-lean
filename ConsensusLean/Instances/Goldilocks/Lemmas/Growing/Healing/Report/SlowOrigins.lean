@@ -14,13 +14,13 @@ Their ancestry is then retained in the historical block universe.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Every saved slot used by a slow selection has an actual result written while honest. -/
 theorem slow_window_results_at

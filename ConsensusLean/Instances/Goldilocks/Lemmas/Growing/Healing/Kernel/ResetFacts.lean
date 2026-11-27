@@ -22,14 +22,14 @@ The remaining induction boundaries read every writer, cast and vote at its own c
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- Step 6 finite result induction, consumed by the latest-votes wrapper.
 The explicit domain and stored-lock inputs are unchanged from the static boundary. -/
@@ -133,7 +133,7 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before_of_quarantine_at
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
       B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)

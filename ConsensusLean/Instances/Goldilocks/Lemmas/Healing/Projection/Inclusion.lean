@@ -22,19 +22,19 @@ acceptance relay, each FG acceptance followed by its `ac_on_block` at the next c
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- Every block of an honest node's frame at a call is genesis (by root), or the node accepted
 it at that call or an earlier one. -/
-private theorem frame_root_or_accepted {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+private theorem frame_root_or_accepted {sp : ACParams} {FGP : Type}
+    {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
     have step : ∀ Φ : AC.Frm sp.n FGP,
-        (AC.goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+        (AC.goldilocksAC sp FGP).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
         ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
       intro Φ hok hv X hX
@@ -60,25 +60,25 @@ private theorem frame_root_or_accepted {sp : ACParams} {FGP : Type} {ro : Replay
     · exact step _ hok fun B hB =>
         (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- The finalized tip of the frame of an honest AC cut is the node's `Σ.F`. -/
 private theorem frame_F (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ℓ) :
     ℓ.frame.F = (tr.state y j).fg.F := by
   rw [(hrun.cutLaw y hy j _ (Compose.projAC_callAt.1 hc)).1]; rfl
 
 /-- **The proposal of an honest proposer's tick is its honest proposal** in the AC projection:
 the `ac_proposal` cut after the tick's `ac_on_tick` returns the payload, and the own block is
 accepted at once (C0.3), at `t_s`. -/
-private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg)
     {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
     (hg : tr.GroupAt proposer dg p j t (.tick x fgDue))
     (hP : Node.Proposes proposer p t) {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -89,7 +89,7 @@ private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp r
       (Node.mkBlock dg p (tr.state p j).fg t x d.head pay) := by
   have h := hrun.toLocalRun
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
-  obtain ⟨hacc, ht2⟩ := own_block_accepted h (Compose.requirements_from sp ro (hrun.vstart p)) hroot
+  obtain ⟨hacc, ht2⟩ := own_block_accepted h (Compose.requirements_from sp (hrun.vstart p)) hroot
     hnc hp hg hP hr
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc
   have hts : t = sp.ts (sp.slot t) := hP.2.1.trans (sp.slotTime_eq _)
@@ -103,10 +103,10 @@ private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp r
 
 /-- The AC projection of a Goldilocks run is driven (H.2 (run): clause (a) from the FG's
 acceptance tests, clause (b) from C0.4). -/
-theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg) :
     AC.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
@@ -117,7 +117,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
         (Pb.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k Pb) := by
     intro y hy i B ha hB
     obtain ⟨ℓ, hc, hcall⟩ := ha
-    obtain ⟨Φ, hok, hΦU, hprev⟩ : ∃ Φ, (goldilocksNode sp ro).CallOK (tr.HonestBlocks H) Φ
+    obtain ⟨Φ, hok, hΦU, hprev⟩ : ∃ Φ, (goldilocksNode sp).CallOK (tr.HonestBlocks H) Φ
         (tr.projAC.time i) ℓ.call ℓ.frame ∧ Φ.tree ⊆ tr.HonestBlocks H ∧
         ∀ X ∈ Φ.tree, X.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k X := by
       rcases hr.frameLaw y hy i ℓ hc with
@@ -126,7 +126,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
         rw [htree, Set.mem_singleton_iff] at hX
         subst hX
         exact Or.inl hroot₀
-      · have hin : (goldilocksNode sp ro).FrameIn (tr.HonestBlocks H) ℓ'.frame := by
+      · have hin : (goldilocksNode sp).FrameIn (tr.HonestBlocks H) ℓ'.frame := by
           rcases hr.frameLaw y hy j ℓ' hc' with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩ <;>
             exact hok'.1
         exact ⟨ℓ'.frame, hok, hin.2, fun X hX => (frame_root_or_accepted hr hy hc' X hX).imp_right

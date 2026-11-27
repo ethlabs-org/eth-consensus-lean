@@ -20,13 +20,13 @@ the core's cut law, reachability and signed runs, as copies of the stock proofs.
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 namespace StaticRunCore
 

@@ -20,11 +20,11 @@ non-top one, so neither `M` nor the top is constant. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 /-- A stock window in the J-kind is the P-U top window at `M = floor + 1`. -/
 theorem toFrameWindow'_of_kind {lo hi : Time} {floor : Nat} {kindJ : Prop}
@@ -47,7 +47,7 @@ theorem toFrameWindow'_of_kind {lo hi : Time} {floor : Nat} {kindJ : Prop}
 non-top window at `M = floor + 1`. -/
 theorem toFrameWindow'_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hw : Generic.FrameWindow tr H lo hi floor kindJ J) (hk : ¬ kindJ)
     (hnoC : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →

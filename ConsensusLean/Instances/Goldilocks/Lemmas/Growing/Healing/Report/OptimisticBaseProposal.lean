@@ -40,15 +40,15 @@ proposer's high locks are its own optimistic locks of slot `s`, compatible with 
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar Vote)
+open AC (ACParams Payload gbar Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
-private theorem acRun_prefix' {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem acRun_prefix' {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
@@ -136,12 +136,12 @@ theorem optimistic_next_proposal_of_early_witness_at
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -197,7 +197,7 @@ theorem optimistic_next_proposal_of_early_witness_at
       unfold AC.joined at hj ⊢
       rwa [heq]
     intro k hk hrk
-    have ht := (AC.joined_awakeU sp _ ro (H (tr.time i))
+    have ht := (AC.joined_awakeU sp _ (H (tr.time i))
       ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) (tr.projAC.upTo (tr.time i)) hr.toU y hy
       i ell hcp hpost).2 k hk hrk
     have hslot' : sp.slot (tr.time i) = s + 1 := hslot

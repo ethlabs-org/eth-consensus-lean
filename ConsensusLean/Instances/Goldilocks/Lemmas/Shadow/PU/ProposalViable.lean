@@ -10,15 +10,15 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The viable proposal parent transfers its primed-window witness to its child. -/
 theorem proposal_window_witness
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
@@ -112,7 +112,7 @@ theorem proposal_window_witness
 
 /-- Relay or early membership preserves the primed proposal witness at an honest call. -/
 theorem proposal_viable_at_call_with_early_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
@@ -124,7 +124,7 @@ theorem proposal_viable_at_call_with_early_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u ≤ tr.time i) (hhi : tr.time i ≤ hi)
     (hearly : tr.time i < sp.ts u + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
@@ -206,7 +206,7 @@ theorem proposal_viable_at_call_with_early_primed_at'
 
 /-- Late calls obtain proposal membership from relay. -/
 theorem proposal_viable_at_call_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
@@ -218,7 +218,7 @@ theorem proposal_viable_at_call_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u + sp.Δ ≤ tr.time i) (hhi : tr.time i ≤ hi) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
   exact proposal_viable_at_call_with_early_primed_at' hframe hrun hnc hsvc hf hnr hgu hphi hib
@@ -227,7 +227,7 @@ theorem proposal_viable_at_call_primed_at'
 
 /-- An honest cast retains the proposal in its voter-domain viable tree. -/
 theorem proposal_viable_at_cast_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
@@ -240,7 +240,7 @@ theorem proposal_viable_at_cast_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by

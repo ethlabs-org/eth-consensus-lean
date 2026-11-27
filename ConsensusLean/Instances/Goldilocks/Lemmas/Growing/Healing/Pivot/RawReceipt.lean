@@ -13,11 +13,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A raw writer's ancestor is held by a later independently honest slot-start reader. -/
@@ -28,7 +28,7 @@ theorem raw_writer_held_at_slot_start_at
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
     (hBC : Anc (tr.HonestBlocksAt H) B C) (hs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hsu : s < u) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl

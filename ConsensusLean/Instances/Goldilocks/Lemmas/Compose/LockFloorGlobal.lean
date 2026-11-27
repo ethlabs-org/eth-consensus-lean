@@ -20,15 +20,15 @@ lock, a live lock block `⪰ B₀` (`AC.exists_readPoint_liveLockBlocks_floor`).
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The floor at node `y`, cut `i`: a lock of slot `j` and expiry at least `m` on a block `⪰ B₀`
 of the frame's tree. -/
-abbrev FloorAt (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
+abbrev FloorAt (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat)
     (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
   ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
     ∃ B ∈ (tr.state y i).fg.toFrame.tree, B.root = l.block ∧ (tr.state y i).fg.toFrame.Anc B₀ B
@@ -53,7 +53,7 @@ theorem floor_run_view {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fi
     (hva0 : (tr.state y i).fg.toFrame.viableAncestor B₀ = B₀)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
       AC.unlockTarget sp (Node.frame (tr.state y i))
-        (AC.unlockView (ro := ro) (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
+        (AC.unlockView (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
           ℓ.call) ((sp.slot (tr.time i) : Int) - 1) B₀ = B₀) :
     FloorAt tr y (i + 1) B₀ j m := by
   have hold : ∃ l ∈ (tr.state y (i + 1)).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
@@ -67,7 +67,7 @@ theorem floor_run_view {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fi
       | ac ℓ =>
         obtain ⟨hfr, hstep, -, -⟩ := hlaw
         rw [hfr] at hstep
-        have := AC.exists_step_locks_floor (ro := ro) y ℓ.call
+        have := AC.exists_step_locks_floor y ℓ.call
           (frameOK_state hrun.toLocalRun hy i) (hrun.time_nonneg i) hB0 hva0 hk (hu ℓ hc) hfl
         rw [hstep] at this
         exact this

@@ -164,18 +164,18 @@ end Consensus.Goldilocks
 
 namespace Consensus.Goldilocks.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **A shadow Goldilocks run under growing faults** (a copy of `Growing.GoldilocksRun`). -/
 structure GoldilocksRun' (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace' sp ro)
-    (ini : Fin sp.n → (goldilocksNode' sp ro).State :=
-      fun _ => (goldilocksNode' sp ro).initial) : Prop
+    (tr : GoldilocksTrace' sp)
+    (ini : Fin sp.n → (goldilocksNode' sp).State :=
+      fun _ => (goldilocksNode' sp).initial) : Prop
     extends Growing.LocalRun' proposer dg H (fun v : Vote sp.n => v.val) tr ini where
-  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).RootOk dg
+  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload).RootOk dg
   vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks.Growing
@@ -342,16 +342,16 @@ end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro}
+  {tr : GoldilocksTrace' sp}
 
 /-- **Retention** for shadow runs: the prefix through `d` of a shadow run under growing faults is
 a static shadow run for the validators honest at `d`, from the same starts (a copy of
 `Growing.GoldilocksRun.upTo`). -/
-theorem GoldilocksRun'.upTo {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem GoldilocksRun'.upTo {ini : Fin sp.n → (goldilocksNode' sp).State}
     (h : Growing.GoldilocksRun' proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
     Consensus.Goldilocks.GoldilocksRun' proposer dg (H d) (tr.upTo d) ini := by
   have hm := h.time_mono

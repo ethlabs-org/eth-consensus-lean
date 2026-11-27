@@ -295,15 +295,15 @@ theorem Compose.NoCollRun.upTo {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A
 
 namespace Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp}
 
 /-- **Retention.** The prefix through `d` of a run under growing faults is a static run for the
 validators honest at `d` (`0 ≤ d`: they were honest at the start), from the same starts. -/
-theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp).State}
     (h : Growing.GoldilocksRun proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
     Consensus.Goldilocks.GoldilocksRun proposer dg (H d) (tr.upTo d) ini := by
   have hm := h.time_mono
@@ -390,10 +390,10 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
 of a reader honest at `t ≥ 0`, before a cut whose earlier cuts are at or before `t`, is reachable.
 It is the static reachability on the prefix through `t`. -/
 theorem _root_.Consensus.Goldilocks.Healing.Growing.fg_reachable_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} {i : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
-    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (tr.state y i).fg.Reachable (goldilocksNode sp).genesisPayload := by
   have h := Compose.fg_reachable (hrun.upTo ht).toLocalRun hy i
   rwa [Trace.upTo_state tr y hle] at h
 

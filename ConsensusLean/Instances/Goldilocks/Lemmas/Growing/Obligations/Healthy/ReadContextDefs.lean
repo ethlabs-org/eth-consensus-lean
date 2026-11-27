@@ -18,10 +18,10 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 

@@ -29,12 +29,12 @@ The regular write reads R's stock-window `Healing.PU.StockWindow.regular_later_h
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 variable {hold : Time}
 
 /-- **Proposal lock cases over the shadow run** (`proposal_lock_prefix_cases_at`): a warm live
@@ -53,7 +53,7 @@ theorem proposal_lock_prefix_cases_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
     {l : AC.Lock} (hl : l ∈ AC.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
@@ -200,7 +200,7 @@ theorem proposal_lock_prefix_cases_window_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
     {l : AC.Lock} (hl : l ∈ AC.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)

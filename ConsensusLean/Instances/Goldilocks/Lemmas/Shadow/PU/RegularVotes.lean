@@ -35,22 +35,22 @@ reuse the supporter classification and the shared early-witness family.
 
 namespace Consensus.Goldilocks.Healing.PU
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The shadow FG catch-up bridge supplies the stock AC acceptance witness. -/
 theorem service_catch_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     {g : Time} (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     {w : Fin sp.n} {kw : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp)} (hy : y ∈ H (tr.time i))
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ :=
@@ -69,7 +69,7 @@ private theorem first_transfer_service_at'
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hviab : AC.ViableAtVote ell e (s + 1) B)
@@ -81,7 +81,7 @@ private theorem first_transfer_service_at'
 
 /-- The shared service proof carries counted result votes to the next reader. -/
 private theorem result_carry_service_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
@@ -90,7 +90,7 @@ private theorem result_carry_service_at'
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hres : AC.ResultAt tr.projAC x c s C CV)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
@@ -99,13 +99,13 @@ private theorem result_carry_service_at'
 
 /-- The shared service proof compares merged votes with the result writer. -/
 private theorem writer_merged_service_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode' sp ro)}
+    {ellx ell : ACLabel (goldilocksNode' sp)}
     (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
@@ -123,7 +123,7 @@ private theorem slow_live_locks_service_at'
     {D : AC.Blk sp.n (List (FG.Att sp.n))} (hsl : AC.SlowLockAt tr.projAC x c s D)
     (hm : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b)
     (hE : ∀ z k ev, k < i → z ∈ H (tr.time k) → AC.VoteAt tr.projAC z k ev →
@@ -229,7 +229,7 @@ theorem regular_fast_next_votes_of_early_witness_at'
     (hXD : Anc (tr.HonestBlocksAt H) X D) (hCQ : Anc (tr.HonestBlocksAt H) C Q)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
@@ -275,7 +275,7 @@ theorem regular_slow_next_votes_of_early_witness_at'
     (hCQ : Anc (tr.HonestBlocksAt H) C Q)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
@@ -321,7 +321,7 @@ theorem next_votes_of_supporter_at' {s₀ s M : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
@@ -495,7 +495,7 @@ theorem regular_fast_next_votes_of_stock_witness_at'
     (hXD : Anc (tr.HonestBlocksAt H) X D) (hCW : Anc (tr.HonestBlocksAt H) C W)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -542,7 +542,7 @@ theorem regular_slow_next_votes_of_stock_witness_at'
     (hCW : Anc (tr.HonestBlocksAt H) C W)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -599,7 +599,7 @@ theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)

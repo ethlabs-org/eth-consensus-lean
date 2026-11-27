@@ -16,11 +16,11 @@ votes (`hframe`, S3 for a member of label at most `s` with an honest slot-`s` su
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **Extending the vote frontier under growing faults**: the first slot-`(s+1)` vote (of a node
 honest at it) at a time `≤ b` that fails to extend a member of the healed family within `b` of

@@ -40,20 +40,20 @@ its payload and run interface, an outage policy and a stored read context, and t
 suppliers at every valid run. -/
 private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     (pub : Model.Public) (hn : 1 ≤ pub.n)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params pub hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params pub hn))
       (fun v => v.val) fgHold)
-    (hC : GoldilocksLocalData (S.params pub hn) (S.ro _) C (S.sign pub) A.signGap
+    (hC : GoldilocksLocalData (S.params pub hn) C (S.sign pub) A.signGap
       A.releaseGap) :
     ∃ B : EngineBinding (F := goldilocks S) (V := V) pub C.payload (fun v => v.val) C.run,
       ∃ D : ∀ E hE rho hv, OutagePolicy (B.map E hE rho hv),
       ∃ R : ∀ E hE rho hv, StoredReadContext (B.map E hE rho hv),
         ∀ E hE rho hv, LocalClaimSuppliers (B.map E hE rho hv) (B.signer_eq E hE rho hv ▸ C)
-          (K S A) (D E hE rho hv) (R E hE rho hv) (SleepyLayer1.goldilocksEvents _ _) := by
+          (K S A) (D E hE rho hv) (R E hE rho hv) (SleepyLayer1.goldilocksEvents _) := by
   have hpl : payloadOf S = C.payload := by
     rw [hC.payload]
     funext B
     exact payloadOf_eq S B
-  have hd := goldilocksRunInterface_data (sp := S.params pub hn) (ro := S.ro _)
+  have hd := goldilocksRunInterface_data (sp := S.params pub hn)
     (sign := S.sign pub) (G := A.signGap)
   rw [← hpl, ← acRun_ext (hd.1.trans hC.healing.1.1.symm) (hd.2.trans hC.healing.1.2.symm)]
   refine ⟨goldilocksEngineBinding S A pub hn,
@@ -68,11 +68,11 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     fun E hE rho hv => ?_⟩
   subst hE
   have aux : ∀ M (hM : M = goldilocksRunMap S rho hn hv)
-      (hsg : (fun v => v.val : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Msg →
+      (hsg : (fun v => v.val : (goldilocksNode (S.params (pubOf E) hn)).Msg →
         Fin (Fintype.card V)) = M.signer),
       LocalClaimSuppliers M (hsg ▸ C) (K S A) (hM.symm ▸ goldilocksOutagePolicy S rho hn hv)
         (hM.symm ▸ goldilocksStoredReadContext S rho hn hv)
-        (SleepyLayer1.goldilocksEvents _ _) := by
+        (SleepyLayer1.goldilocksEvents _) := by
     rintro M rfl hsg
     exact goldilocks_localClaimSuppliers S A rho hn hv C hC
   exact aux _ (goldilocksEngineBinding_map S A E hn rho hv) _
@@ -85,12 +85,12 @@ theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) := by
     signGap_δt A
   choose C hC using fun pub : {pub : Model.Public // 1 ≤ pub.n} =>
     goldilocksACCorrectLocal_of_healing
-      (goldilocks_ac_healing (ro := S.ro _) (sign := S.sign pub.1) (G := A.signGap)
+      (goldilocks_ac_healing (sign := S.sign pub.1) (G := A.signGap)
         (Rg := A.releaseGap) (hδ pub))
   choose B D R hL using fun (V : Type) (_ : Fintype V) (_ : DecidableEq V) pub =>
     local_binding S A V pub.1 pub.2 (C pub) (hC pub)
   exact (meetsObligations_of_local_iff _ _).1 (meetsObligations_of_local_proof _ _) _ _ _ C
-    (fun _ => SleepyLayer1.goldilocksEvents _ _) (fun V _ _ pub => B V _ _ pub)
+    (fun _ => SleepyLayer1.goldilocksEvents _) (fun V _ _ pub => B V _ _ pub)
     (fun V _ _ pub => D V _ _ pub)
     (fun V _ _ pub => R V _ _ pub) (fun V _ _ pub => hL V _ _ pub)
     (meetsObligations_admissible S A) (by simp [OutputSchema.Serves, schema])

@@ -16,11 +16,11 @@ delayed report-follow supplier, not an independent warm-crossing stub.
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 private theorem faults_lt_quorum {f n : Nat} (hn : 1 ≤ n) (hf : 3 * f ≤ n - 1) :
     f < 2 * ((2 * n + 2) / 3) - n := by omega
@@ -248,7 +248,7 @@ theorem sum_riseLen_four' (d ρ s lam : Time) (HZ : Nat) :
   ring
 
 /-- A warm proposal supplier on P-U windows. This is a premise, not a claimed drain proof. -/
-structure DrainOutputs' (tr : GoldilocksTrace' sp ro) (proposer : Nat → Fin sp.n)
+structure DrainOutputs' (tr : GoldilocksTrace' sp) (proposer : Nat → Fin sp.n)
     (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
   warm : ∀ {s₀ N M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
     FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J →

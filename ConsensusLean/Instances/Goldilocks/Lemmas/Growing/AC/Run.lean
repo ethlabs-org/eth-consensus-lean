@@ -13,8 +13,8 @@ pool provenance is reconstructed through those calls, including the final frozen
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- The prefix is an AC run for the validators still honest at its horizon, in the same `U`. -/
@@ -50,17 +50,17 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
           rw [← state_succ_of_call hc] at hv'
           exact state_pool_slotU sp hr.toU h.vstart hy (i + 1) σ v hv'
         by_cases hrs : ℓ.call = .restart
-        · have hR := restart_state sp FGP ro y ((tr.upTo d).state y i) ℓ.frame
+        · have hR := restart_state sp FGP y ((tr.upTo d).state y i) ℓ.frame
             ((tr.upTo d).time i) hΦ (hr.time_nonneg i)
           rw [hrs] at he
-          change acRestart sp ro y ((tr.upTo d).state y i) ℓ.frame ((tr.upTo d).time i) = _ at he
+          change acRestart sp y ((tr.upTo d).state y i) ℓ.frame ((tr.upTo d).time i) = _ at he
           rw [he] at hR
           rw [hR.2.2.2.2.2.2.2.1 σ] at hv
           simp at hv
         · by_cases hold : v ∈ ((tr.upTo d).state y i).pool v.slot
           · obtain ⟨j, hj, e, hvote, hev⟩ := ih v.slot v hold hvH
             exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
-          · have hnew : v ∈ ((goldilocksAC sp FGP ro).step y ((tr.upTo d).state y i)
+          · have hnew : v ∈ ((goldilocksAC sp FGP).step y ((tr.upTo d).state y i)
                 ℓ.frame ((tr.upTo d).time i) ℓ.call).1.pool v.slot := by
               rw [he, hslot]
               exact hv

@@ -12,11 +12,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A current-slot lock has an earlier supporter honest at that vote's own cut;
@@ -33,7 +33,7 @@ theorem reset_vote_anchor_at
     (hDcov : HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s j → s < u →
       Anc (tr.HonestBlocksAt H) C D)
     {y : Fin sp.n} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hE : ∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
       e'.msg.slot = u → e'.msg.head = P.root)

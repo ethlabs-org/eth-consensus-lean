@@ -28,21 +28,21 @@ The persistence of a bounded operational proposal and the C4 wrappers:
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {fgHold : Time}
 
 private theorem report_below_later_duty_head
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
-    {ellr : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ellr : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC z r ellr C) (hR : Healing.drainTime sp a ≤ tr.time r)
     {y : Fin sp.n} {i v : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -148,7 +148,7 @@ theorem UpTo.operational_proposal_below_later_parent_of_source_cover_at
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {i v : Nat} (hy : y ∈ H (tr.time i)) (huv : u + 2 ≤ v)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -328,7 +328,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {i v : Nat} (hy : y ∈ H (tr.time i)) (huv : u + 2 ≤ v)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))

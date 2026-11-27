@@ -19,12 +19,12 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Defs
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- The attestations included on the chain of `X` in the tree of `y` before cut `i`: the FG
 payloads of the blocks of `y`'s tree at or below `X`. -/

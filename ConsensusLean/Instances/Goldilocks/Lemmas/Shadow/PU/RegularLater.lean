@@ -32,13 +32,13 @@ No reachable counterexample to propagation or extra milestone premise is claimed
 
 namespace Consensus.Goldilocks.Healing.PU
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- V-B8 over the fixed-maximum shadow window; the stock-window version remains open. -/
 theorem regular_later_heads_at'
@@ -142,13 +142,13 @@ end Consensus.Goldilocks.Healing.PU
 
 namespace Consensus.Goldilocks.Healing.PU.StockWindow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The fourth classification branch follows D, not its lock head Hd or its
 witness W. Frozen-domain membership of W is not a premise of the stock family. -/
@@ -165,7 +165,7 @@ theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) floor kindJ J)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
     (halo : sp.ts s ≤ tr.time q) (hat : tr.time q < sp.ts s + 2 * sp.Δ)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z q ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z q ell)
     (hW : W ∈ ell.frame.tree) (hh : floor ≤ ((tr.state z q).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hDH : Anc (tr.HonestBlocksAt H) D Hd) (hHW : ell.frame.Anc Hd W)

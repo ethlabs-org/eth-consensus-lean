@@ -15,13 +15,13 @@ public section
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Healing
 open Consensus.Goldilocks.Healing.Growing (CommitteeHalfUpTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 /-- A fast update above an independently held stock witness supplies a later candidate
 through its two-slot lifetime. The witness stays viable even across a contest-to-gap change. -/
@@ -40,7 +40,7 @@ theorem toFG_candidate_of_fast_update_stock_at' {K : AC.CommitteeDict sp.n}
     {r : Nat} (hgr : gbar g ≤ sp.ts (r + 1 : Nat))
     {y : Fin sp.n} {j : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfu : AC.FastUpdateAt tr.projAC y j r D CV) (hPD : Anc (tr.HonestBlocksAt H) P D)
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y i ell) (hji : j < i)
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -107,11 +107,11 @@ end Consensus.Goldilocks.Shadow.PU.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- A unanimous warm proposal supplies candidates after its update throughout the stock window.
 Unanimity is an explicit premise, not inferred from the window. -/
@@ -131,7 +131,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     (hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
       e.msg.slot = u → e.msg.head = P.root)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (hhi : tr.time i ≤ hi) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
@@ -309,11 +309,11 @@ end Consensus.Goldilocks.Healing.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- A unanimous warm proposal supplies candidates throughout the P-U window after its update.
 The primed witness and later-head induction are used directly, without a stock window. -/
@@ -333,7 +333,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     (hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
       e.msg.slot = u → e.msg.head = P.root)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (hhi : tr.time i ≤ hi) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),

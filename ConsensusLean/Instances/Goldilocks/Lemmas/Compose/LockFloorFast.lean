@@ -137,14 +137,14 @@ private theorem fastFloor_acProposal {A : ACState sp.n}
   split_ifs <;> exact h
 
 /-- **The fast floor lemma of an AC call**: `exists_step_locks_floor` with the fast bit kept. -/
-theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+theorem exists_step_locks_fastFloor (self : Fin sp.n)
+    {A : ACState sp.n} (c : (goldilocksAC sp FGP).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (unlockView A Φ t c) ((sp.slot t : Int) - 1) B₀ = B₀)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
-    ∃ l ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.locks, l.slot = j ∧ l.fast = true ∧
+    ∃ l ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.locks, l.slot = j ∧ l.fast = true ∧
       m ≤ l.expiry ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   cases c with
   | tick =>
@@ -153,7 +153,7 @@ theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
   | proposal =>
     exact fastFloor_acProposal h
   | toFG =>
-    have he : ((goldilocksAC sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
+    have he : ((goldilocksAC sp FGP).step self A Φ t .toFG).1.locks = A.locks :=
       acToFG_locks_eq A
     rw [he]
     exact h
@@ -170,8 +170,8 @@ theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     rw [blockReceipt_locks]
     exact h
   | restart =>
-    have he : ((goldilocksAC sp FGP ro).step self A Φ t .restart).1.locks = A.locks :=
-      ((restart_state sp) FGP ro self A Φ t hΦ ht).2.1
+    have he : ((goldilocksAC sp FGP).step self A Φ t .restart).1.locks = A.locks :=
+      ((restart_state sp) FGP self A Φ t hΦ ht).2.1
     rw [he]
     exact h
 
@@ -179,15 +179,15 @@ end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The fast floor at node `y`, cut `i`: a fast lock of slot `j` and expiry at least `m` on a
 block `⪰ B₀` of the frame's tree. -/
-abbrev FastFloorAt (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
+abbrev FastFloorAt (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat)
     (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
   ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
     ∃ B ∈ (tr.state y i).fg.toFrame.tree, B.root = l.block ∧ (tr.state y i).fg.toFrame.Anc B₀ B
@@ -201,7 +201,7 @@ theorem fastFloor_run_view {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y 
     (hva0 : (tr.state y i).fg.toFrame.viableAncestor B₀ = B₀)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
       AC.unlockTarget sp (Node.frame (tr.state y i))
-        (AC.unlockView (ro := ro) (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
+        (AC.unlockView (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
           ℓ.call) ((sp.slot (tr.time i) : Int) - 1) B₀ = B₀) :
     FastFloorAt tr y (i + 1) B₀ j m := by
   have hold : ∃ l ∈ (tr.state y (i + 1)).ac.locks, l.slot = j ∧ l.fast = true ∧
@@ -215,7 +215,7 @@ theorem fastFloor_run_view {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y 
       | ac ℓ =>
         obtain ⟨hfr, hstep, -, -⟩ := hlaw
         rw [hfr] at hstep
-        have := AC.exists_step_locks_fastFloor (ro := ro) y ℓ.call
+        have := AC.exists_step_locks_fastFloor y ℓ.call
           (frameOK_state hrun.toLocalRun hy i) (hrun.time_nonneg i) hB0 hva0 hk (hu ℓ hc) hfl
         rw [hstep] at this
         exact this

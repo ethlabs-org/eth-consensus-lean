@@ -32,11 +32,11 @@ honest at that cut's time; replay states of a block agree across independently h
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 variable {hold : Time}
 
 /-- The facts of a post-drain honest anchor that `report_cover_of_unanimous_at` reads. -/

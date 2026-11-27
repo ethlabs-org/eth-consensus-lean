@@ -19,14 +19,14 @@ are read on the recipient's prefix. Service is never restricted to a surviving c
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- GST relay on the AC projection preserves a historical sender's obligation. -/
 theorem ResetRunCore.frame_relay_at
@@ -34,7 +34,7 @@ theorem ResetRunCore.frame_relay_at
     (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B) (hgi : g ≤ tr.time i)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ell)
     (hdl : tr.projAC.deadline y j (tr.time i) ≤ tr.time j)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
@@ -54,7 +54,7 @@ theorem ResetPremisesUpTo.frame_relay_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B) (hgi : g ≤ tr.time i)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ell)
     (hdl : tr.projAC.deadline y j (tr.time i) ≤ tr.time j)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :

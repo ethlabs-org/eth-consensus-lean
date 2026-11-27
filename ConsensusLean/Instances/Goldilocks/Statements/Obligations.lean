@@ -26,7 +26,7 @@ release gap `R`, and the outer gap `X`.
   `fgSlots` slots, the paper's `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉ ≤ fgSlots`. `Setup` fixes the genesis root,
   `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient), the
   optimistic switch (on by default; read by no coefficient), the deep-source depth `D` (off by
-  default) and the restart replay order, vote binding, signing calendar and release schedule.
+  default), vote binding, signing calendar and release schedule.
   With deep sources on (`deepDepth = some D`), `D` admits the gap `3·finalSlots + 2`,
   the largest a progress pattern needs to tolerate a bad slot
   (`11 + healMargin (3·finalSlots + 2) ≤ 4D`, `deep_final`), and so every smaller gap.

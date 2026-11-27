@@ -19,16 +19,16 @@ read extends the armed tip (`outage_lock_protected`). -/
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **L9 at the Goldilocks data equations.** -/
 theorem goldilocks_outageReadPoint
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData sp ro C sign G Rg) : OutageReadPoint C where
+    {Rg : Nat} (hC : GoldilocksLocalData sp C sign G Rg) : OutageReadPoint C where
   protection cm proposer dg H tr p ΔF T b₀ b₁ R hrun hnc hb hT hlag hb01 hbud hb1R hrec hs hpost
       hp hK x i y j t hRx _ _ hRt hRy _ htj := by
     classical

@@ -15,12 +15,12 @@ the consuming vote, and retention preserves the participation count exactly.
 namespace Consensus.Goldilocks.AC.Growing
 
 /-- `next_transfer` at any node start. -/
-theorem next_transfer_from {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem next_transfer_from {sp : ACParams} {FGP : Type}
+    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : CommitteePAt K tr H) (hT : CommitteeTAt K tr H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {m : Nat} {y : Fin sp.n} {i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x j e', x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m →
       VoteExtends U e'.msg B)
@@ -96,7 +96,7 @@ theorem next_transfer_from {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP
     exact hearlier x j hji (hr.antitone hjt hx) e' hv hvs
 
 theorem next_transfer (sp : ACParams) : NextTransfer sp :=
-  fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hf hf1 hviab hearlier =>
+  fun _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hf hf1 hviab hearlier =>
     next_transfer_from hrun K hP hT hsize hy hc hs hall hhalf hcarry hf hf1 hviab hearlier
 
 end Consensus.Goldilocks.AC.Growing

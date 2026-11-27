@@ -22,11 +22,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- Every queued envelope carries an own canonical vote object whose same-token body is queued:
 a tick queues only own emissions, and each poll drains the queue. -/
-private def OwnQueued (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) : Prop :=
+private def OwnQueued (st : State (S.params (pubOf E) hn) S.vote) : Prop :=
   ∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧ Body.vote (encodeVote q.2.1) z ∈ st.outbox
 
 omit [DecidableEq V] in
-private theorem ownQueued_apply (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) r
+private theorem ownQueued_apply (st : State (S.params (pubOf E) hn) S.vote) r
     (h : OwnQueued S hn st) : OwnQueued S hn (apply st none r) := by
   rintro ⟨t, m, w⟩ hq
   rcases apply_voteForward_obj S st none r t m w hq with hq | ⟨z, hz, hb, -⟩ | ⟨h', -⟩
@@ -36,7 +36,7 @@ private theorem ownQueued_apply (st : State (S.params (pubOf E) hn) (S.ro _) S.v
   · cases h'
 
 omit [DecidableEq V] in
-private theorem ownQueued_recordOwn (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs
+private theorem ownQueued_recordOwn (st : State (S.params (pubOf E) hn) S.vote) o hs
     (h : OwnQueued S hn st) : OwnQueued S hn (recordOwn st o hs) := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -47,12 +47,12 @@ private theorem ownQueued_recordOwn (st : State (S.params (pubOf E) hn) (S.ro _)
   · exact h
 
 omit [DecidableEq V] in
-private theorem ownQueued_propose (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s
+private theorem ownQueued_propose (st : State (S.params (pubOf E) hn) S.vote) s
     (h : OwnQueued S hn st) : OwnQueued S hn (propose st s).1 := by
   rw [propose_eq]; dsimp only; split <;> exact h
 
 omit [DecidableEq V] in
-private theorem ownQueued_nodeTick (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
+private theorem ownQueued_nodeTick (st : State (S.params (pubOf E) hn) S.vote)
     (h : OwnQueued S hn st) : OwnQueued S hn (nodeTick st (S.sign (pubOf E))) := by
   rw [nodeTick_eq (sign := _)]
   split
@@ -60,7 +60,7 @@ private theorem ownQueued_nodeTick (st : State (S.params (pubOf E) hn) (S.ro _) 
   · exact h
 
 omit [DecidableEq V] in
-private theorem ownQueued_poll (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) u :
+private theorem ownQueued_poll (st : State (S.params (pubOf E) hn) S.vote) u :
     OwnQueued S hn (pollBatch st u (S.release (pubOf E))).1 := by
   intro q hq
   rw [pollBatch_fst, poll_voteForwards] at hq
@@ -104,7 +104,7 @@ private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} 
     ∀ q ∈ (shapeOf S hn nd).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
       rho.verify (q.2.1.val, S.vote.voteRole q.2.1.slot, encodeVote q.2.1) z = true := by
   intro nd
-  let Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop := fun st =>
+  let Q : State (S.params (pubOf E) hn) S.vote → Prop := fun st =>
     st.voteIO = rho.voteIO v ∧ st.self = rho.ownKey v ∧ QueuedChecked S st
   have hQ : Q (shapeOf S hn nd) := by
     refine runDuties_pres S rho hn Q ?_ ?_ ?_ ?_ v _ _ ?_

@@ -24,11 +24,11 @@ floor entry below `B`, at a height `≤ h(B)` below the floor. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- **A high floor has a signed source below a bounded row label**, inside the deep quarantine

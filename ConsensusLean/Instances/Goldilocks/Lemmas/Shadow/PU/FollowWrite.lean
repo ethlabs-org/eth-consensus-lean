@@ -18,14 +18,14 @@ the optimistic early-witness family (`OptimisticWitness`). -/
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Healing.Growing (ResetService CatchRun NoRestartAfter
   CommitteeHalfUpTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State} {hold : Time}
 
 /-- The parent of an honest proposal is a P-U viable head of its frame
 (`proposal_parent_viable_full_frame_at` over the shadow run). -/
@@ -33,7 +33,7 @@ private theorem proposal_parent_viable_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {c s : Nat} (hz : z ∈ H (tr.time c))
     (hf : (H (tr.time c))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
@@ -65,7 +65,7 @@ private theorem F_anc_proposal_head_at' {lo hi : Time} {M : Nat} {isTop : Prop}
     (hf : (H (max (tr.time i) (tr.time c)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
@@ -99,7 +99,7 @@ theorem optimistic_write_later_proposal_head_at'
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
     {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (AC.Vote sp.n)}
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt y a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt y a ellw)
     (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
     (hopt : AC.OptimisticLockAt tr.projAC y a j D CV)
     (hRA : Anc (tr.HonestBlocksAt H) R A) (hAD : Anc (tr.HonestBlocksAt H) A D)
@@ -107,7 +107,7 @@ theorem optimistic_write_later_proposal_head_at'
       ∃ Q ∈ ellw.frame.viableHeads, ellw.frame.Anc A Q)
     {r : Nat} (hrlo : j + 1 ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
@@ -233,7 +233,7 @@ theorem optimistic_write_later_proposal_head_stock_at'
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
     {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (AC.Vote sp.n)}
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt y a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt y a ellw)
     (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
     (hopt : AC.OptimisticLockAt tr.projAC y a j D CV)
     (hRA : Anc (tr.HonestBlocksAt H) R A) (hAD : Anc (tr.HonestBlocksAt H) A D)
@@ -246,7 +246,7 @@ theorem optimistic_write_later_proposal_head_stock_at'
     (hPA : Anc (tr.HonestBlocksAt H) P A)
     {r : Nat} (hrlo : j + 1 ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =

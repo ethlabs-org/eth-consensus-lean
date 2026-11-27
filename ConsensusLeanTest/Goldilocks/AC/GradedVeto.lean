@@ -892,8 +892,8 @@ theorem acOnBlock_56 {A : ACState sp.n} (h : A.restartTime = ((56 : Time) : With
   exact ⟨hl, hr⟩
 
 /-- **The restart keeps the locks**, for every replay order. -/
-theorem restart_locks (ro : ReplayOrder sp Unit) (A : ACState sp.n) :
-    (acRestart sp ro v0 A Φ 56).1.locks = A.locks := by
+theorem restart_locks (A : ACState sp.n) :
+    (acRestart sp v0 A Φ 56).1.locks = A.locks := by
   rfl
 
 /-- The live locks at a time of slot `14 = j₀ + k`, `15` from the locks a vetoed update leaves. -/
@@ -911,8 +911,8 @@ theorem liveLocks_at {t : Time} {L : Set Lock} (hL : ∀ l ∈ L, l.block ≤ 3)
 /-- **At slot `j₀ + k = 14`, after the restart, the slow lock on `B1` is the node's only live
 lock** (for every replay order): the lock on `Bv` (expiry `11`) and the fast lock on `B1`
 (expiry `10`) have expired. -/
-theorem live_at_j0k (ro : ReplayOrder sp Unit) :
-    liveLocks sp (acRestart sp ro v0 S5 Φ 56).1.locks Φ 56 = {slowB1} := by
+theorem live_at_j0k :
+    liveLocks sp (acRestart sp v0 S5 Φ 56).1.locks Φ 56 = {slowB1} := by
   rw [restart_locks, S5_locks, liveLocks_at (by
     rintro l (rfl | rfl | rfl) <;> decide), slot_56]
   ext l
@@ -930,8 +930,8 @@ theorem lockV_expired : ¬ lockV.LiveAt sp 56 := by
   rw [Lock.LiveAt, slot_56]; decide
 
 /-- **The anchor at slot `14` is the fork block `B1`.** -/
-theorem anchor_at_j0k (ro : ReplayOrder sp Unit) :
-    getAnchor sp (acRestart sp ro v0 S5 Φ 56).1 Φ 56 = B1 := by
+theorem anchor_at_j0k :
+    getAnchor sp (acRestart sp v0 S5 Φ 56).1 Φ 56 = B1 := by
   rw [getAnchor_eq_deepest_union frameOK_Φ]
   unfold liveLockBlocks
   rw [live_at_j0k, deepest_top (D := B1) (Or.inl ⟨B1_mem, slowB1, rfl, rfl⟩) B1_mem]
@@ -942,8 +942,8 @@ theorem anchor_at_j0k (ro : ReplayOrder sp Unit) :
   · exact anc_g _ B1_mem
 
 /-- The slow lock's expiry is exactly `s + k`: at slot `15` nothing is live. -/
-theorem none_live_after (ro : ReplayOrder sp Unit) :
-    liveLocks sp (acRestart sp ro v0 S5 Φ 56).1.locks Φ 60 = ∅ := by
+theorem none_live_after :
+    liveLocks sp (acRestart sp v0 S5 Φ 56).1.locks Φ 60 = ∅ := by
   rw [restart_locks, S5_locks, liveLocks_at (by
     rintro l (rfl | rfl | rfl) <;> decide), slot_60]
   ext l
@@ -973,8 +973,8 @@ theorem old_locks : (updateConfirmationOld S4 Φ 38 8).locks = {lockV} := by
 
 /-- **Rejection control.** In the same run under the old rule, the node has **no** live lock
 at slot `j₀ + k = 14`. -/
-theorem old_live_at_j0k (ro : ReplayOrder sp Unit) :
-    liveLocks sp (acRestart sp ro v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1.locks Φ 56 = ∅ := by
+theorem old_live_at_j0k :
+    liveLocks sp (acRestart sp v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1.locks Φ 56 = ∅ := by
   rw [restart_locks, old_locks, liveLocks_at (by rintro l rfl; decide), slot_56]
   ext l
   simp only [Set.mem_ofPred_eq, Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false]
@@ -982,8 +982,8 @@ theorem old_live_at_j0k (ro : ReplayOrder sp Unit) :
   exact absurd h (by decide)
 
 /-- Under the old rule the anchor at slot `14` falls back to `fc_root = g`. -/
-theorem old_anchor_at_j0k (ro : ReplayOrder sp Unit) :
-    getAnchor sp (acRestart sp ro v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1 Φ 56 = g := by
+theorem old_anchor_at_j0k :
+    getAnchor sp (acRestart sp v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1 Φ 56 = g := by
   rw [getAnchor_eq_deepest_union frameOK_Φ]
   unfold liveLockBlocks
   rw [old_live_at_j0k, deepest_top (D := g) (Or.inr rfl) g_mem]
@@ -999,7 +999,7 @@ third gives the optimistic lock on `Bv`, expiry `11`); the tick at `37` (own vot
 tick at `38` (the update of slot `8`, vetoed by that lock, writes the slow lock on `B1` with
 expiry `8 + k = 14` under 2(a)); sleep; the restart at `t_14 = 56` with any replay order. At slot
 `14` the node's only live lock is the slow lock on `B1`, and its anchor is `B1`. -/
-theorem veto_run (ro : ReplayOrder sp Unit) :
+theorem veto_run :
     acOnTick sp v0 S0 Φ 36 = (S0, []) ∧
     acOnMessage sp v0 S0 Φ 36 (vv v1) = (S1, []) ∧
     acOnMessage sp v0 S1 Φ 36 (vv v2) = (S2, []) ∧
@@ -1007,9 +1007,9 @@ theorem veto_run (ro : ReplayOrder sp Unit) :
     (acOnTick sp v0 S3 Φ 37).1 = S4 ∧
     acOnTick sp v0 S4 Φ 38 = (S5, []) ∧ conflictsWithLock sp S4.locks Φ 38 Bc ∧
     S5.locks = {lockV, fastB1, slowB1} ∧
-    liveLocks sp (acRestart sp ro v0 S5 Φ 56).1.locks Φ 56 = {slowB1} ∧
-    getAnchor sp (acRestart sp ro v0 S5 Φ 56).1 Φ 56 = B1 :=
+    liveLocks sp (acRestart sp v0 S5 Φ 56).1.locks Φ 56 = {slowB1} ∧
+    getAnchor sp (acRestart sp v0 S5 Φ 56).1 Φ 56 = B1 :=
   ⟨tick_36 S0, msg_1, msg_2, msg_3, S3_locks, tick_37, tick_38 fixed_S4, update_vetoed.2,
-    S5_locks, live_at_j0k ro, anchor_at_j0k ro⟩
+    S5_locks, live_at_j0k , anchor_at_j0k ⟩
 
 end Consensus.Goldilocks.AC.Test.GradedVeto

@@ -470,17 +470,17 @@ end Consensus.Goldilocks.Compose.FrameGeometry
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {tr : GoldilocksTrace' sp} {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 /-- **The FG projection of a shadow Goldilocks run is a shadow FG local run** inside the honest
 blocks (`projFG_localRun`). Unresolved until `fg_projection_from'` (lane B0b) is proved. -/
 theorem projFG_localRun' (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : NoCollRun dg tr) :
-    FGLocalRun' (goldilocksNode' sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  fg_projection_from' (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
+    FGLocalRun' (goldilocksNode' sp).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
+  fg_projection_from' (fun y _ => requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok
     hrun.toLocalRun' hnc
 
 end Consensus.Goldilocks.Compose

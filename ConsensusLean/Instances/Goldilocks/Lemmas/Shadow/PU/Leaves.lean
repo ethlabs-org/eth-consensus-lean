@@ -61,15 +61,15 @@ end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- V-B5's full growing contract. Unresolved while proposal extraction and transfer
 suppliers are being assembled; no stock execution premise replaces the shadow run. -/
 theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
@@ -86,7 +86,7 @@ theorem proposal_viable_at {proposer : Nat → Fin sp.n}
 
 /-- Leaf 8's arithmetic assembly, conditional on actual proposal viability. -/
 private theorem rounds_le_of_proposal_viable
-    {tr : GoldilocksTrace' sp ro} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace' sp} {H : Time → Set (Fin sp.n)}
     {lo hi : Time} {M v HZ : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : FrameWindow' tr H lo hi M isTop J)
@@ -103,7 +103,7 @@ private theorem rounds_le_of_proposal_viable
 /-- The shadow key bounds the height deficit at an honest proposal cut. -/
 theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u M v : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -126,7 +126,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
 is strictly above the reader's justified height. Only report membership is needed. -/
 theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J B R : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -186,7 +186,7 @@ open Consensus.Goldilocks.Shadow.PU.Growing (proposal_report_follow_delayed_at')
 
 variable {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The latency deadline of a high report is also a reset deadline for a shadow run. -/
 private theorem reset_of_high_report_within_at {ini}
@@ -194,7 +194,7 @@ private theorem reset_of_high_report_within_at {ini}
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q)
-    {ell : ACLabel (goldilocksNode' sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
@@ -476,7 +476,7 @@ theorem round_of_warm_within_at
       hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine Generic.Shadow.round_cross_at_from' hrun
-    (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc
+    (fun y => Compose.requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok hnc
     hsvc.signedRow hsvc.hold_le hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
     (hf _ (hrun.time_nonneg kX) (by rw [htX]; linarith [hts hxN])) hv hvx
@@ -663,7 +663,7 @@ theorem round_of_warm_within_stock_at
       hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine Generic.Shadow.round_cross_at_from' hrun
-    (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc
+    (fun y => Compose.requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok hnc
     hsvc.signedRow hsvc.hold_le hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
     (hf _ (hrun.time_nonneg kX) (by rw [htX]; linarith [hts hxN])) hv hvx

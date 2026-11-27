@@ -25,18 +25,18 @@ it from the proved lemmas. -/
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **The core of a Goldilocks run under growing faults**: `upTo`, the static core of every
 prefix on the validators honest at its end, and the growing facts. -/
 structure GoldilocksRunCore
     (u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n))
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (H : Time → Set (Fin sp.n)) (tr : GoldilocksTrace sp ro)
-    (ini : Fin sp.n → (goldilocksNode sp ro).State) : Prop where
+    (H : Time → Set (Fin sp.n)) (tr : GoldilocksTrace sp)
+    (ini : Fin sp.n → (goldilocksNode sp).State) : Prop where
   finalitySpec : Store.FinalitySpec u
   frameOf_F : ∀ st, (frameOf st).F = st.fg.F
   frameOf_tree : ∀ st B, B ∈ (frameOf st).tree ↔ B ∈ st.fg.tree ∧ st.fg.Anc st.fg.F B
@@ -70,7 +70,7 @@ structure GoldilocksRunCore
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F (tr.state y i).fg.F
   /-- `Growing.LocalRun.acRelayAt`. -/
   acRelayAt : ∀ {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {σ : Time},
+    {ℓ : ACLabel (goldilocksNode sp)} {σ : Time},
     x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → y ∈ H (tr.time j) →
     tr.projAC.CallAt y j ℓ → Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
     (∀ k, tr.time k = tr.time i → x ∈ H (tr.time k) → tr.AcceptAt x k B →
@@ -80,7 +80,7 @@ structure GoldilocksRunCore
   /-- `Growing.LocalRun.acCatchAt`. -/
   acCatchAt : ∀ {g κ : Time}, Healing.Growing.CatchRun tr H g κ →
     ∀ {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ℓ : ACLabel (goldilocksNode sp ro)},
+    {ℓ : ACLabel (goldilocksNode sp)},
     x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → tr.time i < AC.gbar g →
     y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → AC.gbar g + κ ≤ tr.time j →
     Anc (tr.HonestBlocksAt H) ℓ.frame.F B →

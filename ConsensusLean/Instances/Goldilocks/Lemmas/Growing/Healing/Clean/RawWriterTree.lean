@@ -20,15 +20,15 @@ rest is the voter's own frozen domain, read on the prefix through its cast. -/
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)}
 
 /-- An ancestor of a raw writer's block, for a writer honest at its write, is available in the
 frozen block tree of a later voter honest at its cast. -/
 theorem raw_writer_voterBlockTree_window_before_at
     (hcommittee : 0 < sp.committeeSize)
-    {ini} (hr : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {ini} (hr : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {a b κ : Time} (hsync : ServiceWindowBefore H U a b tr)
     (hcatch : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < a →
@@ -37,7 +37,7 @@ theorem raw_writer_voterBlockTree_window_before_at
     {x y : Fin sp.n} {j i s : Nat} (hx : x ∈ H (tr.time j)) (hy : y ∈ H (tr.time i))
     {B C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hwriter : ResultAt tr x j s C CV ∨ FastLockAt tr x j s C CV)
-    (hBC : Anc U B C) {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hBC : Anc U B C) {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : tr.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
@@ -59,7 +59,7 @@ theorem raw_writer_voterBlockTree_window_before_at
     have hj' : joined sp ((tr.upTo (tr.time i)).post i) (tr.time i) := by
       unfold joined; rw [restartTime_of_castAtU hri.toU hy hc']; exact hyj
     intro k hk hrk
-    have := (joined_awakeU sp FGP ro _ U _ hri.toU y hy i ℓ hc'.1 hj').2 k hk hrk
+    have := (joined_awakeU sp FGP _ U _ hri.toU y hy i ℓ hc'.1 hj').2 k hk hrk
     rwa [← hys] at this
   obtain ⟨v, -, D, hDU, -, hBD, hsource⟩ :=
     Healing.Growing.raw_writer_relay_source_at hcommittee hr hini hx hwriter hBC
@@ -115,7 +115,7 @@ theorem raw_writer_voterBlockTree_window_before_at
         unfold freeze
         linarith only [hcatchTime, hkyt]
     have hacc' :
-        ACTrace.AcceptAt (A := goldilocksAC sp FGP ro) (tr.upTo (tr.time i)) y ky D :=
+        ACTrace.AcceptAt (A := goldilocksAC sp FGP) (tr.upTo (tr.time i)) y ky D :=
       (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc⟩
     have hWt := mem_tree_of_acceptAtU sp hri.toU hy hacc' hky hc'.1 hFD
     have hbs := blockStamp_lt_of_acceptedBeforeU sp hri.toU hini hy hc'.1 hWt

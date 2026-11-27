@@ -13,7 +13,7 @@ of the run through each time `t`, with honest set `H t` (`CommitteePAt.upTo`,
 
 namespace Consensus.Goldilocks.AC
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : GTrace sp FGP ro}
+variable {sp : ACParams} {FGP : Type} {tr : GTrace sp FGP}
   {K : CommitteeDict sp.n}
 
 /-- P under growing faults is P on the prefix through each time `t`, with honest set `H t`, in a

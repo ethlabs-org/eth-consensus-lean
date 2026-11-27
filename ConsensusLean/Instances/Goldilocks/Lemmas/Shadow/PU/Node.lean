@@ -344,11 +344,11 @@ namespace Consensus.Goldilocks
 abbrev RunTrace' {P : Params} (A : NodeAC P) := RunTrace A
 
 noncomputable abbrev goldilocksNode' (sp : AC.ACParams)
-    (ro : AC.ReplayOrder sp (List (FG.Att sp.n))) : NodeAC sp.toParams :=
-  AC.goldilocksAC sp (List (FG.Att sp.n)) ro
+    : NodeAC sp.toParams :=
+  AC.goldilocksAC sp (List (FG.Att sp.n))
 
 abbrev GoldilocksTrace' (sp : AC.ACParams)
-    (ro : AC.ReplayOrder sp (List (FG.Att sp.n))) := RunTrace' (goldilocksNode' sp ro)
+    := RunTrace' (goldilocksNode' sp)
 
 end Consensus.Goldilocks
 
@@ -479,17 +479,17 @@ end Consensus.Goldilocks.Node
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 structure GoldilocksRun' (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace' sp ro)
-    (ini : Fin sp.n → (goldilocksNode' sp ro).State := fun _ => (goldilocksNode' sp ro).initial) :
+    (tr : GoldilocksTrace' sp)
+    (ini : Fin sp.n → (goldilocksNode' sp).State := fun _ => (goldilocksNode' sp).initial) :
     Prop
     extends Node.LocalRun' proposer dg H (fun v : Vote sp.n => v.val) tr ini where
-  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).RootOk dg
+  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload).RootOk dg
   vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks
@@ -604,15 +604,15 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode' sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode' sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
   have hmem := (AC.toFG_source hto.2.2).1.1
   rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hto.1, Node.frame'_eq,

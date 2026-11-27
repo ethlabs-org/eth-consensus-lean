@@ -18,8 +18,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
 
 /-- `tryVote_readPoint_locks_eq` with the unlock given. -/
 theorem tryVote_readPoint_locks_eqWith
@@ -61,7 +61,7 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : ACState sp.n}
 optimistic check at the writes of `wm`: the cast's vote branch (`voteBranchAt_inputU`). -/
 theorem vote_tryVote_inputU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVoteWithM sp wm y (u i) P ℓ.frame (tr.time i)).2 ∧
       P = callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
@@ -79,7 +79,7 @@ theorem vote_tryVote_inputU
 /-- `readPoint_locks_below_stored` with the unlock given. -/
 theorem readPoint_locks_below_storedU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
     ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
       ∃ l ∈ (tr.state y i).locks, l'.slot = l.slot ∧ ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧
@@ -111,8 +111,8 @@ theorem readPoint_locks_below_storedU
 a lock of the read point of a slot other than the vote's sits (in the frame) below a stored
 lock of the same slot: `try_vote`'s unlocking and the receipt's optimistic check only move
 locks back, and the optimistic check writes locks of the vote's slot. -/
-theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
     ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
       ∃ l ∈ (tr.state y i).locks, l'.slot = l.slot ∧ ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧
@@ -123,8 +123,8 @@ theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksAC sp FGP ro) H
 /-- The input of the `try_vote` that emits an honest vote, naming the optimistic point: after a
 message or block receipt, the `try_vote` input is the optimistic confirmation of the receipt
 state. -/
-private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A : ACState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
@@ -145,7 +145,7 @@ From starts up to the vote permission. -/
 theorem readPoint_locks_provenance_strict {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hpos : 0 < sp.slot (tr.time i)) :
     ∀ l' ∈ e.readPoint.locks, ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧
       ((∃ l ∈ (tr.state y i).locks, ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc B' B) ∨

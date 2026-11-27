@@ -19,11 +19,11 @@ through `b`. The supplier is a premise, so this module stays below the frontier.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
 
 /-- The reset service through `b` is one through every `T ≤ b`. -/
 private theorem ResetService.restrict {g ΔF b T : Time} (h : ResetService tr H g ΔF b hold)

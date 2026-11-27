@@ -33,11 +33,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {fgHold : Time}
 
 /-- A held block above every pre-slot high origin reaches the proposal reader's floor. -/
@@ -45,7 +45,7 @@ theorem proposal_floor_above_old_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state p i).fg.tree)
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
@@ -70,7 +70,7 @@ theorem reset_suffix_viable_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -96,7 +96,7 @@ theorem reset_pivot_of_start_supported_at
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)}
+    {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
@@ -198,7 +198,7 @@ theorem reset_pivot_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)}
+    {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))

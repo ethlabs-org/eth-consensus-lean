@@ -60,7 +60,7 @@ theorem tickRun_readyProposalAt (c : Time) (s : Nat) (hs : 1 ≤ s) :
 proposal `blk s` released at `t_s` (`s ≥ 1`), and for `t ≥ t_s + 6Δ` the validator ready at `t`
 with the first cut `8(t + 1)` after `t`. -/
 theorem includeSleepy_premises (s t : Nat) (hs : 1 ≤ s) (ht : 4 * s + 6 ≤ t) :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
+    GoldilocksRun (sp := sp1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
       Regimes.ReadyProposalAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) (sp1.ts s)
         (blk s) ∧
@@ -78,7 +78,7 @@ theorem includeSleepy_premises (s t : Nat) (hs : 1 ≤ s) (ht : 4 * s + 6 ≤ t)
 validator ready at `t` and at `t + 10Δ`, with the first cuts `8(t + 1)` after `t` and `8(t + 11)`
 after `t + 10Δ`. -/
 theorem growSleepy_premises (t : Nat) :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
+    GoldilocksRun (sp := sp1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
       1 ≤ 1 ∧ (0 : Time) ≤ t ∧
       Regimes.ProposerRecurrence (tickRun N1 dg1) Set.univ (fun _ => v0) (Regimes.catchUp sp1) 1
@@ -118,7 +118,7 @@ theorem tickRun_honestBlocksAt :
 
 /-- The tick run under the constant honest set. -/
 theorem tickRun_growingRun :
-    Consensus.Goldilocks.Growing.GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1
+    Consensus.Goldilocks.Growing.GoldilocksRun (sp := sp1) (fun _ => v0) dg1
       (fun _ => Set.univ) (tickRun N1 dg1) :=
     { toLocalRun := Consensus.Goldilocks.Growing.LocalRun.const_iff.2
         tickRun_goldilocksRun.toLocalRun
@@ -155,7 +155,7 @@ theorem tickRun_includeSleepy (s t : Nat) (hs : 1 ≤ s) (ht : 4 * s + 6 ≤ t) 
     Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk s)
       (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 1)) t) := by
   obtain ⟨-, hnc, -, ⟨p, kP, hp, hkP, hτP⟩, hτ, hy, hj⟩ := includeSleepy_premises s t hs ht
-  have h := Regimes.Growing.include_sleepy sp1 ro1 dg1 (fun _ => Set.univ) (tickRun N1 dg1)
+  have h := Regimes.Growing.include_sleepy sp1 dg1 (fun _ => Set.univ) (tickRun N1 dg1)
     (fun _ => v0) 1 _ (Regimes.Growing.Test.run_full tickRun_growingRun) hnc
     (Compose.Growing.CommitteeFacts.of_full tickRun_growingRun hnc rfl) tickRun_sleepyAt
     (Regimes.Growing.Test.committeeSleepy_full tickRun_growingRun tickRun_sleepyAt) _ _
@@ -178,7 +178,7 @@ theorem tickRun_growSleepy (t : Nat) :
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 11)) (t + (4 * 1 + 6) * sp1.Δ)) := by
   obtain ⟨-, hnc, -, hk, ht, hrec, hx, hjx, hy, hj⟩ := growSleepy_premises t
   obtain ⟨τ, P, hτ, ⟨p, kP, hp, -, hkP, hτP⟩, hin, hnot, hanc⟩ :=
-    Regimes.Growing.grow_sleepy sp1 ro1 dg1 (fun _ => Set.univ) (tickRun N1 dg1) (fun _ => v0) 1 1
+    Regimes.Growing.grow_sleepy sp1 dg1 (fun _ => Set.univ) (tickRun N1 dg1) (fun _ => v0) 1 1
       _ (Regimes.Growing.Test.run_full tickRun_growingRun) hnc
       (Compose.Growing.CommitteeFacts.of_full tickRun_growingRun hnc rfl)
       tickRun_sleepyAt (Regimes.Growing.Test.committeeSleepy_full tickRun_growingRun

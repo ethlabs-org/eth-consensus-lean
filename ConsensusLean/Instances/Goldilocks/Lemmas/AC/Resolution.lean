@@ -58,10 +58,10 @@ private structure MInv (U : Set (Blk sp.n FGP)) (A : ACState sp.n) (Φ : Frm sp.
 
 end Invariant
 
-private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP ro).State}
-    {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
-    (h : (goldilocksAC sp FGP ro).ReachableAt self U A Φ t₀) : MInv U A Φ t₀ := by
+private theorem minv_of_reachable {FGP : Type} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP).State}
+    {Φ : (goldilocksAC sp FGP).Frm} {t₀ : Time}
+    (h : (goldilocksAC sp FGP).ReachableAt self U A Φ t₀) : MInv U A Φ t₀ := by
   induction h with
   | init Φ hi hf =>
     obtain ⟨htree, hroot, hs0, -, hpay⟩ := hi
@@ -81,13 +81,13 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
     · subst hc
       have hΦe : Φ' = Φ := hok.2
       subst hΦe
-      have hrs := restart_state sp FGP ro self A Φ' t' ih.frame.1 h0
+      have hrs := restart_state sp FGP self A Φ' t' ih.frame.1 h0
       refine ⟨ih.frame, ih.genesis, h0, fun σ x hx => ?_, fun B hB => (ih.slot_le B hB).trans hsl,
         ih.payload⟩
-      change x ∈ (acRestart sp ro self A Φ' t').1.pool σ at hx
+      change x ∈ (acRestart sp self A Φ' t').1.pool σ at hx
       rw [hrs.2.2.2.2.2.2.2.1 σ] at hx
       cases hx
-    have hst := voteClosed_poolStamped.step ro self Φ' t' hc ih.stamped
+    have hst := voteClosed_poolStamped.step self Φ' t' hc ih.stamped
     by_cases hb : ∃ B, c = .block B
     · obtain ⟨B, rfl⟩ := hb
       obtain ⟨hΦ', hfs, hpay, hBs⟩ := hok
@@ -114,7 +114,7 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
 
 /-- **A0.2, resolution is stable.** -/
 theorem resolution_stable : ResolutionStable sp := by
-  intro FGP ro self U hU A Φ t₀ hr A' Φ' t' hpath v hv hin'
+  intro FGP self U hU A Φ t₀ hr A' Φ' t' hpath v hv hin'
   have hlk : ∀ {Ψ : Frm sp.n FGP} {H : Blk sp.n FGP}, Ψ.tree ⊆ U → InTree Ψ v.head →
       H ∈ U → H.root = v.head → lookup Ψ v.head = some H := by
     intro Ψ H hΨ hin hH hHr
@@ -137,8 +137,8 @@ theorem resolution_stable : ResolutionStable sp := by
   -- along the path: reachable, and the two stamps unchanged
   have key : ∀ q : ACState sp.n × Frm sp.n FGP × Time, Relation.ReflTransGen
       (fun p q => ∃ c, c ≠ ACInterface.Call.restart ∧
-        (goldilocksAC sp FGP ro).CallStep self U p c q) (A, Φ, t₀) q →
-      (goldilocksAC sp FGP ro).ReachableAt self U q.1 q.2.1 q.2.2 ∧
+        (goldilocksAC sp FGP).CallStep self U p c q) (A, Φ, t₀) q →
+      (goldilocksAC sp FGP).ReachableAt self U q.1 q.2.1 q.2.2 ∧
         q.1.voteStamp v = A.voteStamp v ∧ q.1.blockStamp v.head = A.blockStamp v.head := by
     intro q hq
     induction hq with
@@ -146,13 +146,13 @@ theorem resolution_stable : ResolutionStable sp := by
     | @tail b q _ hbq ih =>
       obtain ⟨c, hc, ht, hok, hq⟩ := hbq
       obtain ⟨hb, hbv, hbb⟩ := ih
-      have hs := stamp_stable sp FGP ro self U hU b.1 b.2.1 b.2.2 hb c q.2.1 q.2.2 ht hok hc
+      have hs := stamp_stable sp FGP self U hU b.1 b.2.1 b.2.2 hb c q.2.1 q.2.2 ht hok hc
       rw [hq]
       exact ⟨hb.step c ht hok, ((hs.1 v (hbv ▸ hfin.1)).trans hbv),
         (hs.2 v.head (hbb ▸ hfin.2)).trans hbb⟩
   obtain ⟨hreach, hvs, hbs⟩ := key _ hpath
-  have hΦU : ∀ {A₁ : (goldilocksAC sp FGP ro).State} {Φ₁ : (goldilocksAC sp FGP ro).Frm} {t₁},
-      (goldilocksAC sp FGP ro).ReachableAt self U A₁ Φ₁ t₁ → Φ₁.tree ⊆ U := by
+  have hΦU : ∀ {A₁ : (goldilocksAC sp FGP).State} {Φ₁ : (goldilocksAC sp FGP).Frm} {t₁},
+      (goldilocksAC sp FGP).ReachableAt self U A₁ Φ₁ t₁ → Φ₁.tree ⊆ U := by
     intro A₁ Φ₁ t₁ h
     cases h with
     | init _ _ hf => exact hf.2
@@ -164,7 +164,7 @@ theorem resolution_stable : ResolutionStable sp := by
 
 /-- **A0.3, the merged view's opponents.** -/
 theorem merged_opponents : MergedOpponents sp := by
-  intro FGP ro self U hU A Φ t₀ hr σ B hσ
+  intro FGP self U hU A Φ t₀ hr σ B hσ
   have h := minv_of_reachable sp hr
   have hle := tree_blockStamp_le sp hU hr
   have hpool : ∀ x, x ∈ A.poolAt (σ : Int) ↔ x ∈ A.pool σ := fun x => by

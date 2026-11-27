@@ -548,10 +548,9 @@ theorem store_anc_of_honest_anc' (h : LocalRun' proposer dg H sg tr ini)
     exact (ih hZ.1).tail hZ
 
 theorem honest_held_anc' {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {ini}
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {A W : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -560,10 +559,9 @@ theorem honest_held_anc' {sp : AC.ACParams}
   store_anc_of_honest_anc' hrun.toLocalRun' hnc hy h hW
 
 theorem honest_held_height' {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {ini}
     (hrun : GoldilocksRun' proposer dg H tr ini) (_hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {A W : AC.Blk sp.n (List (FG.Att sp.n))} (h : (tr.state y i).fg.Anc A W) :
@@ -575,14 +573,13 @@ theorem honest_held_height' {sp : AC.ACParams}
     Store.Th_eq_of_anc_with Store.finalitySpec_updateFinality' hr h⟩
 
 theorem honest_eq_genesis' {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {ini}
     (hrun : GoldilocksRun' proposer dg H tr ini) (hU : Coherent (tr.HonestBlocks H))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
     (hr : B.root = sp.genesisRoot) :
-    B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload := by
+    B = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload := by
   obtain ⟨y, hy, i, hBt⟩ := hB
   have hg := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
     (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith).2.2.1
@@ -590,15 +587,15 @@ theorem honest_eq_genesis' {sp : AC.ACParams}
 
 section Growing
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {tr : GoldilocksTrace' sp} {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 private theorem held_block_cases
     (h : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ tr.HonestBlocksAt H) :
-    X = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
+    X = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload ∨
       tr.Occurs X ∧ X.RootOk dg ∧ X.proposer = proposer X.slot ∧ X.root ≠ sp.genesisRoot := by
   obtain ⟨y, i, t, ht, hb, hy, hX⟩ := hX
   have hs := Trace.upTo_state tr y hb
@@ -689,11 +686,11 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-theorem honest_row_signed_before' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem honest_row_signed_before' {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
     {ini} (hrun : GoldilocksRun' proposer dg H tr ini) (_hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :

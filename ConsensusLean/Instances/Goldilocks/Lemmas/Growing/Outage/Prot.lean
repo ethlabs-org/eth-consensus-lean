@@ -34,15 +34,15 @@ at `k` and `k + 1` are the run's.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {Hs : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {d : Time} {R : Prop}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {d : Time} {R : Prop}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {toCore : R → GoldilocksRunCore u frameOf proposer dg H tr ini}
 
 /-! ## Static run facts -/
@@ -51,7 +51,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem cast_lt_of_slot_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini) (hnc
     : NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ Hs) {k j : Nat}
-    {ℓ' : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} {e}
+    {ℓ' : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} {e}
     (hc : AC.CastAt tr.projAC x k ℓ' e)
     (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) : k < j := by
   have hr := (hrun.acRun hnc).localRun
@@ -94,7 +94,7 @@ theorem heldVotes_honest_unique_core (hrun : StaticRunCore u frameOf proposer dg
       obtain ⟨k₂, -, e₂, he₂, hm₂⟩ := hrun'.honest.pool_vote y hy (j + 1) _ w₂ hw₂ (hw₂v ▸ hvH)
       rw [hw₁v] at he₁
       rw [hw₂v] at he₂
-      have := (AC.one_vote_per_slotU sp _ ro Hs _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
+      have := (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
         (by rw [hm₁, hm₂, hs₁, hs₂])).2
       exact hne (hm₁.symm.trans
         ((congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg) this).trans hm₂))
@@ -102,7 +102,7 @@ theorem heldVotes_honest_unique_core (hrun : StaticRunCore u frameOf proposer dg
   obtain ⟨k', e', he', rfl⟩ := hem x' hx' (hval ▸ hxH)
   rw [hval] at he'
   exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-    (AC.one_vote_per_slotU sp _ ro Hs _ _ hr.toU _ hxH k k' e e' he he' hs).2
+    (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ hxH k k' e e' he he' hs).2
 
 /-- A held honest vote across an AC cut was cast by its validator. -/
 private theorem held_vote_cast_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini)
@@ -129,7 +129,7 @@ private theorem held_vote_cast_core (hrun : StaticRunCore u frameOf proposer dg 
     obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
     rw [hx'v, ← hxv] at he'
     exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-      (AC.one_vote_per_slotU sp _ ro Hs _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
+      (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
         (hxs.trans hx's.symm)).2) hne
 
 /-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
@@ -151,7 +151,7 @@ theorem unlockKeeps_of_voteCompat_core (hrun : StaticRunCore u frameOf proposer 
   have hU := hr.coherent
   obtain ⟨hfr, hst, -, -⟩ := (cutStepWith_ac _).1 (hrun.cutLaw y hy j _ hcall)
   rw [hfr] at hst
-  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y (tr.state y j).ac
+  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y (tr.state y j).ac
       (frameOf (tr.state y j)) (tr.time j) ℓ.call).1 = (tr.state y (j + 1)).ac := by
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
@@ -456,11 +456,11 @@ end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
 `y`, with `B` in the frame's tree, P for the committees `K`, and

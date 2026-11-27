@@ -36,11 +36,11 @@ the charge of a high origin's writer.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- **A high justified height is read after the snapshot**: at a state of a reader honest at
@@ -88,13 +88,13 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 /-- **A held block compatible with the earlier origins.** `B` is compatible with every high origin
 written before the cut `k`, and, under the high-source cover, with every member of the healed
 family of label at most `m` written before `k`. -/
-def CompatibleWithOrigins (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time)
+def CompatibleWithOrigins (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g a b : Time)
     (k m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   (∀ v r l O, r < k → HighOrigin tr H g v r l O → Compatible (tr.HonestBlocksAt H) B O) ∧
   (HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s k →
       s ≤ m → Compatible (tr.HonestBlocksAt H) B C)
 
-theorem compatibleWithOrigins_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem compatibleWithOrigins_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {g a b : Time} {k m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} :
     CompatibleWithOrigins tr H g a b k m B ↔
       ((∀ v r l O, r < k → HighOrigin tr H g v r l O → Compatible (tr.HonestBlocksAt H) B O) ∧
@@ -209,7 +209,7 @@ theorem high_J_root_of_held_before_quarantine_at {cm : Time → Finset (Fin sp.n
     change 3 * (H (tr.time k))ᶜ.ncard ≤ sp.toParams.n - 1 at hf
     change (H (tr.time k))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     clear * - hn hf; omega
-  exact LocalSources.high_frame_root_before (goldilocksNode sp ro).genesisPayload
+  exact LocalSources.high_frame_root_before (goldilocksNode sp).genesisPayload
     (fun v i => (tr.state v i).fg) tr.time (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
     (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) (tr.time k) hU
     hrun.time_mono
@@ -244,7 +244,7 @@ theorem high_J_root_of_held_at_call_before_quarantine_at {cm : Time → Finset (
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
-    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
+    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ell)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hpre : ∀ D, sp.deepDepth = some D → tr.time k ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
@@ -259,7 +259,7 @@ theorem high_J_root_of_held_at_call_before_covered_at {cm : Time → Finset (Fin
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
-    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
+    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ell)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot (tr.time k)) B) :
@@ -322,7 +322,7 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
     (_hx : x ∈ H (tr.time r)) (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)

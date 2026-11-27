@@ -39,7 +39,7 @@ theorem heldRefused_inv (hv : rho.ExecutionValid) (v : V) :
         LastRestart S rho v (i + 1) := by
       simp only [lastRestart_eq]
       exact fun h hi => NodeAsChainShape.CanonicalTrace.lastRestart_other rho hi h
-    have hkeep : ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs,
+    have hkeep : ∀ (st : State (S.params (pubOf E) hn) S.vote) o hs,
         HeldRefused (S.release (pubOf E)) st →
         HeldRefused (S.release (pubOf E)) (recordOwn st o hs) := fun st o hs h =>
       heldRefused_of_held (recordOwn_self _ _ _) (recordOwn_now _ _ _) (recordOwn_held _ _ _) h

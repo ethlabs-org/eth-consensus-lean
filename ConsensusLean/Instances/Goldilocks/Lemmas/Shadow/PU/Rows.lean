@@ -24,7 +24,7 @@ lemmas of `Shadow/PU/Cache` at `finalitySpec_updateFinality'`. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Chain
 

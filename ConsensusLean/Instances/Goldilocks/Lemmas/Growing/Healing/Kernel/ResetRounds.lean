@@ -24,20 +24,20 @@ on the honest sets truncated after `b`, on which no restart after `b` is honest.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 
 end Consensus.Goldilocks.Healing.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1) :
@@ -107,12 +107,12 @@ theorem floor_le_warm_proposal_at {ini}
 /-- The client call of a high report under vote latency `D`, by a reporter honest `D` after it
 and at `c_z`, supplies the reset no later than `D` after the report, including suppression. -/
 theorem reset_of_high_report_within_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g D : Time}
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q)
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
@@ -130,11 +130,11 @@ theorem reset_of_high_report_within_at
 /-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
 the reset, including suppression (`reset_of_high_report_within_at` at latency `0`). -/
 theorem reset_of_high_report_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g : Time}
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i := by
@@ -145,19 +145,19 @@ theorem reset_of_high_report_at
 /-- A proposal's immediate acceptance is held while its proposer is honest
 (`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
 theorem proposal_mem_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree :=
   Generic.proposal_mem_at_from hrun.toLocalRun
-    (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc hp hP
+    (fun y => Compose.requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok hnc hp hP
 
 /-- The report's actual frame supplies its fork-choice-root ancestry. -/
-theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R) :
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R := by
   have hret := hR.2.2
@@ -619,7 +619,7 @@ theorem rise_reset_rounds_at
 
 /-- The merged key bounds the deficit at the proposal cut itself. -/
 theorem rounds_le_warm_proposal_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -816,7 +816,7 @@ open Generic (truncH truncH_eq_of_le honestBlocksAt_truncH_subset catchRun_trunc
 
 /-- The local run laws transfer by `LocalRun.truncH`; the Goldilocks-specific laws preserve the
 same starts and the genesis root. -/
-theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr ini where
   toLocalRun := hrun.toLocalRun.truncH b

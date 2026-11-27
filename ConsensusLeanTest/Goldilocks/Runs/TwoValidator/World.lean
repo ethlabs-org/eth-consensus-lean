@@ -781,7 +781,7 @@ theorem cutStep_mono {y : Fin sp.n} {t : Time} {st st' : St} {c : Cut N}
   | ac ℓ =>
     obtain ⟨-, hs, hfg, -⟩ := h
     refine ⟨fun σ => ?_, by rw [hfg]⟩
-    have := AC.step_pool_subset (ro := ro) y st.ac ℓ.frame t ℓ.call (hnr ℓ rfl) σ
+    have := AC.step_pool_subset y st.ac ℓ.frame t ℓ.call (hnr ℓ rfl) σ
     change st.ac.pool σ ⊆ (N.step y st.ac ℓ.frame t ℓ.call).1.pool σ at this
     rw [hs] at this; exact this
   | fg ℓ =>

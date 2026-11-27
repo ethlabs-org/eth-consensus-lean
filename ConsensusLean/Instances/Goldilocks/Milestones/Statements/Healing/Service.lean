@@ -20,7 +20,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 section Geometry
 
@@ -40,8 +40,8 @@ end Geometry
 
 section Run
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- The run is settled at `w` (with `κ = 2Δ`) in the effective phase `(m, c)`: `SettledAt` at `w`
 and the phase at the state at `w` (cut `i₀`, the first cut at a time `≥ w`) is `(m, c)`. -/

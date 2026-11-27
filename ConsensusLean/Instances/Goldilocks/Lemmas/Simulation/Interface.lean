@@ -65,13 +65,13 @@ open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
-variable {sp : ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The node's cuts for the engine's delivery of the objects `os` to `y` at time `t`, given the
 digests `hs`, from cut `j` to cut `j'`: in order, one top-level event (`canonEvent`) per
 canonical object, its group at the next cut; nothing for a dropped object, nor for a canonical
 object whose handler makes no cut (a future-slot block, which `onBlock` refuses silently). -/
-inductive DeliverSeq (proposer : Nat → Fin sp.n) (tr : GoldilocksTrace sp ro)
+inductive DeliverSeq (proposer : Nat → Fin sp.n) (tr : GoldilocksTrace sp)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) (y : Fin sp.n) (t : Time) :
     List (Wire sp.n binding) → Nat → Nat → Prop
@@ -79,20 +79,20 @@ inductive DeliverSeq (proposer : Nat → Fin sp.n) (tr : GoldilocksTrace sp ro)
   | nil (j : Nat) : DeliverSeq proposer tr dg io hs y t [] j j
   /-- A canonical object: its event's group starts at `j`, and the rest follow it. -/
   | event {o : Wire sp.n binding} {os : List (Wire sp.n binding)} {j j' : Nat}
-      (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro io hs o = some e →
+      (e : Node.Event (goldilocksNode sp)) : canonEvent sp io hs o = some e →
       tr.GroupAt proposer dg y j t e →
       DeliverSeq proposer tr dg io hs y t os
         (j + (Node.exec proposer dg y (tr.state y j) t e).2.length) j' →
       DeliverSeq proposer tr dg io hs y t (o :: os) j j'
   /-- A dropped object has no cut. -/
   | drop {o : Wire sp.n binding} {os : List (Wire sp.n binding)}
-      {j j' : Nat} : canonEvent sp ro io hs o = none →
+      {j j' : Nat} : canonEvent sp io hs o = none →
       DeliverSeq proposer tr dg io hs y t os j j' →
       DeliverSeq proposer tr dg io hs y t (o :: os) j j'
   /-- A canonical object whose handler makes no cut (a future-slot block) is not an event of the
   run (`GroupAt` needs a cut), so it has no cut either. -/
   | noCut {o : Wire sp.n binding} {os : List (Wire sp.n binding)} {j j' : Nat}
-      (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro io hs o = some e →
+      (e : Node.Event (goldilocksNode sp)) : canonEvent sp io hs o = some e →
       (Node.exec proposer dg y (tr.state y j) t e).2 = [] →
       DeliverSeq proposer tr dg io hs y t os j j' →
       DeliverSeq proposer tr dg io hs y t (o :: os) j j'

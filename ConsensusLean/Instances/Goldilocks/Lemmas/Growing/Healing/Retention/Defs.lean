@@ -14,10 +14,10 @@ at its receiving call; only signed-row service is restricted to the finite horiz
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- The healed floors of the reset `a`: lock members from `cleanLabel a + k + 2`, origins from
 `k − 1` labels later (the floors `(r, r + k − 1)` of `Continuation`). -/
@@ -100,7 +100,7 @@ structure HSSharedUpTo
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF b : Time) (hold : Time := 0) :
     Prop where
   noColl : Compose.NoCollRun dg tr
-  genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
+  genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg
   sync : ResetService tr H g ΔF b hold
   awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
   faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1

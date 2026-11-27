@@ -19,13 +19,13 @@ The window fields on the canonical growing trace:
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Generic
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- **Window fields from four honest anchors**: proposal cuts with the proposals, the proposer's
@@ -63,7 +63,7 @@ private theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {of
 
 /-- **`ordered`**: proposal cuts of blocks of strictly increasing slots strictly increase. -/
 private theorem strictMono_cut_of_proposesAt_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {cut : Fin 4 → Nat} {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hcut : ∀ i, tr.ProposesAt (P i).proposer (cut i) (P i))

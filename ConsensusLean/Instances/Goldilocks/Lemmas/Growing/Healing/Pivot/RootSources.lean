@@ -10,11 +10,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The root comparison, given the high-height case. -/
@@ -23,7 +23,7 @@ private theorem held_target_proposal_root_of_high
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -74,7 +74,7 @@ theorem held_target_proposal_root_before_covered_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))

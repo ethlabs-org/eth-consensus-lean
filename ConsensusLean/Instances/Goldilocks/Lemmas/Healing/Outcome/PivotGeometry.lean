@@ -23,15 +23,15 @@ honest at different cuts and their old sources need not have honest writers any 
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **Viable proposal suffix from the height floor.** On a realized proposal frame, the walk from
 a block `D` above the walk's start to the duty head consists of viable heads, provided every held
 block above `D` reaches the reader's height floor. -/
 theorem proposal_suffix_viable_of_floor {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
-    {st : NodeState (goldilocksNode sp ro)} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
+    {st : NodeState (goldilocksNode sp)} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (hfr : Φ = Node.frame st)
     {A : AC.ACState sp.n} {t : Time} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hd : (AC.acProposal sp A Φ t).2 = some (d, pay))
@@ -56,14 +56,14 @@ coherent `U`, with `P` the child of the duty head, let `D` be the deepest of the
 the old sources on the walk. Then `D` is a viable pivot on the walk, and every eligible cast's
 walk from its anchor to its ghost head passes through `P` or through the walk between `D` and the
 duty head. -/
-theorem proposal_pivot_of_supports {tr : GoldilocksTrace sp ro}
+theorem proposal_pivot_of_supports {tr : GoldilocksTrace sp}
     {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
     {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {A : AC.ACState sp.n} {t : Time} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hd : (AC.acProposal sp A Φ t).2 = some (d, pay))
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPQ : P.parent = some d.head.root)
     (old : Set (AC.Blk sp.n (List (FG.Att sp.n)))) {u : Nat}
-    (Elig : Fin sp.n → Nat → ACLabel (goldilocksNode sp ro) → AC.Em sp (List (FG.Att sp.n)) →
+    (Elig : Fin sp.n → Nat → ACLabel (goldilocksNode sp) → AC.Em sp (List (FG.Att sp.n)) →
       Prop)
     -- Old sources pass: every old source is below the duty head.
     (hpass : ∀ O ∈ old, Anc U O d.head)

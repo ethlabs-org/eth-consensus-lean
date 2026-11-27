@@ -14,15 +14,15 @@ C2*⁺ (i), (ii) and R0 from the clean-height premise CH. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a : Time}
 
 /-- `Z` is an entry of the high chain at height `h`: it is below the block of a high origin, an
 honest node holds it, and its state has height `h` and entry `Z`. -/
-structure HighEntry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (h : Nat)
+structure HighEntry (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (g : Time) (h : Nat)
     (Z : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   origin : ∃ x i j B, HighOrigin tr H g x i j B ∧ Anc (tr.HonestBlocks H) Z B
   held : ∃ z ∈ H, ∃ m, Z ∈ (tr.state z m).fg.tree ∧ ((tr.state z m).fg.σ Z.root).h = h ∧
@@ -30,7 +30,7 @@ structure HighEntry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
 
 /-- **The record half of the Healed bundle** from the height `h₀` on, for the entries `E h` of
 the chain: RH, C2*⁺ (i) attestations, C2*⁺ (ii) locks, and R0 at `h₀`. -/
-structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (h₀ : Nat)
+structure HealedRecords (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (g : Time) (h₀ : Nat)
     (E : Nat → AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   /-- RH: `h₀` is above the reset height. -/
   rh : HZ tr H g + 1 ≤ h₀

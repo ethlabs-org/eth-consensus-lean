@@ -116,7 +116,7 @@ private theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V
     {v : V}
     {i : Nat} {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (r : CutRec (S.params (pubOf E) hn)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
     (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))
@@ -135,7 +135,7 @@ private theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [D
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (r : CutRec (S.params (pubOf E) hn)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
     (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))

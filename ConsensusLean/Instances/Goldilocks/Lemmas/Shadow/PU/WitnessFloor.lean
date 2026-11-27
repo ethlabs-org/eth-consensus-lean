@@ -547,16 +547,16 @@ end Store
 
 section Run
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **`floor_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_proposal_floor_top`:
 proved). The stock statement over the stock `FrameWindow`, for shadow runs: a designated honest
 proposal inside the window reaches the window's head height floor. -/
 theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -657,7 +657,7 @@ theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
 /-- A warm shadow proposal reaches the unchanged stock window floor. -/
 theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -674,7 +674,7 @@ The stock statement over the stock `FrameWindow` and the stock key `frameKey'`, 
 the stock arithmetic `le_floor_add_riseRounds` and `floor_le_warm_proposal_at'`. -/
 theorem rounds_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace' sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}

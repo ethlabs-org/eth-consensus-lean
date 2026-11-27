@@ -288,7 +288,7 @@ private theorem tick_flush (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time
     simp only [nodeTick_held, pollBatch_held, pollBatch_ticked, Bool.and_false,
       Bool.false_eq_true, ↓reduceIte]
     exact List.mem_append_left _ (List.mem_append_left _ ha)
-  have hP : ∀ (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop),
+  have hP : ∀ (Q : State (S.params (pubOf E) hn) S.vote → Prop),
       (∀ st o hs, Q st → Q (recordOwn st o hs)) → (∀ st s, Q st → Q (propose st s).1) →
       Q (shapeOf S hn (atProposal S rho v nd t)) →
       Q (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t) Pr).1) := by

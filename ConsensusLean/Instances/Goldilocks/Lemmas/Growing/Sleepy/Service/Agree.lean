@@ -23,11 +23,11 @@ vote).
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The run's proposal of `P` is `ac_proposal`'s** at `t_s`, on the duty head `Q = P.parent`,
 with the payload `pay`, for a proposer honest at its proposal (the static `proposal_data` on the
@@ -60,7 +60,7 @@ theorem stop_at_parent_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} (hPQ : P.parent = some d.head.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hvt : P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
     (hold : ∀ B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s),
@@ -102,7 +102,7 @@ theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer
     (hnc : NoCollRun dg tr) {b : Time} {p : Fin sp.n} {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)

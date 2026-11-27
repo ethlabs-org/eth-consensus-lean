@@ -18,7 +18,7 @@ No Goldilocks local-data equation is needed for this field. -/
 theorem goldilocks_highCanonicalSupply (S : Setup) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (Model.pubOf E) hn))
       (goldilocksRunMap S rho hn hv).signer fgHold) {ΔF : Time} :
     HighCanonicalSupply (goldilocksRunMap S rho hn hv) K C ΔF := by
   intro hβ _ _ _ _ _ hr hp ha hab hbudget

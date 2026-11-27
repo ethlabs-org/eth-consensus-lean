@@ -17,15 +17,15 @@ snapshot cutoff is read through the finality-parametric store invariants.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 private theorem ts_le_of_fastLock'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {x : Fin sp.n} {r l : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hf : AC.FastLockAt tr.projAC x r l D CV) :
@@ -39,7 +39,7 @@ private theorem ts_le_of_fastLock'
     exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) l).mpr (by omega)
 
 private theorem highOrigin_raw_head'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -105,12 +105,12 @@ private theorem not_genesis_above'
   have hreach := Compose.Growing.reachable_at' hp.run hi0 hx hle
   have hgen := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
     hreach.reachableWith).2.2.1
-  have heq : G = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload :=
+  have heq : G = sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload :=
     (Coherence.honestBlocksAt_coherent' hp.run hp.noColl).1 hGU
       ⟨x, i, tr.time i, hi0, hle, hx, hgen⟩ hg
   have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ hgen
   have hh := Outcome.high_of_anc_at' hp.run hp.noColl ho hi0 hle hx hGx hBG
-  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).root =
+  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality' hreach.reachableWith] at hh
   change HZ tr H g + 1 ≤ 1 at hh
@@ -122,7 +122,7 @@ private theorem not_genesis_above'
   have hGZ := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
     hreachZ.reachableWith).2.2.1
   have hbnd := (Store.cache_invariants' hreachZ).2.2.2.2.1 _ hGZ
-  rw [show (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).root =
+  rw [show (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality' hreachZ.reachableWith] at hbnd
   have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
@@ -178,7 +178,7 @@ private theorem frame_relay'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B) (hgi : g ≤ tr.time i)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode' sp)}
     (hc : tr.projAC.CallAt y j ell)
     (hdl : tr.projAC.deadline y j (tr.time i) ≤ tr.time j)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
@@ -197,7 +197,7 @@ theorem KernelProof.relay_mem_voterBlockTree_at'
     {w y : Fin sp.n} {kw i s : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hw : w ∈ H (tr.time kw)) (hkw : tr.projAC.AcceptAt w kw W)
     (hg : g ≤ tr.time kw) (hkwt : tr.time kw < sp.ts s + 2 * sp.Δ)
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hs : s + 1 ≤ e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F W) :
     W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
@@ -220,7 +220,7 @@ theorem KernelProof.relay_mem_voterBlockTree_at'
       rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hyj
     intro k hk hrk
-    have := ((AC.joined_awakeU sp) _ ro _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
+    have := ((AC.joined_awakeU sp) _ _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
       (ACTrace.upTo_restartAt.mpr ⟨hm hk, hrk⟩)
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [← hys] at this
@@ -269,7 +269,7 @@ theorem KernelProof.high_origin_frozen_head_at'
     {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,

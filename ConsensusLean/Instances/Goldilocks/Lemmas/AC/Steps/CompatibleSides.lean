@@ -17,13 +17,13 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → ACState sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
-def Fwd (tr : GTrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
+def Fwd (tr : GTrace sp FGP) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
     (D : Blk sp.n FGP) : Set (Fin sp.n) :=
   {u | ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ}
@@ -113,8 +113,8 @@ theorem optimistic_side (hrun : ACRun proposer tr H U ini)
 given. -/
 theorem fwd_heldU
     {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    (hsync : SyncAC (goldilocksAC sp FGP) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
     (hu : u ∈ Fwd tr U X s D) :
@@ -135,8 +135,8 @@ validators `T` with forwardable votes for a block `D` that conflicts with `DY` a
 and none is a supporter `S` of `DY`. -/
 theorem against_updateU
     {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    (hsync : SyncAC (goldilocksAC sp FGP) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
     {S T : Set (Fin sp.n)}

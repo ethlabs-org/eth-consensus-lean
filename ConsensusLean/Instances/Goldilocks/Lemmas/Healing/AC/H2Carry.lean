@@ -10,8 +10,8 @@ namespace Consensus.Goldilocks.AC
 
 open Compose
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP}
 
 end Consensus.Goldilocks.AC
 

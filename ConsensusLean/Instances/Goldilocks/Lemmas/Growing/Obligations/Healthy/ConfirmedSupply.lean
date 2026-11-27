@@ -25,16 +25,16 @@ Each node is honest at its own cut or read; ancestry is in the blocks held while
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The frame of a node honest at a cut is well formed. -/
 private theorem frameOK_state_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) : FrameOK (Node.frame (tr.state y i)) := by
   have h := Compose.frameOK_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
@@ -73,7 +73,7 @@ theorem operational_update_fresh_lock_at
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hup : AC.UpdateAt tr.projAC y j u ell) :
     ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post j).locks := by
   have hΔ := sp.toParams.hΔ
@@ -134,7 +134,7 @@ theorem operational_proposal_read_after_at
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    (hlocks : ∀ y j (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time j) →
+    (hlocks : ∀ y j (ell : ACLabel (goldilocksNode sp)), y ∈ H (tr.time j) →
       AC.UpdateAt tr.projAC y j u ell →
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post j).locks) :
     ∀ y J, y ∈ H (sp.ts u + 6 * sp.Δ) → Regimes.CutAfter tr J (sp.ts u + 6 * sp.Δ) →

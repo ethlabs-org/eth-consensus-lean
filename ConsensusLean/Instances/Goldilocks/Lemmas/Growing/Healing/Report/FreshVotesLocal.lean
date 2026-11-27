@@ -13,18 +13,18 @@ execution through the cast suffices; no common honest cohort or frame invariant 
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 namespace Core
 
 variable
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- A cast anchored at its slot's proposal has no later eligible child, independently of the
 node's frame implementation. -/
@@ -32,7 +32,7 @@ theorem vote_head_eq_of_anchor_eq_at
     (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = e.msg.slot)
     (hPt : P ∈ ell.frame.tree)
@@ -69,7 +69,7 @@ theorem frozen_viable_of_anchor_path_at
     (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
@@ -96,7 +96,7 @@ theorem proposal_walk_end_at
     (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {ip : Nat}
     (hz : z ∈ H (tr.time ip))
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z ip ellp)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay)) :
@@ -137,7 +137,7 @@ theorem vote_head_eq_of_anchor_eq_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = e.msg.slot)
     (hPt : P ∈ ell.frame.tree)
@@ -151,7 +151,7 @@ theorem frozen_viable_of_anchor_path_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
@@ -165,7 +165,7 @@ theorem proposal_walk_end_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {ip : Nat}
     (hz : z ∈ H (tr.time ip))
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z ip ellp)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay)) :

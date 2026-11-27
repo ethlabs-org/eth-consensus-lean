@@ -23,15 +23,15 @@ namespace Consensus.Goldilocks.Compose
 
 variable {wm : AC.WriteMode}
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 
 /-! ### One honest node over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP}
 
 /-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
 node's frame at a call is genesis or was accepted by the node at that call or an earlier one. With
@@ -39,14 +39,14 @@ the unlock given. -/
 theorem frame_anc_acceptedU
     {u : Nat → Set AC.Lock} {ini} (hr : AC.ACLocalRunU wm u H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
+    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
   intro i
   induction i using Nat.strong_induction_on with
   | _ i ih =>
     intro ℓ hc
     have step : ∀ Φ : AC.Frm sp.n FGP, Φ.tree ⊆ U →
-        (AC.goldilocksAC sp FGP ro).CallOK U Φ (T.time i) ℓ.call ℓ.frame →
+        (AC.goldilocksAC sp FGP).CallOK U Φ (T.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, ∀ X, Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X) →
         ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
           X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
@@ -90,13 +90,13 @@ or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a h
 `t_s + 3Δ` by other means (genesis included), then `Carry_y(s, ·, ·)` holds for the counted
 votes. -/
 theorem carryAt_of_writer_heads
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a b T ∨
+    (hsync : SyncAC (AC.goldilocksAC sp FGP) H U a b T ∨
       AC.ServiceWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
@@ -120,13 +120,13 @@ theorem carryAt_of_writer_heads
 /-- **`Carry_y` from a writer, on a window**: `carryAt_of_writer_heads`, with every head that
 `w` accepted before `a` (outside the relay window) reaching `y` before the freeze (`hold`). -/
 private theorem carryAt_of_writer_service
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a b T ∨
+    (hsync : SyncAC (AC.goldilocksAC sp FGP) H U a b T ∨
       AC.ServiceWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
@@ -146,12 +146,12 @@ private theorem carryAt_of_writer_service
 
 /-- Windowed writer transport combines new-source service with old-head catch-up. -/
 theorem carryAt_of_writer_window_before {ini}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {a κ b : Time} (hsync : AC.ServiceWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
     (hcatch : CatchACWindowBefore T H U a κ b) (hcatchTime : a + κ ≤ sp.ts s + 3 * sp.Δ)
     {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
@@ -179,7 +179,7 @@ theorem carryAt_of_writer_window_before {ini}
 /-- **What a result's writer did with its counted votes**: each was admitted (or sent) by the
 writer at a time in `[t_s, t_s + 2Δ)` (its stamp, below the resolution time), and its head extends
 the result and is genesis or was accepted by the writer before `t_s + 2Δ` (the head's stamp). -/
-theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hR : AC.ResultAt T X i₀ s C CV) :
@@ -240,7 +240,7 @@ theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T i
 sent) by the writer at a time in `[t_s, t_s + 2Δ)` (at or before the selection), and its head
 extends the selection and is genesis or was accepted by the writer before `t_s + 2Δ` (it is in
 the writer's frame at the selection). -/
-theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hO : AC.OptimisticLockAt T x i₀ s C CV) :
@@ -281,9 +281,9 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP r
 
 end Node
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 variable {s₀ : Nat}
 

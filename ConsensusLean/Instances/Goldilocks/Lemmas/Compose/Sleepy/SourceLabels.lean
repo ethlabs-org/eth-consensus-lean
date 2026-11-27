@@ -13,11 +13,11 @@ and would precede a held row (`no_optimistic_before_held_row_of`, from the steps
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- `no_optimistic_before_held_row` with `2|K(s+1) ∩ Hᶜ| < committeeSize`, for a member `y` of the
 slot-`(s+1)` committee. -/
@@ -26,7 +26,7 @@ theorem no_optimistic_before_held_row_of {ini} (hrun : GoldilocksRun proposer dg
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     (hyK : y ∈ K.committee (s + 1)) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hkm : k < m) (hsg : tr.SignAt a.val k a)
@@ -43,7 +43,7 @@ theorem no_optimistic_before_held_row_of {ini} (hrun : GoldilocksRun proposer dg
     obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ :=
       held_row_early_count hrun hnc K hP hsize hfK hav hsg hT0 hz hck hO
     obtain rfl : u = y := (hall y hyK).symm
-    have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU u hu j' i e' e hv' ⟨ℓ, hc.1, hc.2⟩
+    have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU u hu j' i e' e hv' ⟨ℓ, hc.1, hc.2⟩
       (hs'.trans hs.symm)).1
     omega
   · -- at `t_{s+1} + Δ`: the voter's own tick there votes before the block arrives
@@ -60,7 +60,7 @@ theorem vote_row_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     (hyK : y ∈ K.committee (s + 1)) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
     {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :

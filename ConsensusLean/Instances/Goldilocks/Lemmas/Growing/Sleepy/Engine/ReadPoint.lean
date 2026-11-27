@@ -45,20 +45,20 @@ open Consensus.Model (pubOf)
 
 section Held
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The state before cut `j` of a node honest at `t ≥ 0`, with every cut before `j` at a time
 `≤ t`: a reachable store, a well-formed frame, and a tree inside the blocks held while honest
 (the static facts on the prefix through `t`). -/
-theorem held_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem held_state {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} {t : Time} (ht : 0 ≤ t) (hj : ∀ k < j, tr.time k ≤ t)
     (hy : y ∈ H t) :
-    (tr.state y j).fg.Reachable (goldilocksNode sp ro).genesisPayload ∧
+    (tr.state y j).fg.Reachable (goldilocksNode sp).genesisPayload ∧
       FrameOK (Node.frame (tr.state y j)) ∧ (tr.state y j).fg.tree ⊆ tr.HonestBlocksAt H := by
   have hs := Trace.upTo_state tr y hj
   have hr := (hrun.upTo ht).toLocalRun
@@ -74,10 +74,10 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The first cut of an event's group is at position `0`. -/
-private theorem groupRecs_head_pos {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem groupRecs_head_pos {sp : AC.ACParams}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) {r : CutRec sp ro}
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (id : Nat)
+    (e : Event (goldilocksNode sp)) {r : CutRec sp}
     (h : (groupRecs proposer dg self st t id e)[0]? = some r) : r.pos = 0 := by
   simp only [groupRecs_eq, List.getElem?_mapIdx, Option.map_eq_some_iff] at h
   obtain ⟨_, -, rfl⟩ := h
@@ -85,17 +85,17 @@ private theorem groupRecs_head_pos {sp : AC.ACParams} {ro : AC.ReplayOrder sp (L
 
 /-- The first cut of a delivery is at position `0`. -/
 private theorem deliverRecs_head_pos {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
+    {binding : VoteBinding}
     (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-      {r : CutRec sp ro},
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp)) (sub : Nat)
+      {r : CutRec sp},
       (deliverRecs io proposer dg hs self t i os st sub)[0]? = some r →
       r.pos = 0
   | [], st, sub, r, h => by simp [deliverRecs_nil] at h
   | o :: os, st, sub, r, h => by
-    cases he : canonEvent sp ro io hs o with
+    cases he : canonEvent sp io hs o with
     | none =>
       rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he] at h
       exact deliverRecs_head_pos io proposer dg hs self t i os st (sub + 1) h
@@ -108,9 +108,9 @@ private theorem deliverRecs_head_pos {sp : AC.ACParams}
         exact groupRecs_head_pos proposer dg self st t _ e h
 
 /-- The first cut of a concatenation of runs whose first cuts are at position `0`. -/
-private theorem head_pos_append {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    {l₁ l₂ : List (CutRec sp ro)} (h₁ : ∀ r, l₁[0]? = some r → r.pos = 0)
-    (h₂ : ∀ r, l₂[0]? = some r → r.pos = 0) {r : CutRec sp ro}
+private theorem head_pos_append {sp : AC.ACParams}
+    {l₁ l₂ : List (CutRec sp)} (h₁ : ∀ r, l₁[0]? = some r → r.pos = 0)
+    (h₂ : ∀ r, l₂[0]? = some r → r.pos = 0) {r : CutRec sp}
     (h : (l₁ ++ l₂)[0]? = some r) : r.pos = 0 := by
   cases l₁ with
   | nil => exact h₂ r h
@@ -118,11 +118,10 @@ private theorem head_pos_append {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List
 
 /-- The first cut of a run of own admissions is at position `0`. -/
 private theorem admitRecs_head_pos {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (self : Fin sp.n) (t : Time) (i : Nat) :
-    ∀ (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-      {r : CutRec sp ro}, (admitRecs proposer dg self t i as st sub)[0]? = some r → r.pos = 0
+    ∀ (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp)) (sub : Nat)
+      {r : CutRec sp}, (admitRecs proposer dg self t i as st sub)[0]? = some r → r.pos = 0
   | [], st, sub, r, h => by simp [admitRecs_nil] at h
   | a :: as, st, sub, r, h => by
     rw [admitRecs_cons] at h
@@ -133,7 +132,7 @@ private theorem admitRecs_head_pos {sp : AC.ACParams}
       exact groupRecs_head_pos proposer dg self st t _ _ h
 
 /-- The first cut of an engine event is at position `0`. -/
-private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn)}
     (h : (eventCuts S rho hn i)[0]? = some r) : r.pos = 0 := by
   rw [eventCuts_eq S rho hn] at h
   split at h

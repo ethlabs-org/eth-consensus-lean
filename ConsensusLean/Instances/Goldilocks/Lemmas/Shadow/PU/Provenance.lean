@@ -26,11 +26,11 @@ stock ones (the shadow trace is a `RunTrace` of the stock AC). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace' sp} {proposer : Nat → Fin sp.n}
 
 section Handlers
 
@@ -175,11 +175,11 @@ end Handlers
 
 /-! ### The record and the locks at the cuts of an honest node -/
 
-private def RecOK (tr : GoldilocksTrace' sp ro) (H : Set (Fin sp.n))
+private def RecOK (tr : GoldilocksTrace' sp) (H : Set (Fin sp.n))
     (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (r : Nat) : Prop :=
   ∃ C ∈ T, C.root = r ∧ (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i)
 
-private def LockOK (tr : GoldilocksTrace' sp ro) (H : Set (Fin sp.n))
+private def LockOK (tr : GoldilocksTrace' sp) (H : Set (Fin sp.n))
     (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (l : AC.Lock) : Prop :=
   ∃ L ∈ T, L.root = l.block ∧ ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C
 
@@ -205,7 +205,7 @@ private theorem down_lockOK {T : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 with the origins of the call's own selections (a copy of `good_acCall`). -/
 private theorem good_acCall' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode' sp ro)} (hc : tr.CallAt y i (.ac ℓ))
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode' sp)} (hc : tr.CallAt y i (.ac ℓ))
     (h : Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.state y i).ac) :
     Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
@@ -279,13 +279,13 @@ private theorem good_acCall' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
       (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
       fun e he => emit e (hem ▸ he)
   | restart =>
-    obtain ⟨-, hl, hr, -⟩ := AC.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
+    obtain ⟨-, hl, hr, -⟩ := AC.restart_state sp _ y A ℓ.frame (tr.time i) hΦ
       (hrun.time_nonneg i)
     refine ⟨?_, ?_⟩
-    · change RecOK _ _ _ _ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.latestConfirmed
+    · change RecOK _ _ _ _ (AC.acRestart sp y A ℓ.frame (tr.time i)).1.latestConfirmed
       rw [hr]
       exact h.1
-    · change ∀ l ∈ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.locks, _
+    · change ∀ l ∈ (AC.acRestart sp y A ℓ.frame (tr.time i)).1.locks, _
       rw [hl]
       exact h.2
 

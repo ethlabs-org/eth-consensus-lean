@@ -22,14 +22,14 @@ HR.3 (retired, owner decision):
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-! ## Cuts -/
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-! ## Blocks -/
@@ -60,13 +60,13 @@ theorem accept_of_proposesAt_from {P : Params} {A : NodeAC P}
 
 /-- **An honest proposal is accepted by its proposer at its cut** (`accept_of_proposesAt_from`
 at the Goldilocks requirements from the run's starts). -/
-theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt p k W) :
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) :=
   accept_of_proposesAt_from hrun.toLocalRun hrun.genesis_root_ok hnc hp
-    (Compose.requirements_from sp ro (hrun.vstart p)) hW
+    (Compose.requirements_from sp (hrun.vstart p)) hW
 
 /-- The right end of an ancestry inside `S` is in `S` when the left end is. -/
 theorem mem_of_anc_right {n : Nat} {FGP ACP : Type} {S : Set (Block n FGP ACP)}
@@ -92,7 +92,7 @@ theorem toFG_mem_frame {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
 /-- A source of an honest node is in its FG tree. -/
 theorem toFG_mem_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree :=
   mem_tree_of_frame hrun hy hto.1 (toFG_mem_frame hto.2.2)
 

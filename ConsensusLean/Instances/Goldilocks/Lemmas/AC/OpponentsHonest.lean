@@ -65,9 +65,9 @@ private theorem mergedVoteView_votes_slot {A : ACState sp.n} (s : Nat)
 
 /-- **The view of a call holds only slot-`(slot(t) − 1)` votes** when the pools before and
 after the call hold votes of their own slot and every block of `Φ.tree` has a valid payload. -/
-private theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
-    (c : (goldilocksAC sp FGP ro).Call) (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ)
-    (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool τ, v.slot = τ)
+private theorem unlockView_votes_slot (self : Fin sp.n) {A : ACState sp.n}
+    (c : (goldilocksAC sp FGP).Call) (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ)
+    (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C) :
     ∀ v ∈ (unlockView A Φ t c).votes, (v.slot : Int) = (sp.slot t : Int) - 1 := by
   cases c with
@@ -91,9 +91,9 @@ has only heads compatible with `B`, and `2 · |Hnᶜ| < committeeSize`, then `un
 call's view is `B`. The premise `hne` is asked only of votes of slot `slot(t) − 1`, because the
 committee opposing set includes the non-members of that slot's committee, who hold no vote of
 that slot. -/
-theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A A' : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call)
-    (hA' : ((goldilocksAC sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
+theorem unlockTarget_unlockView_held_of_honest_slot (self : Fin sp.n)
+    {A A' : ACState sp.n} (c : (goldilocksAC sp FGP).Call)
+    (hA' : ((goldilocksAC sp FGP).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {Hn : Set (Fin sp.n)}
     (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpost : ∀ τ, ∀ v ∈ A'.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C)
@@ -107,7 +107,7 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
   -- the view lies in the held votes, up to declarations of validators outside `Hn`: a counted
   -- declaration of a validator of `Hn` that equivocates in the pool before the call
   -- contradicts `hne`
-  let A' := ((goldilocksAC sp FGP ro).step self A Φ t c).1
+  let A' := ((goldilocksAC sp FGP).step self A Φ t c).1
   let S : Set (Vote sp.n) := {v | v ∈ heldVotes A A' Φ ∨ v.val ∉ Hn}
   have hheld : ∀ x ∈ S, x.val ∈ Hn → x ∈ heldVotes A A' Φ := fun x hx hxH =>
     hx.resolve_right (not_not.2 hxH)

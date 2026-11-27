@@ -25,10 +25,10 @@ The restart bound reads each node's honesty at its own time (`restart_le_before_
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 variable {hold : Time}
 
@@ -38,7 +38,7 @@ finalized block it extends, as observed at a call in `[a + 2Δ, t]`. Before `ḡ
 catch-up (at the first cut from `ḡ + 2Δ ≤ t`); after `ḡ`, the prefix's acceptance relay, with the
 restarts no later than the reset. -/
 private theorem catch_window_at_reset_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {b : Time} (hs : ResetService tr H g ΔF b hold) (hc : CatchRun tr H g (2 * sp.Δ))
     {t : Time} (ht0 : 0 ≤ t) (hca : cutZ sp.toParams g < a)

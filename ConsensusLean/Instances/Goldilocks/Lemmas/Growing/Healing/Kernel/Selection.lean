@@ -9,11 +9,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a : Time}
 variable {hold : Time}
 
 /-- The frozen healthy-route selection contract. The proposer stays honest through its votes. -/
@@ -25,7 +25,7 @@ theorem operational_update_selection_at {b : Time}
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {j : Nat}
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hup : AC.UpdateAt tr.projAC y j u ell) :
     P ∈ ell.frame.tree ∧
       AC.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧

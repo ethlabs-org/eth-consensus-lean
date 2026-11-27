@@ -101,12 +101,12 @@ end Consensus.Goldilocks.Store
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 /-- **Persistence over the stock window, per regime, with the stock witness.** A P-U viable head
 `Q` of an earlier call frame inside a stock `FrameWindow` is, at the later cut,
@@ -122,7 +122,7 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     ((Q ∈ (Node.frame' (tr.state y i)).tree ∧
       (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
@@ -266,7 +266,7 @@ theorem FrameWindow.viableHead_persists_or_contest_gap' {lo hi : Time} {floor : 
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     (Q ∈ (Node.frame' (tr.state y i)).tree ∧
       (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
@@ -287,7 +287,7 @@ theorem FrameWindow.root_witness_stock' {lo hi g : Time} {floor : Nat}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode' sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -345,7 +345,7 @@ theorem FrameWindow.root_witness_of_earlier_call_stock' {lo hi g : Time} {floor 
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode' sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -368,7 +368,7 @@ theorem FrameWindow.old_lock_witness_or_contest_gap' {s₀ floor : Nat} {hi g : 
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -453,7 +453,7 @@ theorem FrameWindow.old_lock_witness_stock' {s₀ floor : Nat} {hi g : Time}
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -558,11 +558,11 @@ end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- **Interface only, unresolved**: the shared optimistic contest residue. An optimistic write
 of label `m` by `z` at cut `a`, in a contest at `h_max = floor`, whose P-U viable head `Q` above
@@ -589,7 +589,7 @@ theorem optimistic_contest_residue'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b)
     (hlabel : s₀ ≤ m) (hmN : m < N)
     {z : Fin sp.n} {a : Nat} (hza : z ∈ H (tr.time a))
-    {ellw : ACLabel (goldilocksNode' sp ro)} (ha : tr.projAC.CallAt z a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (ha : tr.projAC.CallAt z a ellw)
     {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC z a m D CV)
     (hAD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D)
     (hQ : Q ∈ ellw.frame.viableHeads)

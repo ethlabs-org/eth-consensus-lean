@@ -9,11 +9,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- Old labels use the receiver's unlock; new fast labels use an honest vote
@@ -21,7 +21,7 @@ at the counting cut, and slow labels use the raw unanimous confirmation. At the 
 `K` of a run from `K`'s committee start. -/
 theorem Core.unanimous_update_no_veto_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     {g ΔF b : Time} {u : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -36,7 +36,7 @@ theorem Core.unanimous_update_no_veto_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell)
     (hK : CommitteeHalfUpTo tr H K g b)
     (hselect : ∀ y k, y ∈ H (tr.time k) →
       ∀ ell, AC.UpdateAt tr.projAC y k u ell →
@@ -155,7 +155,7 @@ theorem FrameWindow.unanimous_update_no_veto_at {K : AC.CommitteeDict sp.n}
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   apply Core.unanimous_update_no_veto_at hrun.toCore hnc hsvc hawake hf hcatch

@@ -40,10 +40,10 @@ private theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set 
 
 /-- Every call with the locks after a given unlock, at any write mode, keeps the permission
 `mayVote`. -/
-theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
+theorem stepWithM_mayVote (m : WriteMode) (self : Fin sp.n)
     (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksAC sp FGP ro).Call) :
-    (stepWithM sp ro m self L A Φ t c).1.mayVote = A.mayVote := by
+    (c : (goldilocksAC sp FGP).Call) :
+    (stepWithM sp m self L A Φ t c).1.mayVote = A.mayVote := by
   cases c with
   | tick =>
     change (acOnTickWithM sp m self L A Φ t).1.mayVote = _
@@ -58,12 +58,12 @@ theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin 
   | block B =>
     simp only [stepWithM, acOnBlockWithM, tryVoteWithM_mayVote, optimisticConfirmation_mayVote,
       blockReceipt_mayVote]
-  | restart => exact acRestart_mayVote ro self A Φ t
+  | restart => exact acRestart_mayVote self A Φ t
 
 /-- On a trace with the unlock given per call, which starts every honest node at the initial
 state, every honest node may vote in every slot at every cut. -/
-theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem traceWithM_mayVote {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     (hr : ACLocalRunU m u H U tr) {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
     (tr.state y i).mayVote s = true := by
   induction i with
@@ -73,7 +73,7 @@ theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat �
     · obtain ⟨ℓ, hc⟩ := hc
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
-      have hp := stepWithM_mayVote ro m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call
+      have hp := stepWithM_mayVote m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call
       rw [he] at hp
       have hs : tr.state y (i + 1) = tr.post i := by simp [Trace.state, hc.1, hc.2]
       rw [hs, hp]
@@ -90,10 +90,10 @@ theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat �
 /-! ### The unlock input of a call -/
 
 /-- **The parent's call is `stepWith` of its own unlock.** -/
-theorem step_eq_stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
-    (goldilocksAC sp FGP ro).step self A Φ t c =
-      stepWith sp ro self (parentUnlock sp A Φ t c) A Φ t c := by
+theorem step_eq_stepWith (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP).Call) :
+    (goldilocksAC sp FGP).step self A Φ t c =
+      stepWith sp self (parentUnlock sp A Φ t c) A Φ t c := by
   cases c
   all_goals first
     | rfl
@@ -120,16 +120,16 @@ theorem tryVoteWithM_parent :
     tryVoteWithM (FGP := FGP) sp (WriteMode.parent sp) = tryVoteWith sp :=
   rfl
 
-theorem stepWithM_parent (ro : ReplayOrder sp FGP) :
-    stepWithM sp ro (WriteMode.parent sp) = stepWith sp ro :=
+theorem stepWithM_parent :
+    stepWithM (FGP := FGP) sp (WriteMode.parent sp) = stepWith sp :=
   rfl
 
-theorem callInputM_parent {ro : ReplayOrder sp FGP} :
-    callInputM (ro := ro) sp (WriteMode.parent sp) = callInput sp :=
+theorem callInputM_parent :
+    callInputM (FGP := FGP) sp (WriteMode.parent sp) = callInput sp :=
   rfl
 
-theorem callViewM_parent {ro : ReplayOrder sp FGP} :
-    callViewM (ro := ro) sp (WriteMode.parent sp) = callView sp :=
+theorem callViewM_parent :
+    callViewM (FGP := FGP) sp (WriteMode.parent sp) = callView sp :=
   rfl
 
 /-! ### The unlock relation -/
@@ -160,10 +160,10 @@ theorem UnlockRel.movesBack {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L L' : Set L
 /-! ### The trace law -/
 
 /-- The unlock relation at an honest call with a well-formed frame. -/
-theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem ACLocalRunU.lawfulAt {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     (h : ACLocalRunU m u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ)
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y i ℓ)
     (hΦ : FrameOK ℓ.frame) :
     UnlockRel sp (callInputM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
       (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
@@ -172,9 +172,9 @@ theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat 
   rwa [hc.1] at this
 
 /-- **The parent's runs are runs with the unlock given**, at the parent's own unlock. -/
-theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {ini : Fin sp.n → ACState sp.n}
-    {tr : GTrace sp FGP ro} (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) :
+    {tr : GTrace sp FGP} (h : ACLocalRun (goldilocksAC sp FGP) H U tr ini) :
     ACLocalRunU (WriteMode.parent sp) (parentOracle sp tr) H U tr ini where
   coherent := h.coherent
   init := h.init
@@ -198,11 +198,11 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
 /-! ### Reachable states -/
 
 /-- **The parent's reachable states are reachable with the unlock given**, from the same start. -/
-theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU {ro : ReplayOrder sp FGP}
+theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU
     {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {s₀ : ACState sp.n}
-    {A : (goldilocksAC sp FGP ro).State} {Φ : (goldilocksAC sp FGP ro).Frm} {t : Time}
-    (h : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ self U A Φ t) :
-    ReachableAtUFrom (ro := ro) (WriteMode.parent sp) s₀ self U A Φ t := by
+    {A : (goldilocksAC sp FGP).State} {Φ : (goldilocksAC sp FGP).Frm} {t : Time}
+    (h : (goldilocksAC sp FGP).ReachableAtFrom s₀ self U A Φ t) :
+    ReachableAtUFrom (WriteMode.parent sp) s₀ self U A Φ t := by
   induction h with
   | init Φ hi hf => exact .init Φ hi hf
   | @step A Φ Φ' t t' c _ ht hc ih =>
@@ -211,8 +211,8 @@ theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU {ro : Replay
       rw [callInputM_parent, callViewM_parent]; exact unlockRel_unlock hc.1.1 _ _ _ _)
 
 /-- The parent's runs are runs with the unlock given. -/
-theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n}
-    {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+theorem ACRun.toU {selectedProposer : Nat → Fin sp.n}
+    {tr : GTrace sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     (h : ACRun selectedProposer tr H U ini) :
     ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U ini :=
   ⟨h.localRun.toU, h.honest, h.vstart⟩

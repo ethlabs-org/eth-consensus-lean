@@ -21,14 +21,14 @@ are transported from the writer's honest prefix to independently honest readers.
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Healing.Growing (ResetService CatchRun NoRestartAfter
   CommitteeHalfUpTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State} {hold : Time}
 
 /-! ## Stock supplier ports
 
@@ -72,7 +72,7 @@ private theorem carry_of_service_senders'
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s : Nat} (hts : gbar g ≤ sp.ts s)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode' sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hcast : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     {CV : Set (AC.Vote sp.n)}
@@ -133,7 +133,7 @@ private theorem relay_source_at_proposal_at'
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
@@ -257,7 +257,7 @@ private theorem optimisticLock_pair_compatible_at'
     have hmax0 := (hrun.time_nonneg a).trans (le_max_left (tr.time a) (tr.time c))
     have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hmax0) (hnc.upTo _)
     rw [RunTrace.upTo_projAC] at hac
-    have heq := AC.one_vote_per_slotU sp _ ro _ _ _ hac.localRun.toU
+    have heq := AC.one_vote_per_slotU sp _ _ _ _ hac.localRun.toU
       v.val hmH a c ev ev'
       (AC.upTo_voteAt.mpr ⟨le_max_left _ _, hev⟩)
       (AC.upTo_voteAt.mpr ⟨le_max_right _ _, by simpa only [hvval] using hev'⟩)
@@ -278,7 +278,7 @@ private theorem proposal_root_viable_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell) :
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell) :
     ell.frame.fcRoot ∈ ell.frame.viableTree ell.frame.tree := by
   have ht := hrun.time_nonneg i
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
@@ -320,7 +320,7 @@ theorem optimistic_next_votes_of_windowWitness_at' {K : AC.CommitteeDict sp.n}
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree)
     (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) Q)
     (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i →
@@ -371,7 +371,7 @@ theorem optimistic_next_votes_of_early_witness_at' {K : AC.CommitteeDict sp.n}
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
@@ -407,14 +407,14 @@ theorem optimistic_next_proposal_of_windowWitness_at' {K : AC.CommitteeDict sp.n
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree)
     (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts (s + 1 : Nat)) Q)
     (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i → tr.time i ≤ sp.ts (s + 1 : Nat) →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -448,7 +448,7 @@ theorem optimistic_next_proposal_of_windowWitness_at' {K : AC.CommitteeDict sp.n
     have hpost : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i)
         ((tr.projAC.upTo (tr.time i)).time i) := by
       have he := hr.exec i ell hcp.2 (hcp.1 ▸ hy)
-      change (AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step
+      change (AC.goldilocksAC sp (List (FG.Att sp.n))).step
         ((tr.projAC.upTo (tr.time i)).node i)
         ((tr.projAC.upTo (tr.time i)).state ((tr.projAC.upTo (tr.time i)).node i) i)
         ell.frame ((tr.projAC.upTo (tr.time i)).time i) ell.call =
@@ -464,7 +464,7 @@ theorem optimistic_next_proposal_of_windowWitness_at' {K : AC.CommitteeDict sp.n
       unfold AC.joined at hj ⊢
       rwa [heq]
     intro k hk hrk
-    have ht := (AC.joined_awakeU sp _ ro (H (tr.time i))
+    have ht := (AC.joined_awakeU sp _ (H (tr.time i))
       ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
       (tr.projAC.upTo (tr.time i)) hr.toU y hy i ell hcp hpost).2 k hk hrk
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at ht
@@ -605,11 +605,11 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -647,7 +647,7 @@ theorem optimistic_later_heads_of_windowWitness_at' {K : AC.CommitteeDict sp.n}
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree)
     (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts N + sp.Δ) Q)
     (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i → tr.time i ≤ sp.ts N + sp.Δ →
@@ -696,7 +696,7 @@ theorem optimistic_later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode' sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ r, s + 1 ≤ r → r ≤ N →
@@ -727,13 +727,13 @@ is in slot `s` before its vote deadline, and its anchor `L` is below a P-U viabl
 cast's frame. The window-free extraction step of `optimistic_supporter_later_heads_at'` and its
 stock form. -/
 theorem supporter_anchor_viable_head_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     {s : Nat} (hsb : sp.ts s + sp.Δ ≤ b) {L : AC.Blk sp.n (List (FG.Att sp.n))}
     {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i)) :
     sp.ts s ≤ tr.time i ∧ tr.time i ≤ sp.ts s + sp.Δ ∧
@@ -790,7 +790,7 @@ theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
     (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {i a : Nat} (hx : x ∈ H (tr.time i)) (hxa : x ∈ H (tr.time a))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i))
     {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC x a s D CV)

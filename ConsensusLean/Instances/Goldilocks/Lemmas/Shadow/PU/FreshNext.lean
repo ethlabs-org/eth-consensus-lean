@@ -10,11 +10,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The stock window supplies full-frame geometry for every honest next-slot shadow cast. -/
 theorem unanimous_next_votes_at' {K : AC.CommitteeDict sp.n}

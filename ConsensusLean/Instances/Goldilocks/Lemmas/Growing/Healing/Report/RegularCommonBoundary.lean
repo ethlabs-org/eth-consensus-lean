@@ -11,11 +11,11 @@ Forwarded to their proofs in `Report/RegularSupporter` and `Report/SupporterLate
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- Supporter classification separates viable, common-root and optimistic-anchor cases. -/
@@ -33,7 +33,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
@@ -65,7 +65,7 @@ theorem FrameWindow.optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {i a : Nat} (hx : x ∈ H (tr.time i)) (hxa : x ∈ H (tr.time a))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i))
     {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC x a s D CV)

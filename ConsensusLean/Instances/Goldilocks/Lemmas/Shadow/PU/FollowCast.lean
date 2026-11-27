@@ -13,15 +13,15 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The proposed child, rather than its P-U viable parent, reaches the stock window's floor. -/
 theorem proposal_viable_at_call_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     {g ΔF b hi : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
@@ -33,7 +33,7 @@ theorem proposal_viable_at_call_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt y i ell)
     (hpT : sp.ts p ≤ tr.time i) (hhigh : tr.time i ≤ hi)
     (hearly : tr.time i < sp.ts p + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
@@ -141,7 +141,7 @@ theorem proposal_viable_at_call_at'
 /-- The actual proposal remains viable at an independently honest cast, with the stock window
 and conclusion. No floor bound on its parent is required. -/
 theorem proposal_viable_at_cast_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode' sp).State}
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
@@ -154,7 +154,7 @@ theorem proposal_viable_at_cast_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by

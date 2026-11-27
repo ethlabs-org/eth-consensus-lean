@@ -18,15 +18,15 @@ committee bound of the casts. -/
 
 namespace Consensus.Goldilocks.GoldilocksRunCore
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose.Growing (ac_castAt_upTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
 
 include rc
@@ -52,7 +52,7 @@ theorem acRun_upTo (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
 (`Compose.Growing.reachable_at`). -/
 theorem reachable_at {d : Time} (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {i : Nat}
     (hi : ∀ k < i, tr.time k ≤ d) :
-    Store.ReachableWith u (goldilocksNode sp ro).genesisPayload (tr.state y i).fg := by
+    Store.ReachableWith u (goldilocksNode sp).genesisPayload (tr.state y i).fg := by
   have h := (rc.upTo hd).reachable y hy i
   rwa [Trace.upTo_state tr y hi] at h
 
@@ -81,7 +81,7 @@ theorem projAC_state_at {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
 /-- The frame of an AC call of a node honest at it is the node's frame
 (`Compose.Growing.frame_of_projAC_at`). -/
 theorem frame_of_projAC_at {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ) :
     ℓ.frame = frameOf (tr.state y i) := by
   have hc' : tr.CallAt y i (.ac ℓ) := by
     rcases hc with ⟨hn, hl⟩
@@ -100,7 +100,7 @@ theorem frame_of_projAC_at {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest
 (`Compose.Growing.frameIn_at`). -/
 theorem frameIn_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
   have h := AC.frameIn_of_callAt (rc.acRun_upTo hnc (rc.time_nonneg i)).localRun hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -109,14 +109,14 @@ theorem frameIn_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
 /-- The frame of a call of a node honest then is well formed, inside its tree
 (`frame_tree_subset_at`). -/
 theorem frame_tree_subset_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ (tr.state y i).fg.tree :=
   ⟨(rc.frameIn_at hnc hy hc).1, fun B hB =>
     ((rc.frameOf_tree _ B).1 (rc.frame_of_projAC_at hy hc ▸ hB)).1⟩
 
 /-- The cast law at a node honest at the cast (`Compose.Growing.castAt_spec_at`). -/
 theorem castAt_spec_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ AC.joined sp e.readPoint (tr.time i) ∧
       e.msg.head = (AC.getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -128,7 +128,7 @@ theorem castAt_spec_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
 /-- The head of a cast extends the frame's root, by `Δ` after its slot
 (`Compose.Growing.cast_head_fcRoot_at`). -/
 theorem cast_head_fcRoot_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=

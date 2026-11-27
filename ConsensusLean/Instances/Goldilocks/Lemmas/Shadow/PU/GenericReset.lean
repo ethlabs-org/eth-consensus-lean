@@ -12,12 +12,12 @@ The reset, historical-row crossing and row-or-high proofs are shared with the st
 
 namespace Consensus.Goldilocks.Generic.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Healing.Growing (NoRestartAfter)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {ini}
 
 /-- A high signing yields the first signing at the reset height in a shadow run. -/
 theorem reset_of_height_advance_at_from
@@ -56,9 +56,9 @@ theorem reset_of_high_report_within_from
 /-- Delivered historical rows cross one height in the shadow Goldilocks run. -/
 theorem round_cross_at_from'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hq : ∀ y, ({ goldilocksNode' sp ro with initial := ini y } :
+    (hq : ∀ y, ({ goldilocksNode' sp with initial := ini y } :
       NodeAC sp.toParams).Requirements)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).RootOk dg)
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload).RootOk dg)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b v hold : Time}
     (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
       (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →

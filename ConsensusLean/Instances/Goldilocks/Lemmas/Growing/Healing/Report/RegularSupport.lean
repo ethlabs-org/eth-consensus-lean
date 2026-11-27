@@ -15,11 +15,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- A result has an earlier counted vote signed while its validator was honest, at the slot
@@ -100,14 +100,14 @@ namespace Core
 
 variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
     Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- **CS at a slot committee from the service**: at a healthy observation `t ≤ b` whose previous
 slot starts from `ḡ`, the faulty members of a slot committee from `ḡ` by `b` are fewer than its
 members honest, awake and joined at `t`. Every validator honest at `t` is awake and joined then,
 and the committee half bound leaves more than half of the committee honest at `t`. -/
 theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
-    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
@@ -133,7 +133,7 @@ end Core
 
 /-- The stock run supplies the shared committee fault count. -/
 theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
-    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
@@ -150,7 +150,7 @@ theorem faultBoundK_upTo {K : AC.CommitteeDict sp.n} {s : Nat} {H' : Set (Fin sp
   refine lt_of_lt_of_le h (Set.ncard_le_ncard ?_)
   rintro y ⟨hyK, hy, hw, hj⟩
   exact ⟨hyK, hy, (Trace.upTo_awake _ y t).mpr ⟨hw, htd⟩,
-    fun k hk hkt => hj k ((ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hk).2 hkt⟩
+    fun k hk hkt => hj k ((ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hk).2 hkt⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

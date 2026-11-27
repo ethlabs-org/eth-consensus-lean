@@ -16,11 +16,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- Read the unanimous pool through the caller's horizon. Historical senders remain
@@ -31,7 +31,7 @@ private theorem unanimous_pool_core_at {K : AC.CommitteeDict sp.n} {ini}
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
-    {y : Fin sp.n} {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time j)) (hcall : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
@@ -76,7 +76,7 @@ theorem unanimous_pool_at
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time j)) (hcall : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree) :

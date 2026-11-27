@@ -17,12 +17,12 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 variable {hold : Time}
 
 /-- A viable head transfers between warm frames whenever the receiving tree holds it.
@@ -66,14 +66,14 @@ theorem frozen_competitor_reflect_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hpb : sp.ts (s + 1 : Nat) ≤ b)
     {X B : AC.Blk sp.n (List (FG.Att sp.n))}

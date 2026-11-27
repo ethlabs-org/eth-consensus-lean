@@ -26,9 +26,9 @@ otherwise. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 open Classical in

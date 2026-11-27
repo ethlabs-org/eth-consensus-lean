@@ -25,7 +25,7 @@ target attestations `justify_of_signed_rows'`. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 section Chain
 
@@ -162,9 +162,9 @@ end Chain
 
 section Run
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
   {proposer : Nat → Fin sp.n}
 
 /-- **The crossing at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent

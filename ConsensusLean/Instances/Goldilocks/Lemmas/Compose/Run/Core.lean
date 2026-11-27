@@ -23,20 +23,20 @@ Each field is a stock lemma's statement (named in its doc). -/
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The cut law with the FG finality update `u` and the node frame `frameOf` (`Node.CutStep` at
 `Store.updateFinality` and `Node.frame`). -/
 def CutStepWith
     (u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n))
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
-    (self : Fin sp.n) (t : Time) (st : NodeState (goldilocksNode sp ro)) :
-    Cut (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro) → Prop
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (self : Fin sp.n) (t : Time) (st : NodeState (goldilocksNode sp)) :
+    Cut (goldilocksNode sp) → NodeState (goldilocksNode sp) → Prop
   | .ac ℓ, st' =>
       ℓ.frame = frameOf st ∧
-        (goldilocksNode sp ro).step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
+        (goldilocksNode sp).step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
         st'.fg = st.fg ∧ st'.record = st.record
   | .fg (.block B true), st' =>
       B.slot ≤ sp.toParams.slotOf t ∧ st.fg.onBlockWith u B = some st'.fg ∧ st'.ac = st.ac ∧
@@ -52,13 +52,13 @@ section CutStepWith
 
 variable
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-    {self : Fin sp.n} {t : Time} {st st' : NodeState (goldilocksNode sp ro)}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {self : Fin sp.n} {t : Time} {st st' : NodeState (goldilocksNode sp)}
 
-theorem cutStepWith_ac (ℓ : ACLabel (goldilocksNode sp ro)) :
+theorem cutStepWith_ac (ℓ : ACLabel (goldilocksNode sp)) :
     CutStepWith u frameOf self t st (.ac ℓ) st' ↔
       ℓ.frame = frameOf st ∧
-        (goldilocksNode sp ro).step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
+        (goldilocksNode sp).step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
         st'.fg = st.fg ∧ st'.record = st.record := by
   rfl
 
@@ -95,21 +95,21 @@ outage and report proofs read on a run (or on a prefix of a run under growing fa
 taking `NoCollRun dg tr` are the ones whose stock proofs need collision resistance. -/
 structure StaticRunCore
     (u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n))
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp ro)
-    (ini : Fin sp.n → (goldilocksNode sp ro).State) : Prop where
+    (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp)
+    (ini : Fin sp.n → (goldilocksNode sp).State) : Prop where
   /-- The finality update meets the stock update's specification. -/
   finalitySpec : Store.FinalitySpec u
   /-- The frame's finalized block is the store's. -/
   frameOf_F : ∀ st, (frameOf st).F = st.fg.F
   /-- The frame's tree is the store's tree above its finalized block. -/
   frameOf_tree : ∀ st B, B ∈ (frameOf st).tree ↔ B ∈ st.fg.tree ∧ st.fg.Anc st.fg.F B
-  init : ∀ y ∈ H, tr.init y = Node.initWith (goldilocksNode sp ro) (ini y)
+  init : ∀ y ∈ H, tr.init y = Node.initWith (goldilocksNode sp) (ini y)
   time_nonneg : ∀ i, 0 ≤ tr.time i
   time_mono : Monotone tr.time
   vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
-  root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
+  root_ok : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg
   /-- The cut law of the honest nodes. -/
   cutLaw : ∀ y ∈ H, ∀ i c, tr.CallAt y i c →
     CutStepWith u frameOf y (tr.time i) (tr.state y i) c (tr.post i)
@@ -130,7 +130,7 @@ structure StaticRunCore
     ∀ j < i, ∀ a, tr.SignAt v j a → a ∈ (FG.Record.run v FG.Record.empty inputs).2
   /-- `Compose.fg_reachable`. -/
   reachable : ∀ y ∈ H, ∀ i,
-    Store.ReachableWith u (goldilocksNode sp ro).genesisPayload (tr.state y i).fg
+    Store.ReachableWith u (goldilocksNode sp).genesisPayload (tr.state y i).fg
   /-- `Healing.jMax_of_reachable` (the body of `Healing.JMax`): `Σ.h_j` is at least the justified
   height of every held state whose `J` is a held block extending `Σ.F`. -/
   jmax : ∀ y ∈ H, ∀ i, ∀ B ∈ (tr.state y i).fg.tree, ∀ X ∈ (tr.state y i).fg.tree,
@@ -148,7 +148,7 @@ structure StaticRunCore
   tree_mono : ∀ y ∈ H, ∀ {k i}, k ≤ i → (tr.state y k).fg.tree ⊆ (tr.state y i).fg.tree
   /-- `Healing.tree_accepted`. -/
   tree_accepted : ∀ y ∈ H, ∀ {i W}, W ∈ (tr.state y i).fg.tree →
-    W = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
+    W = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
       ∃ k < i, tr.AcceptAt y k W
   /-- `Healing.hj_mono`. -/
   hj_mono : ∀ y ∈ H, ∀ {i j}, i ≤ j → (tr.state y i).fg.hj ≤ (tr.state y j).fg.hj
@@ -159,15 +159,15 @@ structure StaticRunCore
   /-- `Compose.attest_source`: a signing `fg_attest` follows the `ac_to_fg` that returned its
   source, at the same time and FG state. -/
   attest_source : ∀ y ∈ H, ∀ {j C a}, tr.CallAt y j (.fg (.attest C (some a))) →
-    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y j' (.ac ℓ) ∧
+    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp), tr.CallAt y j' (.ac ℓ) ∧
       ℓ.call = .toFG ∧ tr.time j' = tr.time j ∧
-      ((goldilocksNode sp ro).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
+      ((goldilocksNode sp).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg
   /-- `Healing.toFG_attest`: an `ac_to_fg` returning a source is followed by the `fg_attest` on it,
   at the same time and FG state. -/
-  report_attest : ∀ y ∈ H, ∀ {k} {ℓ : ACLabel (goldilocksNode sp ro)} {C},
+  report_attest : ∀ y ∈ H, ∀ {k} {ℓ : ACLabel (goldilocksNode sp)} {C},
     tr.CallAt y k (.ac ℓ) → ℓ.call = .toFG →
-    ((goldilocksNode sp ro).toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C →
+    ((goldilocksNode sp).toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C →
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg
   /-- The signing tick (`Compose.call_in_group`, `signed_only_in_ticks`, `exec_ac_call`,
@@ -176,14 +176,14 @@ structure StaticRunCore
   restarts. -/
   signed_tick : ∀ y ∈ H, ∀ {d C a}, tr.CallAt y d (.fg (.attest C (some a))) →
     ∃ j ≤ d, (∀ i, j ≤ i → i ≤ d → tr.time i = tr.time d ∧
-        ∀ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y i (.ac ℓ) → ∀ m, ℓ.call ≠ .message m) ∧
+        ∀ ℓ : ACLabel (goldilocksNode sp), tr.CallAt y i (.ac ℓ) → ∀ m, ℓ.call ≠ .message m) ∧
       ∀ i < j, ∀ c, tr.CallAt y i c → tr.time i = tr.time d →
-        ∃ ℓ : ACLabel (goldilocksNode sp ro), c = .ac ℓ ∧ ℓ.call = .restart
+        ∃ ℓ : ACLabel (goldilocksNode sp), c = .ac ℓ ∧ ℓ.call = .restart
   /-- The tick at an awake public time (`LocalRun.tick_of_awake`, `tick_first_cut`,
   `Compose.blockCall_cases`, `LocalRun.phase_order`): its first cut is the AC tick, before every
   acceptance at that time other than the node's own proposal. -/
   late_tick : ∀ y ∈ H, ∀ {t}, 0 ≤ t → sp.toParams.IsPublic t → tr.awake y t →
-    ∃ jt, ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y jt (.ac ℓ) ∧ ℓ.call = .tick ∧
+    ∃ jt, ∃ ℓ : ACLabel (goldilocksNode sp), tr.CallAt y jt (.ac ℓ) ∧ ℓ.call = .tick ∧
       tr.time jt = t ∧ ∀ i W, tr.AcceptAt y i W → tr.time i = t → ¬ Node.Proposes proposer y t →
         jt < i
   /-- `Compose.joined_projection_from` (the joined test at a call). -/
@@ -214,7 +214,7 @@ structure StaticRunCore
   /-- `Compose.awake_participant_early`. -/
   awake_participant_early : Compose.NoCollRun dg tr → ∀ {s : Nat} {b : Time},
     AC.ServiceBefore H (tr.HonestBlocks H) b tr.projAC → sp.ts s + 2 * sp.Δ ≤ b →
-    ∀ {X}, X ∈ H → ∀ {i₀} {ℓX : ACLabel (goldilocksNode sp ro)},
+    ∀ {X}, X ∈ H → ∀ {i₀} {ℓX : ACLabel (goldilocksNode sp)},
     AC.UpdateAt tr.projAC X i₀ s ℓX → ∀ y ∈ H, (∀ i, (tr.state y i).ac.mayVote s = true) →
     tr.awake y (sp.ts s + sp.Δ) → tr.JoinedAt y (sp.ts s + sp.Δ) →
     y ∈ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}

@@ -89,16 +89,16 @@ theorem regular_witness_frame_of_root_F
       AC.anc_tree_of_anc_U hU hΦ hsub hDframe hDQ hQt⟩
   · exact Or.inl hDF
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
 
 section Static
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State} {g : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State} {g : Time}
 
 /-- The old stored-lock argument uses only F-root monotonicity and persistence of a
 write-frame viable witness; its AC write provenance is unchanged. -/
@@ -109,7 +109,7 @@ private theorem old_lock_witness' {s₀ M : Nat} {hi : Time}
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -184,7 +184,7 @@ private theorem live_old_lock_witness' {s₀ M : Nat} {hi : Time}
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
@@ -231,7 +231,7 @@ private theorem live_old_lock_witness_stock' {s₀ floor : Nat} {hi : Time}
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
@@ -292,7 +292,7 @@ private theorem vote_head_classification_core'
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (hpos : 0 < e.msg.slot)
     (hrootWitness : ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
@@ -367,7 +367,7 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i a : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode' sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : sp.ts s₀ ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -441,7 +441,7 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
 private theorem prior_vote_call_before_freeze' {K : AC.CommitteeDict sp.n} {b : Time}
     (hS : AC.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hpos : 0 < e.msg.slot)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((e.msg.slot - 1 : Nat) : Int))
     (hmb : sp.ts ((e.msg.slot - 1 : Nat) : Int) + sp.Δ ≤ b)
@@ -476,9 +476,9 @@ private theorem prior_vote_call_before_freeze' {K : AC.CommitteeDict sp.n} {b : 
 
 end Static
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /- R2 interface handoff: these exact signatures belong in Shadow/PU/RegularVotes.lean.
 They are comments, not declarations in this file. The shared variables and namespace
@@ -608,7 +608,7 @@ theorem vote_head_classification_of_service_at' {s₀ M : Nat} {hi : Time}
     (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi) (hib : tr.time i ≤ b)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)
@@ -710,13 +710,13 @@ end Consensus.Goldilocks.Healing.PU
 
 namespace Consensus.Goldilocks.Healing.PU.StockWindow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- The four-case stock-window classification at a service cut. This is an addition,
 not a change to either stock classification or the fixed-height shadow form. -/
@@ -732,7 +732,7 @@ theorem vote_head_classification_of_service_at' {s₀ floor : Nat} {hi : Time}
     (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi) (hib : tr.time i ≤ b)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)

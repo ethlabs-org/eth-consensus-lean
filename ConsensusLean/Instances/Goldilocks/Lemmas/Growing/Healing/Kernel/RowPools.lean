@@ -11,7 +11,7 @@ These transition facts have no run or honesty assumptions.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-variable {FGP : Type} {sp : AC.ACParams} {ro : AC.ReplayOrder sp FGP}
+variable {FGP : Type} {sp : AC.ACParams}
 
 theorem admit_pool_mem {A : AC.ACState sp.n} {t : Time} {m w : AC.Vote sp.n} {s : Nat}
     (h : w ∈ (AC.admitVote sp A t m).pool s) : w ∈ A.pool s ∨ w = m :=
@@ -24,9 +24,9 @@ theorem receipt_pool_mem {A : AC.ACState sp.n} {t : Time} {B : AC.Blk sp.n FGP}
 
 /-- At a slot start, a nondelivery call takes only own votes or votes from its input block. -/
 theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
-    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (AC.goldilocksAC sp FGP ro).Call)
+    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (AC.goldilocksAC sp FGP).Call)
     (hm : ∀ m, c ≠ .message m) (hc : c ≠ .restart) {w : AC.Vote sp.n} {s : Nat}
-    (h : w ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool s) :
+    (h : w ∈ ((AC.goldilocksAC sp FGP).step self A Φ t c).1.pool s) :
     w ∈ A.pool s ∨ w.val = self ∨ ∃ B, c = .block B ∧ w ∈ AC.declaredHeadVotes B :=
   Healing.step_pool_new self A Φ ht hΔ c hm hc h
 

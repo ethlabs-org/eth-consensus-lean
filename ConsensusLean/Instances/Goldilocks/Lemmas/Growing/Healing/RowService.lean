@@ -37,11 +37,11 @@ through the node's cut; the only cross-node fact is the comparability of bounded
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
 /-! ## Pure helpers -/
 
@@ -52,8 +52,8 @@ entry `E` of the chain of the stored block `O` of a fast-lock write of the signe
 cut `r`, joined at the write. The entry's height is the row's, so `O` is at least that high.
 The row's source must be a fast-lock candidate (`hfast`, read at the source's own height, which is
 at least the row's); a deep source need not sit below a fast lock. -/
-private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini)
     (hnc : Compose.NoCollRun dg tr₀) {v : Fin sp.n} (hv : v ∈ H₀)
     {d : Nat} {att : FG.Att sp.n} (hs : tr₀.SignAt v d att)
@@ -133,7 +133,7 @@ private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTra
 /-- The record origin of a node honest at `t`, after every earlier cut
 (`client_record_origin_of_run` on the prefix through `t`). -/
 private theorem client_record_origin_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) (h r : Nat) :
@@ -151,7 +151,7 @@ private theorem client_record_origin_at
     exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, hh⟩
 
 /-- One record step of a node honest at the step. -/
-private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨
@@ -166,7 +166,7 @@ private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   · exact Or.inr ⟨att, ((RunTrace.upTo_signAt _).mp hs).2, h⟩
 
 /-- A sent content of a node honest at `t`, after every earlier cut, was signed earlier. -/
-private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) {b : FG.Content} (hb : b ∈ (tr.state y i).record.sent) :
@@ -176,7 +176,7 @@ private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, he⟩
 
 /-- The entry of a signature of a node honest at its signing. -/
-private theorem signAt_entry_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem signAt_entry_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) :
@@ -188,7 +188,7 @@ private theorem signAt_entry_at {ini : Fin sp.n → (goldilocksNode sp ro).State
 /-- The finality pair of a signature of a node honest at its signing names a held entry below the
 signed entry. -/
 private theorem signed_fin_pair_entry_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) {h r : Nat} (hfin : att.fin = some (h, r)) :
@@ -340,7 +340,7 @@ private theorem sourceChain_pair {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 private theorem report_sourceChain_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hr : AC.ToFGAt tr.projAC y i ell C) (hib : tr.time i ≤ b)
@@ -603,7 +603,7 @@ call. -/
 theorem sign_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
@@ -668,7 +668,7 @@ entry attestation, with historical finality permission checked at the actual sig
 theorem row_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)

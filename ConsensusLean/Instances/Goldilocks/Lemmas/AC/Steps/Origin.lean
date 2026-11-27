@@ -22,8 +22,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → ACState sp.n}
 
 /-! ## The AC functions -/
@@ -70,7 +70,7 @@ private theorem tryVote_em
 /-- **The unlock input of a call** is the state itself, or the optimistic check after the receipt
 of a message or a block, which keeps the state's locks. -/
 theorem callInputM_cases (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksAC sp FGP ro).Call) :
+    (c : (goldilocksAC sp FGP).Call) :
     callInputM sp wm A Φ t c = A ∨
       ∃ A', ((∃ m, c = .message m ∧ A' = admitVote sp A t m) ∨
           ∃ B, c = .block B ∧ A' = blockReceipt sp A t B) ∧
@@ -86,7 +86,7 @@ theorem callInputM_cases (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
 /-- `emits_tryVote` with the unlock given: the cast's vote branch (`voteBranchAt_inputU`). -/
 private theorem emits_tryVoteU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVoteWithM sp wm y (u i) P ℓ.frame (tr.time i)).2 ∧
       P = callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
@@ -101,8 +101,8 @@ private theorem emits_tryVoteU
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call (a tick),
 or the optimistic check after the receipt of a message or a block, which keeps the locks. -/
-private theorem emits_tryVote (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+private theorem emits_tryVote (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A, ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
@@ -117,7 +117,7 @@ unlock relation of slot `s − 1` against the merged view ties them to the locks
 unlock input. -/
 theorem readPoint_locks_branchU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {R : ACState sp.n}
     (hb : VoteBranchAt tr y i ℓ R) (hs : 0 < sp.slot (tr.time i)) :
     ∃ L, UnlockRel sp L ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
       (mergedVoteView sp R ℓ.frame (sp.slot (tr.time i))) R.locks := by
@@ -132,7 +132,7 @@ unlock relation of slot `s − 1` against the merged view ties them to the locks
 the vote's `try_vote` (`readPoint_locks_branchU`). -/
 theorem readPoint_locksU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
     ∃ L, UnlockRel sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
       (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) e.readPoint.locks := by
@@ -141,8 +141,8 @@ theorem readPoint_locksU
 
 /-- **The locks at the read point of a vote branch of slot `s > 0`** are an `unlock` against the
 read point's merged view, of slot `s − 1`. -/
-theorem readPoint_locks_branch (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+theorem readPoint_locks_branch (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) (hs : 0 < sp.slot (tr.time i)) :
     ∃ L, R.locks = unlock sp L ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
       (mergedVoteView sp R ℓ.frame (sp.slot (tr.time i))) := by
@@ -152,7 +152,7 @@ theorem readPoint_locks_branch (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr 
 
 /-- Every vote of an honest validator in the pools of `A` has its pool's slot and was emitted
 before cut `i`. -/
-private def PoolOK (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (A : ACState sp.n) (i : Nat) :
+private def PoolOK (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (A : ACState sp.n) (i : Nat) :
     Prop :=
   ∀ σ, ∀ v ∈ A.pool σ, v.val ∈ H → v.slot = σ ∧ ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v
 
@@ -160,7 +160,7 @@ private def PoolOK (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (A : ACState sp.
 the unlock given. -/
 private theorem point_postU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x j ℓ)
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x j ℓ)
     {e : Em sp FGP} (he : e ∈ ℓ.emits) :
     (tr.state x (j + 1)).pool = (admitVote sp e.readPoint (tr.time j) e.msg).pool := by
   rw [show tr.state x (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2],
@@ -172,7 +172,7 @@ unlock given. -/
 theorem optimisticPoint_pool_slotU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {A : ACState sp.n} (hp : OptimisticPoint tr x j ℓ A) {σ : Nat} {v : Vote sp.n}
     (hv : v ∈ A.pool σ) : v.slot = σ := by
   obtain ⟨hc, ⟨m, -, rfl⟩ | ⟨B, -, rfl⟩ | ⟨e, he, rfl⟩⟩ := hp
@@ -188,7 +188,7 @@ With the unlock given. -/
 private theorem receipt_poolOKU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {A : ACState sp.n}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ℓ) {A : ACState sp.n}
     (h : (∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y j) (tr.time j) m) ∨
       ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y j) (tr.time j) B) :
     PoolOK tr H A j := by
@@ -207,7 +207,7 @@ the unlock given. -/
 theorem optimisticPoint_pool_voteU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {A : ACState sp.n} (hp : OptimisticPoint tr x j ℓ A)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {A : ACState sp.n} (hp : OptimisticPoint tr x j ℓ A)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ) (hvH : v.val ∈ H) :
     v.slot = σ ∧ ∃ j' ≤ j, ∃ e', VoteAt tr v.val j' e' ∧ e'.msg = v := by
   refine ⟨optimisticPoint_pool_slotU hrun.localRun hrun.vstart hx hp hv, ?_⟩
@@ -224,7 +224,7 @@ theorem optimisticPoint_pool_voteU
 `on_block` receipt, before any own vote of the call) were emitted at earlier cuts. -/
 theorem receipt_pool_vote (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {A : ACState sp.n}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ℓ) {A : ACState sp.n}
     (h : (∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y j) (tr.time j) m) ∨
       ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y j) (tr.time j) B)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ) (hvH : v.val ∈ H) :
@@ -235,9 +235,9 @@ theorem receipt_pool_vote (hrun : ACRun proposer tr H U ini)
 optimistic receipt in the vote's own call. Unlock and live remaps preserve its label
 and move its block only to ancestors of the selected block. From starts up to the vote
 permission. -/
-private theorem lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+private theorem lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
     {l : Lock} (hl : l ∈ e.readPoint.locks) :
     ∃ a ≤ i, ∃ D,
@@ -291,9 +291,9 @@ private theorem lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP ro) H
 /-- A read-point lock not older than the vote is current-slot optimistic. Its
 write may be the receipt before the vote in the very same call. From starts up to the vote
 permission. -/
-theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
     {l : Lock} (hl : l ∈ e.readPoint.locks) (hs : e.msg.slot ≤ l.slot) :
     l.slot = e.msg.slot ∧ ∃ a ≤ i, ∃ D CV,
@@ -354,7 +354,7 @@ theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U ini)
     exact hPc s v (optimisticPoint_pool_postU hrun.localRun.toU hy hp s hv.1)
 
 /-- The conclusion of `lock_origin_readPoint` for the lock `l`, before cut `i`. -/
-private def Good (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+private def Good (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (y : Fin sp.n) (i : Nat) (l : Lock) : Prop :=
   ∃ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
     D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
@@ -418,7 +418,7 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
 theorem lock_origin_readPointU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
         D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
@@ -469,7 +469,7 @@ slot-`s` vote sits below a block `D` that three quarters of the committee vote f
 whose honest votes were all emitted before the vote's cut. From starts up to the vote permission. -/
 theorem lock_origin_readPoint (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
         D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
@@ -492,7 +492,7 @@ cut's slot; unlocking keeps slots. -/
 theorem readPoint_lock_slot_leU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, l.slot ≤ sp.slot (tr.time i) := by
   obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hy hc.1
   obtain ⟨P, he, hPi, hV, hP⟩ := emits_tryVoteU hr hy hc
@@ -534,7 +534,7 @@ optimistic write (which may include its own post-cast admission). This is the
 local causal step; it does not assume future unanimity or close the induction. -/
 theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) {l : Lock} (hl : l ∈ e.readPoint.locks)
     (hs : l.slot = e.msg.slot) (K : CommitteeDict sp.n) (hPK : CommitteeP K tr H)
     (hf : 4 * (K.committee e.msg.slot ∩ Hᶜ).ncard < 3 * sp.committeeSize)

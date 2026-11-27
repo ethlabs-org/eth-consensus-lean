@@ -26,13 +26,13 @@ The file is in the Healing layer for the tick facts of `Healing/Projection/Run`.
 
 namespace Consensus.Goldilocks.Regimes
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp} {ΔF : Time}
 
 /-! ## Open steps -/
 
@@ -67,7 +67,7 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
   -- `ac_proposal` after the tick's `ac_on_tick` returns a proposal: the tick keeps `restart_time`
   have hj' : AC.joined sp (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1.ac
       (sp.ts s) := by
-    change AC.joined sp ((goldilocksNode sp ro).step p (tr.state p j).ac
+    change AC.joined sp ((goldilocksNode sp).step p (tr.state p j).ac
       (Node.frame (tr.state p j)) (sp.ts s) .tick).1 (sp.ts s)
     unfold AC.joined at hj ⊢
     rw [AC.step_restartTime p _ _ _ .tick (by simp)]
@@ -84,7 +84,7 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
       simp [hj'] at hpr
     | some dp => exact ⟨dp.1, dp.2, rfl⟩
   obtain ⟨hacc, ht₂⟩ := Healing.own_block_accepted hrun.toLocalRun
-    (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok hnc hp hg hP hr
+    (requirements_from sp (hrun.vstart p)) hrun.genesis_root_ok hnc hp hg hP hr
   refine ⟨j + 2, _, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, ht₂⟩
   · -- the own block is the third cut of the tick, so not the first of a group
     have hlen : 2 <
@@ -112,7 +112,7 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
 /-! ## Reads after all events -/
 
 /-- The point after all events at `t` is between two events of every node. -/
-theorem cutAfter_boundary {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem cutAfter_boundary {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {t : Time} (hj : CutAfter tr j t) : Boundary tr y j := by

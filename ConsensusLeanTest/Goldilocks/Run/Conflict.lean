@@ -136,7 +136,7 @@ def gs (i : Nat) : Nat := if i < 14 ∧ lc i ≠ 0 then i - (lc i - 1) % 2 else 
 
 /-- The run: the restart and the three deliveries of node `4` at time `25`, then those of node
 `5` at time `27`; nothing else. -/
-noncomputable def conflictRun : GoldilocksTrace sp6 ro6 where
+noncomputable def conflictRun : GoldilocksTrace sp6 where
   init _ := n₀
   node := nd
   time := tm
@@ -853,15 +853,15 @@ theorem conflictRun_faults :
 /-- (r) **Finalized safety needs its fault bound**: with the premise `f < 2q − n` dropped and every
 other premise kept (a `GoldilocksRun` with `NoCollRun`), two honest finalized tips can conflict. -/
 theorem finalizedSafe_needs_fault_bound :
-    ¬ ∀ (sp : AC.ACParams) (ro : AC.ReplayOrder sp (List (Att sp.n)))
+    ¬ ∀ (sp : AC.ACParams)
       (dg : Digest (List (Att sp.n)) (AC.Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+      (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
       GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
       ∀ y ∈ H, ∀ z ∈ H, ∀ i j,
         Compatible (tr.HonestBlocks H) (tr.finalizedAt y i) (tr.finalizedAt z j) := by
   intro h
   obtain ⟨h4, h5, -, -, hc⟩ := conflicting_finalized
-  exact hc (h sp6 ro6 dg6 H conflictRun (fun _ => v0) conflictRun_goldilocksRun
+  exact hc (h sp6 dg6 H conflictRun (fun _ => v0) conflictRun_goldilocksRun
     conflictRun_noColl 4 h4 5 h5 7 14)
 
 /-- (a) **R.7 on the run**: the proved growing `finalAccountable` convicts at least `2q − n = 2`

@@ -226,15 +226,15 @@ theorem onTick_ac_index' (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat)
       · exact absurd hm (hLa ℓ)
 
 private theorem frame_root_or_accepted {sp : AC.ACParams} {FGP : Type}
-    {ro : AC.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
-    {tr : AC.GTrace sp FGP ro} {ini}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
+    {tr : AC.GTrace sp FGP} {ini}
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
     have step : ∀ Φ : AC.Frm sp.n FGP,
-        (AC.goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+        (AC.goldilocksAC sp FGP).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
         ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
       intro Φ hok hv X hX
@@ -262,16 +262,16 @@ private theorem frame_root_or_accepted {sp : AC.ACParams} {FGP : Type}
 
 section Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 private theorem honest_proposal_of_tick' (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg)
     {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
     (hg : tr.GroupAt' proposer dg p j t (.tick x fgDue))
     (hP : Proposes proposer p t) {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -283,7 +283,7 @@ private theorem honest_proposal_of_tick' (hrun : GoldilocksRun' proposer dg H tr
   have h := hrun.toLocalRun'
   obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call' h hp hg hP
   obtain ⟨hacc, ht2⟩ := own_block_accepted' h
-    (Compose.requirements_from sp ro (hrun.vstart p)) hroot hnc hp hg hP hr
+    (Compose.requirements_from sp (hrun.vstart p)) hroot hnc hp hg hP hr
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after' h hp hacc
   simp only [acProposal'_eq] at hc1
   simp only [acProposal'_eq, tickStep'_eq, acCall'_eq] at hacc3
@@ -299,7 +299,7 @@ private theorem honest_proposal_of_tick' (hrun : GoldilocksRun' proposer dg H tr
 /-- The shadow run supplies the stock driven-execution contract on its AC projection. -/
 theorem projection_driven_of_run' (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg) :
     AC.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun'
   have hac := Compose.goldilocks_ac_projection_from' hrun hnc
@@ -310,7 +310,7 @@ theorem projection_driven_of_run' (hrun : GoldilocksRun' proposer dg H tr ini)
           (Pb.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k Pb) := by
     intro y hy i B ha hB
     obtain ⟨ℓ, hc, hcall⟩ := ha
-    obtain ⟨Φ, hok, hΦU, hprev⟩ : ∃ Φ, (goldilocksNode sp ro).CallOK (tr.HonestBlocks H) Φ
+    obtain ⟨Φ, hok, hΦU, hprev⟩ : ∃ Φ, (goldilocksNode sp).CallOK (tr.HonestBlocks H) Φ
         (tr.projAC.time i) ℓ.call ℓ.frame ∧ Φ.tree ⊆ tr.HonestBlocks H ∧
         ∀ X ∈ Φ.tree, X.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k X := by
       rcases hr.frameLaw y hy i ℓ hc with
@@ -319,7 +319,7 @@ theorem projection_driven_of_run' (hrun : GoldilocksRun' proposer dg H tr ini)
         rw [htree, Set.mem_singleton_iff] at hX
         subst hX
         exact Or.inl hroot₀
-      · have hin : (goldilocksNode sp ro).FrameIn (tr.HonestBlocks H) ℓ'.frame := by
+      · have hin : (goldilocksNode sp).FrameIn (tr.HonestBlocks H) ℓ'.frame := by
           rcases hr.frameLaw y hy j ℓ' hc' with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩ <;>
             exact hok'.1
         exact ⟨ℓ'.frame, hok, hin.2, fun X hX => (frame_root_or_accepted hr hy hc' X hX).imp_right

@@ -26,12 +26,12 @@ service, the count shapes through `b`, and the committee premises of a slot dict
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **A proposer ready at its slot start proposes then**, under growing faults: the static
 `ready_proposer_proposes` on the prefix through `t_s`. -/

@@ -13,11 +13,11 @@ and `CarryAt` do not bind an honest set and are reused unchanged.
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams}
 
 /-- Finite service with independent source-window start and recipient deadline cutoff. -/
 structure ServiceWindowBefore (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (a b : Time) (tr : GTrace sp FGP ro) : Prop where
+    (a b : Time) (tr : GTrace sp FGP) : Prop where
   message : ∀ x i v, x ∈ H (tr.time i) → tr.SendOrAdmit x i v → a ≤ tr.time i →
     ∀ y j ℓ, y ∈ H (tr.time j) → tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ b →
       tr.deadline y j (tr.time i) ≤ tr.time j → MessageServedBefore tr y j (tr.time i) v
@@ -28,14 +28,14 @@ structure ServiceWindowBefore (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n F
 
 /-- Sleepy service starts at time zero. -/
 abbrev ServiceBefore (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (b : Time) (tr : GTrace sp FGP ro) : Prop := ServiceWindowBefore H U 0 b tr
+    (b : Time) (tr : GTrace sp FGP) : Prop := ServiceWindowBefore H U 0 b tr
 
 /-- A proposer honest through `T` has only one block per slot in frames read by `T`.
 The two readers need only be honest at their own cuts. -/
 theorem HonestObjects.one_block_before {proposer : Nat → Fin sp.n}
-    {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+    {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
     (h : HonestObjects proposer tr H) (hanti : Antitone H) {T : Time}
-    {y y' : Fin sp.n} {i i' : Nat} {ℓ ℓ' : ACLabel (goldilocksAC sp FGP ro)}
+    {y y' : Fin sp.n} {i i' : Nat} {ℓ ℓ' : ACLabel (goldilocksAC sp FGP)}
     {B B' : Blk sp.n FGP} (hy : y ∈ H (tr.time i)) (hc : tr.CallAt y i ℓ)
     (hB : B ∈ ℓ.frame.tree) (hi : tr.time i ≤ T)
     (hy' : y' ∈ H (tr.time i')) (hc' : tr.CallAt y' i' ℓ')

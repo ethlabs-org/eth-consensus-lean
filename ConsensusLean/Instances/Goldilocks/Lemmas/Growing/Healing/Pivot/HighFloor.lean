@@ -15,11 +15,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The proposal floor source with the high-source cover: a high-origin source, or an entry
@@ -30,7 +30,7 @@ theorem high_floor_source_at_proposal_or_covered_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r l i u : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hrb : tr.time r ≤ b) (hib : tr.time i ≤ b)
     (hfloor : ((tr.state x r).fg.σ B.root).h < (tr.state p i).fg.headHeightFloor) :

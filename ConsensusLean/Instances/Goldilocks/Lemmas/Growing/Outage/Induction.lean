@@ -27,14 +27,14 @@ call of the node at `i` its state is the one at `i`. At cut `0` the store is gen
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {R : Prop}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {R : Prop}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {toCore : R → GoldilocksRunCore u frameOf proposer dg H tr ini}
 
 /-- A block of the tree above `F`, held while honest, is in the frame's tree. -/
@@ -69,7 +69,7 @@ private theorem source_compatible_at_core
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
       Compatible (tr.HonestBlocksAt H) L B)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
   have hU := hrun.coherent hnc
   obtain ⟨hpc, -, hC⟩ := h
@@ -94,7 +94,7 @@ private theorem ts_add (a b : Nat) :
 private theorem prev_update_time (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x
     : Fin sp.n}
     {c : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ) : tr.time c = sp.ts D.j₀ + 2 * sp.Δ := by
   have ht : tr.time c = sp.ts ((D.j₀ - 1 : Nat) : Int) + 6 * sp.Δ := hu.2.2.1
   have h := ts_add (sp := sp) (D.j₀ - 1) 1
@@ -117,7 +117,7 @@ private theorem before (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
 honest, when `Σ.F ⪯ P` there: the label-`(j₀ − 1)` base put it in the tree earlier. -/
 private theorem prev_mem (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x : Fin sp.n}
     (hx : x ∈ D.A₀)
-    {c : Nat} (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {c : Nat} (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P) :
     D.P ∈ (frameOf (tr.state x c)).tree := by
@@ -163,7 +163,7 @@ cut `≥ c`, the cover base holds at the label-`j₀` update at cut `c` of `x �
 private theorem cover_base_at {i : Nat} (hinv : OutageLockInvOver D i) {x : Fin sp.n} (hx
     : x ∈ D.A₀)
     {c : Nat} (hxc : x ∈ H (tr.time c)) (hci : c ≤ i)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hcond : Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P →
      (Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P → ℓ.frame.AncestorCandidate D.P) →
@@ -240,7 +240,7 @@ at cut `c` of a node honest then, gives the protection at `c + 1` when `Σ.F` th
 with `P`. -/
 private theorem prot_of_lock (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x : Fin sp.n}
     {c q : Nat}
-    (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c q ℓ)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
     {l : AC.Lock} (hl : l ∈ (tr.state x (c + 1)).ac.locks) {j m : Nat} (hlj : l.slot = j)
@@ -268,7 +268,7 @@ compatible with `P`. -/
 private theorem prot_of_prevBase (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x
     : Fin sp.n}
     {c j : Nat} (hxc : x ∈ H (tr.time c))
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c j ℓ)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
     (hbase : ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D.P L ∧
@@ -283,7 +283,7 @@ private theorem prot_of_prevBase (D : OutageLockPremisesOver tr H proposer dg in
 private theorem prot_of_coverBase (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x
     : Fin sp.n}
     (hx : x ∈ D.A₀) {c : Nat} (hxc : x ∈ H (tr.time c))
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFc : Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
@@ -318,7 +318,7 @@ private theorem caches_zero (D : OutageLockPremisesOver tr H proposer dg ini toC
   have h0 : ∀ k < 0, tr.time k ≤ t := fun _ hk => absurd hk (Nat.not_lt_zero _)
   have hst := Trace.upTo_state tr y h0
   have hgen : ∀ X ∈ (tr.state y 0).fg.tree,
-      X = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := fun X hX => by
+      X = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload := fun X hX => by
     rcases (hrun.upTo hd).tree_accepted y hy (by rw [hst]; exact hX) with
       h | ⟨k, hk, -⟩
     · exact h

@@ -34,11 +34,11 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-! ### The AC functions write the record and the locks only from selections
 
@@ -190,12 +190,12 @@ end Handlers
 /-! ### The record and the locks at the cuts of an honest node -/
 
 /-- The block `r` names in `T` is genesis or an origin from a cut before `i`. -/
-private def RecOK (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+private def RecOK (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (r : Nat) : Prop :=
   ∃ C ∈ T, C.root = r ∧ (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i)
 
 /-- The lock `l` names a block of `T` below an origin of its slot from a cut before `i`. -/
-private def LockOK (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+private def LockOK (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (l : AC.Lock) : Prop :=
   ∃ L ∈ T, L.root = l.block ∧ ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C
 
@@ -213,9 +213,9 @@ private theorem good_mono {T T' : Set (AC.Blk sp.n (List (FG.Att sp.n)))} {i i' 
 /-- The AC projection of a Goldilocks run is an AC trace with the contract. -/
 private theorem ac_run {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
-    ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC ini :=
+    ACLocalRun (goldilocksNode sp) H (tr.HonestBlocks H) tr.projAC ini :=
   ac_projection _ _ dg H _ tr proposer
-    (fun y _ => payloadFrom_initial (requirements_from sp ro (hrun.vstart y)) y) hrun.toLocalRun hnc
+    (fun y _ => payloadFrom_initial (requirements_from sp (hrun.vstart y)) y) hrun.toLocalRun hnc
 
 private theorem down_lockOK {T : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hU : Coherent (tr.HonestBlocks H))
@@ -228,7 +228,7 @@ private theorem down_lockOK {T : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 with the origins of the call's own selections. -/
 private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.CallAt y i (.ac ℓ))
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.CallAt y i (.ac ℓ))
     (h : Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.state y i).ac) :
     Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
@@ -303,13 +303,13 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
       fun e he => emit e (hem ▸ he)
   | restart =>
-    obtain ⟨-, hl, hr, -⟩ := AC.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
+    obtain ⟨-, hl, hr, -⟩ := AC.restart_state sp _ y A ℓ.frame (tr.time i) hΦ
       (hrun.time_nonneg i)
     refine ⟨?_, ?_⟩
-    · change RecOK _ _ _ _ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.latestConfirmed
+    · change RecOK _ _ _ _ (AC.acRestart sp y A ℓ.frame (tr.time i)).1.latestConfirmed
       rw [hr]
       exact h.1
-    · change ∀ l ∈ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.locks, _
+    · change ∀ l ∈ (AC.acRestart sp y A ℓ.frame (tr.time i)).1.locks, _
       rw [hl]
       exact h.2
 
@@ -332,7 +332,7 @@ private theorem ac_of_fg {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- A changed record is an actual selection at this cut, not merely an
 origin somewhere in the run. Restarts and FG calls retain the record. -/
-theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
@@ -402,8 +402,8 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
           (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
           (fun e he => emit e (hem ▸ he))).1
       | restart =>
-        change R (AC.acRestart sp ro y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
-        rw [(AC.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
+        change R (AC.acRestart sp y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
+        rw [(AC.restart_state sp _ y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
         exact Or.inl rfl
   · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
     exact Or.inl rfl
@@ -597,7 +597,7 @@ the deepest live lock block). -/
 theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : AC.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt (ac_run hrun hnc) hy hpc

@@ -15,13 +15,13 @@ Frame uniqueness, relay and view agreement for the post-reset duty suppliers. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF a : Time}
 
 /-- Same-label raw sources lie below the unanimous operational head via an actual
 honest supporter, not via an assumed later successful update. -/
@@ -61,7 +61,7 @@ health is used. Only the pool's voters are counted: they are committee members (
 post-state records the actual raw write. -/
 theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu1 : sp.slot (AC.gbar g) + 1 ≤ u)
     (hu : AC.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
@@ -179,7 +179,7 @@ theorem proposal_frame_unique
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hu : 0 < u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
@@ -207,7 +207,7 @@ theorem reset_proposal_frame_unique
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P :=
   proposal_frame_unique hp.run hp.noColl hP.1 hP.2.1 hP.2.2.2.1 hP.2.2.2.2.1 hu hy hcall
@@ -219,7 +219,7 @@ theorem ResetPremisesUpTo.reset_proposal_frame_unique {b : Time}
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hu : 0 < u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P :=
   proposal_frame_unique hp.run hp.noColl hpH hdesignated hactual hPs hu hy hcall hQ hQu
@@ -232,7 +232,7 @@ theorem ResetPremisesUpTo.reset_relay_accept {b : Time}
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt x q B)
     (hnew : AC.gbar g ≤ tr.time q)
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hcall : tr.projAC.CallAt y j ell)
     (hjb : tr.time j ≤ b)
     (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
@@ -259,7 +259,7 @@ theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt x q B)
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hcall : tr.projAC.CallAt y j ell)
     (hjb : tr.time j ≤ b) (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
@@ -276,7 +276,7 @@ theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
 theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
-    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    {ellx elly : ACLabel (goldilocksNode sp)}
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
     (hjb : tr.time j ≤ b) (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
@@ -300,7 +300,7 @@ theorem reset_proposal_frame
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k j u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
-    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
@@ -322,7 +322,7 @@ theorem ResetPremisesUpTo.reset_proposal_frame {b : Time}
     {p y : Fin sp.n} {k j u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hu : 0 < u)
-    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
@@ -344,7 +344,7 @@ theorem reset_support_frame
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {ellp elly : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
@@ -387,7 +387,7 @@ theorem reset_support_frame
 theorem reset_frozen_frame
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} (hpH : p ∈ H) (hy : y ∈ H) {i j s : Nat}
-    {ellp elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ellp elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hcy : AC.CastAt tr.projAC y j elly e)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time i)
@@ -419,7 +419,7 @@ theorem reset_views_agree
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {ellp elly : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
@@ -439,7 +439,7 @@ theorem reset_views_agree
         AC.supporters ellp.frame (AC.View.ofLists pay) s X =
           AC.supporters elly.frame (AC.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
   have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
-  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp) dg H (fun v => v.val)
     tr proposer ΔF (sp.ts s) (sp.ts (s + 1 : Nat)) hp.run.toLocalRun
     (syncRun_of_gst hp.healthy.1 ((AC.le_gbar g).trans hg))
   apply AC.view_agree hac hP.1 hy hP.2.1 ⟨hci, hcall, d, hd⟩ hti hcy hes
@@ -455,7 +455,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {ellp elly : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
@@ -499,7 +499,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
 theorem ResetPremisesUpTo.reset_frozen_frame {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} (hpH : p ∈ H) (hy : y ∈ H) {i j s : Nat}
-    {ellp elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ellp elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hcy : AC.CastAt tr.projAC y j elly e) (hib : tr.time i ≤ b)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time i)
@@ -531,7 +531,7 @@ theorem ResetPremisesUpTo.reset_views_agree {b : Time}
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {ellp elly : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))

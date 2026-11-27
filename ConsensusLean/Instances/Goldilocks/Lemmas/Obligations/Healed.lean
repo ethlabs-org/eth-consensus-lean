@@ -14,11 +14,11 @@ in the paper's form yet). -/
 
 namespace Consensus.Goldilocks.Obligations
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
 /-- **The Healed bundle at the heal time `tH` from the height `h₀` on**.
 The record half (`Healing.HealedRecords`) and:
@@ -28,7 +28,7 @@ The record half (`Healing.HealedRecords`) and:
   that extends `X`;
 * C4 (no reorg of honest blocks; CONDITIONAL in the paper): the honest proposal of a slot
   `s > slot(tH)` is an ancestor of the honest proposal of every slot `s' > s`. -/
-structure Healed (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (proposer : Nat → Fin sp.n)
+structure Healed (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (proposer : Nat → Fin sp.n)
     (g tH : Time) (h₀ : Nat) (E : Nat → AC.Blk sp.n (List (FG.Att sp.n))) : Prop
     extends Healing.HealedRecords tr H g h₀ E where
   /-- C3 (A-safe), CONDITIONAL in the paper. -/

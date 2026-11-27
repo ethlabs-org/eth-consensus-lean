@@ -13,11 +13,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {hold : Time}
 
 /-- Current-slot residue is bounded using only casts strictly before the receiving cast. -/
 theorem read_locks_below_of_earlier_heads_primed_at'
@@ -36,7 +36,7 @@ theorem read_locks_below_of_earlier_heads_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j ev →
@@ -93,7 +93,7 @@ theorem vote_anchor_below_of_earlier_heads_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j ev →

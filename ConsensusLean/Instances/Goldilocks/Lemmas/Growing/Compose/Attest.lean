@@ -12,14 +12,14 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {proposer : Nat → Fin sp.n}
 
 /-- An honest signing is at a public time, using honesty only at the signing cut. -/
-theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem sign_public {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
@@ -30,14 +30,14 @@ theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Signing follows the same node's source call at the preceding cut and the same time.
 Both states are retained at the signing cut, even if the node is compromised later. -/
-theorem attest_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem attest_source {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
-    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp ro),
+    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp),
       tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧ tr.time j' = tr.time j ∧
-      ((goldilocksNode sp ro).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
+      ((goldilocksNode sp).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
   obtain ⟨j', hj, ℓ, hc', hto, ht, hC, hs⟩ :=
     Compose.attest_source (hrun.toLocalRun.upTo (hrun.time_nonneg j)) hy

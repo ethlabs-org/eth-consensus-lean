@@ -145,13 +145,13 @@ theorem LocksWF.tryVoteWith
 /-- **One AC call with the unlock given keeps `LocksWF`**, in its post-state and in every
 emission's read point (a well-formed frame and `t ≥ 0` for the restart). -/
 theorem LocksWF.stepWith
-    {L : Set Lock} {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LocksWF sp A.locks)
+    {L : Set Lock} {A : ACState sp.n} (h : LocksWF sp A.locks)
     (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (c : (goldilocksAC sp FGP ro).Call)
+    (c : (goldilocksAC sp FGP).Call)
     (hL : UnlockRel sp (callInputM sp wm A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
       (callViewM sp wm A Φ t c) L) :
-    LocksWF sp (stepWithM sp ro wm x L A Φ t c).1.locks ∧
-      ∀ e ∈ (stepWithM sp ro wm x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
+    LocksWF sp (stepWithM sp wm x L A Φ t c).1.locks ∧
+      ∀ e ∈ (stepWithM sp wm x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
   have hopt : ∀ {A' : ACState sp.n}, A'.locks = A.locks →
       LocksWF sp (AC.optimisticConfirmation sp A' Φ t).locks := fun hA =>
     LocksWF.optimisticConfirmation (hA ▸ h) Φ t
@@ -180,17 +180,17 @@ theorem LocksWF.stepWith
   | block B =>
     exact (hopt (blockReceipt_locks A t B)).tryVoteWith (wm := wm) x Φ t hL
   | restart =>
-    obtain ⟨he, hl, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
-    change LocksWF sp (acRestart sp ro x A Φ t).1.locks ∧
-      ∀ e ∈ (acRestart sp ro x A Φ t).2, LocksWF sp e.readPoint.locks
+    obtain ⟨he, hl, -⟩ := (restart_state sp) FGP x A Φ t hΦ ht
+    change LocksWF sp (acRestart sp x A Φ t).1.locks ∧
+      ∀ e ∈ (acRestart sp x A Φ t).2, LocksWF sp e.readPoint.locks
     refine ⟨?_, fun e he' => ?_⟩
     · rw [hl]; exact h
     · rw [he] at he'; simp at he'
 
 /-! ## Over an AC trace -/
 
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : GTrace sp FGP ro}
+variable {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+  {tr : GTrace sp FGP}
 
 /-- `locksWF_state` with the unlock given. -/
 theorem locksWF_stateU
@@ -216,7 +216,7 @@ theorem locksWF_stateU
     · exact ih
 
 /-- **`LocksWF` at every honest state** of an AC trace. -/
-theorem locksWF_state {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem locksWF_state {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks :=
   locksWF_stateU (hr := hr.toU) hini (y := y) (hy := hy) (i := i)
@@ -225,7 +225,7 @@ theorem locksWF_state {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini
 theorem castAt_readPoint_locksWFU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-      {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+      {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LocksWF sp e.readPoint.locks := by
   obtain ⟨hc, he⟩ := hc
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
@@ -237,9 +237,9 @@ theorem castAt_readPoint_locksWFU
   exact this e he
 
 /-- **`LocksWF` at the read point of an honest cast.** -/
-theorem castAt_readPoint_locksWF {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem castAt_readPoint_locksWF {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LocksWF sp e.readPoint.locks :=
   castAt_readPoint_locksWFU (hr := hr.toU) hini (y := y) (hy := hy)
     (i := i) (ℓ := ℓ) (e := e) (hc := hc)

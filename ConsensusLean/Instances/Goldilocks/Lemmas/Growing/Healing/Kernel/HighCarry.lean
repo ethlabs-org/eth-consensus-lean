@@ -19,21 +19,21 @@ need only ordinary reset service, not catch-up service.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- Historical sends and post-GST head acceptances suffice for a carry, without Catch. -/
 theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.carry_of_post_gst_senders_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
     {s : Nat} (hgs : g ≤ sp.ts s)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
@@ -81,7 +81,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.carry_of_post_g
 theorem carry_of_post_gst_senders_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Nat} (hgs : g ≤ sp.ts s)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}

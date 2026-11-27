@@ -31,11 +31,11 @@ Every step is proved. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- A block an optimistic check selects passes the three-quarter test of the check's slot. -/
 private theorem optimisticSelect_pass {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
@@ -48,7 +48,7 @@ private theorem optimisticSelect_pass {FGP : Type} {A : AC.ACState sp.n} {Φ : A
 
 /-- An optimistic point of the prefix through its call is one of the run. -/
 private theorem optimisticPoint_upTo_iff {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {A : AC.ACState sp.n} :
+    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} {A : AC.ACState sp.n} :
     AC.OptimisticPoint (tr.projAC.upTo (tr.time i)) y i ℓ A ↔
       AC.OptimisticPoint tr.projAC y i ℓ A := by
   rw [AC.upTo_optimisticPoint hrun.time_mono]
@@ -57,7 +57,7 @@ private theorem optimisticPoint_upTo_iff {ini} (hrun : Growing.GoldilocksRun pro
 /-- **The last point of a call**, at the run: `point_top` on the prefix through the call. -/
 private theorem point_top_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hnr : ℓ.call ≠ .restart) {A₀ : AC.ACState sp.n}
+    {ℓ : ACLabel (goldilocksNode sp)} (hnr : ℓ.call ≠ .restart) {A₀ : AC.ACState sp.n}
     (h₀ : AC.OptimisticPoint tr.projAC y i ℓ A₀) :
     ∃ A, AC.OptimisticPoint tr.projAC y i ℓ A ∧
       (∀ A', AC.OptimisticPoint tr.projAC y i ℓ A' → ∀ σ, A'.pool σ ⊆ A.pool σ) ∧
@@ -75,7 +75,7 @@ private theorem point_top_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 prefix through the call, lifted to the blocks held while honest. -/
 private theorem record_after_check_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ)
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hbelow : ∀ A B, AC.OptimisticPoint tr.projAC y i ℓ A →
       AC.optimisticSelect sp A ℓ.frame (tr.time i) = some B → ℓ.frame.Anc B P)

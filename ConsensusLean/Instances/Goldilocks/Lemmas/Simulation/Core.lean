@@ -171,7 +171,7 @@ theorem noRestart_between_same_time_sends (hv : rho.ExecutionValid)
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
 theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
-    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn))}
     (hc : (simTrace S rho hn).CallAt y k (.ac ℓ)) (hnr : ℓ.call ≠ .restart) :
     ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by

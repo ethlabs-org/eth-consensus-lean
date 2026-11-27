@@ -23,12 +23,12 @@ only as the frame's tree, which is the store's tree above `F` (`mem_frame'_tree`
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store Consensus.Goldilocks.Shadow.PU
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
+  {tr : GoldilocksTrace' sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A high descendant cannot be held before the snapshot by a holder still honest there
@@ -101,7 +101,7 @@ theorem signAt_report_entry' {ini} (hrun : GoldilocksRun' proposer dg Hs tr ini)
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier honest report at a
 strictly higher height (`cache_ahead_report`). -/
-theorem cache_ahead_report' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem cache_ahead_report' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : GoldilocksRun' proposer dg Hs tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hsᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ Hs) {i : Nat}
@@ -172,7 +172,7 @@ end Static
 
 /-- **A cache strictly ahead of a held target is backed by an earlier report**, at a strictly
 higher height, of a validator honest at the reading cut (`cache_ahead_report_at`). -/
-theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)

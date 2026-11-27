@@ -26,15 +26,15 @@ healing field is the committee-indexed healing supplier (`goldilocksACHealing`).
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 
 /-- `served_of_delivered`: a message processed before its recipient deadline is served. -/
-theorem goldilocks_served_of_delivered {tr : GoldilocksTrace sp ro} {y : Fin sp.n} {j : Nat}
-    {τ : Time} {m : (goldilocksNode sp ro).Msg} (h : tr.MsgDeliveredBy y j τ τ m) :
+theorem goldilocks_served_of_delivered {tr : GoldilocksTrace sp} {y : Fin sp.n} {j : Nat}
+    {τ : Time} {m : (goldilocksNode sp).Msg} (h : tr.MsgDeliveredBy y j τ τ m) :
     AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m := by
   obtain ⟨k, hkj, htk, hp, hlt⟩ := h
   refine Or.inl ⟨k, hkj, htk, ?_, by rw [Compose.projAC_deadline]; exact hlt⟩
@@ -47,17 +47,17 @@ time: the reader's store is reachable (`fg_reachable_at`), so its frame is well 
 (`Store.frame_realization`) and the AC's tips lie in it (`Regimes.ac_tips`). -/
 theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro}
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    {tr : GoldilocksTrace sp}
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) (s : Time) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s ∈
+    (goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s ∈
         (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i)
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s) ∧
+        ((goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s) ∧
       (Node.frame (tr.state y i)).Anc
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s)
-        ((goldilocksNode sp ro).head (tr.state y i).ac (Node.frame (tr.state y i)) s) := by
+        ((goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s)
+        ((goldilocksNode sp).head (tr.state y i).ac (Node.frame (tr.state y i)) s) := by
   have hr := Healing.Growing.fg_reachable_at ((goldilocksRunInterface_run_iff cm).mp hrun).1
     ht0 hle hy
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
@@ -67,8 +67,8 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
 /-- The local read-point row: at an honest read point, the confirmed read is held in the frame
 between the finalized root and the head (`goldilocks_tips_at`), hence in the FG tree. -/
 theorem goldilocks_localReadPoint
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
-    (hrun : GoldilocksRunData sp ro C.run sign G) : LocalReadPoint C where
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
+    (hrun : GoldilocksRunData sp C.run sign G) : LocalReadPoint C where
   tips cm proposer dg H tr h b y i t hr := by
     rw [hrun.1] at h
     exact goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr h) hr.2.2.1
@@ -84,8 +84,8 @@ interface. `served` is retained-evidence service (`goldilocks_served_of_delivere
 is `goldilocks_tips_at` at the reader's own cut time, and the durations are the data
 equations'. -/
 theorem goldilocksACCorrectLocal_of_healing
-    {Rg : Nat} (h : goldilocksACHealing sp ro sign G Rg) :
-    goldilocksACCorrectLocal sp ro sign G Rg := by
+    {Rg : Nat} (h : goldilocksACHealing sp sign G Rg) :
+    goldilocksACCorrectLocal sp sign G Rg := by
   obtain ⟨R, O, hO⟩ := h
   have hΔ := sp.toParams.hΔ
   refine ⟨{

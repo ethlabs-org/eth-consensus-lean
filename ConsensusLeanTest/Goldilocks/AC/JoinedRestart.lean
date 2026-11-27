@@ -58,7 +58,7 @@ noncomputable def ℓ1 : ACLabel GA1 := ⟨.restart, Φ₀, c1.2⟩
 noncomputable def ℓ2 : ACLabel GA1 := ⟨.tick, Φ₀, c2.2⟩
 
 /-- The restart trace: one validator, awake on `[0, 6]` and from `10` on. -/
-noncomputable def trJR : GTrace sp1 Unit ro1 where
+noncomputable def trJR : GTrace sp1 Unit where
   init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun i => if i = 0 then 4 else if i = 1 then 10 else 19
@@ -144,19 +144,9 @@ theorem c0_pool (σ : Nat) : c0.1.pool σ = if σ = 1 then [m1] else [] := by
   · rw [hσ, Function.update_self]; rfl
   · rw [Function.update_of_ne hσ, ite_eq_right hσ]
 
-/-- The restart at `10` replays nothing: the genesis frame has no other block. -/
-theorem order_Φ₀ : ro1.order 10 Φ₀ = [] := by
-  have hpo := ro1.parentOrder 10 Φ₀ ⟨[], List.nodup_nil, fun B => by
-    simp only [List.not_mem_nil, false_iff, not_and, not_not]
-    intro hB; rw [Set.mem_singleton_iff.mp hB]; rfl, fun i _ hi => absurd hi (Nat.not_lt_zero i)⟩
-  refine List.eq_nil_iff_forall_not_mem.2 fun B hB => ?_
-  obtain ⟨hB', hr⟩ := (hpo.2.1 B).1 hB
-  rw [Set.mem_singleton_iff.mp hB'] at hr
-  exact hr rfl
-
 /-- After the restart, `restart_time = 10`. -/
 theorem c1_restartTime : c1.1.restartTime = ((10 : Time) : WithBot Time) := by
-  change (acRestart sp1 ro1 v0 c0.1 Φ₀ 10).1.restartTime = _
+  change (acRestart sp1 v0 c0.1 Φ₀ 10).1.restartTime = _
   rfl
 
 /-- At `19` (slot `4`), the restarted node is joined: `10 ≤ t_3 = 12`. -/
@@ -300,13 +290,13 @@ theorem joinedAwake_applies (h : JoinedAwake sp1) :
     (∀ u : Time, max 0 (sp1.ts ((sp1.slot (trJR.time 2) : Int) - 1)) ≤ u → u ≤ trJR.time 2 →
       trJR.awake v0 u) ∧
     ∀ j ≤ 2, trJR.RestartAt v0 j → trJR.time j ≤ sp1.ts ((sp1.slot (trJR.time 2) : Int) - 1) :=
-  h Unit ro1 Set.univ {g} trJR localRun_JR v0 trivial 2 ℓ2 (trJR_callAt rfl)
+  h Unit Set.univ {g} trJR localRun_JR v0 trivial 2 ℓ2 (trJR_callAt rfl)
     joinedAwake_witness.2.2.1
 
 theorem joinedKeepsVotes_applies (h : JoinedKeepsVotes sp1) :
     ∀ j ≤ 2, trJR.RestartAt v0 j → ∀ σ, ∀ x ∈ (trJR.state v0 j : ACState sp1.n).pool σ,
       (x.slot : Int) < (sp1.slot (trJR.time 2) : Int) - 1 :=
-  h Unit ro1 Set.univ {g} trJR localRun_JR v0 trivial 2 ℓ2 (trJR_callAt rfl)
+  h Unit Set.univ {g} trJR localRun_JR v0 trivial 2 ℓ2 (trJR_callAt rfl)
     joinedAwake_witness.2.2.1
 
 end Consensus.Goldilocks.AC.Test.JoinedRestart

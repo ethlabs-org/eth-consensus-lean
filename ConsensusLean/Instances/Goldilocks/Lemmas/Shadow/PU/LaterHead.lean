@@ -15,17 +15,17 @@ handler cuts and lock origins, independently of the fork-choice root.
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 /-- A report lies in the reporter's tree above the actual P-U frame root, `F`. -/
 theorem report_root_at' {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R) :
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R := by
   have hret := hR.2.2
@@ -43,13 +43,13 @@ end Consensus.Goldilocks.Shadow.PU.Growing
 namespace Consensus.Goldilocks.Compose
 
 open Node
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
-private theorem proposal_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+private theorem proposal_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp))
     (t : Time) (x : Nat) :
     ProposalCuts proposer y t (tickStep' proposer dg y st t x .proposal).2 := by
   simp only [tickStep'_eq]
@@ -66,15 +66,15 @@ private theorem proposal_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' s
         split
         · exact Or.inl (by rw [acProposal'_eq])
         · rename_i fg' _
-          let st' : NodeState (goldilocksNode' sp ro) :=
+          let st' : NodeState (goldilocksNode' sp) :=
             { (Node.acProposal' st t).1 with fg := fg' }
           let B := mkBlock dg y (Node.acProposal' st t).1.fg t x d.head p
           refine Or.inr ⟨⟨.block B, frame' st',
-            ((goldilocksNode' sp ro).step y st'.ac (frame' st') t (.block B)).2⟩, rfl, ?_⟩
+            ((goldilocksNode' sp).step y st'.ac (frame' st') t (.block B)).2⟩, rfl, ?_⟩
           simp only [B, st', acProposal'_eq, acCall'_eq]
   · exact Or.inl ⟨hp, rfl⟩
 
-private theorem update_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+private theorem update_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp))
     (t : Time) (x : Nat) :
     UpdateCuts (tickStep' proposer dg y st t x .fgUpdate).2 := by
   refine ⟨⟨.toFG, frame' st, []⟩, rfl, ?_⟩
@@ -87,7 +87,7 @@ private theorem update_cuts' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp 
     · exact Or.inr (Or.inl ⟨C, rfl⟩)
     · exact Or.inr (Or.inr ⟨C, _, rfl⟩)
 
-private theorem tick_order' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+private theorem tick_order' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp))
     (t : Time) (x : Nat) (fgDue : Bool) :
     TickShape proposer y fgDue t (onTick' proposer dg y st t x fgDue).2 := by
   let st₁ := (tickStep' proposer dg y st t x .acTick).1
@@ -96,7 +96,7 @@ private theorem tick_order' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp r
   · simp only [onTick'_eq, runSteps'_eq, tickSteps, Bool.false_eq_true, ↓reduceIte,
       List.foldl_cons, List.foldl_nil, List.nil_append]
     refine ⟨⟨.tick, frame' st,
-      ((goldilocksNode' sp ro).step y st.ac (frame' st) t .tick).2⟩,
+      ((goldilocksNode' sp).step y st.ac (frame' st) t .tick).2⟩,
       (tickStep' proposer dg y st₁ t x .proposal).2, [], rfl, ?_,
       proposal_cuts' (dg := dg) y st₁ t x, rfl⟩
     simp only [st₁, tickStep'_eq, acCall'_eq, List.append_nil, List.cons_append,
@@ -104,15 +104,15 @@ private theorem tick_order' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp r
   · simp only [onTick'_eq, runSteps'_eq, tickSteps, ↓reduceIte, List.foldl_cons,
       List.foldl_nil, List.nil_append]
     refine ⟨⟨.tick, frame' st,
-      ((goldilocksNode' sp ro).step y st.ac (frame' st) t .tick).2⟩,
+      ((goldilocksNode' sp).step y st.ac (frame' st) t .tick).2⟩,
       (tickStep' proposer dg y st₁ t x .proposal).2,
       (tickStep' proposer dg y st₂ t x .fgUpdate).2, rfl, ?_,
       proposal_cuts' (dg := dg) y st₁ t x, ?_⟩
     · simp only [st₁, st₂, tickStep'_eq, acCall'_eq, List.cons_append, List.nil_append]
     · simpa only [↓reduceIte] using update_cuts' (proposer := proposer) (dg := dg) y st₂ t x
 
-private theorem acProposal_in_tick' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp ro)}
-    {t : Time} {e : Event (goldilocksNode' sp ro)} {ℓ : ACLabel (goldilocksNode' sp ro)}
+private theorem acProposal_in_tick' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp)}
+    {t : Time} {e : Event (goldilocksNode' sp)} {ℓ : ACLabel (goldilocksNode' sp)}
     (h : Cut.ac ℓ ∈ (exec' proposer dg y st t e).2) (hm : ℓ.call = .proposal) :
     ∃ x fgDue, e = .tick x fgDue := by
   cases e with
@@ -134,8 +134,8 @@ private theorem acProposal_in_tick' {y : Fin sp.n} {st : NodeState (goldilocksNo
       subst h
       cases hm
 
-private theorem tick_ac_positions' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp ro)}
-    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode' sp ro)}
+private theorem tick_ac_positions' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp)}
+    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode' sp)}
     (h : (exec' proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
       (Proposes proposer y t ∧
@@ -177,7 +177,7 @@ private theorem tick_ac_positions' {y : Fin sp.n} {st : NodeState (goldilocksNod
   · exact Or.inr (Or.inl (huc' ℓ hm))
 
 private theorem group_start' {y y' : Fin sp.n} {j j' : Nat} {t t' : Time}
-    {e e' : Event (goldilocksNode' sp ro)}
+    {e e' : Event (goldilocksNode' sp)}
     (hg : tr.GroupAt' proposer dg y j t e) (hg' : tr.GroupAt' proposer dg y' j' t' e')
     (h₁ : j ≤ j') (h₂ : j' < j + (exec' proposer dg y (tr.state y j) t e).2.length) :
     j' = j := by
@@ -187,7 +187,7 @@ private theorem group_start' {y y' : Fin sp.n} {j j' : Nat} {t t' : Time}
   exact le_antisymm (hg'.2.2 j this.symm).1 h₁
 
 private theorem not_ownPublicationAt_of_ac_cut' {y : Fin sp.n} {j k : Nat} {t : Time}
-    {e : Event (goldilocksNode' sp ro)} {ℓ : ACLabel (goldilocksNode' sp ro)}
+    {e : Event (goldilocksNode' sp)} {ℓ : ACLabel (goldilocksNode' sp)}
     (hg : tr.GroupAt' proposer dg y j t e)
     (hk : (exec' proposer dg y (tr.state y j) t e).2[k]? = some (.ac ℓ)) :
     ¬ tr.OwnPublicationAt' proposer dg y j t := by
@@ -204,15 +204,15 @@ private theorem not_ownPublicationAt_of_ac_cut' {y : Fin sp.n} {j k : Nat} {t : 
   rw [(List.getElem?_eq_some_iff.mp hk).2] at hl
   simpa [exec'_eq, onAttestation] using hl.symm.trans hlabel
 
-private def cutPhase' : Cut (goldilocksNode' sp ro) → Nat
+private def cutPhase' : Cut (goldilocksNode' sp) → Nat
   | .ac ℓ => match ℓ.call with
     | .restart => 0
     | .tick => 1
     | _ => 2
   | .fg _ => 2
 
-private theorem exec_head' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
-    (t : Time) (e : Event (goldilocksNode' sp ro)) :
+private theorem exec_head' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp))
+    (t : Time) (e : Event (goldilocksNode' sp)) :
     ∀ c ∈ (exec' proposer dg y st t e).2.head?, cutPhase' c = e.phase := by
   cases e with
   | block B =>
@@ -227,14 +227,14 @@ private theorem exec_head' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro
       cutPhase', Event.phase]
 
 private theorem group_phase' {y : Fin sp.n} {j : Nat} {t : Time}
-    {e e' : Event (goldilocksNode' sp ro)}
+    {e e' : Event (goldilocksNode' sp)}
     (hg : tr.GroupAt' proposer dg y j t e) (hg' : tr.GroupAt' proposer dg y j t e') :
     e.phase = e'.phase := by
   rw [RunTrace.groupAt'_iff] at hg hg'
   have h₀ := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.2
   have h₀' := (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.2
   rw [h₀'] at h₀
-  have mem {l : List (Cut (goldilocksNode' sp ro))} (h : l ≠ []) :
+  have mem {l : List (Cut (goldilocksNode' sp))} (h : l ≠ []) :
       l[0]'(List.length_pos_iff.2 h) ∈ l.head? := by
     cases l
     · exact absurd rfl h
@@ -251,7 +251,7 @@ private theorem acOnTick_emits' {self : Fin sp.n} {A : AC.ACState sp.n}
 
 private theorem honest_vote_call' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode' sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     (ℓ.call = .tick → tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ) ∧ ℓ.call ≠ .proposal ∧
       ℓ.call ≠ .toFG ∧ ℓ.call ≠ .restart := by
@@ -260,14 +260,14 @@ private theorem honest_vote_call' {ini} (hrun : GoldilocksRun' proposer dg H tr 
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   have hx := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at hx
-  have he' : e ∈ ((AC.goldilocksAC sp _ ro).step y (tr.projAC.state y i) ℓ.frame
+  have he' : e ∈ ((AC.goldilocksAC sp _).step y (tr.projAC.state y i) ℓ.frame
       (tr.projAC.time i) ℓ.call).2 := by rw [hx]; exact hc.2
   refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩ <;> rw [h] at he'
   · exact acOnTick_emits' he'
   · simp [ACInterface.step] at he'
   · simp [ACInterface.step] at he'
-  · change e ∈ (AC.acRestart sp ro y _ ℓ.frame _).2 at he'
-    rw [((AC.restart_state sp) _ ro y _ ℓ.frame _ hΦ (hr.time_nonneg i)).1] at he'
+  · change e ∈ (AC.acRestart sp y _ ℓ.frame _).2 at he'
+    rw [((AC.restart_state sp) _ y _ ℓ.frame _ hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
 /-- No honest optimistic check of slot `s` precedes its honest proposal. The honest voter
@@ -277,7 +277,7 @@ theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun' proposer dg H tr
     {s : Nat} {K : AC.CommitteeDict sp.n} (hP : AC.CommitteeP K tr.projAC H)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
     {p : Fin sp.n} (hp : p ∈ H) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt p i ℓp)
+    {ℓp : ACLabel (goldilocksNode' sp)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ AC.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
@@ -359,7 +359,7 @@ set_option linter.unusedVariables false in
 theorem proposal_locks_slot_of' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode' sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode' sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) {K : AC.CommitteeDict sp.n}

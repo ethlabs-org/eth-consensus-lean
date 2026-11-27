@@ -145,11 +145,11 @@ theorem own_block_accepted' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fi
 
 end OwnBlock
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 theorem σ_eq_honest' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -177,11 +177,11 @@ end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
   {y : Fin sp.n} {i : Nat} {d : Time}
 
 theorem tree_held_at' (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
@@ -191,7 +191,7 @@ theorem tree_held_at' (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k
 theorem reachable_at' {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
-    (tr.state y i).fg.Reachable' (goldilocksNode' sp ro).genesisPayload := by
+    (tr.state y i).fg.Reachable' (goldilocksNode' sp).genesisPayload := by
   have h := Node.fg_reachable_at' (hrun.upTo hd).toLocalRun' hy i
   rwa [Trace.upTo_state tr y hi] at h
 
@@ -212,10 +212,10 @@ end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace' sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace' sp) (H : Time → Set (Fin sp.n))
 
 /-- The shared shadow reset bundle: only the execution contract differs from the stock bundle. -/
 structure ResetPremisesUpTo' (proposer : Nat → Fin sp.n)
@@ -247,11 +247,11 @@ end Consensus.Goldilocks.Healing.Growing
 
 namespace Consensus.Goldilocks.RunTrace
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-theorem anc_upTo_of_right' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem anc_upTo_of_right' {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini} {d : Time}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {ini} {d : Time}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hd : 0 ≤ d) {B C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hC : C ∈ (tr.upTo d).HonestBlocks (H d)) (h : Anc (tr.HonestBlocksAt H) B C) :
@@ -266,11 +266,11 @@ end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
 
 theorem store_anc_of_honest_anc_at' {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)

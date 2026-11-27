@@ -17,8 +17,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## Helpers -/
 
@@ -99,7 +99,7 @@ private theorem optimistic_pool_stamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t 
 held**, with its stamp, whether or not the node may vote in the slot. With the unlock given. -/
 theorem heldBefore_readPoint_branchU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
     (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
@@ -119,7 +119,7 @@ theorem heldBefore_readPoint_branchU
 with its stamp. With the unlock given. -/
 theorem heldBefore_readPointU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore e.readPoint w T :=

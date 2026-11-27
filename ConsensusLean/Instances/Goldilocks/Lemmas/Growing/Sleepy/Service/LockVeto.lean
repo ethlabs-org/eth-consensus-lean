@@ -16,11 +16,11 @@ Every step is proved. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- No live lock of a set conflicts with a block `C` of a frame of blocks held while honest when the
 blocks of the frame at the set's lock roots are compatible with `C`. -/
@@ -49,7 +49,7 @@ theorem not_conflicts_of_compatible {ini}
 `b`, is compatible with every origin within `b` held while honest (S1). -/
 theorem stored_lock_compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ℓ) (hb : tr.time j ≤ b) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} (hCo : OriginWithin tr H C s b) (hCt : C ∈ ℓ.frame.tree) :
     ∀ l ∈ (tr.state y j).ac.locks, ∀ B ∈ ℓ.frame.tree, B.root = l.block →
@@ -68,7 +68,7 @@ theorem stored_lock_compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H
 call's frame, at any time: every stored lock is on the origin chain (S1). -/
 theorem origin_not_conflicts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ℓ) (hb : tr.time j ≤ b) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} (hCo : OriginWithin tr H C s b) (hCt : C ∈ ℓ.frame.tree) (t : Time) :
     ¬ AC.conflictsWithLock sp (tr.state y j).ac.locks ℓ.frame t C :=

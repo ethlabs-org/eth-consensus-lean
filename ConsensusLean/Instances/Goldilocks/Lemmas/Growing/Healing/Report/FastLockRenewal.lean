@@ -24,12 +24,12 @@ window because `P` is floor-viable there. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
 /-- The window's common floor puts every honest finalized tip in the window, within the
@@ -73,7 +73,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
     (hext : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hklo : lo ≤ tr.time k) (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ C, AC.getConfirmation sp (tr.projAC.state y k) ell.frame (s + 1) = some C ∧
@@ -108,7 +108,7 @@ theorem FrameWindow.update_result_extends_at {K : AC.CommitteeDict sp.n}
     (hext : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hklo : lo ≤ tr.time k) (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ C, AC.getConfirmation sp (tr.projAC.state y k) ell.frame (s + 1) = some C ∧
@@ -145,7 +145,7 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
     (hext₁ : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 2 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y k).locks, ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
@@ -181,7 +181,7 @@ theorem FrameWindow.update_locks_compatible_at {K : AC.CommitteeDict sp.n}
     (hext₁ : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e → e.msg.slot = s + 2 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k (s + 1) ell)
     (hkhi : tr.time k ≤ hi) (hkb : tr.time k ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y k).locks, ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
@@ -202,7 +202,7 @@ private theorem fastTest_of_anc {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm 
 non-genesis block `P` of the frame that passes the fast test and that no live lock vetoes, the
 deepest unvetoed fast block of the path, the block of the update's fast lock, extends `P`. -/
 theorem fast_update_of_unvetoed_at
-    {y : Fin sp.n} {k s : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k s : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time k))
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hu : AC.UpdateAt tr.projAC y k s ell)
@@ -405,7 +405,7 @@ private theorem post_of_updateAt
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k u : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     tr.projAC.post k =
       AC.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.time k) u :=
   Core.post_of_updateAt hrun.toCore hnc hy hu
@@ -438,7 +438,7 @@ theorem toFG_candidate_of_viable_head_at {K : AC.CommitteeDict sp.n}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {r : Nat} (hgr : gbar g ≤ sp.ts (r + 1 : Nat))
     {y : Fin sp.n} {j : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfu : AC.FastUpdateAt tr.projAC y j r D CV) (hPD : Anc (tr.HonestBlocksAt H) P D)
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (hji : j < i)
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -472,7 +472,7 @@ theorem FrameWindow.toFG_candidate_of_fast_update_at {K : AC.CommitteeDict sp.n}
     {r : Nat} (hgr : gbar g ≤ sp.ts (r + 1 : Nat))
     {y : Fin sp.n} {j : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfu : AC.FastUpdateAt tr.projAC y j r D CV) (hPD : Anc (tr.HonestBlocksAt H) P D)
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (hji : j < i)
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -541,7 +541,7 @@ theorem toFG_candidate_pre_at {K : AC.CommitteeDict sp.n}
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i)
     (hhi : tr.time i ≤ sp.ts (N + 1 : Nat) + 2 * sp.Δ) :
@@ -629,7 +629,7 @@ theorem toFG_candidate_pre_within_at {K : AC.CommitteeDict sp.n}
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (hhi : tr.time i ≤ hi) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),

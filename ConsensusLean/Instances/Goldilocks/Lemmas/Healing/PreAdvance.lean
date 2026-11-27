@@ -35,12 +35,12 @@ heads, and the fault bound from the service. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF b : Time}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- An update of label `l` at `t_l + 6Δ` precedes the vote freeze of every slot `s ≥ l + 2`. -/
 private theorem ts_add_six_lt_freeze {l : Int} {s : Nat} (h : l + 2 ≤ (s : Int)) :
@@ -123,7 +123,7 @@ theorem FrameWindow.viableHead_persists {lo hi : Time} {floor : Nat}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     Q ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
@@ -154,7 +154,7 @@ theorem FrameWindow.root_witness_of_earlier_call {lo hi : Time} {floor : Nat}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) (hnk : ¬kindJ)
     (hnr : NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -191,7 +191,7 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -265,7 +265,7 @@ theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
@@ -309,7 +309,7 @@ runs its prior-slot tick at `t_{s−1} + Δ`, before the vote freeze. -/
 theorem prior_vote_call_before_freeze {K : AC.CommitteeDict sp.n}
     (hS : AC.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hpos : 0 < e.msg.slot)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((e.msg.slot - 1 : Nat) : Int))
     (hmb : sp.ts ((e.msg.slot - 1 : Nat) : Int) + sp.Δ ≤ b)
@@ -353,7 +353,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i a : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : sp.ts s₀ ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -448,7 +448,7 @@ theorem FrameWindow.vote_head_classification_of_service {K : AC.CommitteeDict sp
     (hS : AC.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)

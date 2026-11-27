@@ -12,11 +12,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- An origin above the frame's finalized tip is held by every later-label honest voter. -/
@@ -26,7 +26,7 @@ theorem high_origin_held_at_vote_at
     {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     O ∈ (tr.state y k).fg.tree := by
@@ -43,7 +43,7 @@ theorem low_root_of_seed_before_at
     (hx : x ∈ H (tr.time r)) (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
@@ -59,10 +59,10 @@ theorem low_root_of_seed_before_at
     (fun hFB => (hheld hFB).1)
 
 /-- A viable frozen descendant yields the target's viable vote-domain membership. -/
-theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcomp : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B)
     (hK2 : (∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,

@@ -13,24 +13,24 @@ without choosing the stock or shadow node frame.
 
 namespace Consensus.Goldilocks.StaticRunCore
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
   {u frameOf} (rc : StaticRunCore u frameOf proposer dg H tr ini)
 
 include rc
 
 /-- The frame at an honest projected AC call is the chosen node frame. -/
 theorem frame_of_projAC {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame = frameOf (tr.state y k) :=
   ((cutStepWith_ac ℓ).mp (rc.cutLaw y hy k _ (Compose.projAC_callAt.mp hc))).1
 
 /-- A block in an honest call's frame is held in the caller's FG store. -/
 theorem frame_tree_subset {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
   intro B hB
   rw [rc.frame_of_projAC hy hc] at hB
@@ -109,11 +109,11 @@ end Consensus.Goldilocks.StaticRunCore
 
 namespace Consensus.Goldilocks.GoldilocksRunCore
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
   {u frameOf} (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
 
 include rc
@@ -131,9 +131,9 @@ theorem signAt_entry {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
 theorem attest_source {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
-    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp ro),
+    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp),
       tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧ tr.time j' = tr.time j ∧
-      ((goldilocksNode sp ro).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
+      ((goldilocksNode sp).toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
   obtain ⟨j', hj, ℓ, hc', hto, ht, hC, hs⟩ :=
     (rc.upTo (rc.time_nonneg j)).attest_source y hy

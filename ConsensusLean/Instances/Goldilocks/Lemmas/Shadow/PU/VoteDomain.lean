@@ -32,20 +32,20 @@ The row label bound is the shared `KernelProof.row_origin_label_lt_at'` (`Shadow
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- **A viable frozen descendant puts the target in the vote's viable tree** over the shadow
 frame (`KernelProof.vote_viable_of_root_at`; the shadow root is `Σ.F`). -/
-theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {B D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hD : D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -85,7 +85,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
       B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)

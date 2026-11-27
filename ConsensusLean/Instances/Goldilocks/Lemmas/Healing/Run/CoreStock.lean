@@ -20,11 +20,11 @@ public section
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **The static core of a stock Goldilocks run.** -/
 theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
@@ -64,7 +64,7 @@ theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
   report_attest y hy _ _ _ hk hc hC := Healing.toFG_attest hrun.toLocalRun hy hk hc hC
   signed_tick y hy d C a hcd := by
     obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Compose.call_in_group hrun.toLocalRun hy hcd
-    obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp ro)
+    obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp)
       proposer dg y _ _ _ C a (List.mem_of_getElem? hk)
     have hkk : kk < (Node.exec proposer dg y (tr.state y j) (tr.time d)
         (.tick x true)).2.length := by

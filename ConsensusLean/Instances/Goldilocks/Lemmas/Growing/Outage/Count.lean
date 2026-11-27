@@ -29,11 +29,11 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **A result's counted validators meet a participant set.** At an honest update with result
 `C`, if `T` are voters of the update's pool and `|Q| < |T|`, some counted vote is of a validator in
@@ -63,15 +63,15 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   {R : Prop}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {toCore : R → GoldilocksRunCore u frameOf proposer dg H tr ini}
 
 section Compat
@@ -279,7 +279,7 @@ theorem holder_ready_at (D : OutageLockPremisesOver tr H proposer dg ini toCore)
 members of the slot committee honest at `t_m + Δ` that are awake and joined then. -/
 private theorem voter_of_ready (D : OutageLockPremisesOver tr H proposer dg ini toCore) {y
     : Fin sp.n}
-    {k m : Nat} {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {k m : Nat} {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hy : y ∈ H (tr.time k)) (hu : AC.UpdateAt tr.projAC y k m ℓ) (hm : D.r ≤ m) {x : Fin sp.n}
     (hx : x ∈ H (sp.ts m + sp.Δ)) (hxK : x ∈ D.K.committee m)
     (haw : tr.awake x (sp.ts m + sp.Δ)) (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :

@@ -31,14 +31,14 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-! ### One honest updater over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- Honest votes reach a joined updater using service through `t_s + 2Δ` only: every delivery
 the update counts has its deadline by then, so the update itself may be after `b` (the windowed
@@ -46,7 +46,7 @@ form at `a = κ = 0`). -/
 theorem honest_vote_at_update_early {ini} (hrun : AC.ACRun proposer T H U ini)
     {b : Time} {k₀ : Nat}
     {s : Nat} (hsync : AC.ServiceBefore H U b T) (hsb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n}
-    (hy : y ∈ H) {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hu : AC.UpdateAt T y k₀ s ℓ)
+    (hy : y ∈ H) {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hu : AC.UpdateAt T y k₀ s ℓ)
     {P : AC.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
     (hes : e.msg.slot = s) (hhead : e.msg.head = P.root) :
@@ -60,7 +60,7 @@ theorem honest_vote_at_update_early {ini} (hrun : AC.ACRun proposer T H U ini)
 
 end Node
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
 
 end Consensus.Goldilocks.Compose
 

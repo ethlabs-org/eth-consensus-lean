@@ -13,21 +13,21 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- A current-label lock in the read point comes from an optimistic write no later than the cast. -/
 theorem Core.current_lock_write_readPoint_at
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hpos : 0 < e.msg.slot) {l : AC.Lock} (hl : l ∈ e.readPoint.locks)
     (hs : e.msg.slot ≤ l.slot) :
@@ -48,7 +48,7 @@ theorem Core.current_lock_write_readPoint_at
 theorem current_lock_write_readPoint_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hpos : 0 < e.msg.slot) {l : AC.Lock} (hl : l ∈ e.readPoint.locks)
     (hs : e.msg.slot ≤ l.slot) :

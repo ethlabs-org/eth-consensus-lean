@@ -31,12 +31,12 @@ acceptances before `a + κ`.
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- **An honest slot-`s` vote at a joined updater of slot `s`**, under `Sync[a₀, t_s + 6Δ]` with
 `a₀ ≤ t_s`: the vote, cast by `t_s + Δ` and forwarded, is processed by the updater (awake,
@@ -48,12 +48,12 @@ frame and the vote is resolved before `t_s + 2Δ`. -/
 theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
     {a₀ : Time} {k₀ s : Nat}
     {x : Fin sp.n} {P : AC.Blk sp.n FGP}
-    (hsync : (SyncAC (AC.goldilocksAC sp FGP ro) H U a₀ (T.time k₀) T ∧
+    (hsync : (SyncAC (AC.goldilocksAC sp FGP) H U a₀ (T.time k₀) T ∧
         ∀ kx, T.AcceptAt x kx P → a₀ ≤ T.time kx) ∨
       ∃ κ, AC.ServiceWindowBefore H U a₀ (sp.ts s + 2 * sp.Δ) T ∧
         CatchACWindowBefore T H U a₀ κ (T.time k₀) ∧ a₀ + κ ≤ sp.ts s + 2 * sp.Δ)
     {y : Fin sp.n} (hy : y ∈ H)
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hu : AC.UpdateAt T y k₀ s ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hu : AC.UpdateAt T y k₀ s ℓ)
     (ha₀ : a₀ ≤ sp.ts s) (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
     (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
     (hes : e.msg.slot = s) (hhead : e.msg.head = P.root) :
@@ -145,7 +145,7 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
         hrun.honest.pool_vote y hy _ b.slot b hb.1 (by rw [hbv, hxv]; exact hx)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
+      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP H U T hr.toU x hx ja jb ea eb hea heb
         (by rw [hea', heb', has, hbs])
       exact (hab (hea'.symm.trans heb')).elim
   obtain ⟨hpool, hvst⟩ := held
@@ -200,7 +200,7 @@ theorem honest_vote_at_update_window {ini} (hrun : AC.ACRun proposer T H U ini)
     {k₀ s : Nat} (hsync : AC.ServiceWindowBefore H U a b T)
     (hcatch : CatchACWindowBefore T H U a κ b') (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ) (hsb : sp.ts s + 2 * sp.Δ ≤ b) (hb' : T.time k₀ ≤ b')
-    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hu : AC.UpdateAt T y k₀ s ℓ) {P : AC.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
     (hes : e.msg.slot = s) (hhead : e.msg.head = P.root) :
@@ -217,18 +217,18 @@ theorem honest_vote_at_update_window {ini} (hrun : AC.ACRun proposer T H U ini)
 
 end Node
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
 
 /-- **The honest batch reaches the updater under windowed service**: with service from
 `a ≤ t_s` with deadlines through `b ≥ t_s + 2Δ` and the catch-up of older acceptances before
 `a + κ ≤ t_s + 2Δ` at calls from `a + κ` through the update's time `b'`. -/
 theorem honest_batch_at_update_window {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {a κ b b' : Time}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {a κ b b' : Time}
     {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a κ b')
     {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
     (ha : a ≤ sp.ts s) (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ) (hsb : sp.ts s + 2 * sp.Δ ≤ b)
     (hb' : tr.time k₀ ≤ b') {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
     (hall : ∀ x ∈ H, ∀ j e, AC.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root) :

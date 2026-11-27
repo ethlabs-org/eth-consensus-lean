@@ -12,22 +12,22 @@ public section
 namespace Consensus.Goldilocks.Healing.Growing
 variable {hold : Time}
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- An early frame witness has a pre-freeze stamp at a later honest cast.
 The historical holder can already be compromised when the receiver casts. -/
 theorem frame_witness_readPoint_stamp_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} {a i s : Nat} (hx : x ∈ H (tr.time a))
     (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode sp ro)}
+    {ellx ell : ACLabel (goldilocksNode sp)}
     (hcx : tr.projAC.CallAt x a ellx)
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hes : e.msg.slot = s + 1) (hm : gbar g + 4 * sp.Δ ≤ sp.ts s)

@@ -22,15 +22,15 @@ Each is the stock lemma of the same name over `Growing.GoldilocksRun`. -/
 
 namespace Consensus.Goldilocks.GoldilocksRunCore
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 open Consensus.Goldilocks.Compose Consensus.Goldilocks.Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   (core : GoldilocksRunCore u frameOf proposer dg H tr ini)
   {y : Fin sp.n} {i : Nat} {d : Time}
 
@@ -80,9 +80,9 @@ theorem mem_awakeJoined_projAC {t : Time} :
 
 /-- Every block held while honest descends from genesis (`honestAt_genesis_anc`). -/
 theorem honestAt_genesis_anc {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) :
-    sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocksAt H ∧
+    sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∈ tr.HonestBlocksAt H ∧
       Anc (tr.HonestBlocksAt H)
-        (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := by
+        (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B := by
   obtain ⟨y, k, t, ht, hle, hy, hBt⟩ := hB
   have hr := core.reachable_at ht hy hle
   have hsub := tree_held_at ht hy hle
@@ -93,7 +93,7 @@ theorem honestAt_genesis_anc {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ 
 theorem honestAt_eq_genesis (hU : Coherent (tr.HonestBlocksAt H))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H)
     (hr : B.root = sp.genesisRoot) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
   hU.1 hB (core.honestAt_genesis_anc hB).1 hr
 
 /-- **Transport of the finite service** to the prefix through `d ≥ 0`
@@ -134,7 +134,7 @@ theorem anc_upTo_of_right (hnc : NoCollRun dg tr) (hd : 0 ≤ d)
     ⟨y, hy, i, by rw [he]; exact hX⟩
 
 /-- Ancestry in the frame is ancestry in the store's tree above `F`. -/
-theorem frame_anc_iff (st : NodeState (goldilocksNode sp ro))
+theorem frame_anc_iff (st : NodeState (goldilocksNode sp))
     {A B : AC.Blk sp.n (List (FG.Att sp.n))} :
     (frameOf st).Anc A B ↔ Anc {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} A B := by
   have h : (frameOf st).tree = {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} :=

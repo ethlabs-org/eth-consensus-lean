@@ -14,19 +14,19 @@ The writer's honesty is needed only at that earlier write.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- A report preserves the viable-ancestor candidate of its own earlier fast write, or, with deep
 sources on and no fast-lock candidate at the call, is a deep candidate under a deep anchor whose
 live locks are all slow (a deep anchor carried by a live fast lock gives the fast write). -/
 theorem toFG_fast_candidate_origin_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {R : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC y i ell R) :
     (∃ a < i, ∃ j ellw D CV, y ∈ H (tr.time a) ∧
       tr.projAC.CallAt y a ellw ∧ D ∈ ellw.frame.tree ∧

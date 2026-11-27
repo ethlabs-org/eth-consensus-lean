@@ -160,8 +160,8 @@ theorem mem_acProposal_of_keep_view {A : ACState sp.n} (hl : l ∈ A.locks) :
 /-- The view that an AC call `c` passes to `unlock` at time `t` from state `A` with frame `Φ`
 (the merged vote view of the state `try_vote` receives; the pool view in `ac_proposal`; for
 `ac_to_fg` and `ac_restart`, which do not unlock, the merged vote view of `A`). -/
-noncomputable def unlockView {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (goldilocksAC sp FGP ro).Call → View sp.n
+noncomputable def unlockView (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : (goldilocksAC sp FGP).Call → View sp.n
   | .proposal => View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)
   | .message v =>
     mergedVoteView sp (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ (sp.slot t)
@@ -170,43 +170,43 @@ noncomputable def unlockView {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : 
   | _ => mergedVoteView sp A Φ (sp.slot t)
 
 section unlockView
-variable {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+variable (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
 
 theorem unlockView_tick :
-    unlockView (ro := ro) A Φ t .tick = mergedVoteView sp A Φ (sp.slot t) := by
+    unlockView A Φ t .tick = mergedVoteView sp A Φ (sp.slot t) := by
   unfold unlockView; rfl
 
-theorem unlockView_proposal : unlockView (ro := ro) A Φ t .proposal =
+theorem unlockView_proposal : unlockView A Φ t .proposal =
     View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤) := by
   unfold unlockView; rfl
 
-theorem unlockView_message (v : Vote sp.n) : unlockView (ro := ro) A Φ t (.message v) =
+theorem unlockView_message (v : Vote sp.n) : unlockView A Φ t (.message v) =
     mergedVoteView sp (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ (sp.slot t) := by
   unfold unlockView; rfl
 
-theorem unlockView_block (C : Blk sp.n FGP) : unlockView (ro := ro) A Φ t (.block C) =
+theorem unlockView_block (C : Blk sp.n FGP) : unlockView A Φ t (.block C) =
     mergedVoteView sp (optimisticConfirmation sp (blockReceipt sp A t C) Φ t) Φ (sp.slot t) := by
   unfold unlockView; rfl
 
 theorem unlockView_toFG :
-    unlockView (ro := ro) A Φ t .toFG = mergedVoteView sp A Φ (sp.slot t) := by
+    unlockView A Φ t .toFG = mergedVoteView sp A Φ (sp.slot t) := by
   unfold unlockView; rfl
 
 theorem unlockView_restart :
-    unlockView (ro := ro) A Φ t .restart = mergedVoteView sp A Φ (sp.slot t) := by
+    unlockView A Φ t .restart = mergedVoteView sp A Φ (sp.slot t) := by
   unfold unlockView; rfl
 
 end unlockView
 
 /-- **The keep lemma of an AC call, with the view of the call.** `mem_step_locks_of_keep` with
 the unlock premise at the view `unlockView A Φ t c` that the call reads. -/
-theorem mem_step_locks_of_keep_view {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+theorem mem_step_locks_of_keep_view (self : Fin sp.n)
+    {A : ACState sp.n} (c : (goldilocksAC sp FGP).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hl : l ∈ A.locks) (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree)
     (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
       unlockTarget sp Φ (unlockView A Φ t c) ((sp.slot t : Int) - 1) B = B) :
-    l ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.locks := by
+    l ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.locks := by
   cases c with
   | tick => exact mem_acOnTick_of_keep_view self hl hk hB hBr hva hu
   | proposal => exact mem_acProposal_of_keep_view hl
@@ -217,8 +217,8 @@ theorem mem_step_locks_of_keep_view {ro : ReplayOrder sp FGP} (self : Fin sp.n)
   | message v => exact mem_acOnMessage_of_keep_view self v hl hk hB hBr hva hu
   | block C => exact mem_acOnBlock_of_keep_view self C hl hk hB hBr hva hu
   | restart =>
-    change l ∈ (acRestart sp ro self A Φ t).1.locks
-    rw [((restart_state sp) FGP ro self A Φ t hΦ ht).2.1]
+    change l ∈ (acRestart sp self A Φ t).1.locks
+    rw [((restart_state sp) FGP self A Φ t hΦ ht).2.1]
     exact hl
 
 end Consensus.Goldilocks.AC

@@ -14,12 +14,12 @@ side is the shadow client safety `held_atts_safe_at'` (`Shadow/PU/Safety`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A linked chain from `A` lies below its last block. -/
@@ -53,7 +53,7 @@ private theorem chainAtts_held {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 a block finalized by the state of a held `X` of a reader honest at `t` is an ancestor of every
 block held by a reader honest at `u` above the finalized height, when fewer than `2q − n`
 validators are faulty at `max t u`. -/
-theorem finalized_anc_of_lt_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem finalized_anc_of_lt_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {k m : Nat} {t u : Time}
     (ht : 0 ≤ t) (hk : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -81,7 +81,7 @@ theorem finalized_anc_of_lt_at' {ini : Fin sp.n → (goldilocksNode' sp ro).Stat
   have hnot : ((tr.state y k).fg.σ X.root).F ∉ sp.toParams.fg.roots (c₂.map Block.fgView) := by
     intro hmem
     rw [← hFr] at hmem
-    obtain ⟨Y, hY, hYF⟩ : ∃ Y ∈ sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+    obtain ⟨Y, hY, hYF⟩ : ∃ Y ∈ sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload
         :: c₂, Y.root = F.root := by
       simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hmem
     have hYt : Y ∈ (tr.state z m).fg.tree := by
@@ -129,14 +129,14 @@ theorem ResetPremisesUpTo'.low_finalized_below_origin_at'
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
   have hg := genesis_mem_with hfs hreach
   have hgB : Anc (tr.HonestBlocksAt H)
-      (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload) B :=
+      (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload) B :=
     ((accepted_tree_with hfs
       (Compose.Growing.reachable_at' hrun hi0 hx hlei).reachableWith).2.2.2 B hBt).mono
         (Compose.Growing.tree_held_at' hi0 hx hlei)
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     cache_invariants_with hfs hreach
   have hgF : (tr.state y m).fg.Anc
-      (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload) (tr.state y m).fg.F :=
+      (sp.toParams.genesisBlock (goldilocksNode' sp).genesisPayload) (tr.state y m).fg.F :=
     (accepted_tree_with hfs hreach).2.2.2 _ hFm
   -- a genesis `Σ.F` is below `B`
   have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →

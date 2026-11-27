@@ -21,7 +21,7 @@ and `c = 0` otherwise. This is the lexicographic key `(h_max, b, C)` coded in `�
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 open Classical in
 /-- The frame key `3·h_max + c`; equal keys give the fields of a `FrameWindow`. -/
@@ -87,9 +87,9 @@ theorem frameKey'_eq_floor_kind (ha : 1 ≤ a.hmax) (hb : 1 ≤ b.hmax)
 
 end Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- `h_j < h_max` in every honest store. -/
 theorem hj_lt_hmax {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)

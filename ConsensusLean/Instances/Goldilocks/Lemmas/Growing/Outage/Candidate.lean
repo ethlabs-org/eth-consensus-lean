@@ -15,11 +15,11 @@ honest at `t`, `IsHonestSourceAt`), and the count is `2 f_t < n`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **A held block compatible with every honest source stays a candidate**: with
 `f < n/2` and the honest attestations of `y`'s tree sourced by `G`, a block `B` of the frame's tree
@@ -43,15 +43,15 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The attestations of `y`'s tree at cut `i` by validators honest at a time `t` are sourced by
 blocks satisfying `G`, held while honest at `t` (`IsHonestSourceAt`). -/
-def HonestRowsSourcedBy (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def HonestRowsSourcedBy (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) (t : Time) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H t →
     ∃ D, G D ∧ IsHonestSourceAt tr H D a.T t

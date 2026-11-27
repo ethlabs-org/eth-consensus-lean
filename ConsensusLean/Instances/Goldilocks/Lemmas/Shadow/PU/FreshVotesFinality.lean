@@ -10,12 +10,12 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp}
+  {ini : Fin sp.n → (goldilocksNode' sp).State}
 
 /-- A primed viable witness puts a separate finalized observation below every viable head. -/
 theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
@@ -28,7 +28,7 @@ theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
     (hf : (H (max (tr.time c) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode' sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {Y : AC.Blk sp.n (List (FG.Att sp.n))}
     (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -84,7 +84,7 @@ theorem fcRoot_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
     (hf : (H (max (tr.time c) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    {ellz ell : ACLabel (goldilocksNode' sp ro)} (hcz : tr.projAC.CallAt z c ellz)
+    {ellz ell : ACLabel (goldilocksNode' sp)} (hcz : tr.projAC.CallAt z c ellz)
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     {Y : AC.Blk sp.n (List (FG.Att sp.n))}
     (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)

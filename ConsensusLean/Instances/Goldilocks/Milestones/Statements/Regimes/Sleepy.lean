@@ -37,12 +37,12 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Defs
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- Cut `j` is the first cut after the time `t` (the state before it is the state after all
 events at `t`). -/
@@ -69,7 +69,7 @@ def ReadyAt (c : Time) (y : Fin sp.n) (t : Time) : Prop :=
 /-- The confirmed output of `y` in its state before cut `j`, read at the time `t`. -/
 noncomputable def readAfter (y : Fin sp.n) (j : Nat) (t : Time) :
     AC.Blk sp.n (List (FG.Att sp.n)) :=
-  (goldilocksNode sp ro).confirmed (tr.state y j).ac (Node.frame (tr.state y j)) t
+  (goldilocksNode sp).confirmed (tr.state y j).ac (Node.frame (tr.state y j)) t
 
 /-- `P` is an honest proposal released at `τ` by a proposer ready at `τ` (catch-up `c`). -/
 def ReadyProposalAt (c τ : Time) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=

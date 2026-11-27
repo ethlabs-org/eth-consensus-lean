@@ -57,7 +57,7 @@ theorem twinBlk_obj :
 
 theorem canon_twin (io : VoteAuth (Fintype.card (Fin 5)) stock) :
     canonEvent (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
-      (S.ro _) io
+      io
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
   have h := decodeBlock_blockObj (binding := stock) [(hdr, 0)] (twinBlk S)
     (by simp [twinBlk, blockOf_eq, hdr, parentRoot_eq])
@@ -70,7 +70,7 @@ theorem canon_twin (io : VoteAuth (Fintype.card (Fin 5)) stock) :
       fun _ => by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes]⟩
   rw [twinBlk_obj] at h
   let sp := ({ S with vote := stock } : Setup).params (pubOf env) one_le_card
-  exact (canonEvent_eq (sp := sp) (ro := S.ro _) (binding := stock)
+  exact (canonEvent_eq (sp := sp) (binding := stock)
     io (Model.digests (rhoc S).hash (twin S)) (twin S)).trans (by rw [twin_digests, h])
 
 theorem twinBlk_parent :
@@ -192,7 +192,7 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
         (({ S with vote := AsChainShape.stock } : Setup).params
           (pubOf env) one_le_card).toParams.genesisBlock
         (goldilocksNode (({ S with vote := AsChainShape.stock } : Setup).params
-          (pubOf env) one_le_card) (S.ro _)).genesisPayload :=
+          (pubOf env) one_le_card)).genesisPayload :=
       htc.1 hF hgm ((hX _ hF).trans rfl)
     obtain ⟨st', hst'⟩ := onBlock_some (st := st) twinBlk_parent
       (by
@@ -289,7 +289,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
       X = twin S) (hk : (tr S).time k ≤ 13) :
     ∃ j e, AC.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   have hac :=
-    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+    (Compose.goldilocks_ac_projection _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨hXs, -, hX1, hXp⟩ := of_twin hX
   obtain ⟨hsl, hon, -, -⟩ := rhoc_run.cutLaw y hy k _ hacc
   obtain ⟨ℓ, hcℓ, hcall, ht⟩ := Compose.accept_next rhoc_run.toLocalRun hy hacc
@@ -372,15 +372,15 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   exact he
 
 /-- A delivery of one object is its event's group, or nothing (no event, or no cut). -/
-theorem deliverSeq_single {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
+theorem deliverSeq_single {sp : AC.ACParams}
+    {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {io : VoteAuth sp.n stock}
     {hs : List (Header Info × Nat)}
     {y : Fin sp.n} {t : Time} {o : Wire sp.n} {j j' : Nat}
     (h : DeliverSeq proposer tr dg io hs y t [o] j j') :
-    (∃ e, canonEvent sp ro io hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
-      canonEvent sp ro io hs o = none ∨
-      ∃ e, canonEvent sp ro io hs o = some e ∧
+    (∃ e, canonEvent sp io hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
+      canonEvent sp io hs o = none ∨
+      ∃ e, canonEvent sp io hs o = some e ∧
         (Node.exec proposer dg y (tr.state y j) t e).2 = [] := by
   cases h with
   | event e hce hg _ => exact Or.inl ⟨e, hce, hg⟩
@@ -423,7 +423,7 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
         (pubOf env) one_le_card).n))}
     (hv : AC.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) : (tr S).time j ≤ 13 := by
   have hac :=
-    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+    (Compose.goldilocks_ac_projection _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
   have hsl : e.msg.slot = (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card).slot ((tr S).time j) :=
@@ -435,7 +435,7 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
     dsimp only [Time] at *
     omega
   · obtain ⟨j', e', hv', hs', hj'⟩ := twin_vote hy
-    obtain ⟨rfl, -⟩ := AC.one_vote_per_slot _ _ _ _ _ _ hac y hy j j' e e' ⟨ℓ, hc, he⟩ hv'
+    obtain ⟨rfl, -⟩ := AC.one_vote_per_slot _ _ _ _ _ hac y hy j j' e e' ⟨ℓ, hc, he⟩ hv'
       (h1.trans hs'.symm)
     exact hj'
 
@@ -452,7 +452,7 @@ theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
         blockObj (({ S with vote := AsChainShape.stock } : Setup).params
           (pubOf env) one_le_card) Hd = twin S) := by
   have hac :=
-    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+    (Compose.goldilocks_ac_projection _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   have hj := vote_time hy hv hs
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac

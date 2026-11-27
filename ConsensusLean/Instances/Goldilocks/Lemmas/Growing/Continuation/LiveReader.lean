@@ -26,14 +26,14 @@ labels below `s` (the classification of each row, `hlab`):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
 
 /-- **A member of a label below `s` written before `t_s + 2Δ` is below a member of the old
@@ -66,7 +66,7 @@ theorem seeded_reader_old
     {s : Nat}
     (hs : σ + 1 ≤ s) {y : Fin sp.n} {i : Nat} {t : Time} (hdt : sp.ts (r + sp.k : Nat) ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hts : t ≤ sp.ts s + sp.Δ) (htb : t ≤ b) (hy : y ∈ H t)
-    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
     (hlab : ∀ m < i, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H t →
       ∀ k < m, tr.SignAt a.val k a → ∀ c < k, ∀ C l O OV,

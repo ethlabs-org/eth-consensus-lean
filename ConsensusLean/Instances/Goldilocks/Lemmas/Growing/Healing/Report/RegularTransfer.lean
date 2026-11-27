@@ -16,24 +16,24 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload Vote gbar)
+open AC (ACParams Payload Vote gbar)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 namespace Core
 
 variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
     Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- A fast lock's votes and heads have honest historical writer events, from any
 vote-permitted start. -/
 theorem fastLock_writer_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c s : Nat}
     (hx : x ∈ H (tr.time c)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -60,14 +60,14 @@ theorem fastLock_writer_at
 /-- Fast-lock carry does not require the writer to remain honest at the next cast, from any
 vote-permitted start. -/
 theorem fastLock_carry_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
@@ -91,7 +91,7 @@ theorem first_transfer_service_at
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hviab : AC.ViableAtVote ell e (s + 1) B)
@@ -122,12 +122,12 @@ theorem first_transfer_service_at
 /-- Finite service compares the receiver's merged votes with an independently honest writer,
 from any vote-permitted start. -/
 theorem writer_merged_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode sp ro)}
+    {ellx ell : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
@@ -141,7 +141,7 @@ end Core
 
 /-- A fast lock's counted votes have honest historical writer events. -/
 theorem fastLock_writer_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c s : Nat}
     (hx : x ∈ H (tr.time c)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -156,14 +156,14 @@ theorem fastLock_writer_at
 
 /-- Fast-lock carry does not require the writer to remain honest at the next cast. -/
 theorem fastLock_carry_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
@@ -181,7 +181,7 @@ theorem first_transfer_service_at
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hviab : AC.ViableAtVote ell e (s + 1) B)
@@ -193,12 +193,12 @@ theorem first_transfer_service_at
 
 /-- Finite service compares the receiver's merged votes with an independently honest writer. -/
 theorem writer_merged_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode sp ro)}
+    {ellx ell : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →

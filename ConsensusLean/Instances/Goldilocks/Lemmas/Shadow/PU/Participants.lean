@@ -32,18 +32,18 @@ helpers of `Compare` (`acOnTick_votes`, `update_restarts`, ...),
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace' sp} {proposer : Nat → Fin sp.n}
 
 /-! ### AC helpers (copies of the private ones of `Compare`) -/
 
 section ACHelpers
 
-variable {FGP : Type} {ro' : ReplayOrder sp FGP} {H' : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {gtr : AC.GTrace sp FGP ro'}
+variable {FGP : Type} {H' : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {gtr : AC.GTrace sp FGP}
 
 private theorem acOnTick_votes' (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
     {t : Time} (hj : AC.joined sp A t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
@@ -75,8 +75,8 @@ private theorem ts_nonneg' (s : Nat) : (0 : Time) ≤ sp.ts s := by
   simp only [ACParams.ts]
   exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
 
-private theorem update_restarts' {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro') H' U gtr ini)
-    {Y : Fin sp.n} (hY : Y ∈ H') {c s : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro')}
+private theorem update_restarts' {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H' U gtr ini)
+    {Y : Fin sp.n} (hY : Y ∈ H') {c s : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hu : AC.UpdateAt gtr Y c s ℓ) :
     ∀ k ≤ c, gtr.RestartAt Y k → gtr.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
@@ -87,7 +87,7 @@ private theorem update_restarts' {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
       (congrArg Prod.fst he).symm
     unfold AC.joined at hj ⊢
     rw [this, show (AC.acOnTick sp Y (gtr.state Y c) ℓ.frame (gtr.time c)).1.restartTime =
-      (gtr.state Y c).restartTime from AC.step_restartTime (ro := ro') Y _ _ _ .tick nofun]
+      (gtr.state Y c).restartTime from AC.step_restartTime Y _ _ _ .tick nofun]
     exact hj
   have hsl : sp.slot (gtr.time c) = s + 1 :=
     AC.CompatibleSides.slot_of_lt (s := s + 1)
@@ -96,14 +96,14 @@ private theorem update_restarts' {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
         exact add_mul_delta_le' (by norm_num))
       (by rw [ht, AC.ts_add, add_assoc, ← add_mul]; exact add_mul_delta_lt' (by norm_num))
   intro k hk hrk
-  have := (AC.joined_awakeU sp FGP ro' H' U gtr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
+  have := (AC.joined_awakeU sp FGP H' U gtr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
 
 end ACHelpers
 
 /-! ### Handler facts over `exec'` -/
 
-private theorem tick_cuts_if (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro)) (t : Time)
+private theorem tick_cuts_if (y : Fin sp.n) (st : NodeState (goldilocksNode' sp)) (t : Time)
     (x : Nat) (fgDue : Bool) :
     (Node.exec' proposer dg y st t (.tick x fgDue)).2 =
       (Node.tickStep' proposer dg y st t x .acTick).2 ++
@@ -115,8 +115,8 @@ private theorem tick_cuts_if (y : Fin sp.n) (st : NodeState (goldilocksNode' sp 
   cases fgDue <;> simp [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps]
 
 /-- An AC restart call is a restart event (a copy of `exec_restart`). -/
-private theorem exec_restart' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro)) (t : Time)
-    (e : Node.Event (goldilocksNode' sp ro)) {ℓ : ACLabel (goldilocksNode' sp ro)}
+private theorem exec_restart' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp)) (t : Time)
+    (e : Node.Event (goldilocksNode' sp)) {ℓ : ACLabel (goldilocksNode' sp)}
     (h : Cut.ac ℓ ∈ (Node.exec' proposer dg y st t e).2) (hm : ℓ.call = .restart) :
     e = .restart := by
   cases e with
@@ -200,13 +200,13 @@ private theorem restartCall_group' {ini} (hrun : GoldilocksRun' proposer dg H tr
   · simp [Node.exec'_eq, Node.restart'_eq, Node.acCall'_eq] at hm
 
 /-- The latest restart time before cut `i`. -/
-private noncomputable def lastBefore' (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) :
+private noncomputable def lastBefore' (tr : GoldilocksTrace' sp) (y : Fin sp.n) :
     Nat → WithBot Time
   | 0 => ⊥
   | i + 1 => tr.lastWake y i
 
 open Classical in
-private theorem lastBefore'_succ (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) (i : Nat) :
+private theorem lastBefore'_succ (tr : GoldilocksTrace' sp) (y : Fin sp.n) (i : Nat) :
     lastBefore' tr y (i + 1) =
       if tr.RestartAt y i then (tr.time i : WithBot Time) else lastBefore' tr y i := by
   cases i <;> rfl
@@ -246,7 +246,7 @@ private theorem restartTime_eq' {ini} (h : GoldilocksRun' proposer dg H tr ini)
       cases c with
       | ac ℓ =>
         have hlaw := (Node.cutStep'_ac _ _ _ _ _).1 hlaw
-        have hpost : (tr.post i).ac = ((goldilocksNode' sp ro).step y (tr.state y i).ac ℓ.frame
+        have hpost : (tr.post i).ac = ((goldilocksNode' sp).step y (tr.state y i).ac ℓ.frame
             (tr.time i) ℓ.call).1 := (congrArg Prod.fst hlaw.2.1).symm
         rw [hpost]
         split_ifs with hR
@@ -254,7 +254,7 @@ private theorem restartTime_eq' {ini} (h : GoldilocksRun' proposer dg H tr ini)
           cases Option.some.inj (hc.2.symm.trans hℓ'.2)
           rw [hr]
           have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' h.toLocalRun' hy i
-          exact (AC.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
+          exact (AC.restart_state sp _ y _ ℓ.frame (tr.time i) hΦ
             (h.time_nonneg i)).2.2.2.2.2.1
         · exact AC.step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
       | fg ℓ =>
@@ -329,12 +329,12 @@ theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
   have hget : (Node.exec' proposer dg y (tr.state y j) (sp.ts s + sp.Δ)
       (.tick x fgDue)).2[0]'hlen =
-      .ac ⟨.tick, Node.frame' (tr.state y j), ((goldilocksNode' sp ro).step y (tr.state y j).ac
+      .ac ⟨.tick, Node.frame' (tr.state y j), ((goldilocksNode' sp).step y (tr.state y j).ac
         (Node.frame' (tr.state y j)) (sp.ts s + sp.Δ) .tick).2⟩ := by
     simp only [tick_cuts_if, Node.tickStep'_eq, Node.acCall'_eq]; rfl
   rw [hget] at hl0
   simp only [Nat.add_zero] at hn0 ht0 hl0
-  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode' sp ro),
+  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode' sp),
       tr.label j = some (.ac ℓ) ∧ ℓ.call = .tick := ⟨_, hl0, rfl⟩
   have hc : tr.projAC.CallAt y j ℓ := ⟨hn0, by simp [RunTrace.projAC, hl, RunTrace.acLabel]⟩
   have htj : tr.projAC.time j = sp.ts s + sp.Δ := ht0
@@ -371,7 +371,7 @@ private theorem awake_participant_window_before' {ini}
     (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode' sp)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
     (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
@@ -415,7 +415,7 @@ theorem awake_participant_early' {ini} (hrun : GoldilocksRun' proposer dg H tr i
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
     (hsync : AC.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode' sp)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     {y : Fin sp.n} (hy : y ∈ H) (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     y ∈ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
@@ -458,7 +458,7 @@ theorem honest_participants_window_before' {ini} (hrun : GoldilocksRun' proposer
     {a b : Time} {s : Nat}
     (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode' sp)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b)
     (hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ))
     (hmv : ∀ y ∈ H, y ∈ K.committee s → ∀ i, (tr.state y i).ac.mayVote s = true)

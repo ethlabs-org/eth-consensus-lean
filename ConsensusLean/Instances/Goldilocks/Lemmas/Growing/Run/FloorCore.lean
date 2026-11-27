@@ -14,27 +14,27 @@ the store's tree above `F`, `StaticRunCore.frameOf_tree`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The floor at node `y`, cut `i`, over the node frame `frameOf` (`FloorAt`): a lock of slot `j`
 and expiry at least `m` on a block `⪰ B₀` of the frame's tree. -/
-abbrev FloorAtWith (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
-    (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
+abbrev FloorAtWith (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat)
     (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
   ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
     ∃ B ∈ (frameOf (tr.state y i)).tree, B.root = l.block ∧ (frameOf (tr.state y i)).Anc B₀ B
 
 /-- The fast floor at node `y`, cut `i`, over the node frame `frameOf` (`FastFloorAt`). -/
 abbrev FastFloorAtWith
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
-    (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat)
     (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
   ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
     ∃ B ∈ (frameOf (tr.state y i)).tree, B.root = l.block ∧ (frameOf (tr.state y i)).Anc B₀ B
@@ -48,7 +48,7 @@ theorem floor_frame_transport_core (hrun : StaticRunCore u frameOf proposer dg H
     (h : (frameOf (tr.state y i)).Anc B₀ B) :
     B ∈ (frameOf (tr.state y i')).tree ∧ (frameOf (tr.state y i')).Anc B₀ B := by
   have hsub := hrun.tree_mono y hy hii'
-  have hAnc : ∀ st : NodeState (goldilocksNode sp ro), ∀ A C,
+  have hAnc : ∀ st : NodeState (goldilocksNode sp), ∀ A C,
       (frameOf st).Anc A C ↔ Anc {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} A C := fun st A C => by
     have h : (frameOf st).tree = {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} :=
       Set.ext (hrun.frameOf_tree st)
@@ -68,7 +68,7 @@ theorem floor_run_view_core (hrun : StaticRunCore u frameOf proposer dg H tr ini
     (hva0 : (frameOf (tr.state y i)).viableAncestor B₀ = B₀)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
       AC.unlockTarget sp (frameOf (tr.state y i))
-        (AC.unlockView (ro := ro) (tr.state y i).ac (frameOf (tr.state y i)) (tr.time i)
+        (AC.unlockView (tr.state y i).ac (frameOf (tr.state y i)) (tr.time i)
           ℓ.call) ((sp.slot (tr.time i) : Int) - 1) B₀ = B₀) :
     FloorAtWith frameOf tr y (i + 1) B₀ j m := by
   have hold : ∃ l ∈ (tr.state y (i + 1)).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
@@ -82,7 +82,7 @@ theorem floor_run_view_core (hrun : StaticRunCore u frameOf proposer dg H tr ini
       | ac ℓ =>
         obtain ⟨hfr, hstep, -, -⟩ := (cutStepWith_ac _).1 hlaw
         rw [hfr] at hstep
-        have := AC.exists_step_locks_floor (ro := ro) y ℓ.call
+        have := AC.exists_step_locks_floor y ℓ.call
           (hrun.frameOK y hy i) (hrun.time_nonneg i) hB0 hva0 hk (hu ℓ hc) hfl
         rw [hstep] at this
         exact this
@@ -113,7 +113,7 @@ theorem fastFloor_run_view_core (hrun : StaticRunCore u frameOf proposer dg H tr
     (hva0 : (frameOf (tr.state y i)).viableAncestor B₀ = B₀)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
       AC.unlockTarget sp (frameOf (tr.state y i))
-        (AC.unlockView (ro := ro) (tr.state y i).ac (frameOf (tr.state y i)) (tr.time i)
+        (AC.unlockView (tr.state y i).ac (frameOf (tr.state y i)) (tr.time i)
           ℓ.call) ((sp.slot (tr.time i) : Int) - 1) B₀ = B₀) :
     FastFloorAtWith frameOf tr y (i + 1) B₀ j m := by
   have hold : ∃ l ∈ (tr.state y (i + 1)).ac.locks, l.slot = j ∧ l.fast = true ∧
@@ -127,7 +127,7 @@ theorem fastFloor_run_view_core (hrun : StaticRunCore u frameOf proposer dg H tr
       | ac ℓ =>
         obtain ⟨hfr, hstep, -, -⟩ := (cutStepWith_ac _).1 hlaw
         rw [hfr] at hstep
-        have := AC.exists_step_locks_fastFloor (ro := ro) y ℓ.call
+        have := AC.exists_step_locks_fastFloor y ℓ.call
           (hrun.frameOK y hy i) (hrun.time_nonneg i) hB0 hva0 hk (hu ℓ hc) hfl
         rw [hstep] at this
         exact this

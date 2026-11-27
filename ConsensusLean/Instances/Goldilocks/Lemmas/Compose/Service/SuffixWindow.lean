@@ -49,15 +49,15 @@ The growing-fault forms apply them on a prefix. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 section Run
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp} {ΔF : Time}
 
 /-- An accepted block is an honest block. -/
 private theorem accepted_honest {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -79,7 +79,7 @@ theorem relay_mem_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini
     (hcat : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a₀ κ b)
     {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocks H) {jz : Nat}
-    {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z jz ℓz)
+    {ℓz : ACLabel (goldilocksNode sp)} (hcz : tr.projAC.CallAt z jz ℓz)
     (hb : tr.time jz ≤ b) (hκz : a₀ + κ ≤ tr.time jz) {a : Time}
     (hrs : ∀ c ≤ jz, tr.projAC.RestartAt z c → tr.projAC.time c ≤ a)
     (hacc : B.root = sp.genesisRoot ∨ ∃ kx, tr.projAC.AcceptAt x kx B ∧
@@ -103,7 +103,7 @@ theorem relay_mem_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini
     exact AC.mem_tree_of_acceptAtU sp hr.toU hz hAz hk' hcz hF
 /-- **The service of the suffix lemmas** for slot `s`: the AC service window from `a` through `b`,
 with the catch-up of older acceptances before `a + κ ≤ t_{s−1}` at calls through `b`. -/
-structure SuffixService (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp ro)
+structure SuffixService (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp)
     (a κ b : Time) (s : Nat) : Prop where
   window : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC
   caught : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a κ b
@@ -123,7 +123,7 @@ below an origin before the signing (`attestation_source`); a regular one of labe
 private theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
     (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
@@ -164,7 +164,7 @@ below old origins (`vote_rows_old`), so below the block; so there is no contest,
 `h_max − 1`, under the slot committee premises of `vote_rows_old`. -/
 theorem vote_floor_le_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y j).fg.tree)
     (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O B)
@@ -196,7 +196,7 @@ private theorem voter_holds_proposal_before {ini} (hrun : GoldilocksRun proposer
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hb : tr.time j ≤ b)
     (hFP : Anc (tr.HonestBlocks H) ℓy.frame.F P) : P ∈ ℓy.frame.tree := by
@@ -239,13 +239,13 @@ private theorem head_mem {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att s
   exact AC.getHead_mem hΦ (fun _ h => h.1) _ _ _ _
 /-- In a tick, the `ac_proposal` cut is at position `1` (C0.4). -/
 private theorem tick_proposal_pos {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
-    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
+    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp)}
     (h : (Node.exec proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ))
     (hm : ℓ.call = .proposal) :
     c = 1 := by
   obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, hupdate⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x fgDue
+    @tick_order sp.toParams (goldilocksNode sp) proposer dg y st t x fgDue
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
     cases fgDue
     · simp only [Bool.false_eq_true, ↓reduceIte] at hupdate
@@ -283,12 +283,12 @@ private theorem tick_proposal_pos {dg : Digest (List (FG.Att sp.n)) (Payload sp.
     cases hm
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp} {ΔF : Time}
 
 /-- Two `ac_proposal` cuts of an honest node at one time are one cut (one tick per time). -/
 private theorem proposal_cut_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hp : p ∈ H)
-    {i i' : Nat} {ℓ ℓ' : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓ)
+    {i i' : Nat} {ℓ ℓ' : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt p i ℓ)
     (hc' : tr.projAC.CallAt p i' ℓ') (hm : ℓ.call = .proposal) (hm' : ℓ'.call = .proposal)
     (ht : tr.time i = tr.time i') : i = i' := by
   have hl := hrun.toLocalRun
@@ -321,7 +321,7 @@ proposer at `t_s`. -/
 private theorem proposal_payload_eq {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hp : p ∈ H)
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    (hPs : P.slot = s) {i : Nat} {ℓp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -339,12 +339,12 @@ end Proposal
 
 /-- The duty head of the proposal is below slot `s` (`P`, of slot `s`, is its child). -/
 theorem head_slot_lt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hPQ : P.parent = some d.head.root) : d.head.slot < s := by
@@ -356,11 +356,11 @@ theorem head_slot_lt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 section Leaves
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+  {tr : GoldilocksTrace sp} {ΔF : Time} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
   {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
   (hPs : P.slot = s) (hpj : AC.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
-  {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+  {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
   {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
   (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
   (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
@@ -368,7 +368,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   (hDQ : ℓp.frame.Anc D d.head)
   (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-  {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+  {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
   (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
 
 include hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hviab hy hcy hes
@@ -799,13 +799,13 @@ end Leaves
 /-- **The suffix** under the suffix service from `a₀` with its catch-up (`SuffixService`), given
 the voter's head height floor at most the height of every block of its tree above `Q`. -/
 theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a₀ κ b : Time} {s : Nat} (hs : SuffixService H tr a₀ κ b s)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
@@ -813,7 +813,7 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hDQ : ℓp.frame.Anc D d.head)
     (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
@@ -860,17 +860,17 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most
 the height of every block of its tree above `Q`. -/
 theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a₀ κ b : Time} {s : Nat} (hs : SuffixService H tr a₀ κ b s)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
     (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)

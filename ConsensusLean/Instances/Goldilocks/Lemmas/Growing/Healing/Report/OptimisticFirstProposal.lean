@@ -17,8 +17,8 @@ which is where the fault count is charged. -/
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- **The first proposal after an optimistic write**: with every counted vote of the write held at
@@ -33,7 +33,7 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → ACState sp.n}
     {CV : Set (Vote sp.n)} (hopt : OptimisticLockAt tr X i₀ σ D CV) {B : Blk sp.n FGP}
     (hBD : Anc U B D) {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
     (hf : 2 * (K.committee σ ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))

@@ -20,18 +20,18 @@ on that prefix without assuming survival across a compromise.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalSources
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 theorem origin_label_lt_at_proposal_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {v : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}

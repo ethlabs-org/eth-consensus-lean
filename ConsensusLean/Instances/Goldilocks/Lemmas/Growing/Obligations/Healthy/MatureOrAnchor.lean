@@ -29,8 +29,8 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : AC.ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -105,7 +105,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
     apply hfinal
     have htree := Store.accepted_tree _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hnt hy)
     have heq : R = sp.toParams.genesisBlock
-        (goldilocksNode sp ro).genesisPayload :=
+        (goldilocksNode sp).genesisPayload :=
       htree.2.1.1 hRm.1 htree.2.2.1 hgen
     rw [heq]
     exact (htree.2.2.2 _ hPhi.rooted.1.1).mono hsubfg

@@ -25,17 +25,17 @@ restated over the shadow run and the shadow reset premises `ResetPremisesUpTo'`.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The stored block of a high origin is held at its actual honest write
 (`Outcome.high_origin_mem_at`). -/
-theorem Outcome.high_origin_mem_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem Outcome.high_origin_mem_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
@@ -43,7 +43,7 @@ theorem Outcome.high_origin_mem_at' {ini : Fin sp.n → (goldilocksNode' sp ro).
   hrun.toCore.highOrigin_mem_at hnc ho
 
 /-- A held descendant of a high origin is high (`Outcome.high_of_anc_at`). -/
-theorem Outcome.high_of_anc_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem Outcome.high_of_anc_at' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i j k : Nat} {t : Time}
     {B W : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
@@ -54,7 +54,7 @@ theorem Outcome.high_of_anc_at' {ini : Fin sp.n → (goldilocksNode' sp ro).Stat
 
 /-- **A covered block is compatible with every high origin written by `b`**
 (`CoveredUpTo.compatible_highOrigin`; S1 of the cover, the origin being a healed member). -/
-theorem CoveredUpTo.compatible_highOrigin' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem CoveredUpTo.compatible_highOrigin' {ini : Fin sp.n → (goldilocksNode' sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}

@@ -14,20 +14,20 @@ time-indexed honest set `H` (`Spec/Run/Growing/Model`). At `H := fun _ => H₀` 
 
 namespace Consensus.Goldilocks.Growing
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **A run of the Goldilocks protocol under growing faults**: a run of the node for the
 time-indexed honest set `H` and the genesis root premise. -/
 structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro)
-    (ini : Fin sp.n → (goldilocksNode sp ro).State := fun _ => (goldilocksNode sp ro).initial) :
+    (tr : GoldilocksTrace sp)
+    (ini : Fin sp.n → (goldilocksNode sp).State := fun _ => (goldilocksNode sp).initial) :
     Prop
     extends Growing.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr ini where
   /-- The genesis block's root is the digest of its content. -/
-  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
+  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg
   /-- The AC starts are starts up to the vote permission. -/
   vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
@@ -35,10 +35,10 @@ end Consensus.Goldilocks.Growing
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- **The run half of the committee premises** for the slot dictionary `K`: committees of
 `committeeSize` members, P (`CommitteePAt`), and the gate: a node honest at `t ≥ 0` may vote in
