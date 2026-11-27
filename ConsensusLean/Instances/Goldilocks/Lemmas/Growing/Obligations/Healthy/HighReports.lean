@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
@@ -89,6 +91,20 @@ theorem highOrigin_mem_at {ini}
   obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc (hrun.antitone (le_max_right _ _) hx) hc
   exact hsub (AC.viableAncestor_anc hok hD).1
 
+/-- `highOrigin_mem_at` over the run-facts bundle. -/
+theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.highOrigin_mem_at
+    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))} {ini}
+    (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    B ∈ (tr.state x i).fg.tree := by
+  obtain ⟨hx, -, ⟨CV, ℓ, D, hc, hfl, rfl⟩, -⟩ := ho
+  obtain ⟨ℓ', hc', hD⟩ := Healing.fastLock_mem hfl
+  obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
+  obtain ⟨hok, hsub⟩ := rc.frame_tree_subset_at hnc (rc.antitone (le_max_right _ _) hx) hc
+  exact hsub (AC.viableAncestor_anc hok hD).1
+
 /-- A report's block is held in the reporter's tree, for a reporter honest at the report (the
 static `toFG_mem_tree` on the prefix through the report). -/
 theorem toFG_mem_tree_at
@@ -121,6 +137,27 @@ theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hz hBW hW)
   rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg i)
     (fun _ hq => hp.run.time_mono hq.le) (hp.run.antitone (le_max_right _ _) ho.1) ht hle hz hBx
+    hBz] at h₁
+  exact ho.2.2.2.trans h₁
+
+/-- `high_of_anc_at` over the run-facts bundle. -/
+theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_of_anc_at
+    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold) {x : Fin sp.n}
+    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
+    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
+  have rc := hp.core
+  have hBx := rc.highOrigin_mem_at hp.noColl ho
+  have hBz := rc.mem_of_honest_anc_at hp.noColl ht hz hle hBW hW
+  have h₁ := Store.h_le_of_store_anc_with rc.finalitySpec (rc.reachable_at ht hz hle)
+    (rc.held_anc_at hp.noColl ht hz hle hBW hW)
+  rw [← rc.σ_eq_honest_at hp.noColl (rc.time_nonneg i)
+    (fun _ hq => rc.time_mono hq.le) (rc.antitone (le_max_right _ _) ho.1) ht hle hz hBx
     hBz] at h₁
   exact ho.2.2.2.trans h₁
 
