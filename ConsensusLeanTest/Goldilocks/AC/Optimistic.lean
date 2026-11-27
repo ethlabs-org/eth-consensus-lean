@@ -1,7 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -319,12 +318,13 @@ def lock1 : Lock := ⟨1, 1, true, 3⟩
 binds, so the live lock of slot `1` does not extend it. -/
 def lock2 : Lock := ⟨1, 2, true, 4⟩
 
-/-- At `k = 2` a legal write of a fast lock of slot `s`, with capped stored expiries, expires after
-`s + 2`: the cap `s + k` and the floor `s + 2` coincide. -/
-theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat)
-    (hcap : ∀ l ∈ L, l.expiry ≤ l.slot + sp1.k) (hs : s ≤ sp1.slot t) :
-    fastExpiry sp1 L Φ₁ t s = s + 2 :=
-  le_antisymm (fastExpiry_le sp1 L Φ₁ t s) (le_fastExpiry sp1 L Φ₁ t s hcap hs)
+/-- At `k = 2` every fast lock of slot `s` expires after `s + 2`: the cap `s + k` and the floor
+`s + 2` coincide. -/
+theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat) : fastExpiry sp1 L Φ₁ t s = s + 2 := by
+  unfold fastExpiry
+  change min (s + 2) _ = s + 2
+  dsimp only
+  split_ifs <;> omega
 
 /-- Cut 0: `ac_on_block(B1)` at `t_1 = 4`. -/
 noncomputable def r0 : ACState sp1.n × List (Em sp1 Unit) :=
@@ -446,9 +446,7 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
   rw [admitVote_fresh R0 4 vote1 slot_4 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => hl.elim) (by rw [slot_4]; decide), updateLatestConfirmed_new rfl,
     slot_4]
-  · rfl
-  · exact fun l hl => hl.elim
-  · exact le_rfl
+  rfl
 
 theorem acOnTick_vote {A : ACState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
     (h1 : t = sp1.ts (sp1.slot t) + sp1.Δ) : acOnTick sp1 v0 A Φ₁ t = tryVote sp1 v0 A Φ₁ t := by
@@ -533,11 +531,7 @@ theorem r1_eq : ∃ d, r1 = (S2, [⟨vote2, R1, some d⟩]) := by
   rw [admitVote_fresh R1 9 vote2 slot_9 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => by rw [mem_S1_locks hl, slot_9]; exact ⟨rfl, by decide⟩)
       (by rw [slot_9]; decide), updateLatestConfirmed_keep rfl, slot_9]
-  · rfl
-  · intro l hl
-    rw [mem_S1_locks hl]
-    decide
-  · exact le_rfl
+  rfl
 
 theorem notAncR_B1_0 : ¬ AncR Φ₁ B1 0 := by
   rintro ⟨R, hR, hr, hanc⟩

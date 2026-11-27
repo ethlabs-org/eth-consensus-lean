@@ -639,11 +639,8 @@ later step changes the slot or the expiry of a lock.
 A lock that is not fast gets $s+k$, the slow window.  A fast lock gets
 $\Call{fast\_expiry}{}$: with $E$ the latest expiry of the node's live
 fast locks of earlier slots at the write, the node's \emph{fast
-deadline}, it is $E+c$, capped at $s+k$, and $s+2$ when no
-live fast lock of an earlier slot remains.  It is at least $s+2$ when the
-stored expiries are bounded (each at most its slot plus $k$) and the write is of a
-slot not after $\slot(t)$: every lock of $E$ is live, so $E\geq\slot(t)\geq s$, and
-$c\geq 2$.  $E$ counts every such lock whatever its
+deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when no
+live fast lock of an earlier slot remains.  $E$ counts every such lock whatever its
 block, also one that unlocking moved to $\Fr.F$ and an optimistic lock on
 $\genesis$ or on a common prefix.  The fast locks of one slot do not count
 for each other.
@@ -734,8 +731,8 @@ not live.
   \State $E\gets\{e:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\mathit{locks},\Fr,t},\ j<s\}$
   \Comment{the live fast locks of earlier slots}
   \If{$E=\emptyset$} \State \Return $s+2$ \EndIf
-  \State \Return $\min(s+k,\ \max E+c)$
-  \Comment{at most $s+k$; at least $s+2$ when the stored expiries are bounded and $s\leq\slot(t)$}
+  \State \Return $\min(s+k,\ \max(s+2,\ \max E+c))$
+  \Comment{at least $s+2$, at most $s+k$}
 \EndFunction
 \vspace{1pt}
 \Function{add\_locks}{$\mathit{locks},\Fr,t,s,N$}

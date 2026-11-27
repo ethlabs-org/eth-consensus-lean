@@ -23,7 +23,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Deepest
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.ExpiryEquiv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.HighestEquiv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv

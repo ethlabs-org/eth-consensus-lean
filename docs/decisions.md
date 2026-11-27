@@ -518,12 +518,10 @@ detail in `TRUST.md`.
 
 - **Graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock is live at `t` while
   `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps the locks. A slow lock
-  of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, E + c)`, with `E` the
+  of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, max(s + 2, E + c))`, with `E` the
   latest expiry of the node's live fast locks of earlier slots; it gets `s + 2` when no live fast lock of an
-  earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). There is no inner
-  `max(s + 2, …)`: on a lawful run every lock of `E` is live and `c ≥ 2`, so `E + c ≥ s + 2` already, given the `LocksWF`
-  cap and a legal write slot (`s ≤ slot t`); raw inputs with uncapped expiries or `s > slot t` can give less.
-  `c ≥ 2` is a parameter (`ACParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
+  earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). `c ≥ 2` is a
+  parameter (`ACParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
   is recent" comes from the run invariant `l.slot + 2 ≤ l.expiry ≤ l.slot + k` (`LocksWF`). The rule's four
   choices:
   - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic

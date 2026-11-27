@@ -657,7 +657,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
             hcond m' h₁ (h₂.trans (Nat.lt_succ_self m))⟩⟩
     obtain ⟨ℓ, hc⟩ := hcall
     rw [tr.projAC.state_succ_of_call hc]
-    obtain ⟨hk, hrl⟩ := call_reclock hr hrun.vstart hy hc
+    obtain ⟨hk, hrl⟩ := call_reclock hr hy hc
     have hΦ := (AC.frameIn_of_callAt hr hy hc).1
     have hframe : ℓ.frame = Node.frame (tr.state y m) := frame_of_projAC hrun hy hc
     have hcand : ∀ C ∈ ℓ.frame.tree, ∀ s, O C s →

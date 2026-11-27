@@ -58,7 +58,7 @@ private theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro)
   have hpost : tr.projAC.post q = (tr.state y (q + 1)).ac := by
     rw [← Compose.projAC_state hrun.toLocalRun hy (q + 1), tr.projAC.state_succ_of_call hcall]
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have hw := Compose.call_record_writer hr hrun.vstart hy hcall
+  have hw := Compose.call_record_writer hr hy hcall
     (by rw [hpost, Compose.projAC_state hrun.toLocalRun hy]; exact hne)
   rw [hpost] at hw
   exact ⟨ell, hcall, hw⟩

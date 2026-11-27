@@ -229,7 +229,7 @@ theorem fastExpiry_Φ {L : Set Lock} {t : Time} {s : Nat}
     (hL : ∀ l ∈ L, l.block ≤ 3 ∧ sp.slot t ≤ l.expiry) :
     fastExpiry sp L Φ t s =
       min (s + 6) (if {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry}.Nonempty
-        then sSup {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry} + 2
+        then max (s + 2) (sSup {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry} + 2)
         else s + 2) := by
   unfold fastExpiry
   rw [liveLocks_Φ hL]
@@ -258,15 +258,6 @@ theorem fastExpiry_capped : fastExpiry sp {⟨0, 3, true, 9⟩} Φ 16 4 = 10 := 
   rw [show {e | ∃ l ∈ ({⟨0, 3, true, 9⟩} : Set Lock), l.fast = true ∧ l.slot < 4 ∧
     e = l.expiry} = {9} by ext; simp, ite_eq_left (Set.singleton_nonempty 9), csSup_singleton]
   decide
-
-/-- **No floor outside a legal write.** A live fast lock of slot `3` with expiry `4`, read at slot
-`4`, gives a write of the illegal slot `5` the expiry `4 + c = 6`. The earlier formula had the floor
-`s + 2 = 7` there; on a legal write (`s ≤ slot t`) the two agree. -/
-theorem fastExpiry_illegal_slot : fastExpiry sp {⟨0, 3, true, 4⟩} Φ 16 5 = 6 := by
-  have hE : {e | ∃ l ∈ ({⟨0, 3, true, 4⟩} : Set Lock), l.fast = true ∧ l.slot < 5 ∧
-      e = l.expiry} = {4} := Set.ext fun e => by simp
-  rw [fastExpiry_Φ (by rintro l rfl; exact ⟨by decide, by rw [slot_16]⟩), hE]
-  simp
 
 /-- The fast deadline is the latest expiry: of two live fast locks of earlier slots with
 expiries `5` and `7`, the later one counts (`7 + c = 9`, not `5 + c = 7`). -/

@@ -356,14 +356,9 @@ theorem report_of_viable_unanimous_pool_at {cm : Time → Finset (Fin sp.n)} {β
       Anc (tr.HonestBlocksAt H) P R := by
   obtain ⟨hconf, hnv, hfast, hpost, _⟩ :=
     hp.ready_update_selection_of_pool_at hy hjb hgu hu hPv.1 hPg hpool hlocks
-  have hr := (Compose.goldilocks_ac_projection_from
-    (hp.run.upTo (hp.run.time_nonneg j)) (hp.noColl.upTo (tr.time j))).localRun
-  rw [RunTrace.upTo_projAC] at hr
-  have hwf := AC.locksWF_state hr hp.run.vstart hy j
-  rw [Trace.upTo_state tr.projAC y (fun _ hq => hp.run.time_mono hq.le)] at hwf
   have hPc := Obligations.UpTo.candidate_at_adjacent_call hu.1
     (frame_tree_subset_at hp.run hp.noColl hy hu.1).1 hframe htime hPv hconf hnv hfast hpost
-    hlive hage (fun l hl => hwf.cap hl)
+    hlive hage
   exact report_of_compatible_candidate_of_run_at hp.run hp.noColl (htime ▸ hy) hc hto hjoin hPg
     hPc hnext
 

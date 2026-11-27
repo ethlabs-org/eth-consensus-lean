@@ -26,8 +26,7 @@ lock's expiry is `fastExpiry ≥ u + 2`. -/
 theorem fastLock_mem_updateConfirmation_floor {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
     (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
-    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2)
-    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) (hu : u ≤ sp.slot t) :
+    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
     ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
   -- no live lock vetoes `P`, so `P` is also the deepest fast block of the unvetoed path
   obtain ⟨⟨hPp, hPf⟩, hmax⟩ := deepest_mem hfast
@@ -49,10 +48,9 @@ theorem fastLock_mem_updateConfirmation_floor {A : ACState sp.n} {Φ : Frm sp.n 
         rcases hmax' P ⟨⟨hPp, hnv⟩, hPf⟩ (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
   unfold updateConfirmation
   simp only [hconf]
-  rw [ite_eq_right hnv, updateLatestConfirmed_keeps_locks]
-  exact ⟨_, le_fastExpiry sp _ Φ t u hcap hu, ⟨P.root, u, true, _⟩,
+  exact ⟨_, le_fastExpiry sp _ Φ t u, ⟨P.root, u, true, _⟩,
     Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPt, rfl,
-    hlive.trans (le_fastExpiry sp _ Φ t u hcap hu), by rw [hva]⟩
+    hlive.trans (le_fastExpiry sp _ Φ t u), by rw [hva]⟩
 
 end Consensus.Goldilocks.AC
 
