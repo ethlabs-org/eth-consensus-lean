@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
@@ -134,39 +135,8 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg D
 -/
 
-/-- Temporary interface owned by the shadow service supplier in `Window`. -/
-private theorem healthy_base_before_at_pending {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} (hK : CommitteeHalfUpTo tr H K g b)
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hs : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
-      ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
-  sorry
-
-/-- Temporary static-prefix interface owned by the shadow Compose projection family. -/
-private theorem honest_participants_window_before_pending
-    {H : Set (Fin sp.n)} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {K : AC.CommitteeDict sp.n} {a b : Time} {s : Nat}
-    (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
-    (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ell)
-    (hib : tr.time i₀ ≤ b)
-    (hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ))
-    (hmv : ∀ y ∈ H, y ∈ K.committee s → ∀ i, (tr.state y i).ac.mayVote s = true)
-    (hP : ∀ v ∈ (tr.projAC.state X i₀).pool s, v.val ∈ K.committee s)
-    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) :
-    2 * (Hᶜ ∩ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard <
-      (AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
-  sorry
-
-/-- Actual result provenance supplies an independently honest supporter.
-This port still depends on the two named temporary supplier interfaces above. -/
+/-- Actual result provenance supplies an independently honest supporter through the
+shared window service and participant suppliers. -/
 theorem result_honest_supporter_before_at'
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
@@ -187,7 +157,7 @@ theorem result_honest_supporter_before_at'
   have hd0 := hrun.time_nonneg c
   have hm' := hrun.time_mono
   have hpre := hrun.upTo hd0
-  have hS := healthy_base_before_at_pending hK hrun hnc hsvc hawake hf hcatch hd0 hcb
+  have hS := hK.healthy_base_before_at' hrun hnc hsvc hawake hf hcatch hd0 hcb
   have hres' := (AC.upTo_resultAt hm').mpr ⟨le_rfl, hres⟩
   obtain ⟨ell, hu, hconf, hCV⟩ := hres'
   have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -217,7 +187,7 @@ theorem result_honest_supporter_before_at'
     rw [hcast]
     simp only [ACParams.ts] at hm
     linarith
-  have hparts := honest_participants_window_before_pending hpre (hnc.upTo _) (K := K)
+  have hparts := Compose.honest_participants_window_before' hpre (hnc.upTo _) (K := K)
     (by rw [RunTrace.upTo_projAC]; exact AC.serviceWindowBefore_of_sync hS.sync)
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
