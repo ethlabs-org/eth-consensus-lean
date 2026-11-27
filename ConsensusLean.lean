@@ -790,6 +790,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry

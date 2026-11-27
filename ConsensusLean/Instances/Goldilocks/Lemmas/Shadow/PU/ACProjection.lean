@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 
 public section
@@ -17,9 +18,8 @@ AC trace contract `ACLocalRun` and the stock `AC.ACRun`, at the frames `fg_to_ac
 (generic); `Compose.projAC_state'`, `accept_next'`, `honest_blocks_coherent'` (Shadow/PU/Node);
 `Compose.frameOK_state'` (Shadow/PU/Run, from the shadow cache invariant).
 
-**Pending suppliers.** The private `*_pending` theorems below are placeholders, each with the
-exact type of a supplier owned by another lane; each is replaced by an import when it lands:
-`acBlock_prev'`, `msgCall_group'` (Handlers), `own_block_payload'` (Run). -/
+**Pending supplier.** The private `own_block_payload_pending` is a placeholder with the exact type
+of `own_block_payload'` (Lane C, Run); it is replaced by an import when that lands. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -29,21 +29,17 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
   {ini : Fin P.n → A.State}
 
-/-! ### Pending suppliers (placeholders with the suppliers' exact types) -/
-
-/-- Placeholder for `acBlock_prev'` (Handlers). -/
-private theorem acBlock_prev_pending (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+/-- **An AC block call follows the FG cut that accepts the block** (a copy of `acBlock_prev`). -/
+private theorem acBlock_prev' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ))
     (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
-  sorry
+  obtain ⟨j, e, k, hg, rfl, hk⟩ := Coherence.call_in_group' h hy hc
+  obtain ⟨k', rfl, hk'⟩ := Coherence.exec_acBlock_prev' proposer dg y _ _ e hk hb
+  obtain ⟨hc', ht⟩ := group_cut' hg hk'
+  exact ⟨j + k', rfl, hc', ht⟩
 
-/-- Placeholder for `msgCall_group'` (Handlers). -/
-private theorem msgCall_group_pending (h : Node.LocalRun' proposer dg H sg tr ini)
-    {y : Fin P.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {m : A.Msg}
-    (hc : tr.CallAt y i (.ac ℓ)) (hm : ℓ.call = .message m) :
-    ∃ j, tr.GroupAt' proposer dg y j (tr.time i) (.message m) := by
-  sorry
+/-! ### Pending supplier (a placeholder with the supplier's exact type) -/
 
 /-- Placeholder for `own_block_payload'` (Reach): every block an honest node accepts passes
 `ac_valid_payload` (from the wire, or requirement 5 at its own proposal). -/
@@ -125,7 +121,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
   obtain ⟨c, Φ, es⟩ := ℓ
   cases c with
   | block B =>
-    obtain ⟨i', rfl, hacc, hti⟩ := acBlock_prev_pending h hy hc rfl
+    obtain ⟨i', rfl, hacc, hti⟩ := acBlock_prev' h hy hc rfl
     have hai' : a ≤ i' := by
       by_contra hlt
       exact ha i' B (by omega) hacc
@@ -140,7 +136,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     rw [← hfr', hfr, tr.state_succ_of_call hacc, frame'_eq, frame'_eq]
     exact (Store.accept_is_frame_step' _ _ (fg_reachable_at' h hy i')).1 B _ hlaw.2.1
   | message m =>
-    obtain ⟨j, hg⟩ := msgCall_group_pending h hy hc rfl
+    obtain ⟨j, hg⟩ := msgCall_group' h hy hc rfl
     exact ⟨same (fun _ hb => by cases hb), h.wire y hy j _ _ hg⟩
   | _ => exact same fun _ hb => by cases hb
 
