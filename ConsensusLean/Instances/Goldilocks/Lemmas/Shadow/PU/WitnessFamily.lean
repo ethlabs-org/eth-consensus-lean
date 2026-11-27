@@ -648,8 +648,8 @@ theorem unanimous_next_votes_of_witness_at' {K : AC.CommitteeDict sp.n}
       (by rintro x ⟨hx, j, e', hv', hs', _⟩; exact ⟨hx, j, e', hv', hs'⟩)
     omega
   have hfault : AC.FaultBoundK K m (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) :=
-    Healing.Growing.KernelProof.faultBoundK_upTo le_rfl (faultBoundK_of_service_at_stub hK hrun hawake hnr
-      hgm (by linarith) ht0 (by
+    Healing.Growing.KernelProof.faultBoundK_upTo le_rfl
+      (faultBoundK_of_service_at_stub hK hrun hawake hnr hgm (by linarith) ht0 (by
         rw [hslot]
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
         rw [heq]; exact hgm) hib)
