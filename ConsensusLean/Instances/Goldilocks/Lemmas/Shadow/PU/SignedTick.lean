@@ -119,7 +119,7 @@ theorem signing_tick_toFG_cuts_at {ini : Fin sp.n → (goldilocksNode sp ro).Sta
   have hnP : ¬ Proposes proposer y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := by
     rw [hT]
     exact Healing.not_proposes_update_time y u
-  obtain ⟨hcj, htj⟩ := Healing.tick_first_cut' hg
+  obtain ⟨hcj, htj⟩ := Healing.tick_first_cut hg
   have h1 : (exec proposer dg y (tr.state y j) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
       (.tick x true)).2[1]? = some
       (acToFG (tickStep proposer dg y (tr.state y j)

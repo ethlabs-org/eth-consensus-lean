@@ -153,7 +153,7 @@ theorem proposal_viable_at_call_with_early_at
   have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) hzk hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
-  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg ja)
     (fun q hq => hrun.time_mono hq.le) hzja hPm hPt.1
   have hmf (t : Time) (ht0 : 0 ≤ t) (htb : t ≤ b) :
@@ -194,7 +194,7 @@ theorem proposal_viable_at_call_with_early_at
   have hv := (windowWitness_of_frameWindow
     hrun hnc hframe hzja hPt.1 hw).held y i hy hlow hhi
       (hmf _ (hrun.time_nonneg i) (hhi.trans hib)) hPyi
-  have hstore := store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i)
+  have hstore := store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg i)
     (fun q hq => hrun.time_mono hq.le) hy hFP hPyi
   refine ⟨hPy, ?_, ?_⟩
   · rw [hfi, Node.frame_eq, Store.toFrame_fcRoot]

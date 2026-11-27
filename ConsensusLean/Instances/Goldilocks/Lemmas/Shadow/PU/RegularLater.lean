@@ -303,7 +303,7 @@ theorem regular_later_heads_of_floor_ancestor_at
   have hFQ := (hPhi.1.rooted.2 Q hHd).mono hPhi.2
   rw [Shadow.PU.Growing.frame_of_projAC_at hrun hz hc, Node.frame_eq,
     Store.toFrame_F] at hFQ
-  have hFQs := Healing.Growing.store_anc_of_honest_anc_at' hrun hnc
+  have hFQs := Healing.Growing.store_anc_of_honest_anc_at hrun hnc
     (hrun.time_nonneg q) (fun _ hi => hrun.time_mono hi.le) hz hFQ hQ
   have hqhi : tr.time q ≤ sp.ts N + sp.Δ := by
     have := hts (show s ≤ N by omega)

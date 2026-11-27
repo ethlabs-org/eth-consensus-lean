@@ -50,7 +50,7 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
       (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q := by
   have ht := hrun.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
-  have hr := Compose.Growing.reachable_at' hrun ht hy hle
+  have hr := Compose.Growing.reachable_at hrun ht hy hle
   have hu := Store.finalitySpec_updateFinality (P := sp.toParams)
     (ACP := Payload sp.n)
   simp only [Node.frame_eq]

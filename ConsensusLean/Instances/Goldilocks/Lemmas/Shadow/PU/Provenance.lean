@@ -222,7 +222,7 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.post i).ac := by
   obtain ⟨hfr, hstep, -, -⟩ := (Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw y hy i _ hc)
-  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state' hrun.toLocalRun hy i
+  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state hrun.toLocalRun hy i
   have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
     rw [hfr, Node.frame_eq, Store.toFrame_tree]
     exact fun X hX => hX.1
@@ -335,7 +335,7 @@ private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [h0, hm]
       exact fun l hl => absurd hl (Set.notMem_empty l)
   | succ i ih =>
-    have ih' := good_mono ih (Coherence.tree_mono' hrun.toLocalRun hy (Nat.le_succ i))
+    have ih' := good_mono ih (Coherence.tree_mono hrun.toLocalRun hy (Nat.le_succ i))
       (Nat.le_succ i)
     by_cases hc : ∃ c, tr.CallAt y i c
     · obtain ⟨c, hc⟩ := hc

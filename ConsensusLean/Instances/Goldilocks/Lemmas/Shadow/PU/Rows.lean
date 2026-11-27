@@ -230,7 +230,7 @@ theorem accept_of_proposesAt_from' (h : Node.LocalRun proposer dg H sg tr ini)
     ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
   · rw [RunTrace.groupAt_iff] at hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  obtain ⟨hacc, -⟩ := own_block_accepted' h hq hroot hnc hp hg hpr hdp
+  obtain ⟨hacc, -⟩ := own_block_accepted h hq hroot hnc hp hg hpr hdp
   have he := hc.2.symm.trans hacc.2
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
   obtain rfl := he.2

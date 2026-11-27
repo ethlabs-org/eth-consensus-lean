@@ -71,7 +71,7 @@ theorem viable_of_frozen_witnesses' (hr : Node.LocalRun proposer dg H sg tr ini)
   have hΦe : Node.frame (tr.state y i) = st.toFrame := Node.frame_eq _
   have hU := hfg.coherent
   have hR := Node.fg_reachable_at hr hy i
-  have hΦ : FrameOK (Node.frame (tr.state y i)) := frameOK_state' hr hy i
+  have hΦ : FrameOK (Node.frame (tr.state y i)) := frameOK_state hr hy i
   have hmemΦ : ∀ X, X ∈ (Node.frame (tr.state y i)).tree ↔ X ∈ st.tree ∧ st.Anc st.F X := by
     intro X
     rw [hΦe, toFrame_tree]
@@ -198,7 +198,7 @@ private theorem entries_compatible
   rcases h₁ with ⟨r₁, hr₁, l₁, O₁, ho₁, hEO₁⟩ | hc₁
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
     · exact compatible_of_below hU hEO₁ hEO₂
-        (hp.origins_compatible_at' ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
+        (hp.origins_compatible_at ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
     · exact compatible_of_below hU hEO₁ .refl
         (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
@@ -216,7 +216,7 @@ theorem Outcome.no_high_contest_at'
   have ht := hp.run.time_nonneg i
   have hi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
-  have hr := (Compose.Growing.reachable_at' hp.run ht hpH hi).reachableWith
+  have hr := (Compose.Growing.reachable_at hp.run ht hpH hi).reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨p, i, tr.time i, ht, hi, hpH, h⟩
@@ -272,7 +272,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
     (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
-  have hreach := (Compose.Growing.reachable_at' hp.run ht hy hj).reachableWith
+  have hreach := (Compose.Growing.reachable_at hp.run ht hy hj).reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at' hR
   have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
@@ -328,7 +328,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
     B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot := by
   have ht := hp.run.time_nonneg c
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
-  have hR := Compose.Growing.reachable_at' hp.run ht hpH hle
+  have hR := Compose.Growing.reachable_at hp.run ht hpH hle
   have hs := hR.puSnapshot
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hanc : ∀ {X Y : AC.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocksAt H) X Y →
@@ -352,7 +352,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
     obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
       hp.left_entry_origin_or_covered_at' ht hle hpH hcb hE hET hEh hEW hlt
     rcases hor with ⟨r, hrd, l, O, hoO, hEO⟩ | ⟨-, hcov⟩
-    · rcases hp.origins_compatible_at' hoO
+    · rcases hp.origins_compatible_at hoO
           ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
       · exact Or.inl (hEO.trans h)
       · exact Anc.total hU hEO h

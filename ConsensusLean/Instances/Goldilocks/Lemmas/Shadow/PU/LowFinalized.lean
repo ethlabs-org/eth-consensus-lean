@@ -65,10 +65,10 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Goldilocks.Anc (tr.HonestBlocksAt H) F W := by
   have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  have hR₁ := (Compose.Growing.reachable_at' hrun ht hy hk).reachableWith
-  have hR₂ := (Compose.Growing.reachable_at' hrun hu hz hm).reachableWith
-  have hsub₁ := Compose.Growing.tree_held_at' ht hy hk
-  have hsub₂ := Compose.Growing.tree_held_at' hu hz hm
+  have hR₁ := (Compose.Growing.reachable_at hrun ht hy hk).reachableWith
+  have hR₂ := (Compose.Growing.reachable_at hrun hu hz hm).reachableWith
+  have hsub₁ := Compose.Growing.tree_held_at ht hy hk
+  have hsub₂ := Compose.Growing.tree_held_at hu hz hm
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   obtain ⟨c₁, hc₁, -, -, hσ₁⟩ := chain_state_of_chain_with hfs hR₁ X hX
   obtain ⟨c₂, hc₂, hl₂, hlast₂, hσ₂⟩ := chain_state_of_chain_with hfs hR₂ W hW
@@ -123,16 +123,16 @@ theorem ResetPremisesUpTo.low_finalized_below_origin_at'
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hx := hrun.antitone (le_max_right _ _) ho.1
   have hBt := Outcome.high_origin_mem_at' hrun hnc ho
-  have hreach := (Compose.Growing.reachable_at' hrun ht hy hle).reachableWith
+  have hreach := (Compose.Growing.reachable_at hrun ht hy hle).reachableWith
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
-  have hsub := Compose.Growing.tree_held_at' ht hy hle
+  have hsub := Compose.Growing.tree_held_at ht hy hle
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
   have hg := genesis_mem_with hfs hreach
   have hgB : Anc (tr.HonestBlocksAt H)
       (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
     ((accepted_tree_with hfs
-      (Compose.Growing.reachable_at' hrun hi0 hx hlei).reachableWith).2.2.2 B hBt).mono
-        (Compose.Growing.tree_held_at' hi0 hx hlei)
+      (Compose.Growing.reachable_at hrun hi0 hx hlei).reachableWith).2.2.2 B hBt).mono
+        (Compose.Growing.tree_held_at hi0 hx hlei)
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     cache_invariants_with hfs hreach
   have hgF : (tr.state y m).fg.Anc

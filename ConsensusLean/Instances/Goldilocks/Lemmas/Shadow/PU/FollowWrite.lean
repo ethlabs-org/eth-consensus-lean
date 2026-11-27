@@ -167,11 +167,11 @@ theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
   have hbi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hct := hrun.time_nonneg c
   have hbc : ∀ q < c, tr.time q ≤ tr.time c := fun q hq => hrun.time_mono hq.le
-  have hry := Compose.Growing.reachable_at' hrun hit hy hbi
-  have hrz := Compose.Growing.reachable_at' hrun hct hz hbc
+  have hry := Compose.Growing.reachable_at hrun hit hy hbi
+  have hrz := Compose.Growing.reachable_at hrun hct hz hbc
   have hjmz := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hrz.reachableWith
-  have hFJ := ((Store.cache_invariants' hry).2.2.1).mono (Compose.Growing.tree_held_at' hit hy hbi)
+  have hFJ := ((Store.cache_invariants' hry).2.2.1).mono (Compose.Growing.tree_held_at hit hy hbi)
   by_cases hgt : (tr.state y i).fg.hj < ((tr.state z c).fg.σ X.root).h
   · exact Healing.Growing.finalized_below_of_hj_lt_at hrun hnc hy hz hf hX hgt
   have hflz := hframe.floor_eq z c hz hclo hchi
@@ -213,7 +213,7 @@ theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
         rcases hv with h | ⟨h1, -⟩ <;> omega
   obtain ⟨hJX, hJJ⟩ := key
   rw [hJJ] at hFJ
-  exact hFJ.trans (hJX.mono (Compose.Growing.tree_held_at' hct hz hbc))
+  exact hFJ.trans (hJX.mono (Compose.Growing.tree_held_at hct hz hbc))
 
 /-- **A remapped optimistic write over the stock window**
 (`optimistic_write_later_proposal_head_at'` with the stock window). The written ancestor `A`

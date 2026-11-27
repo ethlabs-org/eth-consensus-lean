@@ -118,7 +118,7 @@ theorem hj_lt_hmax_of_reachable {acp₀ : Payload sp.n}
 theorem hj_lt_hmax_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
     (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
-  hj_lt_hmax_of_reachable (reachable_at' hrun hd hy hi)
+  hj_lt_hmax_of_reachable (reachable_at hrun hd hy hi)
 
 end RunFacts'
 
@@ -233,7 +233,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
     intro hE
     have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun hfg hy
-      (Consensus.Goldilocks.RunTrace.anc_upTo_of_right' D.hrun D.hnc
+      (Consensus.Goldilocks.RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc
         ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
     obtain ⟨hJh, hJT, -⟩ :=
       FrameGeometry.justified_honest_source_before' hr.toLocalRun hfg hf hy hsrcF hj1
@@ -273,8 +273,8 @@ theorem anc_getHead_of_hi (D : OutageLockPremises tr H proposer dg ini) {i : Nat
   obtain ⟨hPJ, hJP⟩ := hiAt_iff.1 hHi
   rw [Node.frame_eq] at hdom hdomA hne hlocks ⊢
   refine anc_getHead_of_hi_core (honestBlocksAt_coherent D.hrun D.hnc)
-    (by simpa [Node.frame_eq] using frameOK_at' D.hrun hd hw ht) (tree_held_at hd hw ht)
-    (hj_lt_hmax_at D.hrun hd hw ht) (hmax_block_of_reachable (reachable_at' D.hrun hd hw ht))
+    (by simpa [Node.frame_eq] using frameOK_at D.hrun hd hw ht) (tree_held_at hd hw ht)
+    (hj_lt_hmax_at D.hrun hd hw ht) (hmax_block_of_reachable (reachable_at D.hrun hd hw ht))
     hPJ hJP (fun hX hh => above_of_hi_height_at D hinv le_rfl hd ht hw hf hHi hX hh)
     (hinv.caches_at_cut le_rfl hw).1
     (fun hY hXY => held_anc_at D.hrun D.hnc hd hw ht hXY hY) A t V σ hdom hdomA hne hlocks
@@ -423,8 +423,8 @@ theorem held_candidate_of_rows_by
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt'.1⟩
   have h := FrameGeometry.held_candidate_of_rows' (hrun.upTo ht0).toLocalRun
     (projFG_localRun' (hrun.upTo ht0) (hnc.upTo _)) hf hy i (honestRowsSourcedBy_toFrame ht hsrc)
-    (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right' hrun hnc ht0 hBU)
-      (RunTrace.anc_upTo_of_right' hrun hnc ht0 hDU))
+    (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hBU)
+      (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hDU))
     (by rw [hst]; exact hBt)
   rwa [hst] at h
 

@@ -151,14 +151,14 @@ theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
     (hnc.upTo _) hzk hB').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hBm
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hBy := mem_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hy hBR hRm
-  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kB)
+  have hBy := mem_of_honest_anc_at hrun hnc (hrun.time_nonneg i) hle hy hBR hRm
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kB)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hy hBm hBy
   obtain ⟨hfloor, hstrict⟩ :=
     Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at hrun hnc hframe hz hdes hB hBs
       hlo hhi hf
   rw [hσ] at hfloor hstrict
-  have hreach := (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy hle).reachableWith
+  have hreach := (Compose.Growing.reachable_at hrun (hrun.time_nonneg i) hy hle).reachableWith
   have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality hreach
   have hfl := hframe.floor_eq y i hy hil hih
   have hkind := hframe.kind_iff y i hy hil hih
@@ -264,13 +264,13 @@ theorem reset_of_high_proposal_within_at
       Node.frame_eq, Store.toFrame_tree] at hsource
     exact hsource.1
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hPy := mem_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm
-  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+  have hPy := mem_of_honest_anc_at hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hyi hPm hPy
   rw [hσ] at hh
   have hhR := hh.trans (Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hyi hle).reachableWith
-    (store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm))
+    (Compose.Growing.reachable_at hrun (hrun.time_nonneg i) hyi hle).reachableWith
+    (store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm))
   have hiD : tr.time i + D ≤ b := by linarith
   have hcD : max (cutZ sp.toParams g) (tr.time i + D) = tr.time i + D :=
     max_eq_right (by linarith)
@@ -425,9 +425,9 @@ theorem round_of_warm_within_at
     exact hsrc.1
   have hkle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
   have hk0 := hrun.time_nonneg k
-  have hCk := Compose.Growing.tree_mono_at' hrun hk0 hyk hkle hjk hCj
-  have hPk := mem_of_honest_anc_at' hrun hnc hk0 hkle hyk hPC hCk
-  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+  have hCk := Compose.Growing.tree_mono_at hrun hk0 hyk hkle hjk hCj
+  have hPk := mem_of_honest_anc_at hrun hnc hk0 hkle hyk hPC hCk
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
     (fun q hq => hrun.time_mono (by omega)) (htimeP ▸ hz0) hk0 hkle hyk hPm hPk
   obtain ⟨hfloor, htop⟩ := proposal_viable_at hrun hnc hframe hz0 hdes hP hPs hu0
     (by linarith [hts huN]) hfi
@@ -442,7 +442,7 @@ theorem round_of_warm_within_at
     (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
       right
       have hjmax := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-        (Compose.Growing.reachable_at' hrun hk0 hyk hkle).reachableWith
+        (Compose.Growing.reachable_at hrun hk0 hyk hkle).reachableWith
       by_cases htop' : isTop
       · have hmax := hkind.mpr htop'
         rcases hfloor.lt_or_eq with hlt | heq
@@ -450,7 +450,7 @@ theorem round_of_warm_within_at
         · right
           refine ⟨by omega, ?_⟩
           rw [hframe.root_eq y k hyk hklo hkhi htop']
-          exact store_anc_of_honest_anc_at' hrun hnc hk0 hkle hyk
+          exact store_anc_of_honest_anc_at hrun hnc hk0 hkle hyk
             ((htop htop' heq.symm).trans hPC) hCk
       · left
         have hne : (tr.state y k).fg.hmax ≠ (tr.state y k).fg.hj + 1 :=

@@ -396,7 +396,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
   have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (AC.toFG_source hR'.2.2).1.1
   have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_leU sp hac.localRun.toU hy hR'.1 R hRc
-  have hPR' := RunTrace.anc_upTo_of_right' hrun hnc hd
+  have hPR' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd
     ((AC.frameIn_of_callAt hac.localRun hy hR'.1).2 hRc) hPR
   have hPRs := (Anc.slot_le hac.localRun.coherent hPR').1
   exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
@@ -450,8 +450,8 @@ theorem report_of_compatible_candidate_of_run_at
     (fun C hC => by
       rw [hst] at hC
       exact (hcompat C hC).imp
-        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU P hPc.1.1))
-        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU C hC.1.1)))
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (hU P hPc.1.1))
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (hU C hC.1.1)))
   have hrj : tr.time r ≤ tr.time j := hrt
   exact ⟨r, ell', R, (Healing.Growing.toFGAt_upTo_iff hrun.time_mono hrj).mp hto, hrj,
     hPR.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩

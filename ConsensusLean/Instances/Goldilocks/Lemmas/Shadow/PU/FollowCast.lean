@@ -66,7 +66,7 @@ theorem proposal_viable_at_call_at'
   have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) hzk hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
-  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg ja)
     (fun q hq => hrun.time_mono hq.le) hzja hPm hPt.1
   have hmf (t : Time) (ht0 : 0 ≤ t) (htb : t ≤ b) :
@@ -81,7 +81,7 @@ theorem proposal_viable_at_call_at'
     (hmf _ (by rw [← htime]; exact hrun.time_nonneg kP)
       (by linarith only [hphi.trans hib, sp.toParams.hΔ]))
   rw [hσ] at hh hstrict
-  have hreach := Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy
+  have hreach := Compose.Growing.reachable_at hrun (hrun.time_nonneg i) hy
     (fun q hq => hrun.time_mono hq.le)
   have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hreach.reachableWith
@@ -122,13 +122,13 @@ theorem proposal_viable_at_call_at'
   have hPyi : P ∈ (tr.state y i).fg.tree := by
     rw [hfi, Node.frame_eq, Store.toFrame_tree] at hPy
     exact hPy.1
-  have hσy := σ_eq_honest_at' hrun hnc (hrun.time_nonneg ja)
+  have hσy := σ_eq_honest_at hrun hnc (hrun.time_nonneg ja)
     (fun q hq => hrun.time_mono hq.le) hzja (hrun.time_nonneg i)
     (fun q hq => hrun.time_mono hq.le) hy hPt.1 hPyi
   rw [hσy] at hh hstrict
   have hv := Store.isViable_of_floor (tr.state y i).fg hj (Q := P) (by rwa [hfl])
     (fun hm' hc' => Or.inl (by rw [hfl]; exact hstrict (hkind.mp ⟨hm', hc'⟩)))
-  have hstore := store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i)
+  have hstore := store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg i)
     (fun q hq => hrun.time_mono hq.le) hy hFP hPyi
   refine ⟨hPy, ?_, ?_⟩
   · rw [hfi, Node.frame_eq, Store.toFrame_fcRoot]

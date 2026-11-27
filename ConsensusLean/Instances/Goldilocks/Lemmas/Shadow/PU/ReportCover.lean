@@ -104,14 +104,14 @@ theorem held_target_viableHeads_or_higher_report_of_cases
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hd := hrun.time_nonneg i
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hreach := (Compose.Growing.reachable_at' hrun hd hy hle).reachableWith
+  have hreach := (Compose.Growing.reachable_at hrun hd hy hle).reachableWith
   have hfs := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame_tree.1 hPt
-  have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
   have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
     · exact hp.low_root_of_held_seed_at' hy hib hseed hqb
-        (mem_of_honest_anc_at' hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
+        (mem_of_honest_anc_at hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
         (fun _ => hPt)
     · exact hhighroot hlow
   have hFt := (Store.cache_invariants_with hfs hreach).1
@@ -138,10 +138,10 @@ theorem held_target_viableHeads_or_higher_report_of_cases
       change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
       omega
     obtain ⟨x, hx, r, hri, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
-      cache_ahead_report_at' hrun hnc hy hf (Or.inr rfl) hPy hPR hPne
+      cache_ahead_report_at hrun hnc hy hf (Or.inr rfl) hPy hPR hPne
     have hxle : ∀ k < r, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono (by omega)
-    have hPx := mem_of_honest_anc_at' hrun hnc hd hxle hx hPR hJx
-    have hσ := σ_eq_honest_at' hrun hnc hd hle hy hd hxle hx hPy hPx
+    have hPx := mem_of_honest_anc_at hrun hnc hd hxle hx hPR hJx
+    have hσ := σ_eq_honest_at hrun hnc hd hle hy hd hxle hx hPy hPx
     exact ⟨x, r, ell', C,
       hrun.antitone (max_le hcz.le (hrun.time_mono hri.le)) hx, hri, hto,
       hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
@@ -166,7 +166,7 @@ private theorem high_root_of_held_seed_at
   have hfs := hr.finalitySpec
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, i, tr.time i, hd, hle, hy, h⟩
-  have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
   have hrow : ∀ E ∈ (tr.state y i).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y i).fg.σ E.root).h →
       ((tr.state y i).fg.σ E.root).Th = E.root →
