@@ -85,7 +85,7 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
       refine ⟨ih.frame, ih.genesis, h0, fun σ x hx => ?_, fun B hB => (ih.slot_le B hB).trans hsl,
         ih.payload⟩
       change x ∈ (acRestart sp ro self A Φ' t').1.pool σ at hx
-      rw [hrs.2.2.2.2.2.2.2.2.1 σ] at hx
+      rw [hrs.2.2.2.2.2.2.2.1 σ] at hx
       cases hx
     have hst := voteClosed_poolStamped.step ro self Φ' t' hc ih.stamped
     by_cases hb : ∃ B, c = .block B

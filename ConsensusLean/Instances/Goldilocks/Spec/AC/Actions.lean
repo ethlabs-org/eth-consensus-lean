@@ -157,12 +157,7 @@ open Classical in
 noncomputable def acToFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ACState sp.n × Option (Blk sp.n FGP) :=
   if ¬ joined sp A t then (A, none)
-  else
-    match fgSource sp A Φ t with
-    | none => (A, none)
-    | some C =>
-      if AncR Φ C A.fgReported then (A, none)
-      else ({ A with fgReported := C.root }, some C)
+  else (A, fgSource sp A Φ t)
 
 end Consensus.Goldilocks.AC
 

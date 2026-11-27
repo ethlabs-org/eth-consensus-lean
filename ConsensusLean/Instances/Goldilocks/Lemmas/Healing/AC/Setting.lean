@@ -156,7 +156,7 @@ theorem restartTime_stateU
         refine ⟨i, Nat.lt_succ_self i, ⟨ℓ, hc, hrs⟩, ?_⟩
         rw [hrs]
         exact ((restart_state sp) FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ
-          (hr.time_nonneg i)).2.2.2.2.2.2.1
+          (hr.time_nonneg i)).2.2.2.2.2.1
       · rw [rt_step (L := u i) y _ _ _ _ hrs]
         exact ih.imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans (Nat.lt_succ_self i), h⟩
     · have hst : tr.state y (i + 1) = tr.state y i := by

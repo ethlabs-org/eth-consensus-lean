@@ -155,11 +155,7 @@ private theorem acToFG_fields (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
     (PoolOK A.pool → PoolOK (acToFG sp A Φ t).1.pool) ∧
       (acToFG sp A Φ t).1.blockStamp = A.blockStamp := by
   unfold acToFG
-  split_ifs
-  · split
-    · exact ⟨id, rfl⟩
-    · split_ifs <;> exact ⟨id, rfl⟩
-  · exact ⟨id, rfl⟩
+  split_ifs <;> exact ⟨id, rfl⟩
 
 private theorem acOnMessage_fields (self : Fin sp.n) (L : Set Lock) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
@@ -267,7 +263,7 @@ private theorem acRestart_blockStamp (ro : ReplayOrder sp FGP) (self : Fin sp.n)
   have h₀ : RestartInv sp A Φ t { ACState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
       restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
+    ⟨rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   exact replay_blockStamp self A ht _ (fun B hB => (hl.2.1 B).mp hB) (_, []) h₀ X.root
     (Or.inr ⟨X, (hl.2.1 X).mpr ⟨hX, hg⟩, rfl⟩)
@@ -276,7 +272,7 @@ private theorem acRestart_blockStamp (ro : ReplayOrder sp FGP) (self : Fin sp.n)
 private theorem acRestart_blockStamp_genesis (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : ACState sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
     (acRestart sp ro self A Φ t).1.blockStamp sp.genesisRoot = ⊥ := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, h⟩ := restart_state sp FGP ro self A Φ t hΦ ht
+  obtain ⟨-, -, -, -, -, -, -, -, -, h⟩ := restart_state sp FGP ro self A Φ t hΦ ht
   rcases h sp.genesisRoot with h | h
   · rw [h]
     simp only [ACState.initial, ite_true]

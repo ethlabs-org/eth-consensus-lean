@@ -55,7 +55,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
           rw [hrs] at he
           change acRestart sp ro y ((tr.upTo d).state y i) ℓ.frame ((tr.upTo d).time i) = _ at he
           rw [he] at hR
-          rw [hR.2.2.2.2.2.2.2.2.1 σ] at hv
+          rw [hR.2.2.2.2.2.2.2.1 σ] at hv
           simp at hv
         · by_cases hold : v ∈ ((tr.upTo d).state y i).pool v.slot
           · obtain ⟨j, hj, e, hvote, hev⟩ := ih v.slot v hold hvH

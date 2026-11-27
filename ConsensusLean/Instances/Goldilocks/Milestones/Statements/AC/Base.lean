@@ -247,7 +247,7 @@ def RestartState : Prop :=
     let r := acRestart sp ro self A Φ t
     let I : ACState sp.n := ACState.initial sp.genesisRoot
     r.2 = [] ∧ r.1.locks = A.locks ∧ r.1.latestConfirmed = A.latestConfirmed ∧
-    r.1.saved = I.saved ∧ r.1.fgReported = I.fgReported ∧ r.1.votedSlot = I.votedSlot ∧
+    r.1.saved = I.saved ∧ r.1.votedSlot = I.votedSlot ∧
     r.1.restartTime = (t : WithBot Time) ∧ ¬ joined sp r.1 t ∧
     (∀ σ, r.1.pool σ = []) ∧
     (∀ x, r.1.voteStamp x = ⊤ ∨ r.1.voteStamp x = ETime.of t) ∧

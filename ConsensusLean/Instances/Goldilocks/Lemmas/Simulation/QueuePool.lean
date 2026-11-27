@@ -156,11 +156,7 @@ theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp ro bi
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (AC.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
     unfold AC.acToFG
-    split_ifs
-    · split
-      · rfl
-      · split_ifs <;> rfl
-    · rfl
+    split_ifs <;> rfl
   have hg : (fgUpdate st release).node.ac.pool = st.node.ac.pool := by
     rw [fgUpdate_eq st release]
     dsimp only

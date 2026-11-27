@@ -81,13 +81,13 @@ theorem tickCuts_B0 : ∃ e, tickCuts N1 dg1 1 =
   exact ⟨e, by rw [tickCuts_eq, stockTick, he]; rfl, hm, hp⟩
 
 theorem tickCuts_other {t : Nat} (h1 : t ≠ 1) (hA : ¬ (t % 4 = 0 ∧ 4 ≤ t)) :
-    tickCuts N1 dg1 t = [.ac ⟨.tick, Node.frame (tickState N1 dg1 t), []⟩,
-      .ac ⟨.toFG, Node.frame (tickState N1 dg1 t), []⟩] := by
+    ∃ st, tickCuts N1 dg1 t = [.ac ⟨.tick, Node.frame (tickState N1 dg1 t), []⟩] ++
+      readCuts st t ∧ Node.frame st = Node.frame (tickState N1 dg1 t) := by
   rw [tickCuts_eq, stockTick]
   by_cases hC : t % 4 = 2 ∧ 4 ≤ t
   · obtain ⟨A', he, -⟩ := tick_C (good_tick t) hC
-    rw [he]; rfl
-  · rw [(tick_noop (good_tick t) h1 hA hC).1]; rfl
+    rw [he]; exact ⟨_, rfl, rfl⟩
+  · rw [(tick_noop (good_tick t) h1 hA hC).1]; exact ⟨_, rfl, rfl⟩
 
 theorem get7 {α : Type} {a0 a1 a2 a3 a4 a5 a6 c : α} {k : Nat}
     (h : [a0, a1, a2, a3, a4, a5, a6][k]? = some c) :
@@ -98,6 +98,19 @@ theorem get7 {α : Type} {a0 a1 a2 a3 a4 a5 a6 c : α} {k : Nat}
 theorem get2 {α : Type} {a0 a1 c : α} {k : Nat} (h : [a0, a1][k]? = some c) :
     (k = 0 ∧ c = a0) ∨ (k = 1 ∧ c = a1) := by
   rcases k with _ | _ | k <;> simp at h <;> simp [h]
+
+theorem get_readCuts {st : NodeState N1} {t : Time} {a c : Cut N1} {k : Nat}
+    (h : (a :: readCuts st t)[k]? = some c) :
+    (k = 0 ∧ c = a) ∨ (k = 1 ∧ c = .ac ⟨.toFG, Node.frame st, []⟩) ∨
+      (k = 2 ∧ ∃ C, c = .fg (.attest C none)) := by
+  unfold readCuts at h
+  split at h
+  · exact (get2 h).imp_right Or.inl
+  · rename_i C heq
+    rcases k with _ | _ | _ | k <;> simp at h
+    · exact Or.inl ⟨rfl, h.symm⟩
+    · exact Or.inr (Or.inl ⟨rfl, h.symm⟩)
+    · exact Or.inr (Or.inr ⟨rfl, C, h.symm⟩)
 
 /-- **The labelled cuts of the run.** -/
 theorem label_cases {i : Nat} {c : Cut N1} (h : (tickRun N1 dg1).label i = some c) :
@@ -116,7 +129,8 @@ theorem label_cases {i : Nat} {c : Cut N1} (h : (tickRun N1 dg1).label i = some 
        (i % 8 = 1 ∧ c = .ac ⟨.toFG, Node.frame (tickState N1 dg1 1), []⟩))) ∨
     (i / 8 ≠ 1 ∧ ¬ (i / 8 % 4 = 0 ∧ 4 ≤ i / 8) ∧
       ((i % 8 = 0 ∧ c = .ac ⟨.tick, Node.frame (tickState N1 dg1 (i / 8)), []⟩) ∨
-       (i % 8 = 1 ∧ c = .ac ⟨.toFG, Node.frame (tickState N1 dg1 (i / 8)), []⟩))) := by
+       (i % 8 = 1 ∧ c = .ac ⟨.toFG, Node.frame (tickState N1 dg1 (i / 8)), []⟩) ∨
+       (i % 8 = 2 ∧ ∃ C, c = .fg (.attest C none)))) := by
   rw [tickRun_label] at h
   rcases tick_cases (i / 8) with h1 | ⟨k, hk⟩ | hC | ⟨h1, hA, -⟩
   · obtain ⟨e, he, hm, hp⟩ := tickCuts_B0
@@ -125,10 +139,16 @@ theorem label_cases {i : Nat} {c : Cut N1} (h : (tickRun N1 dg1).label i = some 
   · obtain ⟨fg', e, hob, hfg', he, hm, hp⟩ := tickCuts_A k
     rw [hk, he] at h
     exact Or.inl ⟨k, fg', e, hk, hob, hfg', hm, hp, get7 h⟩
-  · rw [tickCuts_other (by omega) (by omega)] at h
-    exact Or.inr (Or.inr ⟨by omega, by omega, get2 h⟩)
-  · rw [tickCuts_other h1 hA] at h
-    exact Or.inr (Or.inr ⟨h1, hA, get2 h⟩)
+  · obtain ⟨st, he, hf⟩ := tickCuts_other (t := i / 8) (by omega) (by omega)
+    rw [he] at h
+    have hc := get_readCuts h
+    rw [hf] at hc
+    exact Or.inr (Or.inr ⟨by omega, by omega, hc⟩)
+  · obtain ⟨st, he, hf⟩ := tickCuts_other h1 hA
+    rw [he] at h
+    have hc := get_readCuts h
+    rw [hf] at hc
+    exact Or.inr (Or.inr ⟨h1, hA, hc⟩)
 
 /-- The signings of the run: the attestation of slot `s ≥ 1`, at cut `8·t_s + 5`. -/
 theorem signAt_iff {i : Nat} {a : FG.Att sp1.n} :
@@ -140,7 +160,7 @@ theorem signAt_iff {i : Nat} {a : FG.Att sp1.n} :
         try cases h
       exact ⟨k + 1, by omega, by omega, rfl⟩
     · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> cases h
-    · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> cases h
+    · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, C, h⟩ <;> cases h
   · rintro ⟨s, hs, rfl, rfl⟩
     obtain ⟨k, rfl⟩ : ∃ k, s = k + 1 := ⟨s - 1, by omega⟩
     obtain ⟨fg', e, -, -, he, -, -⟩ := tickCuts_A k
@@ -158,7 +178,7 @@ theorem blockCall_eq {i : Nat} {B : N1.Blk} {acc : Bool}
       try cases h
     exact ⟨k + 1, by omega, by omega, rfl, rfl⟩
   · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> cases h
-  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> cases h
+  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, C, h⟩ <;> cases h
 
 theorem blk_label (k : Nat) :
     (tickRun N1 dg1).label (8 * (4 * (k + 1)) + 2) = some (.fg (.block (blk (k + 1)) true)) := by
@@ -186,7 +206,8 @@ theorem emit_cases {i : Nat} {ℓ : ACLabel N1} (h : (tickRun N1 dg1).label i = 
       simp only [List.not_mem_nil, List.mem_singleton] at he
     subst he
     exact Or.inl ⟨by omega, hm, hp⟩
-  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> simp only [Cut.ac.injEq] at h <;> subst h <;>
+  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, C, h⟩ <;>
+      simp only [Cut.ac.injEq, reduceCtorEq] at h <;> subst h <;>
       simp at he
 
 /-- An `ac_on_block(B)` call of the run: the own block of slot `k + 1` at `8·t_{k+1} + 3`. -/
@@ -198,7 +219,8 @@ theorem acBlock_cases {i : Nat} {ℓ : ACLabel N1} (h : (tickRun N1 dg1).label i
       simp only [Cut.ac.injEq, reduceCtorEq] at h <;> subst h <;> simp at hB
     exact ⟨k, by omega, hB.symm⟩
   · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> simp only [Cut.ac.injEq] at h <;> subst h <;> simp at hB
-  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ <;> simp only [Cut.ac.injEq] at h <;> subst h <;> simp at hB
+  · rcases hcs with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, C, h⟩ <;>
+      simp only [Cut.ac.injEq, reduceCtorEq] at h <;> subst h <;> simp at hB
 
 /-- An `ac_on_tick` call of the run is the first cut of its tick. -/
 theorem acTick_pos {i : Nat} {ℓ : ACLabel N1} (h : (tickRun N1 dg1).label i = some (.ac ℓ))
@@ -209,7 +231,8 @@ theorem acTick_pos {i : Nat} {ℓ : ACLabel N1} (h : (tickRun N1 dg1).label i = 
     exact h0
   · rcases hcs with ⟨h0, h⟩ | ⟨-, h⟩ <;> simp only [Cut.ac.injEq] at h <;> subst h <;> simp at hc
     exact h0
-  · rcases hcs with ⟨h0, h⟩ | ⟨-, h⟩ <;> simp only [Cut.ac.injEq] at h <;> subst h <;> simp at hc
+  · rcases hcs with ⟨h0, h⟩ | ⟨-, h⟩ | ⟨-, C, h⟩ <;>
+      simp only [Cut.ac.injEq, reduceCtorEq] at h <;> subst h <;> simp at hc
     exact h0
 
 /-! ## The states of the run -/
@@ -287,17 +310,27 @@ theorem mid_fgGood (t j : Nat) :
     · rw [ite_pos ⟨by omega, by omega, by omega⟩, tickMid_of_le N1 dg1 (by omega)]
       rw [show tip (4 * (k + 1) + 1) = k + 1 from tip_A1 k] at hg'; exact hg'
   all_goals
-    have hlen : (tickCuts N1 dg1 t).length = 2 ∧ ∃ ℓ, (tickCuts N1 dg1 t)[0]? = some (.ac ℓ) := by
-      first
-        | (obtain rfl := ht; obtain ⟨e, he, -, -⟩ := tickCuts_B0; rw [he]; exact ⟨rfl, _, rfl⟩)
-        | (rw [tickCuts_other (by omega) (by omega)]; exact ⟨rfl, _, rfl⟩)
     have htip : tip (t + 1) = tip t := by unfold tip; omega
     rw [ite_neg (by omega)]
-    obtain ⟨hl, ℓ, h0⟩ := hlen
-    rcases j with _ | _ | j
-    · rw [tickMid_zero]; exact hg
-    · rw [mid_ac h0, tickMid_zero]; exact hg
-    · rw [tickMid_of_le N1 dg1 (by omega), ← htip]; exact hg'
+    have hnoblock : ∀ k c, (tickCuts N1 dg1 t)[k]? = some c →
+        ∀ B, c ≠ .fg (.block B true) := by
+      intro k c hc B
+      first
+      | (obtain rfl := ht; obtain ⟨e, he, -, -⟩ := tickCuts_B0
+         rw [he] at hc; rcases get2 hc with ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> simp)
+      | (obtain ⟨st, he, -⟩ := tickCuts_other (t := t) (by omega) (by omega)
+         rw [he] at hc
+         rcases get_readCuts hc with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, C, rfl⟩ <;> simp)
+    clear hg'
+    induction j with
+    | zero => simpa only [tickMid_zero] using hg
+    | succ j ih =>
+      by_cases hj : j < (tickCuts N1 dg1 t).length
+      · have hc : (tickCuts N1 dg1 t)[j]? = some ((tickCuts N1 dg1 t)[j]) :=
+          List.getElem?_eq_getElem hj
+        exact fgGood_cutStep (mid_step hc) (hnoblock j _ hc) ih
+      · rw [tickMid_of_le N1 dg1 (by omega), ← htip]
+        exact (good_tick (t + 1)).fg
 
 theorem state_eq (i : Nat) : (tickRun N1 dg1).state v0 i = tickMid N1 dg1 (i / 8) (i % 8) :=
   tickRun_state rfl v0 i

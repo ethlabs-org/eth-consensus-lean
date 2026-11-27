@@ -238,7 +238,6 @@ def S0 : ACState sp.n where
   saved := fun _ => some 2
   locks := ∅
   latestConfirmed := 0
-  fgReported := 0
   votedSlot := 8
   restartTime := ⊥
 

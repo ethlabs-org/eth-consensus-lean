@@ -33,7 +33,7 @@ structure ACShape (A : ACState sp.n) (vs : Int) (τ : Nat) (pl : Nat → List (V
   locks : LocksLe A.locks lk
   tipLock : 1 ≤ tl → (⟨(blk tl).root, tl, true, tl + 2⟩ : Lock) ∈ A.locks
   latest : A.latestConfirmed = (blk lc).root
-  reported : A.fgReported = (blk rp).root
+  zeroLocks : lk = 0 → A.locks = ∅
 
 /-- The state of node `y`: the chain accepted up to `τ`, the first `k` attestations of its pool,
 its rows of heights `1, …, nr` signed, and the AC state of that shape. -/
@@ -76,7 +76,7 @@ def Good (st : St) (y : Fin sp.n) (t : Nat) : Prop :=
 theorem good_init (y : Fin sp.n) : Good (Node.init N) y 0 := by
   refine ⟨fgGood_init, by
     rw [show cnt y 0 = 0 by unfold cnt nrw nrv; split_ifs <;> omega]; rfl, recGood_empty,
-    ⟨rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, rfl⟩⟩
+    ⟨rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, fun _ => rfl⟩⟩
   · funext σ; simp [poolT, Node.init, ACState.initial]
   · intro σ x hx; simp [poolT] at hx
   · intro m h1 h2; simp [tip] at h2; omega
@@ -125,18 +125,47 @@ theorem tickStep_acTick (y : Fin sp.n) (st : St) (t : Time) (x : Nat) :
       ({ st with ac := (acOnTick sp y st.ac (Node.frame st) t).1 },
       [.ac ⟨.tick, Node.frame st, (acOnTick sp y st.ac (Node.frame st) t).2⟩]) := rfl
 
-theorem tickStep_fgUpdate_none {y : Fin sp.n} {st : St} {f j τ : Nat}
-    (hf : ChainFrame (Node.frame st) f j τ) {b : Nat} (hL : LocksLe st.ac.locks b)
-    (hb : f ≤ b) (hbτ : b ≤ τ) (hrep : st.ac.fgReported = (blk b).root) (n x : Nat) :
-    tickStep prop dg y st (n : Int) x .fgUpdate =
-      (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
-  obtain ⟨h1, h2⟩ := acToFG_none hf hL hb hbτ hrep (n : Int)
+/-- The cuts of a read whose source the client refuses. -/
+noncomputable def readCuts (st : St) (t : Time) : List (Cut N) :=
+  [.ac ⟨.toFG, Node.frame st, []⟩] ++
+    match (AC.acToFG sp st.ac (Node.frame st) t).2 with
+    | none => []
+    | some C => [.fg (.attest C none)]
+
+theorem tickStep_fgUpdate_refused {y : Fin sp.n} {st : St} (n : Time) (x : Nat)
+    (hatt : ∀ C, (AC.acToFG sp st.ac (Node.frame st) n).2 = some C →
+      st.fg.attest st.record y C = none) :
+    tickStep prop dg y st n x .fgUpdate = (st, readCuts st n) := by
+  have h1 : (AC.acToFG sp st.ac (Node.frame st) n).1 = st.ac := by
+    unfold AC.acToFG; split <;> rfl
   simp only [tickStep, Node.acToFG]
   split
-  · change ({ st with ac := (AC.acToFG sp st.ac (Node.frame st) n).1 }, _) = _
-    rw [h1]
+  · rename_i heq
+    change ({ st with ac := (AC.acToFG sp st.ac (Node.frame st) n).1 }, _) = _
+    simp [h1, readCuts, heq]
   · rename_i C heq
-    exact absurd (heq.symm.trans h2) (by simp)
+    simp [h1, Node.attest, hatt C heq, readCuts, heq]
+
+theorem tickStep_fgUpdate_none {y : Fin sp.n} {st : St} {f j τ : Nat}
+    (hf : ChainFrame (Node.frame st) f j τ) {b : Nat} (hL : LocksLe st.ac.locks b)
+    (hfg : FGGood st.fg τ) {nr : Nat} (hrec : RecGood st.record nr)
+    (hzero : b = 0 → st.ac.locks = ∅) (hh : ∀ m, f ≤ m → m ≤ τ → m ≤ b → hgt m ≤ nr)
+    (n x : Nat) :
+    tickStep prop dg y st (n : Int) x .fgUpdate =
+      (st, readCuts st n) := by
+  apply tickStep_fgUpdate_refused
+  intro C hc
+  obtain ⟨m, hmf, hmτ, hmb, rfl⟩ := (acToFG_read hf hL n).2 C hc
+  by_cases hb : b = 0
+  · have he : toFGCandidates sp st.ac (Node.frame st) n = ∅ := by
+      ext B; simp [toFGCandidates, liveLocks, hzero hb]
+    unfold AC.acToFG AC.fgSource at hc
+    split_ifs at hc
+    · cases hc
+    · have hm := (deepest_mem hc).1
+      rw [he] at hm
+      exact False.elim hm
+  exact attest_signed hfg hmτ y hrec (hh m hmf hmτ hmb)
 
 theorem jx_le_pred (τ : Nat) : jx τ ≤ τ - 1 ∨ jx τ = 0 := by
   rcases τ with _ | τ
@@ -151,18 +180,16 @@ theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
     (h : NS st y τ k nr vs pl lk tl lc rp us) {n : Nat}
     (hnp : ¬ (y = w0 ∧ n % 4 = 0 ∧ 4 ≤ n))
     (hac : acOnTick sp y st.ac (Node.frame st) n = (st.ac, []))
-    (hlk : lk ≤ rp) (hrp : rp ≤ τ) (hrp' : τ ≤ rp + 1) :
+    (hh : hgt lk ≤ nr) :
     Node.onTick prop dg y st (n : Int) 0 true =
-      (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) := by
+      (st, [.ac ⟨.tick, Node.frame st, []⟩] ++ readCuts st n) := by
   obtain ⟨f, hf⟩ := ns_frame h
-  have hfr : f ≤ rp := by
-    have h1 := hf.fj; have h2 := jx_le_pred τ; omega
   rw [onTick_eq', tickStep_acTick, hac]
   dsimp only
   rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
     tickStep_proposal_no hnp,
-    tickStep_fgUpdate_none hf (fun l hl => (h.ac.locks l hl).imp fun _ hm => ⟨by omega, hm.2⟩)
-      hfr hrp h.ac.reported]
+    tickStep_fgUpdate_none hf h.ac.locks h.fg h.record h.ac.zeroLocks
+      (fun m _ _ hml => (hgt_mono hml).trans hh)]
   rfl
 
 /-! ## The parameters along time -/
@@ -264,7 +291,7 @@ theorem tick_update {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
   have hac' : ACShape A' (vsT (4 * s + 3)) s (poolT y (4 * s + 3)) s s s s s := by
     refine ⟨hsame.mayVote.trans hac.permission, hsame.restartTime.trans hac.restart,
       ?_, ?_, ?_, fun m h1 h2 => ?_, ?_, fun j => ?_,
-      hL, htip, hlat.trans hac.latest, hsame.fgReported.trans hac.reported⟩
+      hL, htip, hlat.trans hac.latest, fun hz => by omega⟩
     · rw [hsame.votedSlot, hac.voted]; unfold vsT; rw [tip_four2, tip_four3]
       split_ifs <;> first | rfl | omega
     · rw [hsame.pool, hac.pool]; funext σ; unfold poolT; rw [tip_four2, tip_four3]
@@ -278,7 +305,6 @@ theorem tick_update {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     · rw [hsame.blockStamp]; exact hac.bstamp0
     · rw [hsv, show s = (s - 1) + 1 by omega]
       exact saved_succ hac.saved j
-  have hrep : A'.fgReported = (blk s).root := hsame.fgReported.trans hac.reported
   refine ⟨A', ?_, ?_⟩
   · rw [onTick_eq', tickStep_acTick, hstep]
     dsimp only
@@ -340,7 +366,7 @@ theorem tick_vote0 {st : St} {y : Fin sp.n} (h : Good st y 1) :
     rw [hadm]
     refine ⟨hac.permission, hac.restart, rfl, ?_, ?_, hac.bstamp, hac.bstamp0,
       hac.saved, hac.locks, hac.tipLock,
-      hac.latest, hac.reported⟩
+      hac.latest, hac.zeroLocks⟩
     · change Function.update st.ac.pool 0 (st.ac.pool 0 ++ [vote y 0]) = _
       rw [hpool, hac.pool]; rfl
     · have := vstamp_update (A := st.ac) (pl := poolT y 1) hac.vstamp (σ := 0) (v := vote y 0) rfl
@@ -402,7 +428,7 @@ theorem deliver_vote0 {st : St} {y : Fin sp.n}
     split_ifs <;> first | rfl | omega | (subst_vars; rfl)
   refine ⟨hfg, hatts, hrec, ⟨hac.permission, hac.restart, hac.voted,
     ?_, ?_, hac.bstamp, hac.bstamp0, hac.saved,
-    hac.locks, hac.tipLock, hac.latest, hac.reported⟩⟩
+    hac.locks, hac.tipLock, hac.latest, hac.zeroLocks⟩⟩
   · change Function.update st.ac.pool 0 _ = _
     rw [hp2, hac.pool, Function.update_idem]
   · intro σ x hx
@@ -443,15 +469,15 @@ theorem deliver_att {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
 theorem ac_report {A : ACState sp.n} {Φ : N.Frm} {f s : Nat} (hf : ChainFrame Φ f (jx s) s)
     (hs : 1 ≤ s) {vs : Int} {pl : Nat → List (Vote sp.n)} {lc us : Nat}
     (hac : ACShape A vs s pl s s lc (s - 1) us) :
-    (AC.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).1 = { A with fgReported := (blk s).root } ∧
+    (AC.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).1 = A ∧
       (AC.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).2 = some (blk s) :=
-  acToFG_tick hf hac.restart (by rw [slot_nat]; omega) (hac.tipLock hs) (by omega) hac.reported
+  acToFG_tick hf hac.restart (by rw [slot_nat]; omega) (hac.tipLock hs)
 
 theorem tickStep_report {y : Fin sp.n} {st : St} {f s : Nat}
     (hf : ChainFrame (Node.frame st) f (jx s) s) (hs : 1 ≤ s) {vs : Int}
     {pl : Nat → List (Vote sp.n)} {lc us : Nat} (hac : ACShape st.ac vs s pl s s lc (s - 1) us) :
     tickStep prop dg y st ((4 * s + 1 : Nat) : Int) 0 .fgUpdate =
-      let st' : St := { st with ac := { st.ac with fgReported := (blk s).root } }
+      let st' : St := st
       ((Node.attest y st' (blk s)).1,
         .ac ⟨.toFG, Node.frame st, []⟩ :: (Node.attest y st' (blk s)).2) := by
   obtain ⟨h1, h2⟩ := ac_report hf hs hac
@@ -470,9 +496,9 @@ theorem tick_report_ac {y : Fin sp.n} {st : St} {s : Nat} (hs : 1 ≤ s)
 
 theorem ac_reported {A : ACState sp.n} {vs : Int} {τ : Nat} {pl : Nat → List (Vote sp.n)}
     {lk tl lc rp us : Nat} (h : ACShape A vs τ pl lk tl lc rp us) (r : Nat) :
-    ACShape { A with fgReported := (blk r).root } vs τ pl lk tl lc r us :=
+    ACShape A vs τ pl lk tl lc r us :=
   ⟨h.permission, h.restart, h.voted, h.pool, h.vstamp, h.bstamp, h.bstamp0,
-    h.saved, h.locks, h.tipLock, h.latest, rfl⟩
+    h.saved, h.locks, h.tipLock, h.latest, h.zeroLocks⟩
 
 /-- **The tick of `t_s + Δ` at a row slot** (`s ≡ 1 mod 10`): `ac_to_fg` returns the block of
 slot `s` and the node signs its row. A separate delivery admits it to the pool. -/
@@ -499,7 +525,7 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
     have hn2 : nrv (4 * s + 1) = hgt s - 1 := by unfold nrv hgt; split_ifs <;> omega
     split_ifs with h1 h2 h3 <;> (try subst h1) <;> first
       | omega | (congr 1; omega)
-  set st' : St := { st with ac := { st.ac with fgReported := (blk s).root } }
+  set st' : St := st
   have hatt' : st'.fg.attest st'.record y (blk s) = some (row y (hgt s), Λ') := hatt
   have hns : NS { st' with record := Λ' } y s (cnt y (4 * s + 1)) (hgt s) (vsT (4 * s + 1))
       (poolT y (4 * s + 1)) s s s s (nsv (4 * s + 1)) :=
@@ -521,10 +547,10 @@ height's row the node has signed already. -/
 theorem tick_report_old {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 ≠ 1)
     (h : Good st y (4 * s + 1)) :
     Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 true =
-      ({ st with ac := { st.ac with fgReported := (blk s).root } },
+      (st,
         [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩,
           .fg (.attest (blk s) none)]) ∧
-      Good { st with ac := { st.ac with fgReported := (blk s).root } } y (4 * s + 2) := by
+      Good st y (4 * s + 2) := by
   obtain ⟨hfg, hatts, hrec, hac⟩ := h
   rw [tip_four1] at hfg hac
   rw [rep_four1] at hac
@@ -674,7 +700,7 @@ theorem onBlock_blk {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     refine ⟨hfg', by rw [hatts', hatts], hrec,
       ⟨hac.permission, hac.restart, rfl, ?_, ?_, ?_, ?_, hac.saved,
       by rw [Nat.add_sub_cancel]; exact hL₁, by rw [Nat.add_sub_cancel]; exact htip₁,
-      by rw [Nat.add_sub_cancel]; exact hac.latest, by rw [Nat.add_sub_cancel]; exact hac.reported⟩⟩
+      by rw [Nat.add_sub_cancel]; exact hac.latest, fun hz => by omega⟩⟩
     · change Function.update st.ac.pool (k + 1) [vote y (k + 1)] = _
       rw [hac.pool]
     · intro σ x hx
@@ -811,7 +837,10 @@ theorem tick_propose {st : St} {s : Nat} (hs : 1 ≤ s) (h : Good st w0 (4 * s))
       (poolT w0 (4 * (k + 1))) k k k k (nsv (4 * (k + 1))) :=
     ⟨hfg, hatts, hrec,
       ⟨hac.permission, hac.restart, hac.voted, hac.pool, hac.vstamp, hac.bstamp, hac.bstamp0,
-      hac.saved, hL₁, htip₁, hac.latest, hac.reported⟩⟩
+      hac.saved, hL₁, htip₁, hac.latest, fun hz => by
+        have he := hac.zeroLocks hz
+        rw [he] at hprop
+        exact False.elim (by omega)⟩⟩
   obtain ⟨st₂, e, hob, hem, hv⟩ := onBlock_blk (y := w0) (s := k + 1) (by omega)
     (by rw [Nat.add_sub_cancel]; exact hns₁)
   obtain ⟨f₂, hf₂⟩ := fgGood_frame hv.fg
@@ -887,7 +916,7 @@ theorem deliver_vote {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h : Vote
     split_ifs <;> first | rfl | omega | (subst_vars; rfl)
   have hne := other_ne y
   refine ⟨hfg, hatts, ?_, ⟨hac.permission, hac.restart, ?_, ?_, ?_, ?_, hac.bstamp0, ?_,
-    hLk, fun _ => htipk, rfl, by rw [rep_four1]; exact hac.reported⟩⟩
+    hLk, fun _ => htipk, rfl, fun hz => by omega⟩⟩
   · rw [nrw_succ_of (by omega)]; exact hrec
   · dsimp only; rw [hac.voted]; unfold vsT; rw [tip_four1, ite_eq_right (by omega)]
   · change Function.update st.ac.pool s _ = _

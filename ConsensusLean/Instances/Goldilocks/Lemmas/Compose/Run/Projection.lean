@@ -205,7 +205,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
           have hΦ : FrameOK ℓ.frame := hlaw.1 ▸
             (Store.frame_realization _ _ _ _ (fg_reachable h.toLocalRun hy i)).1
           exact (restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
-            (h.time_nonneg i)).2.2.2.2.2.2.1
+            (h.time_nonneg i)).2.2.2.2.2.1
         · exact step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
       | fg ℓ =>
         split_ifs with hR

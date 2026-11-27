@@ -668,7 +668,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.WidthVocab
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith

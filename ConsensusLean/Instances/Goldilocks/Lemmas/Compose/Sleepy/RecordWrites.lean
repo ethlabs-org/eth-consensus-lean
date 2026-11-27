@@ -184,11 +184,7 @@ theorem proposal_latestConfirmed (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
 theorem toFG_latestConfirmed (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) :
     (AC.acToFG sp A Φ t).1.latestConfirmed = A.latestConfirmed := by
   unfold AC.acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
   {tr : AC.GTrace sp FGP ro}
@@ -502,11 +498,7 @@ theorem proposal_keeps {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState
 theorem toFG_locks (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) :
     (AC.acToFG sp A Φ t).1.locks = A.locks := by
   unfold AC.acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 /-- **The record and its fast lock across a call**: the call keeps the keepable locks, and leaves
 the record unchanged or names a block of the frame that it wrote, as a result of its update, or

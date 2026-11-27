@@ -232,13 +232,7 @@ private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : L
   | toFG =>
     change LockInv U (acToFG sp A Φ t).1 Φ
     unfold acToFG
-    split_ifs
-    · split
-      · exact h
-      · split_ifs
-        · exact h
-        · exact h.of_eq rfl rfl
-    · exact h
+    split_ifs <;> exact h
   | message m =>
     exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
       (h.of_eq (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2) _) _ _

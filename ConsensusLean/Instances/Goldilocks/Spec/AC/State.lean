@@ -74,8 +74,6 @@ structure ACState (n : Nat) where
   locks : Set Lock
   /-- `latest_confirmed`: the stored confirmed block (a root). -/
   latestConfirmed : Nat
-  /-- `fg_reported`: the latest block given to the FG (a root). -/
-  fgReported : Nat
   /-- `voted_slot`: the latest slot whose voting transition passed the joining, timing and
   readiness guards, including an attempt the permission `mayVote` denies (which emits no vote);
   `−1` initially. -/
@@ -99,7 +97,6 @@ def initial (g : Nat) : ACState n where
   saved := fun _ => none
   locks := ∅
   latestConfirmed := g
-  fgReported := g
   votedSlot := -1
   restartTime := ⊥
 
