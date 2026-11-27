@@ -102,6 +102,150 @@ theorem compatibleWithOrigins_iff {tr : GoldilocksTrace sp ro} {H : Time → Set
           s ≤ m → Compatible (tr.HonestBlocksAt H) B C)) :=
   Iff.rfl
 
+/-- The justified block itself compares with a held target during quarantine, independently
+of which root the frame uses for fork choice. -/
+theorem high_J_root_J_compatible_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hy : y ∈ H t) (htb : t ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hBy : B ∈ (tr.state y k).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hpre : ∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocksAt H) B O) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J B := by
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  have hreach := fg_reachable_at hrun ht hle hy
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
+    fun X hX => ⟨y, k, t, ht, hle, hy, hX⟩
+  have hgB := ((Store.accepted_tree _ _ _ _ hreach).2.2.2 B hBy).mono hsub
+  have hcz := hp.cutZ_le_of_high_hj_at ht hle hy hhigh
+  have hrow : ∀ E ∈ (tr.state y k).fg.tree,
+      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
+      ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocksAt H) E B →
+      ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
+        att.val ∉ H t := by
+    intro E hE hEh _ hncE W hW att ha haT haH
+    have he := Trace.upTo_state tr y hle
+    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
+    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    · cases ha
+    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
+    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
+      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
+      (hrun.antitone (hle i' hi') haH)
+    have hdk : d < k := hdi.trans hi'
+    have hv := hrun.antitone (hle d hdk) haH
+    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
+      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
+    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
+    rw [he'] at hE' hE'h
+    have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
+      fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
+        fun q hq => hrun.time_mono hq.le, hv, h⟩
+    obtain rfl : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
+    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
+      (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
+    obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
+      Outcome.high_row_source_at hrun hnc (hrun.antitone (max_le hcz (hle d hdk)) haH) hs
+        (by rw [← hE'h, hσ]; exact hEh) (hp.snapshot.imp fun _ h => h.1)
+        fun D hD => (hle d hdk).trans (hpre D hD)
+    have hsub₀ : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocksAt H :=
+      fun _ h => ⟨att.val, r, tr.time r, hrun.time_nonneg r,
+        fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) ho.1, h⟩
+    obtain rfl : E₀ = E' := hU.1 (hsub₀ hE₀) (hsub' hE') (hE₀r.trans hE'r.symm)
+    have hEO : Anc (tr.HonestBlocksAt H) E₀ O := hE₀O.mono hsub₀
+    rcases hcompare _ r l O (by omega) ho with hBO | hOB
+    · exact hncE (AC.anc_total hU hEO hBO)
+    · exact hncE (Or.inl (hEO.trans hOB))
+  have hq : (H t)ᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults t ht htb
+    have hn := sp.toParams.hn
+    change 3 * (H t)ᶜ.ncard ≤ sp.toParams.n - 1 at hf
+    change (H t)ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    clear * - hn hf; omega
+  exact Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
+
+/-- Under the source cover, expose the justified-block comparison rather than only the
+fork-choice-root comparison. -/
+theorem high_J_root_J_compatible_cover_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hy : y ∈ H t) (htb : t ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hBy : B ∈ (tr.state y k).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj) (hc : HighSourceCover tr H g a b)
+    (hcompare : ∀ C s, HealedMemberBefore tr H g a b C s k →
+      s ≤ sp.slot t → Compatible (tr.HonestBlocksAt H) B C) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J B := by
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  have hreach := fg_reachable_at hrun ht hle hy
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
+    fun X hX => ⟨y, k, t, ht, hle, hy, hX⟩
+  have hgB := ((Store.accepted_tree _ _ _ _ hreach).2.2.2 B hBy).mono hsub
+  have hcz := hp.cutZ_le_of_high_hj_at ht hle hy hhigh
+  have hrow : ∀ E ∈ (tr.state y k).fg.tree,
+      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
+      ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocksAt H) E B →
+      ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
+        att.val ∉ H t := by
+    intro E hE hEh _ hncE W hW att ha haT haH
+    have he := Trace.upTo_state tr y hle
+    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
+    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    · cases ha
+    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
+    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
+      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
+      (hrun.antitone (hle i' hi') haH)
+    have hdk : d < k := hdi.trans hi'
+    have hv := hrun.antitone (hle d hdk) haH
+    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
+      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
+    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
+    rw [he'] at hE' hE'h
+    have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
+      fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
+        fun q hq => hrun.time_mono hq.le, hv, h⟩
+    obtain rfl : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
+    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
+      (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
+    obtain ⟨E₁, hE₁H, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at hrun hnc
+      (hrun.antitone (max_le hcz (hle d hdk)) haH) hs (by rw [← hE'h, hσ]; exact hEh)
+      (hp.snapshot.imp fun _ h => h.1) hc ((hle d hdk).trans htb)
+    obtain rfl : E₁ = E' := hU.1 hE₁H (hsub' hE') (hE₁r.trans haT)
+    obtain ⟨-, C, s, hC, hs', hEC⟩ := coveredBefore_iff.1 hcov
+    rcases hcompare C s (hC.mono hdk.le)
+        (hs'.trans (AC.slot_mono sp (hrun.time_nonneg d) (hle d hdk))) with hBC | hCB
+    · exact hncE (AC.anc_total hU hEC hBC)
+    · exact hncE (Or.inl (hEC.trans hCB))
+  have hq : (H t)ᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults t ht htb
+    have hn := sp.toParams.hn
+    change 3 * (H t)ᶜ.ncard ≤ sp.toParams.n - 1 at hf
+    change (H t)ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    clear * - hn hf; omega
+  exact Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
+
+/-- A high justified block compares with a held target compatible with the bounded origins,
+whether the reset is still quarantined or has source cover. -/
+theorem high_J_root_J_compatible_covered_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hy : y ∈ H t) (htb : t ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hBy : B ∈ (tr.state y k).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot t) B) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J B := by
+  rcases hp.quarantine_or_cover_at htb with hpre | hc
+  · exact hp.high_J_root_J_compatible_quarantine_at ht hle hy htb hBy hhigh hpre
+      (compatibleWithOrigins_iff.1 hcompare).1
+  · exact hp.high_J_root_J_compatible_cover_at ht hle hy htb hBy hhigh hc
+      ((compatibleWithOrigins_iff.1 hcompare).2 hc)
+
 /-- **The finalized-chain root of a reader under the high-source cover**: with a high justified
 height, a reader honest at `t ≤ b` has the root of its store compatible with every held block
 compatible with the healed members of label at most the slot of `t` written before `k`. A row
@@ -274,10 +418,10 @@ theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {y v : Fin sp.n} {i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    (hSy : S ∈ (tr.state y i).fg.tree)
+    (_hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
-    (hheld : Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F B →
+    (_hheld : Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F B →
       B ∈ (Node.frame (tr.state y i)).tree) :
     Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot B := by
   have hrun := hp.run
@@ -285,35 +429,11 @@ theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hreach := fg_reachable_at hrun hi0 hlei hy
   have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
-  have hSh := Outcome.high_of_anc_at hrun hnc hS hi0 hlei hy hSy .refl
-  have hJ : ∀ D ∈ (tr.state y i).fg.tree,
-      (tr.state y i).fg.Anc (tr.state y i).fg.F D →
-      HZ tr H g + 1 ≤ ((tr.state y i).fg.σ D.root).h →
-      (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
-      ¬ (tr.state y i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D := by
-    intro D hD hFD hDh he hn
-    have hle := (Store.cache_invariants _ _ _ _ hreach).2.2.2.2.1 D hD
-    have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
-      by_contra h
-      exact hn ⟨he, D, hD, hFD, by clear * - hlow hDh he hle; omega, h⟩
-    exact hJD.mono fun X hX => ⟨y, i, tr.time i, hi0, hlei, hy, hX⟩
-  change Compatible _ (tr.state y i).fg.fcRoot B
-  unfold Store.fcRoot
-  split_ifs with hactive
-  · rcases hBS with hBS | hSB
-    · exact AC.anc_total hU
-        (hJ S hSy (store_anc_of_honest_anc_at hrun hnc hi0 hlei hy hFS hSy) hSh
-          hactive.1 hactive.2) hBS
-    · have hFB := hFS.trans hSB
-      have hBy := (hheld hFB).1
-      have hBhy := Outcome.high_of_anc_at hrun hnc hS hi0 hlei hy hBy hSB
-      exact Or.inl (hJ B hBy (store_anc_of_honest_anc_at hrun hnc hi0 hlei hy hFB hBy) hBhy
-        hactive.1 hactive.2)
-  · rcases hBS with hBS | hSB
-    · exact AC.anc_total hU hFS hBS
-    · exact Or.inl (hFS.trans hSB)
+  change Compatible _ (tr.state y i).fg.F B
+  rcases hBS with hBS | hSB
+  · exact AC.anc_total hU hFS hBS
+  · exact Or.inl (hFS.trans hSB)
 
 /-- `low_root_of_held_seed_at` at an AC call, whose frame is the store's. -/
 theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
