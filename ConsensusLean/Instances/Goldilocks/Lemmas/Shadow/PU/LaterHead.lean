@@ -1,9 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 
 public section
 
@@ -271,123 +269,7 @@ private theorem honest_vote_call {ini} (hrun : GoldilocksRun proposer dg H tr in
     rw [((AC.restart_state sp) _ ro y _ ℓ.frame _ hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
-/-- No honest optimistic check of slot `s` precedes its honest proposal. The honest voter
-in an optimistic quorum must cast after the proposal cut of that same tick. -/
-theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
-    {s : Nat} {K : AC.CommitteeDict sp.n} (hP : AC.CommitteeP K tr.projAC H)
-    (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
-    {p : Fin sp.n} (hp : p ∈ H) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
-    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
-    ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ AC.OptimisticLockAt tr.projAC x k' s C CV := by
-  intro z hz c hci C CV hO
-  have hr' := goldilocks_ac_projection_from' hrun hnc
-  have hr := hr'.localRun
-  have hl := hrun.toLocalRun
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := Coherence.call_in_group hl hp (projAC_callAt.1 hc)
-  rw [hti] at hgi hki
-  obtain ⟨xi, fgDuei, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hki) hcall
-  obtain ⟨hpr, hki1⟩ : Proposes proposer p (sp.ts s) ∧ ki = 1 := by
-    rcases tick_ac_positions hki with ⟨h, -⟩ | h | ⟨hpr, ⟨-, h⟩ | ⟨h, -⟩⟩
-    · rw [hcall] at h; cases h
-    · rw [hcall] at h; cases h
-    · exact ⟨hpr, h⟩
-    · exact absurd hcall h
-  have hlen := (List.getElem?_eq_some_iff.1 hki).1
-  obtain ⟨ℓO, AO, hpt, hslc, hsel, -⟩ := hO
-  have hct : tr.time c ≤ sp.ts s := hti ▸ hrun.time_mono hci.le
-  unfold AC.optimisticSelect at hsel
-  dsimp only at hsel
-  split_ifs at hsel
-  have h34 := (AC.deepest_mem hsel).1.2.1
-  rw [hslc] at h34
-  have hnoH : AC.optimisticVoters sp AO ℓO.frame s C ⊆ Hᶜ := by
-    rintro u ⟨v, hv, rfl, -⟩ huH
-    obtain ⟨hvs, j', hj', e', ⟨ℓ', hc', he'⟩, rfl⟩ :=
-      AC.optimisticPoint_pool_voteU hr'.toU hz hpt hv huH
-    have hsl' : sp.slot (tr.projAC.time j') = s :=
-      (AC.castAt_specU hr.toU huH ⟨hc', he'⟩).2.1.symm.trans hvs
-    have htj : tr.time j' = sp.ts s := le_antisymm ((hrun.time_mono hj').trans hct)
-      ((AC.ts_le_iff_le_slot sp (hr.time_nonneg j') (s : Int)).2 (by rw [hsl']))
-    obtain ⟨g, eu, k₁, hg, hjeq, hk₁⟩ := Coherence.call_in_group hl huH (projAC_callAt.1 hc')
-    rw [htj] at hg hk₁
-    obtain ⟨htick, hnp, hnt, hnr⟩ := honest_vote_call hrun hnc huH ⟨hc', he'⟩
-    have hph : eu.phase ≤ 1 := by
-      rcases lt_trichotomy g gi with h | rfl | h
-      · have := hl.phase_order _ huH _ hp g gi (sp.ts s) eu _ hg hgi h
-          (.inr (not_ownPublicationAt_of_ac_cut hg hk₁))
-        simpa [Event.phase] using this
-      · obtain ⟨_, hn₁⟩ := (group_call' hg).1
-        obtain ⟨_, hn₂⟩ := (group_call' hgi).1
-        have hnode : e'.msg.val = p := hn₁.1.symm.trans hn₂.1
-        rw [hnode] at hg
-        rw [group_phase hg hgi]
-        simp [Event.phase]
-      · exact absurd (group_start hgi hg h.le (by omega)) h.ne'
-    cases eu with
-    | tick xu fgDueu =>
-      rcases tick_ac_positions hk₁ with ⟨h, -⟩ | h | ⟨hpu, ⟨h, -⟩ | ⟨-, hk₁2⟩⟩
-      · have h5 := htick h
-        have hslts : sp.slot (sp.ts s) = s := by
-          simpa using (AC.slot_arithmetic sp s).1 0 (by omega)
-        rw [htj, hslts] at h5
-        linarith only [h5, hΔ]
-      · exact hnt h
-      · exact hnp h
-      have hup : e'.msg.val = p := hpu.2.2.symm.trans hpr.2.2
-      rw [hup] at hg
-      have := hl.tick_unique p hp g gi (sp.ts s)
-        ((RunTrace.tickAt_iff ..).2 ⟨xu, fgDueu, hg⟩)
-        ((RunTrace.tickAt_iff ..).2 ⟨xi, fgDuei, hgi⟩)
-      omega
-    | restart =>
-      have hmem := List.mem_of_getElem? hk₁
-      simp only [exec_eq, restart_eq, acCall_eq, List.mem_singleton, Cut.ac.injEq] at hmem
-      exact hnr (by rw [hmem])
-    | _ => simp [Event.phase] at hph
-  have hsub : AC.optimisticVoters sp AO ℓO.frame s C ⊆ K.committee s ∩ Hᶜ := by
-    intro u hu
-    refine ⟨?_, hnoH hu⟩
-    obtain ⟨v, hv, rfl, -⟩ := hu
-    exact hP.2 z hz c ℓO AO hpt s v hv
-  have := Set.ncard_le_ncard hsub (Set.toFinite _)
-  omega
-
 set_option linter.unusedVariables false in
-/-- All locks stored at an honest proposal have strictly earlier slots. -/
-theorem proposal_locks_slot_of' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) {K : AC.CommitteeDict sp.n}
-    (hP : AC.CommitteeP K tr.projAC H)
-    (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) :
-    ∀ l ∈ (tr.state p i).ac.locks, l.slot < s := by
-  have hr := (goldilocks_ac_projection_from' hrun hnc).localRun
-  intro l hl
-  obtain ⟨-, -, -, O, hO, -⟩ := lock_origin hrun hnc hp i l hl
-  have hii : tr.projAC.time i = tr.time i := rfl
-  obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
-  · obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
-    have := hr.time_mono hki.le
-    have := ts_add_two_le (sp := sp) (m := l.slot) (s := s)
-      (by linarith only [htk, this, hii, hti, sp.toParams.hΔ])
-    omega
-  · have hsl_i : sp.slot (tr.time i) = s := by
-      rw [hti]
-      simpa using (AC.slot_arithmetic sp s).1 0 (by omega)
-    have hle := AC.slot_mono sp (hr.time_nonneg k') (hr.time_mono hki.le)
-    obtain ⟨-, -, -, hsk, -⟩ := id hOp
-    rcases Nat.lt_or_ge l.slot s with h | h
-    · exact h
-    have hls : l.slot = s := by rw [hii, hsl_i] at hle; omega
-    exact absurd (hls ▸ hOp)
-      (proposal_no_optimistic_of' hrun hnc hP hfK hp hc hcall hti x hx k' hki O CV)
-
 end Consensus.Goldilocks.Compose
 
 end

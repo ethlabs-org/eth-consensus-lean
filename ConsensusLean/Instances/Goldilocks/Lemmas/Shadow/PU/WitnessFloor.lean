@@ -609,7 +609,7 @@ theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
       (Node.frame (Node.tickStep proposer dg z (tu.state z j) (tu.time (j + 2)) x
         .acTick).1) (tu.projAC.time (j + 1))).2 = some (d, pay) := by
     have ht1' : tu.projAC.time (j + 1) = tu.time (j + 2) := ht1
-    rw [Compose.projAC_state' h hzk, hst1, ht1']
+    rw [Compose.projAC_state h hzk, hst1, ht1']
     simpa only [Node.acProposal_eq] using hdp
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc rfl
     (by rw [sp.slotTime_eq]; exact hj1) hd

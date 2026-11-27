@@ -351,16 +351,16 @@ theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [h, hcall] at hr'
     cases hr'
   have hjo : AC.joined sp (tr.projAC.state y j) (tr.projAC.time j) := by
-    rw [projAC_state' hrun.toLocalRun hy j, htj]
+    rw [projAC_state hrun.toLocalRun hy j, htj]
     exact (joined_at_call hrun hy j ⟨_, hn0, hl⟩ hnr ht0).1 hj
   rcases acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
-      (by rw [htj, hslot, projAC_state' hrun.toLocalRun hy j]; exact hmv j) with
+      (by rw [htj, hslot, projAC_state hrun.toLocalRun hy j]; exact hmv j) with
     hv | ⟨e, he', hes⟩
   · rw [htj, hslot] at hv
     rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy j s hv with
       ⟨k, hk, e, hve, hes⟩ | hmf
     · exact ⟨k, e, hve, hes, (hr.time_mono hk.le).trans htj.le⟩
-    · rw [projAC_state' hrun.toLocalRun hy j, hmv j] at hmf
+    · rw [projAC_state hrun.toLocalRun hy j, hmv j] at hmf
       exact absurd hmf (by decide)
   · refine ⟨j, e, ⟨ℓ, hc, hemit ▸ he'⟩, ?_, htj.le⟩
     rwa [htj, hslot] at hes

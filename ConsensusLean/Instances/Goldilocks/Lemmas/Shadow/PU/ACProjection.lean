@@ -116,7 +116,7 @@ private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     rw [← hfr', hfr, tr.state_succ_of_call hacc, frame_eq, frame_eq]
     exact (Store.accept_is_frame_step' _ _ (fg_reachable_at h hy i')).1 B _ hlaw.2.1
   | message m =>
-    obtain ⟨j, hg⟩ := msgCall_group' h hy hc rfl
+    obtain ⟨j, hg⟩ := msgCall_group h hy hc rfl
     exact ⟨same (fun _ hb => by cases hb), h.wire y hy j _ _ hg⟩
   | _ => exact same fun _ hb => by cases hb
 
@@ -139,7 +139,7 @@ theorem ac_projection' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
       sleep_of_restart := fun y hy i ℓ hc hr => ?_ }
   · have hc : tr.CallAt (tr.node i) i (.ac ℓ) := projAC_callAt.1 ⟨rfl, hl⟩
     change A.step (tr.node i) _ ℓ.frame (tr.time i) ℓ.call = ((tr.post i).ac, ℓ.emits)
-    rw [projAC_state' h hH]
+    rw [projAC_state h hH]
     exact ((cutStep_ac _ _ _ _ _).1 (h.cutLaw _ hH i _ hc)).2.1
   · have hc := projAC_callAt.1 hc
     by_cases hex : ∃ j < i, ∃ ℓ' : ACLabel A, tr.CallAt y j (.ac ℓ')
@@ -244,7 +244,7 @@ theorem state_pool_cap' (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [tr.projAC.state_of_lastCall hc hk hn]
       have hex := ((Node.cutStep_ac _ _ _ _ _).1
         (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))).2.1
-      rw [← projAC_state' hrun.toLocalRun hy] at hex
+      rw [← projAC_state hrun.toLocalRun hy] at hex
       have h := AC.step_pool_cap ro y (tr.projAC.state y k) ℓ.frame (tr.time k)
         ℓ.call (ih k hk)
       rw [hex] at h
@@ -266,7 +266,7 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun proposer dg H tr ini)
       have hlaw := (Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))
       have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' hrun.toLocalRun hy k
       have hex := hlaw.2.1
-      rw [← projAC_state' hrun.toLocalRun hy] at hex
+      rw [← projAC_state hrun.toLocalRun hy] at hex
       by_cases hr : ℓ.call = .restart
       · have hs := AC.restart_state sp _ ro y (tr.projAC.state y k) ℓ.frame
           (tr.time k) hΦ (hrun.time_nonneg k)
@@ -496,7 +496,7 @@ theorem goldilocks_ac_projection_from'
         have htime : sp.toParams.slotTime B.slot = tr.time (j₀ + 2) := hs ▸ hP.2.1.symm
         refine ⟨j₀ + 2, acc, ((Trace.upTo_callAt _).mp hj).2, j₀, ?_, rfl, hs ▸ hP.1,
           htime ▸ (h.time_mono (hjk.trans hk.le))⟩
-        have ht' := (RunTrace.upTo_tickAt' tr h.time_mono).mp
+        have ht' := (RunTrace.upTo_tickAt h.time_mono).mp
           ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, f, ht⟩)
         have ht'' : tr.TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) := ht'.2
         rw [← htime] at ht''

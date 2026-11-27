@@ -148,7 +148,7 @@ theorem ProposalImpl.finalized_compatible_high_origin_at'
           hp.run.antitone (le_max_right _ _) ho.1,
           Outcome.high_origin_mem_at' hp.run hp.noColl ho⟩))
     · obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
-        hp.left_entry_origin_or_covered_at' ht hle hz hcb hJm hJT (by omega) hEC
+        hp.left_entry_origin_or_covered_at ht hle hz hcb hJm hJT (by omega) hEC
           (by have := hj_lt_h_with hfs hr hC; omega)
       rcases hor with ⟨r, hrd, m, B, hB, hJB⟩ | ⟨-, hcov⟩
       · have hFB := (hFJ.mono hsub).trans hJB
@@ -157,7 +157,7 @@ theorem ProposalImpl.finalized_compatible_high_origin_at'
         · exact Or.inl (hFB.trans h)
         · exact Anc.total hU hFB h
       · exact (hcov.of_anc (hFJ.mono hsub)).compatible_highOrigin' hp.run hp.noColl hib ho
-  · exact Or.inl (hp.low_finalized_below_origin_at' ht hle hz hcb (by omega) ho hib)
+  · exact Or.inl (hp.low_finalized_below_origin_at ht hle hz hcb (by omega) ho hib)
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -76,18 +76,18 @@ theorem updateAt_tickRun (s : Nat) : UpdateAt (tickRun N1 dg1).projAC v0 (8 * (4
     ⟨.tick, Node.frame (tickState N1 dg1 (4 * s + 6)), []⟩ := by
   refine ⟨update_callAt s, rfl, ?_, ?_⟩
   · rw [update_time, ts_nat, delta1]; push_cast; ring
-  · rw [projAC_state']
+  · rw [projAC_state]
     exact joined_of_bot (tickRun_restartTime _) _
 
 /-! ## The state at the update -/
 
 theorem update_pool_cv (s : Nat) :
     ∀ v ∈ ((tickRun N1 dg1).projAC.state v0 (8 * (4 * s + 6))).pool s, v = cv s := by
-  rw [projAC_state']; exact pool_cv _ s
+  rw [projAC_state]; exact pool_cv _ s
 
 theorem update_pool_eq (s : Nat) :
     ((tickRun N1 dg1).projAC.state v0 (8 * (4 * s + 6))).pool s = [cv s] := by
-  rw [projAC_state', state_tick, (good_tick (4 * s + 6)).ac.pool s,
+  rw [projAC_state, state_tick, (good_tick (4 * s + 6)).ac.pool s,
     ite_pos ⟨by omega, by unfold tip; omega⟩]
 
 /-- **The stamp of a held vote of slot `s`** is before `t_s + 2Δ`: it is the time of the cut
@@ -113,7 +113,7 @@ theorem voteStamp_lt {s i : Nat} (hx : cv s ∈ ((tickRun N1 dg1).projAC.state v
     · by_contra hge
       apply hnot
       change cv s ∈ ((tickRun N1 dg1).projAC.state v0 k).pool s
-      rw [projAC_state']
+      rw [projAC_state]
       refine tickRun_pool_mono (Nat.le_of_not_lt hge) s ?_
       rw [state_tick, (good_tick (4 * s + 2)).ac.pool s,
         ite_pos ⟨by omega, by unfold tip; omega⟩]
@@ -309,7 +309,7 @@ theorem update_post (s : Nat) :
       updateConfirmation sp1 ((tickRun N1 dg1).projAC.state v0 (8 * (4 * s + 6)))
         (Node.frame (tickState N1 dg1 (4 * s + 6)))
         ((tickRun N1 dg1).projAC.time (8 * (4 * s + 6))) s := by
-  rw [projAC_state', projAC_state', state_eq (8 * (4 * s + 6) + 1), state_tick, update_time,
+  rw [projAC_state, projAC_state, state_eq (8 * (4 * s + 6) + 1), state_tick, update_time,
     show (8 * (4 * s + 6) + 1) / 8 = 4 * s + 6 by omega,
     show (8 * (4 * s + 6) + 1) % 8 = 1 by omega, tickMid_one]
   change (acOnTick sp1 v0 (tickState N1 dg1 (4 * s + 6)).ac

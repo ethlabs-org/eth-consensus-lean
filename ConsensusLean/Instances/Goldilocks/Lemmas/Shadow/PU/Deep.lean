@@ -43,7 +43,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A source of an honest node is in its FG tree (`Healing.toFG_mem_tree`): the shadow frame's
 tree is the store's tree above `F`. -/
-theorem toFG_mem_tree' (hrun : GoldilocksRun proposer dg H tr ini)
+theorem toFG_mem_tree (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
@@ -109,7 +109,7 @@ theorem report_of_deepest_candidate_of_run
       rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
       · exact False.elim (hPg (by rw [← heq]; rfl))
       · exact False.elim (Option.some_ne_none _ (hY.2.2.symm.trans rfl))
-    have hR't := toFG_mem_tree' hrun hy hto
+    have hR't := toFG_mem_tree hrun hy hto
     obtain rfl : R' = R := hr.coherent.1 ⟨y, hy, r, hR't⟩ (hPhiU hRt)
       (hR'r.trans hRr.symm)
     exact ⟨r, ell', R', hto, hrun.time_mono hrj.le, hPR.mono hPhiU⟩
@@ -177,7 +177,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
     exact hlate k hki (not_lt.1 hle) (Coherence.accept_mem_from hrun.toLocalRun hx hA)
   have hge := Compose.blockStamp_ge_of_accept hacr.localRun hx
     ⟨ℓ', Compose.projAC_callAt.2 hc', hcall'⟩ hg i hk1
-  rw [Compose.projAC_state' hrun.toLocalRun hx i] at hge
+  rw [Compose.projAC_state hrun.toLocalRun hx i] at hge
   change AC.ETime.of (tr.time (k + 1)) ≤ _ at hge
   rw [ht'] at hge
   exact lt_of_lt_of_le (AC.etime_of_lt_of.2 hkc) hge
@@ -199,7 +199,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem projAC_state_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     tr.projAC.state y i = (tr.state y i).ac := by
-  have h := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
+  have h := Compose.projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le),
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
