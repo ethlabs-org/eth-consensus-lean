@@ -369,6 +369,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.C
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentPassage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.EarlyWitnessBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
@@ -840,6 +841,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
