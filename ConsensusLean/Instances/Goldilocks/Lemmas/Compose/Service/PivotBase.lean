@@ -372,7 +372,8 @@ theorem proposal_locks_slot_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     exact absurd (hls ▸ hOp)
       (proposal_no_optimistic_of hrun hnc hP hfK hp hc hcall hti x hx k' hki O CV)
 
-/-- The justification is genesis or belongs to any downward-closed family containing the row sources. -/
+/-- The justification is genesis or belongs to a downward-closed family containing the
+row sources. -/
 theorem justified_of_rows_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
