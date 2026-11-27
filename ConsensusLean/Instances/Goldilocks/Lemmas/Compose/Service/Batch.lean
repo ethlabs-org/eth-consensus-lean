@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.BatchWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
