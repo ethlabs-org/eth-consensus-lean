@@ -326,7 +326,8 @@ private theorem frame_block_cases' (hrun : GoldilocksRun' proposer dg H tr ini)
     B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
   obtain ⟨y, hy, i, ℓ, hc, hB⟩ := hB
-  rcases Coherence.tree_accepted' hrun.toLocalRun' hy (frame_tree' hrun hy hc hB) with h | ⟨k, -, hk⟩
+  rcases Coherence.tree_accepted' hrun.toLocalRun' hy (frame_tree' hrun hy hc hB) with
+    h | ⟨k, -, hk⟩
   · exact Or.inl h
   · exact Or.inr ⟨y, hy, k, hk⟩
 
@@ -339,7 +340,8 @@ private theorem own_tick' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin 
       tr.CallAt B.proposer (j₀ + 2) (.fg (.block B acc)) ∧ 0 < B.slot ∧
       tr.time (j₀ + 2) = sp.toParams.slotTime B.slot := by
   obtain ⟨j, -, ⟨acc, hc⟩, hpos⟩ := hrun.block_unforgeable y hy k B ⟨true, hk⟩ hp
-  rcases Coherence.blockCall_cases' hrun.toLocalRun' hp hc with hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -,
+  rcases Coherence.blockCall_cases' hrun.toLocalRun' hp hc with
+    hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -,
     hB, -⟩
   · have hg := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos
