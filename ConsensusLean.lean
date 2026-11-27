@@ -816,13 +816,17 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshNext
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.HunStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Kernel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
