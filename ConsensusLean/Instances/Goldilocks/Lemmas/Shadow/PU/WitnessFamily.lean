@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLaterBoundary
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -40,16 +41,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
-
-/-- Stub (Lane C `Run`): `Healing.ac_block_after` over the shadow run. -/
-theorem ac_block_after_stub {P : Params} {A : NodeAC P} {tr : RunTrace A}
-    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H₀ : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {ini}
-    (_h : Node.LocalRun' proposer dg H₀ sg tr ini) {y : Fin P.n} (_hy : y ∈ H₀) {k : Nat}
-    {B : A.Blk} (_ha : tr.AcceptAt y k B) :
-    tr.projAC.AcceptAt y (k + 1) B ∧ tr.time (k + 1) = tr.time k ∧
-      ¬ tr.RestartAt y (k + 1) := by
-  sorry
 
 /-- A block in an honest frame has an earlier honest FG acceptance, or is genesis
 (`frame_block_acceptance_at`). -/
@@ -152,7 +143,7 @@ theorem frame_relay_before_at'
     (hFstate ▸ hF)
   have ha' : (tr.upTo (tr.time j)).AcceptAt y a B :=
     (RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono haj.le, ha⟩
-  obtain ⟨hacc, _, _⟩ := ac_block_after_stub hp.toLocalRun' hy ha'
+  obtain ⟨hacc, _, _⟩ := Healing.ac_block_after' hp.toLocalRun' hy ha'
   have hBF : Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) elly.frame.F B := by
     obtain ⟨ella, hca, hba⟩ := hacc
     have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
@@ -228,7 +219,7 @@ theorem frame_witness_readPoint_stamp_at'
         exact ⟨q, hq, hacc, by rw [hfz]; linarith only [hqt, hm, sp.toParams.hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := accepted
     have hq' := (RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hrun.time_mono hqi.le, hq⟩
-    obtain ⟨hqa, htq, _⟩ := ac_block_after_stub hp.toLocalRun' hy hq'
+    obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after' hp.toLocalRun' hy hq'
     exact Or.inr ⟨q + 1, by rwa [RunTrace.upTo_projAC] at hqa,
       by change tr.time (q + 1) < _; rw [show tr.time (q + 1) = tr.time q from htq]; exact hqt⟩
   refine ⟨?_, ?_⟩
@@ -257,17 +248,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
 
-/-- Stub (Lane C `Run` / B0b): `held_atts_safe_at` over the shadow run. -/
-theorem held_atts_safe_at_stub
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    {y x : Fin sp.n} {m i : Nat} {u t d : Time}
-    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
-    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t) (hud : u ≤ d) (htd : t ≤ d)
-    (a b : FG.Att sp.n) (ha : ∃ Y ∈ (tr.state y m).fg.tree, a ∈ Y.fgPayload)
-    (hb : ∃ Y ∈ (tr.state x i).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H d) :
-    ¬ FG.slashable a b := by
-  sorry
-
 /-- A finalized tip of one honest observation is below a block held by another, strictly higher
 than its finalized height (`finalized_anc_obs` over the shadow run). -/
 theorem finalized_anc_obs'
@@ -286,7 +266,8 @@ theorem finalized_anc_obs'
     (Compose.Growing.reachable_at' hrun ht hx hxtime).reachableWith
     (Coherence.honest_blocks_coherent_at' hrun hnc)
     (Compose.Growing.tree_held_at' hu hy hytime) (Compose.Growing.tree_held_at' ht hx hxtime) hf
-    (held_atts_safe_at_stub hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    (Consensus.Goldilocks.Healing.Growing.Shadow.held_atts_safe_at' hrun hnc hu hytime hy ht
+      hxtime hx (le_max_left _ _) (le_max_right _ _))
     hX hFt hFr hW hlt).mono (Compose.Growing.tree_held_at' ht hx hxtime)
 
 /-- **The finalized tip of an honest observation is below every held block strictly above its
