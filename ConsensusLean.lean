@@ -165,10 +165,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.StepBits
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
@@ -180,6 +182,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue
@@ -428,6 +431,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.WitnessRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.ResetHeld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
@@ -548,6 +552,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -799,6 +804,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Kernel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized

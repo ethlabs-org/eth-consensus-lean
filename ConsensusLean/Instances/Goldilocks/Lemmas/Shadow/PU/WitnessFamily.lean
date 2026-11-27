@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLaterBoundary
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -11,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRe
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 
 public section
 
@@ -469,19 +471,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
 
-/-- Stub (R2, `RegularVotes.faultBoundK_of_service_at'`; to move below this file): the stock
-`faultBoundK_of_service_at` over the shadow run. -/
-theorem faultBoundK_of_service_at_stub {K : AC.CommitteeDict sp.n} {g b : Time}
-    (_hK : CommitteeHalfUpTo tr H K g b)
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hnr : NoRestartAfter tr H (gbar g)) {s : Nat}
-    (_hgs : gbar g ≤ sp.ts s) (_hsb : sp.ts s ≤ b)
-    {t : Time} (_ht0 : 0 ≤ t) (_hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1))
-    (_htb : t ≤ b) :
-    AC.FaultBoundK K s tr.projAC (H t) t := by
-  sorry
-
 /-- Stub (owner to be set; stock `Compose.proposal_locks_slot_of` over the static shadow run,
 through `lock_origin`): the locks at an honest proposal call of slot `s` are of earlier slots. -/
 theorem proposal_locks_slot_of_stub {H₀ : Set (Fin sp.n)}
@@ -663,7 +652,7 @@ theorem unanimous_next_votes_of_witness_at' {K : AC.CommitteeDict sp.n}
     omega
   have hfault : AC.FaultBoundK K m (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) :=
     Healing.Growing.KernelProof.faultBoundK_upTo le_rfl
-      (faultBoundK_of_service_at_stub hK hrun hawake hnr hgm (by linarith) ht0 (by
+      (Healing.PU.faultBoundK_of_service_at' hK hrun hawake hnr hgm (by linarith) ht0 (by
         rw [hslot]
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
         rw [heq]; exact hgm) hib)
@@ -836,45 +825,192 @@ theorem later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
         ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
         (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) X d.head) := by
-  sorry
+  have hΔ := sp.toParams.hΔ
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hsstep := AC.ts_succ s (sp := sp)
+  have hFst {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+      {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell) :
+      ell.frame.F = (tr.state y i).fg.F := by
+    rw [frame_of_projAC_at' hrun hy hc, Node.frame'_eq, Store.toFrame'_F]
+  have hQ : Q ∈ (tr.state w a).fg.tree := by
+    rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_tree] at hQw
+    exact hQw.1
+  intro r hrlo hrN0
+  have hsN := hts (show s + 1 ≤ N from hrlo.trans hrN0)
+  have hwit := early_witness_viable' hrun hframe hw halo
+    (by linarith only [hat, hsstep, hsN, hΔ]) hcw hvQ
+  revert hrN0
+  induction r, hrlo using Nat.le_induction with
+  | base => exact fun _ => ⟨hbase, fun h => by omega⟩
+  | succ m hsm ih =>
+    intro hrN
+    have ht := hts hrN
+    have hms := hts hsm
+    have hwarm : gbar g + 4 * sp.Δ ≤ sp.ts m := by linarith only [hm, hms, hsstep]
+    have hprior := (ih (show m ≤ N by omega)).1
+    have hwin := hframe.mono (hts (show s ≤ m by omega))
+      (show sp.ts (m + 1 : Nat) + sp.Δ ≤ sp.ts N + sp.Δ by linarith only [ht])
+    have hfinal {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+        (hlo : sp.ts s ≤ tr.time i) (hhi : tr.time i ≤ sp.ts N + sp.Δ) :
+        Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q := by
+      apply hframe.finalized_below_descendant_at' hrun hnc hy hw hw
+        (sp.toParams.fg.faults_lt_quorum_margin
+          (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
+            (max_le (hhi.trans hmb) (by linarith only [hat, hsstep, hsN, hmb, hΔ]))))
+        hlo hhi hQ hwit hQ .refl
+    refine ⟨unanimous_next_votes_of_witness_at' hrun hnc hsvc hawake hf hcatch hnr hwarm
+      (by linarith only [ht, hmb]) hwin hw hQ hwit hXQ ?_ hprior hK, ?_⟩
+    · intro y i e hy hv hes
+      obtain ⟨ell, hc⟩ := hv
+      have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg i))
+        (hnc.upTo _)).localRun
+      rw [RunTrace.upTo_projAC] at hr
+      have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+      have hs : sp.slot (tr.time i) = m + 1 := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
+      have hlo : sp.ts s ≤ tr.time i :=
+        (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
+          rw [hs]; exact_mod_cast (by omega : s ≤ m + 1))
+      have hhi : tr.time i ≤ sp.ts N + sp.Δ := by
+        have h := AC.vote_time_leU hr.toU hy ⟨ell, hc'⟩
+        change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
+        rw [hs] at h
+        linarith only [h, ht]
+      exact frame_witness_readPoint_stamp_at' hrun hnc hsvc hcatch hnr hw hy hcw hc hes hwarm
+        (by linarith only [hat, hms, hsstep, hΔ]) hQw ((hFst hy hc.1) ▸ hfinal hy hlo hhi)
+    · intro _ y i ell hy hc hcall hti d pay hd
+      have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
+      have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith only [ht, hΔ]
+      have hmstep := AC.ts_succ m (sp := sp)
+      have hQt := frame_relay_before_at' hrun hnc hsvc hcatch hw hy
+        (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcw hc hQw
+        (by rw [hti]; linarith only [hwarm, hmstep, hΔ])
+        (by rw [hti]; linarith only [hat, hms, hsstep, hmstep, hΔ])
+        ((hFst hy hc) ▸ hfinal hy hlo hhi)
+      rw [frame_of_projAC_at' hrun hy hc, Node.frame'_eq, Store.toFrame'_tree] at hQt
+      exact unanimous_next_proposal_of_witness_at' hrun hnc hsvc hawake hf hcatch hnr hwarm
+        (by linarith only [ht, hmb]) hwin hw hQ hwit hXQ hprior hy hc hcall hti hd hQt.1 hK
 
-/-- An early viable witness propagates an optimistic prefix to later honest calls
-(`optimistic_later_heads_of_early_witness_at` over the shadow run, witness `hvQ` read inside the
-window). -/
-theorem optimistic_later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    {s N M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
-    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts N + sp.Δ) M isTop J)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
-    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D)
-    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
-    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∧
-      (∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
-        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) X d.head) := by
-  sorry
+/-- A frame of a call of a node honest then is well formed, inside the blocks held while honest
+(`frameIn_at`). -/
+private theorem frameIn_at'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ℓ : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ℓ) :
+    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H := by
+  have h := AC.frameIn_of_callAt (acRun_prefix' hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+  exact ⟨h.1, h.2.trans (RunTrace.honestBlocks_upTo_subset hrun.time_mono (hrun.time_nonneg i))⟩
+
+/-- Joinedness of the cast bounds its relay deadlines (`witness_voterBlockTree_at` over the
+shadow run): an early frame witness is in the next-slot voter's block tree. -/
+theorem witness_voterBlockTree_at'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {w y : Fin sp.n} {a i : Nat} (hw : w ∈ H (tr.time a)) (hy : y ∈ H (tr.time i))
+    {ellw ell : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQw : Q ∈ ellw.frame.tree)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
+    (hs : e.msg.slot = s + 1) (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
+    Q ∈ AC.voterBlockTree sp e.readPoint ell.frame (s + 1) := by
+  have ht0 := hrun.time_nonneg i
+  have hr := (acRun_prefix' hrun hnc ht0).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have subU := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
+  obtain ⟨hPhi, hPhiU⟩ := frameIn_at' hrun hnc hy hc.1
+  have hQU := (frameIn_at' hrun hnc hw hcw).2 hQw
+  have hslot : sp.slot (tr.time i) = s + 1 := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
+  have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
+  have hts := AC.ts_succ s (sp := sp)
+  have hΔ := sp.toParams.hΔ
+  have hfz : AC.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by
+    simp only [AC.freeze, show ((s + 1 : Nat) : Int) - 1 = s by omega]
+  have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
+    have hjoined := (AC.castAt_specU hr.toU hy hc').2.2.1
+    have hj : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
+      unfold AC.joined
+      rw [AC.restartTime_of_castAtU hr.toU hy hc']
+      exact hjoined
+    intro k hk hrestart
+    have h := (AC.joined_awakeU sp _ ro (H (tr.time i)) _ _ hr.toU y hy i ell hc'.1 hj).2 k hk
+      (ACTrace.upTo_restartAt.mpr ⟨hrun.time_mono hk, hrestart⟩)
+    change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at h
+    simpa only [hslot, show ((s + 1 : Nat) : Int) - 1 = s by omega] using h
+  have hdl : ∀ k ≤ i, ∀ t, t < sp.ts s + 2 * sp.Δ →
+      tr.projAC.deadline y k t < sp.ts s + 3 * sp.Δ := by
+    intro k hk t ht
+    have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
+      (fun r hr hrestart => hrs r (hr.trans hk) hrestart) t
+    have hm' : max t (sp.ts s) < sp.ts s + 2 * sp.Δ := max_lt ht (by linarith only [hΔ])
+    change tr.projAC.deadline y k t ≤ max t (sp.ts s) + sp.Δ at h
+    linarith only [hm', h]
+  have ha : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (AC.freeze sp (s + 1)) := by
+    rcases frame_block_acceptance_at' hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
+    · exact Or.inl (congrArg Block.root hg)
+    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after' (hrun.upTo (hrun.time_nonneg a)).toLocalRun' hw
+      ((RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono hka.le, hk⟩)
+    rw [RunTrace.upTo_projAC] at hk'
+    have hacc := (ACTrace.upTo_acceptAt.mp hk').2
+    have hwk' : w ∈ H (tr.time (k + 1)) := by
+      change tr.time (k + 1) = tr.time k at htk
+      rwa [htk]
+    have hkt : tr.time (k + 1) < sp.ts s + 2 * sp.Δ := by
+      change tr.time (k + 1) = tr.time k at htk
+      rw [htk]
+      exact (hrun.time_mono hka.le).trans_lt hat
+    have hex : ∃ q ≤ i, tr.projAC.AcceptAt y q Q ∧ tr.time q < AC.freeze sp (s + 1) := by
+      by_cases hkg : gbar g ≤ tr.time (k + 1)
+      · obtain ⟨q, hqi, hq, hqt⟩ :=
+          (Healing.PU.service_syncACAt' hrun hsvc (lo := g) (hi := tr.time (k + 1)) le_rfl).2
+            w (k + 1) Q hwk' hacc ((AC.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
+            (by have := hdl i le_rfl _ hkt;
+                change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
+                linarith only [this, hti, hts, hΔ]) hFQ
+        exact ⟨q, hqi, hq, by rw [hfz]; exact hqt.trans (hdl q hqi _ hkt)⟩
+      · obtain ⟨q, hqi, hq, hqt⟩ := hrun.toLocalRun'.acCatchAt' hcatch hwk' hacc
+          (lt_of_not_ge hkg) hy hc.1 (by linarith only [hm, hti, hts, hΔ]) hFQ
+        exact ⟨q, hqi, hq, by rw [hfz]; linarith only [hqt, hm, hΔ]⟩
+    obtain ⟨q, hqi, hq, hqt⟩ := hex
+    exact Or.inr ⟨q, ACTrace.upTo_acceptAt.mpr ⟨hrun.time_mono hqi, hq⟩, hqt⟩
+  have hQt : Q ∈ ell.frame.tree := by
+    rcases ha with hg | ⟨k, hk, hkt⟩
+    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ell hc'.1
+      obtain rfl : Q = G := hU.1 hQU (subU hGU) (hg.trans hGr.symm)
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFQ with heq | ⟨P, -, hP⟩
+      · exact heq ▸ hPhi.rooted.1
+      · exact False.elim (Option.some_ne_none _ (hP.2.2.symm.trans hGp))
+    · have hki : k ≤ i := by
+        by_contra hn
+        have ht := hrun.time_mono (show i ≤ k by omega)
+        change tr.time k < _ at hkt
+        rw [hfz] at hkt
+        linarith only [ht, hkt, hti, hts, hΔ]
+      obtain ⟨ella, hca, hba⟩ := hk
+      have hk : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k Q := ⟨ella, hca, hba⟩
+      have hQp := (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy hk).1 _ hca)
+      exact AC.mem_tree_of_acceptAtU sp hr.toU hy hk hki hc'.1
+        (RunTrace.anc_upTo_of_right' hrun hnc ht0 hQp hFQ)
+  have hstamp := AC.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
+    (by simpa only [hs] using ha)
+    (fun k hk hrk => by
+      have h := hrs k hk (ACTrace.upTo_restartAt.mp hrk).2
+      change tr.time k < _
+      rw [hs, hfz]
+      linarith only [h, hΔ])
+    (by change AC.freeze sp e.msg.slot ≤ tr.time i; rw [hs, hfz];
+        linarith only [hti, hts, hΔ])
+  exact ⟨hQt, Or.inl (by simpa only [hs] using hstamp)⟩
 
 /-- Common early-witness induction with the lock-specific transfer supplied by the caller
 (`next_votes_of_early_witness_at` over the shadow run, witness `hvQ` read inside the window). -/
 theorem next_votes_of_early_witness_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s M : Nat} {hi : Time} (hm : gbar g ≤ sp.ts s)
@@ -895,63 +1031,73 @@ theorem next_votes_of_early_witness_at'
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  sorry
-
-/-- An optimistic write propagates a viable prefix to next-slot votes
-(`optimistic_next_votes_of_early_witness_at` over the shadow run). -/
-theorem optimistic_next_votes_of_early_witness_at' {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {s M : Nat} (hm : gbar g ≤ sp.ts s)
-    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
-    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
-    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D)
-    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
-    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  sorry
-
-/-- The first next-slot proposal follows the same prefix
-(`optimistic_next_proposal_of_early_witness_at` over the shadow run). -/
-theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {s M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
-    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat)) M isTop J)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
-    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D)
-    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
-    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
-    (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    Anc (tr.HonestBlocksAt H) X d.head := by
-  sorry
+  have hwit := early_witness_viable' hrun hframe hw halo
+    (by linarith only [hat, AC.ts_succ s (sp := sp), hnext, sp.toParams.hΔ]) hcw hvQ
+  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hQ : Q ∈ (tr.state w a).fg.tree := by
+    rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_tree] at hQw
+    exact hQw.1
+  suffices hall : ∀ i, ∀ y e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X from
+    fun y i e hy hv hs => hall i y e hy hv hs
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro y e hy ⟨ell, hc, he⟩ hs
+    have hcast : AC.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have ht0 := hrun.time_nonneg i
+    have hr := (acRun_prefix' hrun hnc ht0).localRun
+    have hcast' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
+    have hslot : sp.slot (tr.time i) = s + 1 :=
+      (AC.castAt_specU hr.toU hy hcast').2.1.symm.trans hs
+    have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+      (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
+    have hts := AC.ts_succ s (sp := sp)
+    have hlo : sp.ts s ≤ tr.time i := by linarith only [hti, hts, sp.toParams.hΔ]
+    have hhi : tr.time i ≤ hi := by
+      have ht := (Compose.cast_head_fcRoot hr (acRun_prefix' hrun hnc ht0).vstart hy hcast').2
+      rw [hs] at ht
+      exact ht.trans hnext
+    have hmargin : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n :=
+      sp.toParams.fg.faults_lt_quorum_margin (hf _ ht0 (hhi.trans hmb))
+    have hFQ := hframe.finalized_below_descendant_at' hrun hnc hy hw hw
+      (by rw [max_eq_left (show tr.time a ≤ tr.time i by
+            linarith only [hat, hti, hts, sp.toParams.hΔ])]; exact hmargin)
+      hlo hhi hQ hwit hQ .refl
+    rcases AC.anc_total hU hFQ hXQ with hFX | hXF
+    swap
+    · obtain ⟨hPhi, hPhiU⟩ := frameIn_at' hrun hnc hy hc
+      obtain ⟨W, hW, hWr, hFW⟩ := AC.castAt_head_anc hr hy hcast' (Or.inr rfl)
+        (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
+          (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
+      have hFW := hFW.mono hPhiU
+      rw [frame_of_projAC_at' hrun hy hc, Node.frame'_eq, Store.toFrame'_F] at hFW
+      exact ⟨W, hPhiU hW, hWr, hXF.trans hFW⟩
+    have hFQ' : Anc (tr.HonestBlocksAt H) ell.frame.F Q := by
+      rw [frame_of_projAC_at' hrun hy hc, Node.frame'_eq, Store.toFrame'_F]
+      exact hFX.trans hXQ
+    have hdom := witness_voterBlockTree_at' hrun hnc hsvc hcatch hm hw hy hcw hat hQw
+      hcast hs hFQ'
+    have hQy : Q ∈ (tr.state y i).fg.tree := by
+      have ht := hdom.1
+      rw [frame_of_projAC_at' hrun hy hc, Node.frame'_eq, Store.toFrame'_tree] at ht
+      exact ht.1
+    have hwy := witness_clause_at' hrun hnc hw hy hQ hQy hwit
+    have hpath := Healing.witness_frame_at' hrun hnc hframe hy hc hlo hhi hmargin hQy hwy hXQ
+    rcases hpath with hXF | ⟨-, hXt, hroot, -, hvQ, hXQf⟩
+    · obtain ⟨hPhi, hPhiU⟩ := frameIn_at' hrun hnc hy hc
+      obtain ⟨W, hW, hWr, hFW⟩ := AC.castAt_head_anc hr hy hcast' (Or.inr rfl)
+        (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
+          (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
+      have hFW := hFW.mono hPhiU
+      exact ⟨W, hPhiU hW, hWr, hXF.trans hFW⟩
+    have hviab : AC.ViableAtVote ell e (s + 1) X := by
+      have hdomA := AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcast'
+      rw [hs] at hdomA
+      exact Or.inl ⟨hdomA Q hdom X hXQf, hroot, Q, hdom, hvQ, hXQf⟩
+    exact htransfer y i ell e hy hcast hs hhi
+      (by rw [Node.frame'_eq, Store.toFrame'_F]; exact hFX) hviab
+      (fun z k ev hki hz hv hes => ih k hki z ev hz hv hes)
 
 /-- An optimistic supporter's anchor propagates to later honest calls
 (`optimistic_supporter_later_heads_at` over the shadow run). -/
