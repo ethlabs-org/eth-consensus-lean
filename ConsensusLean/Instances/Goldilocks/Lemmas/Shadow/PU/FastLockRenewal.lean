@@ -21,11 +21,11 @@ open Consensus.Goldilocks.Healing.Growing (CommitteeHalfUpTo)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- A fast update above an independently held stock witness supplies a later candidate
 through its two-slot lifetime. The witness stays viable even across a contest-to-gap change. -/
-theorem toFG_candidate_of_fast_update_stock_at' {K : AC.CommitteeDict sp.n}
+theorem toFG_candidate_of_fast_update_stock_at {K : AC.CommitteeDict sp.n}
     {lo hi : Time} {floor : Nat} {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
@@ -40,7 +40,7 @@ theorem toFG_candidate_of_fast_update_stock_at' {K : AC.CommitteeDict sp.n}
     {r : Nat} (hgr : gbar g ≤ sp.ts (r + 1 : Nat))
     {y : Fin sp.n} {j : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfu : AC.FastUpdateAt tr.projAC y j r D CV) (hPD : Anc (tr.HonestBlocksAt H) P D)
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) (hji : j < i)
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -59,17 +59,17 @@ theorem toFG_candidate_of_fast_update_stock_at' {K : AC.CommitteeDict sp.n}
   have hDt := (AC.deepest_mem hD).1.1.1
   have hFPj : Anc (tr.HonestBlocksAt H) ellj.frame.F P := by
     rw [hfrj, hcore.frameOf_F]
-    exact finalized_below_descendant_stock_at' hframe hrun hnc hyj hz hz
+    exact finalized_below_descendant_stock_at hframe hrun hnc hyj hz hz
       (sp.toParams.fg.faults_lt_quorum_margin
         (hf _ (le_max_of_le_left (hrun.time_nonneg j)) (max_le (hji'.trans hib) hcb)))
       hjlo (hji'.trans hihi) hP ⟨hh, hJ⟩ hP .refl
   have hPj : P ∈ ellj.frame.tree := AC.frame_mem_of_between sp hU hΦj hΦjU hDt hPD hFPj
   have hPyj : P ∈ (tr.state y j).fg.tree := by
-    rw [hfrj, Node.frame'_eq, Store.toFrame'_tree] at hPj
+    rw [hfrj, Node.frame_eq, Store.toFrame_tree] at hPj
     exact hPj.1
-  have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame' (tr.state y k)).tree ∧
-      (Node.frame' (tr.state y k)).Anc (Node.frame' (tr.state y k)).fcRoot P ∧
-      P ∈ (Node.frame' (tr.state y k)).viableHeads := by
+  have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame (tr.state y k)).tree ∧
+      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
+      P ∈ (Node.frame (tr.state y k)).viableHeads := by
     intro k hjk hki
     have hkt := hmono hki
     have hyk := hrun.antitone hkt hy
@@ -83,20 +83,20 @@ theorem toFG_candidate_of_fast_update_stock_at' {K : AC.CommitteeDict sp.n}
       (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg k) (hkt.trans hib))) hPk'
     have hFPs := Healing.Growing.store_anc_of_honest_anc_at' hrun hnc
       (hrun.time_nonneg k) (fun q hq => hmono hq.le) hyk hFP hPk'
-    have hPt : P ∈ (Node.frame' (tr.state y k)).tree := by
-      rw [Node.frame'_eq, Store.toFrame'_tree]
+    have hPt : P ∈ (Node.frame (tr.state y k)).tree := by
+      rw [Node.frame_eq, Store.toFrame_tree]
       exact ⟨hPk', hFPs⟩
-    have hvHead : P ∈ (Node.frame' (tr.state y k)).viableHeads := by
-      rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    have hvHead : P ∈ (Node.frame (tr.state y k)).viableHeads := by
+      rw [Node.frame_eq, Store.toFrame_viableHeads]
       exact ⟨hPk', hFPs, hvP⟩
-    have hroot : (Node.frame' (tr.state y k)).Anc (Node.frame' (tr.state y k)).fcRoot P := by
+    have hroot : (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P := by
       have hΦ := hcore.frameOK_at (hrun.time_nonneg k) hyk (fun q hq => hmono hq.le)
-      have hsub : (Node.frame' (tr.state y k)).tree ⊆ tr.HonestBlocksAt H := by
-        rw [Node.frame'_eq, Store.toFrame'_tree]
+      have hsub : (Node.frame (tr.state y k)).tree ⊆ tr.HonestBlocksAt H := by
+        rw [Node.frame_eq, Store.toFrame_tree]
         exact fun B hB => ⟨y, k, tr.time k, hrun.time_nonneg k,
           (fun q hq => hmono hq.le), hyk, hB.1⟩
       apply AC.anc_tree_of_anc_U hU hΦ hsub hΦ.fcRoot_mem _ hPt
-      rw [Node.frame'_eq, Store.toFrame'_fcRoot]
+      rw [Node.frame_eq, Store.toFrame_fcRoot]
       exact hFP
     refine ⟨hPt, hroot, ?_⟩
     exact hvHead
@@ -111,11 +111,11 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- A unanimous warm proposal supplies candidates after its update throughout the stock window.
 Unanimity is an explicit premise, not inferred from the window. -/
-theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
+theorem toFG_candidate_pre_within_stock_at {K : AC.CommitteeDict sp.n}
     {g ΔF b hi : Time} {s₀ u floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
@@ -131,7 +131,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     (hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
       e.msg.slot = u → e.msg.head = P.root)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (hhi : tr.time i ≤ hi) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
@@ -152,7 +152,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     ⟨fun w j hw hlo hhi => hframe.floor_eq w j hw (hl.trans hlo) (hhi.trans hh),
      fun w j hw hlo hhi => hframe.kind_iff w j hw (hl.trans hlo) (hhi.trans hh),
      fun w j hw hlo hhi => hframe.root_eq w j hw (hl.trans hlo) (hhi.trans hh)⟩
-  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at'
+  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
     hrun hnr hm (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hyu : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := hrun.antitone hlo.le hy
   obtain ⟨j₀, ell₀, hu₀, hconf₀, hnv₀, hfast₀, hva₀, hvi₀, _⟩ :=
@@ -165,12 +165,12 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     hconf₀ hPt₀ hPg .refl hnv₀ hPf₀
   have hfr₀ := hrun.toCore.frame_of_projAC_at hy₀ hu₀.1
   have hP₀ : P ∈ (tr.state y j₀).fg.tree := by
-    rw [hfr₀, Node.frame'_eq, Store.toFrame'_tree] at hPt₀
+    rw [hfr₀, Node.frame_eq, Store.toFrame_tree] at hPt₀
     exact hPt₀.1
   have htp : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hzp : z ∈ H (sp.ts u) := hrun.antitone (by linarith) hz
-  have hpbound := Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at' hrun hnc hframeK
+  have hpbound := Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at hrun hnc hframeK
     hzp hdes hP hPs hsu (by linarith [hstep u])
     (sp.toParams.fg.faults_lt_quorum_margin
       (hf _ (by rw [← htp]; exact hrun.time_nonneg kP) (by linarith [hstep u])))
@@ -186,16 +186,16 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
   have hca' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ((Trace.upTo_callAt _).mp hca).2⟩
   have hPpa := (AC.accept_new sp hra.localRun hzpa ⟨ella, hca', hea⟩).1 ella hca'
   rw [hrun.toCore.frame_of_projAC_at hzpa ((Trace.upTo_callAt _).mp hca').2,
-    Node.frame'_eq, Store.toFrame'_tree] at hPpa
+    Node.frame_eq, Store.toFrame_tree] at hPpa
   have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg (kP + 1))
     (fun q hq => hrun.time_mono hq.le) hzpa (hrun.time_nonneg j₀)
     (fun q hq => hrun.time_mono hq.le) hy₀ hPpa.1 hP₀
   rw [hσ] at hpbound
   have hF₀ : (tr.state y j₀).fg.Anc (tr.state y j₀).fg.F P := by
     have ht := hvi₀.1
-    rw [hfr₀, Node.frame'_eq, Store.toFrame'_tree] at ht
+    rw [hfr₀, Node.frame_eq, Store.toFrame_tree] at ht
     exact ht.2
-  have hwit := Healing.stock_witness_of_floor_anchor_at' hframe hrun hnc hy₀ hP₀ hpbound hy₀
+  have hwit := Healing.stock_witness_of_floor_anchor_at hframe hrun hnc hy₀ hP₀ hpbound hy₀
     (by rw [ht₀]; linarith) (by rw [ht₀]; linarith [hstep u]) hP₀ hF₀ .refl
   set σ := sp.slot (tr.time i)
   have hσlo : sp.ts σ ≤ tr.time i :=
@@ -243,7 +243,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
           rw [hs, he] at ht
           change tr.time k ≤ _ at ht
           linarith [hstep u]) (by omega)
-    · have hreg := Healing.PU.StockWindow.regular_later_heads_of_floor_ancestor_at'
+    · have hreg := Healing.PU.StockWindow.regular_later_heads_of_floor_ancestor_at
         (hsub le_rfl (by rw [hstep]; linarith)) hrun hnc hsvc hawake hf hcatch hnr
         (by omega) (by omega) (by omega) hm (by omega : u + 2 ≤ r + 1)
         (by rw [hstep]; linarith) hy₀ (Or.inl ⟨CV₀, hfu₀⟩) hy₀ hP₀ hpbound hPD₀ hK
@@ -252,7 +252,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
   have hfin : ∀ x q, x ∈ H (tr.time q) → sp.ts s₀ ≤ tr.time q → tr.time q ≤ hi →
       tr.time q ≤ b → Anc (tr.HonestBlocksAt H) (tr.state x q).fg.F P := by
     intro x q hx hqlo hqhi hqb
-    exact Healing.finalized_below_descendant_stock_at' hframe hrun hnc hx hy₀ hy₀
+    exact Healing.finalized_below_descendant_stock_at hframe hrun hnc hx hy₀ hy₀
       (sp.toParams.fg.faults_lt_quorum_margin
         (hf _ (le_max_of_le_left (hrun.time_nonneg q))
           (max_le hqb (by rw [ht₀]; linarith [hstep u])))) hqlo hqhi hP₀ hwit hP₀ .refl
@@ -261,13 +261,13 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     rcases Nat.eq_or_lt_of_le hur with rfl | hlt
     · exact ⟨j₀, D₀, CV₀, hfu₀, hPD₀⟩
     obtain ⟨s, rfl⟩ : ∃ s, r = s + 1 := ⟨r - 1, by omega⟩
-    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at' hrun hnc hawake hnr
+    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr
       (u := s + 1) (by have := hts (show u ≤ s + 1 by omega); linarith)
       (by rw [hstep]; linarith) (hrun.antitone (by rw [hstep]; linarith) hy)
     have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
     have hyj := hrun.antitone (by rw [hjt]; linarith : tr.time j ≤ tr.time i) hy
     have hsr := hts (show s₀ ≤ s + 1 by omega)
-    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at'
+    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
       hrun hnr hm (by omega : s₀ + 1 ≤ s + 1) (y := w) hw
     have hnr' : NoRestartUpTo tr H (gbar g) b :=
       noRestartUpTo_iff.mpr (fun w k hw hr _ => hnr w k hw hr)
@@ -299,7 +299,7 @@ theorem toFG_candidate_pre_within_stock_at' {K : AC.CommitteeDict sp.n}
     by_contra hn
     have := hrun.time_mono (show i ≤ j by omega)
     linarith
-  exact Goldilocks.Shadow.PU.Growing.toFG_candidate_of_fast_update_stock_at' hframe hrun hnc hf hK
+  exact Goldilocks.Shadow.PU.Growing.toFG_candidate_of_fast_update_stock_at hframe hrun hnc hf hK
     hy₀ (by rw [ht₀]; linarith [hstep u]) hP₀ hwit.1 hwit.2
     (by have := hts (show u ≤ r + 1 by omega); linarith) hfu hPD hy hc hji
     (fun x k e hx hv hs _ => hext (r + 1) (by omega) le_rfl x k e hx hv hs)
@@ -313,7 +313,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- A unanimous warm proposal supplies candidates throughout the P-U window after its update.
 The primed witness and later-head induction are used directly, without a stock window. -/
@@ -333,7 +333,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     (hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
       e.msg.slot = u → e.msg.head = P.root)
     (hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (hhi : tr.time i ≤ hi) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
@@ -349,11 +349,11 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ hi := by linarith
   have hsub {lo hi' : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi' ≤ hi) :
       FrameWindow' tr H lo hi' M isTop J := hframe.mono hl hh
-  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at'
+  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
     hrun hnr hm (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hyu : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := hrun.antitone hlo.le hy
   obtain ⟨j₀, ell₀, hu₀, hconf₀, hnv₀, hfast₀, _, hvi₀, _⟩ :=
-    Shadow.fresh_fast_lock_update_primed_at' (hsub hsu hT) hrun hnc hsvc hawake hf hcatch hnr
+    Shadow.fresh_fast_lock_update_at (hsub hsu hT) hrun hnc hsvc hawake hf hcatch hnr
       hmargin hjoin (hT.trans hhib) hz hdes hP hPs hun hK hyu
   have ht₀ : tr.time j₀ = sp.ts u + 6 * sp.Δ := hu₀.2.2.1
   have hy₀ : y ∈ H (tr.time j₀) := hrun.antitone (by rw [ht₀]; linarith [hstep u]) hy
@@ -362,7 +362,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     hconf₀ hPt₀ hPg .refl hnv₀ hPf₀
   have hfr₀ := hrun.toCore.frame_of_projAC_at hy₀ hu₀.1
   have hP₀ : P ∈ (tr.state y j₀).fg.tree := by
-    rw [hfr₀, Node.frame'_eq, Store.toFrame'_tree] at hPt₀
+    rw [hfr₀, Node.frame_eq, Store.toFrame_tree] at hPt₀
     exact hPt₀.1
   have htp : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
@@ -382,8 +382,8 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hca' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ((Trace.upTo_callAt _).mp hca).2⟩
   have hPpa := (AC.accept_new sp hra.localRun hzpa ⟨ella, hca', hea⟩).1 ella hca'
   rw [hrun.toCore.frame_of_projAC_at hzpa ((Trace.upTo_callAt _).mp hca').2,
-    Node.frame'_eq, Store.toFrame'_tree] at hPpa
-  have hwit := Healing.windowWitness_of_frameWindow' hrun hnc hframe hzpa hPpa.1 hpbound
+    Node.frame_eq, Store.toFrame_tree] at hPpa
+  have hwit := Healing.windowWitness_of_frameWindow hrun hnc hframe hzpa hPpa.1 hpbound
   set σ := sp.slot (tr.time i)
   have hσlo : sp.ts σ ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 le_rfl
@@ -430,7 +430,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
           rw [hs, he] at ht
           change tr.time k ≤ _ at ht
           linarith [hstep u]) (by omega)
-    · have hreg := Healing.PU.regular_later_heads_at'
+    · have hreg := Healing.PU.regular_later_heads_at
         (hsub le_rfl (by rw [hstep]; linarith)) hrun hnc hsvc hawake hf hcatch hnr
         (by omega) (by omega) (by omega) hm (by omega : u + 2 ≤ r + 1)
         (by rw [hstep]; linarith) hy₀ (Or.inl ⟨CV₀, hfu₀⟩) hK
@@ -439,7 +439,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hfin : ∀ x q, x ∈ H (tr.time q) → sp.ts s₀ ≤ tr.time q → tr.time q ≤ hi →
       tr.time q ≤ b → Anc (tr.HonestBlocksAt H) (tr.state x q).fg.F P := by
     intro x q hx hqlo hqhi hqb
-    exact hframe.finalized_below_descendant_at' hrun hnc hx hy₀ hzpa
+    exact hframe.finalized_below_descendant_at hrun hnc hx hy₀ hzpa
       (sp.toParams.fg.faults_lt_quorum_margin
         (hf _ (le_max_of_le_left (hrun.time_nonneg q))
           (max_le hqb (by rw [ht₀]; linarith [hstep u])))) hqlo hqhi hPpa.1 hpbound hP₀ .refl
@@ -448,13 +448,13 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     rcases Nat.eq_or_lt_of_le hur with rfl | hlt
     · exact ⟨j₀, D₀, CV₀, hfu₀, hPD₀⟩
     obtain ⟨s, rfl⟩ : ∃ s, r = s + 1 := ⟨r - 1, by omega⟩
-    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at' hrun hnc hawake hnr
+    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr
       (u := s + 1) (by have := hts (show u ≤ s + 1 by omega); linarith)
       (by rw [hstep]; linarith) (hrun.antitone (by rw [hstep]; linarith) hy)
     have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
     have hyj := hrun.antitone (by rw [hjt]; linarith : tr.time j ≤ tr.time i) hy
     have hsr := hts (show s₀ ≤ s + 1 by omega)
-    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at'
+    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
       hrun hnr hm (by omega : s₀ + 1 ≤ s + 1) (y := w) hw
     have hnr' : NoRestartUpTo tr H (gbar g) b :=
       noRestartUpTo_iff.mpr (fun w k hw hr _ => hnr w k hw hr)
@@ -496,11 +496,11 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
         ((hrun.time_mono hji.le).trans hhi) ((hrun.time_mono hji.le).trans hib)
     have hPt := AC.frame_mem_of_between sp (hrun.toCore.coherent hnc) hΦ.1 hΦ.2
       (AC.deepest_mem hD).1.1.1 hPD hFP
-    rw [hrun.toCore.frame_of_projAC_at hyj hu.1, Node.frame'_eq, Store.toFrame'_tree] at hPt
+    rw [hrun.toCore.frame_of_projAC_at hyj hu.1, Node.frame_eq, Store.toFrame_tree] at hPt
     exact hPt.1
-  have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame' (tr.state y k)).tree ∧
-      (Node.frame' (tr.state y k)).Anc (Node.frame' (tr.state y k)).fcRoot P ∧
-      P ∈ (Node.frame' (tr.state y k)).viableHeads := by
+  have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame (tr.state y k)).tree ∧
+      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
+      P ∈ (Node.frame (tr.state y k)).viableHeads := by
     intro k hjk hki
     have hkt := hrun.time_mono hki
     have hyk := hrun.antitone hkt hy
@@ -513,21 +513,21 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
         (hf _ (hrun.time_nonneg k) (hkt.trans hib))) hPk'
     have hFPs := store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg k)
       (fun q hq => hrun.time_mono hq.le) hyk hFP hPk'
-    have hPt : P ∈ (Node.frame' (tr.state y k)).tree := by
-      rw [Node.frame'_eq, Store.toFrame'_tree]
+    have hPt : P ∈ (Node.frame (tr.state y k)).tree := by
+      rw [Node.frame_eq, Store.toFrame_tree]
       exact ⟨hPk', hFPs⟩
-    have hvHead : P ∈ (Node.frame' (tr.state y k)).viableHeads := by
-      rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    have hvHead : P ∈ (Node.frame (tr.state y k)).viableHeads := by
+      rw [Node.frame_eq, Store.toFrame_viableHeads]
       exact ⟨hPk', hFPs, hvP⟩
     refine ⟨hPt, ?_, hvHead⟩
     have hΦ := hrun.toCore.frameOK_at (hrun.time_nonneg k) hyk
       (fun q hq => hrun.time_mono hq.le)
-    have hsubtree : (Node.frame' (tr.state y k)).tree ⊆ tr.HonestBlocksAt H := by
-      rw [Node.frame'_eq, Store.toFrame'_tree]
+    have hsubtree : (Node.frame (tr.state y k)).tree ⊆ tr.HonestBlocksAt H := by
+      rw [Node.frame_eq, Store.toFrame_tree]
       exact fun B hB => ⟨y, k, tr.time k, hrun.time_nonneg k,
         (fun q hq => hrun.time_mono hq.le), hyk, hB.1⟩
     apply AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ hsubtree hΦ.fcRoot_mem _ hPt
-    rw [Node.frame'_eq, Store.toFrame'_fcRoot]
+    rw [Node.frame_eq, Store.toFrame_fcRoot]
     exact hFP
   exact Core.toFG_candidate_of_viable_head_at hrun.toCore hnc hK
     (by have := hts (show u ≤ r + 1 by omega); linarith) hfu hPD hy hc hji

@@ -38,10 +38,10 @@ open _root_.Consensus.Goldilocks.Healing.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- V-B8 over the fixed-maximum shadow window; the stock-window version remains open. -/
-theorem regular_later_heads_at'
+theorem regular_later_heads_at
     {g ΔF b : Time} {s₀ s N M : Nat} {isTop : Prop}
     {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
@@ -78,9 +78,9 @@ theorem regular_later_heads_at'
   have hbase : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
-    · exact regular_fast_next_votes_at' (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
+    · exact regular_fast_next_votes_at (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
         hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl hK
-    · exact regular_slow_next_votes_at' (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
+    · exact regular_slow_next_votes_at (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
         hwarm hpos hs₀ hm (h6.trans hmb) hx hslow hK
   have hAC := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, AC.ResultAt tr.projAC x c s C CV ∧
@@ -92,7 +92,7 @@ theorem regular_later_heads_at'
           ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩)).2⟩
   have hs₀s : s₀ ≤ s := by omega
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
       (hm.trans (hts hs₀s)) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
         exact hu.2.2.1.trans_le (h6.trans hmb)) hK
@@ -109,7 +109,7 @@ theorem regular_later_heads_at'
   have hqhi : tr.time q ≤ sp.ts N + sp.Δ := by
     have := hts (show s ≤ N by omega)
     linarith
-  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at' hframe
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at hframe
     hrun hnc hsvc hawake hf hcatch hnr hz ⟨hc, he⟩ hqhi (hqhi.trans hmb)
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by rw [hes]; exact hm.trans (hts hs₀))
     (by
@@ -119,15 +119,15 @@ theorem regular_later_heads_at'
       linarith) hK
   have hPhi := AC.frameIn_of_callU (hAC.upTo (hrun.time_nonneg q)).localRun.toU hz
     ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
-  have hcoh := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hcoh := Coherence.honestBlocksAt_coherent hrun hnc
   have hEQ : Hd = Q := hcoh.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
   rcases hclass with hv | ho
-  · exact Shadow.PU.Growing.later_heads_of_early_witness_at' hrun hnc hsvc hawake hf
+  · exact Shadow.PU.Growing.later_heads_of_early_witness_at hrun hnc hsvc hawake hf
       hcatch hnr (by have := hts hs₀s; linarith) hmb (hsub (hts hs₀s) le_rfl)
       hz hqt (by linarith) hc hHd hv.2 hDQ hbase hK
   · obtain ⟨hA, l, hl, hls, a, hai, D', CV', hza, hop, -, -, -, hQD⟩ := ho
-    have hheads := Shadow.PU.Growing.optimistic_supporter_later_heads_at' hframe hrun hnc
+    have hheads := Shadow.PU.Growing.optimistic_supporter_later_heads_at hframe hrun hnc
       hsvc hawake hf hcatch hnr (by have := hts hs₀s; linarith) hs₀s (by omega) hmb
       hz hza ⟨hc, he⟩ hes hA (hes ▸ hop) (hQD.mono hPhi.2) hK
     intro r hrlo hrN
@@ -148,11 +148,11 @@ open _root_.Consensus.Goldilocks.Healing.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The fourth classification branch follows D, not its lock head Hd or its
 witness W. Frozen-domain membership of W is not a premise of the stock family. -/
-theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
+theorem later_heads_of_older_lock_witness_at {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
@@ -165,7 +165,7 @@ theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) floor kindJ J)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
     (halo : sp.ts s ≤ tr.time q) (hat : tr.time q < sp.ts s + 2 * sp.Δ)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z q ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z q ell)
     (hW : W ∈ ell.frame.tree) (hh : floor ≤ ((tr.state z q).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hDH : Anc (tr.HonestBlocksAt H) D Hd) (hHW : ell.frame.Anc Hd W)
@@ -183,7 +183,7 @@ theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
     (Compose.Growing.goldilocks_ac_projection_from' hrun hnc |>.upTo
       (hrun.time_nonneg q)).localRun.toU hz
     ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
-  exact Shadow.PU.Growing.later_heads_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+  exact Shadow.PU.Growing.later_heads_of_stock_witness_at hrun hnc hsvc hawake hf hcatch
     hnr hm hmb ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz halo hat hc hW hh hJ
     (hDH.trans (hHW.mono hPhi.2)) hbase hK
 
@@ -191,7 +191,7 @@ theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
 can follow D through its independent stock witness W, using D ⪯ Hd ⪯ W.
 The viable-only contest alternative and optimistic supporter extraction still
 need stock-window witness transport; this declaration does not certify them. -/
-theorem regular_later_heads_at'
+theorem regular_later_heads_at
     {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
     {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -221,7 +221,7 @@ theorem regular_later_heads_at'
 The witness holder need not precede the origin: honest height agreement transports
 its bound to the result's honest supporter. This extra premise is not inferred from
 the origin or added to the unresolved endpoint above. -/
-theorem regular_later_heads_of_floor_ancestor_at'
+theorem regular_later_heads_of_floor_ancestor_at
     {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
     {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -274,7 +274,7 @@ theorem regular_later_heads_of_floor_ancestor_at'
           ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩)).2⟩
   have hs₀s : s₀ ≤ s := by omega
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
       (hm.trans (hts hs₀s)) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
         exact hu.2.2.1.trans_le (h6.trans hmb)) hK
@@ -291,39 +291,39 @@ theorem regular_later_heads_of_floor_ancestor_at'
   obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_head_frameU hr.toU hz hc'
   have hPhi := AC.frameIn_of_callU hr.toU hz
     ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
-  have hcoh := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hcoh := Coherence.honestBlocksAt_coherent hrun hnc
   have hEQ : Hd = Q := hcoh.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd
   have hQ : Q ∈ (tr.state z q).fg.tree := by
     have h := hHd
-    rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hz hc, Node.frame'_eq,
-      Store.toFrame'_tree] at h
+    rw [Shadow.PU.Growing.frame_of_projAC_at hrun hz hc, Node.frame_eq,
+      Store.toFrame_tree] at h
     exact h.1
   have hPQ := hPD.trans hDQ
   have hFQ := (hPhi.1.rooted.2 Q hHd).mono hPhi.2
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hz hc, Node.frame'_eq,
-    Store.toFrame'_F] at hFQ
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hz hc, Node.frame_eq,
+    Store.toFrame_F] at hFQ
   have hFQs := Healing.Growing.store_anc_of_honest_anc_at' hrun hnc
     (hrun.time_nonneg q) (fun _ hi => hrun.time_mono hi.le) hz hFQ hQ
   have hqhi : tr.time q ≤ sp.ts N + sp.Δ := by
     have := hts (show s ≤ N by omega)
     linarith
-  have hwit := Healing.stock_witness_of_floor_anchor_at' (hsub (hts hs₀s) le_rfl)
+  have hwit := Healing.stock_witness_of_floor_anchor_at (hsub (hts hs₀s) le_rfl)
     hrun hnc hp hP hPfl hz hqt hqhi hQ hFQs hPQ
   have hbase : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
-    · exact regular_fast_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hnr
+    · exact regular_fast_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch hnr
         (by have := hts hs₀s; linarith) (h6.trans hmb) (hsub (hts hs₀s) h6)
         hx hfast hres .refl hCQ hz hqt (by linarith) hc hHd hwit.1 hwit.2 hK
     · have hslowtime : gbar g ≤ sp.ts ((s : Int) - sp.k + 1) := by
         have ht : sp.ts s₀ ≤ sp.ts ((s : Int) - sp.k + 1) :=
           (AC.ts_le_iff sp).mpr (by omega)
         linarith
-      exact regular_slow_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+      exact regular_slow_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch
         (by have := hts hs₀s; linarith) hslowtime (h6.trans hmb) (hsub (hts hs₀s) h6)
         hx hslow hres hCQ hz hqt (by linarith) hc hHd hwit.1 hwit.2 hK
-  exact Shadow.PU.Growing.later_heads_of_stock_witness_at' hrun hnc hsvc hawake hf
+  exact Shadow.PU.Growing.later_heads_of_stock_witness_at hrun hnc hsvc hawake hf
     hcatch hnr (by have := hts hs₀s; linarith) hmb
     (hsub (hts hs₀s) le_rfl)
     hz hqt (by linarith) hc hHd hwit.1 hwit.2 hDQ hbase hK

@@ -14,11 +14,11 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A primed viable witness puts a separate finalized observation below every viable head. -/
-theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
+theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -28,7 +28,7 @@ theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
     (hf : (H (max (tr.time c) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     {Y : AC.Blk sp.n (List (FG.Att sp.n))}
     (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -47,14 +47,14 @@ theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
   have hfloor : ∀ Q ∈ ell.frame.viableHeads,
       ell.frame.Anc (tr.state z c).fg.F Q := by
     intro Q hQ
-    have hwit := Consensus.Goldilocks.Shadow.PU.Growing.early_witness_viable'
+    have hwit := Consensus.Goldilocks.Shadow.PU.Growing.early_witness_viable
       hrun hframe hy hilo hihi hc.1 hQ
     have hQt : Q ∈ (tr.state y i).fg.tree := by
       have hv := hQ
-      rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1, Node.frame'_eq,
-        Store.toFrame'_viableHeads] at hv
+      rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1, Node.frame_eq,
+        Store.toFrame_viableHeads] at hv
       exact hv.1
-    have hFQ := hframe.finalized_below_descendant_at' hrun hnc hz hy hy hf hclo hchi
+    have hFQ := hframe.finalized_below_descendant_at hrun hnc hz hy hy hf hclo hchi
       hQt hwit hQt .refl
     have hFt := AC.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2
       (hPhi.1.viableHeads_subset hQ) hFQ
@@ -74,7 +74,7 @@ theorem finalized_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
     (AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
 
 /-- The primed frame root is F, so a separate root observation uses finalized ancestry. -/
-theorem fcRoot_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
+theorem fcRoot_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -84,7 +84,7 @@ theorem fcRoot_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
     (hf : (H (max (tr.time c) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    {ellz ell : ACLabel (goldilocksNode' sp ro)} (hcz : tr.projAC.CallAt z c ellz)
+    {ellz ell : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z c ellz)
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     {Y : AC.Blk sp.n (List (FG.Att sp.n))}
     (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -96,10 +96,10 @@ theorem fcRoot_anc_head_at_cast_primed_at' {lo hi : Time} {M : Nat}
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
   have hroot : ellz.frame.fcRoot = (tr.state z c).fg.F := by
-    rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hz hcz,
-      Node.frame'_eq, Store.toFrame'_fcRoot]
+    rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hz hcz,
+      Node.frame_eq, Store.toFrame_fcRoot]
   rw [hroot] at haF ⊢
-  exact finalized_anc_head_at_cast_primed_at' hframe hrun hnc hz hy hf hclo hchi hilo hihi hc
+  exact finalized_anc_head_at_cast_at hframe hrun hnc hz hy hf hclo hchi hilo hihi hc
     hY hvY haF
 
 end Consensus.Goldilocks.Healing.Growing.Shadow

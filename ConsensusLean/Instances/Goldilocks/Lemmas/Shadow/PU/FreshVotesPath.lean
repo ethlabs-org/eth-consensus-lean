@@ -18,13 +18,13 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 variable {hold : Time}
 
 /-- Above both anchors, the proposer's actual winner remains the voter's winner.
 (`FrameWindow.proposal_suffix_before_at` over the shadow run and `FrameWindow'`). -/
-theorem proposal_suffix_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
+theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -39,14 +39,14 @@ theorem proposal_suffix_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -66,17 +66,17 @@ theorem proposal_suffix_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       hs₀
     ?_ (fun hx hm' hc hcall hti hp =>
       Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
-        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+        (fun y i hy hf => full_frame_viable_witness_at hrun hnc hy hf) hc hcall hti hp)
     hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
     hstartX hXQ hne hanchorX hC hK
   intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
-  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- The voter takes the proposal at its parent and has no eligible child beyond it.
 (`FrameWindow.proposal_stop_before_at` over the shadow run and `FrameWindow'`). -/
-theorem proposal_stop_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
+theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -91,14 +91,14 @@ theorem proposal_stop_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -119,17 +119,17 @@ theorem proposal_stop_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       hs₀
     ?_ (fun hx hm' hc hcall hti hp =>
       Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
-        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+        (fun y i hy hf => full_frame_viable_witness_at hrun hnc hy hf) hc hcall hti hp)
     hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
     hrootQ hK
   intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
-  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- Reaching the actual proposal-parent path determines the cast's head.
 (`FrameWindow.vote_head_eq_of_path_at` over the shadow run and `FrameWindow'`). -/
-theorem vote_head_eq_of_path_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
+theorem vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -144,14 +144,14 @@ theorem vote_head_eq_of_path_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -166,17 +166,17 @@ theorem vote_head_eq_of_path_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       hs₀
     ?_ (fun hx hm' hc hcall hti hp =>
       Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
-        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+        (fun y i hy hf => full_frame_viable_witness_at hrun hnc hy hf) hc hcall hti hp)
     hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
     hstartX hXQ haX hXE hK
   intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
-  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- A deeper anchor already lies on the proposal path; a shallower one uses a prefix supplier.
 (`FrameWindow.vote_head_eq_of_start_prefix_at` over the shadow run and `FrameWindow'`). -/
-theorem vote_head_eq_of_start_prefix_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
+theorem vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -191,14 +191,14 @@ theorem vote_head_eq_of_start_prefix_primed_at' {g ΔF b : Time} {s₀ s M : Nat
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -212,13 +212,13 @@ theorem vote_head_eq_of_start_prefix_primed_at' {g ΔF b : Time} {s₀ s M : Nat
       hnr hm hs₀
     ?_ (fun hx hm' hc hcall hti hp =>
       Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
-        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+        (fun y i hy hf => full_frame_viable_witness_at hrun hnc hy hf) hc hcall hti hp)
     hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv haP
     hprefix hK
   intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
-  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 

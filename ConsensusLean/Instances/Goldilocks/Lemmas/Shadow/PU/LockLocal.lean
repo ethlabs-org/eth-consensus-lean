@@ -14,16 +14,16 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The shadow frame root is the finalized tip, so its monotonicity needs no window premise. -/
 theorem fcRoot_mono_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} {a i : Nat} (hy : y ∈ H (tr.time i)) (hai : a ≤ i) :
-    Anc (tr.HonestBlocksAt H) (Node.frame' (tr.state y a)).fcRoot
-      (Node.frame' (tr.state y i)).fcRoot := by
-  rw [Node.frame'_eq, Node.frame'_eq, Store.toFrame'_fcRoot, Store.toFrame'_fcRoot]
+    Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y a)).fcRoot
+      (Node.frame (tr.state y i)).fcRoot := by
+  rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
   exact hrun.toLocalRun'.finalized_mono_on_prefix' (hrun.time_nonneg i) hy hai
     (fun k hk => hrun.time_mono hk.le)
 
@@ -31,7 +31,7 @@ theorem fcRoot_mono_at'
 theorem live_lock_selection_origin_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i : Nat}
-    (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ell) {l : AC.Lock}
     (hl : l ∈ AC.liveLocks sp (tr.projAC.state x i).locks ell.frame (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
@@ -87,7 +87,7 @@ theorem unlocked_image_below_write_root_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {a i : Nat}
     (hy : y ∈ H (tr.time i)) (hai : a ≤ i)
-    {ellw ell : ACLabel (goldilocksNode' sp ro)}
+    {ellw ell : ACLabel (goldilocksNode sp ro)}
     (hcw : tr.projAC.CallAt y a ellw) (hc : tr.projAC.CallAt y i ell)
     {L B A : AC.Blk sp.n (List (FG.Att sp.n))}
     (hLB : ell.frame.Anc L B) (hBA : Anc (tr.HonestBlocksAt H) B A)

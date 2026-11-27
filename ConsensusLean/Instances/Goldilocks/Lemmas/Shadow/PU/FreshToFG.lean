@@ -14,18 +14,18 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Signing at the update deadline supplies adjacent actual calls with the same frame. -/
-theorem update_toFG_calls_of_awake_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem update_toFG_calls_of_awake_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g b : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : NoRestartAfter tr H (gbar g)) {u : Nat}
     (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
     (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true) :
     ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
@@ -34,7 +34,7 @@ theorem update_toFG_calls_of_awake_at'
   apply Core.update_toFG_calls_of_awake_at hrun.toCore hnc hawake hnr hmargin hTb
     (sign := sign) ?_ hy hsign
   intro y hy haw hs
-  exact Goldilocks.Shadow.PU.Growing.signing_tick_toFG_cuts_at'
+  exact Goldilocks.Shadow.PU.Growing.signing_tick_toFG_cuts_at
     hrun hcal ⟨u, rfl⟩ hy haw hs
 
 variable {hold : Time}
@@ -57,7 +57,7 @@ theorem fresh_fast_lock_update_toFG_primed_at' {K : AC.CommitteeDict sp.n}
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = u → e.msg.head = P.root)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
     (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -71,7 +71,7 @@ theorem fresh_fast_lock_update_toFG_primed_at' {K : AC.CommitteeDict sp.n}
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
         (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
   obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
-    update_toFG_calls_of_awake_at' hrun hnc hawake hnr hmargin hTb hcal hy hsign
+    update_toFG_calls_of_awake_at hrun hnc hawake hnr hmargin hTb hcal hy hsign
   have hyk : y ∈ H (tr.time k) := by
     have hk : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
     have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
@@ -105,7 +105,7 @@ theorem fresh_fast_lock_update_toFG_at' {K : AC.CommitteeDict sp.n}
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = u → e.msg.head = P.root)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
     (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -119,7 +119,7 @@ theorem fresh_fast_lock_update_toFG_at' {K : AC.CommitteeDict sp.n}
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
         (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
   obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
-    update_toFG_calls_of_awake_at' hrun hnc hawake hnr hmargin hTb hcal hy hsign
+    update_toFG_calls_of_awake_at hrun hnc hawake hnr hmargin hTb hcal hy hsign
   have hyk : y ∈ H (tr.time k) := by
     have hk : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
     have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
