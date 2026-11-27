@@ -1,4 +1,6 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
@@ -30,27 +32,27 @@ open AC (ACParams Payload)
 variable {sp : ACParams}
 
 /-- Membership in the shadow frame tree (`Defs` does not expose `toFrame'`). -/
-private theorem mem_tree' {st : Store sp.toParams (Payload sp.n)}
+private theorem mem_tree {st : Store sp.toParams (Payload sp.n)}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} :
-    B ∈ st.toFrame'.tree ↔ B ∈ st.tree ∧ st.Anc st.F B := by
-  rw [Store.toFrame'_tree]; rfl
+    B ∈ st.toFrame.tree ↔ B ∈ st.tree ∧ st.Anc st.F B := by
+  rw [Store.toFrame_tree]; rfl
 
-private theorem mem_heads' {st : Store sp.toParams (Payload sp.n)}
+private theorem mem_heads {st : Store sp.toParams (Payload sp.n)}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} :
-    B ∈ st.toFrame'.viableHeads ↔ B ∈ st.tree ∧ st.Anc st.F B ∧ st.IsViable' B := by
-  rw [Store.toFrame'_viableHeads]; rfl
+    B ∈ st.toFrame.viableHeads ↔ B ∈ st.tree ∧ st.Anc st.F B ∧ st.IsViable B := by
+  rw [Store.toFrame_viableHeads]; rfl
 
 /-- **Under Hi, every P-U viable head is strictly above `P`.** By height (`hmax ≤ σ(W).h`, or
 `σ(W).h + 1 = hmax` with `hj + 1 < hmax`, both at least `hj + 1`, so G3′ applies) or by the J clause
 (`P ≺ J ⪯ W`). -/
-theorem hi_viable_head_above' {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
+theorem hi_viable_head_above {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
     {st : Store sp.toParams (Payload sp.n)} (hst : st.tree ⊆ U) (hjm : st.hj < st.hmax)
     {Pb : AC.Blk sp.n (List (FG.Att sp.n))} (hPJ : Anc U Pb st.J) (hJP : st.J.root ≠ Pb.root)
     (above : ∀ {X}, X ∈ st.tree → st.hj + 1 ≤ (st.σ X.root).h →
       Anc U Pb X ∧ X.root ≠ Pb.root)
-    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ st.tree) (hv : st.IsViable' W) :
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ st.tree) (hv : st.IsViable W) :
     Anc U Pb W ∧ W.root ≠ Pb.root := by
-  rcases (Store.isViable'_iff st W).1 hv with h | ⟨h1, h2 | h2⟩
+  rcases (Store.isViable_iff st W).1 hv with h | ⟨h1, h2 | h2⟩
   · exact above hW (by omega)
   · exact above hW (by omega)
   · have hJW : Anc U st.J W := h2.mono hst
@@ -82,8 +84,8 @@ viable head is strictly above `P` (`hi_viable_head_above'`), and `P` lies in the
 run-level facts the stock proof reads are premises: `hst` (the store tree is held), `hjm`
 (`hj < hmax`), `hBm` (a block of state height `hmax`, the cache invariant), `above` (G3′),
 `hcomp` (`Σ.F` and `P` are comparable), and `hheld` (held ancestry transfers to the store). -/
-theorem anc_getHead_of_hi'_core {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
-    {st : Store sp.toParams (Payload sp.n)} (hΦ : FrameOK st.toFrame')
+theorem anc_getHead_of_hi_core {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
+    {st : Store sp.toParams (Payload sp.n)} (hΦ : FrameOK st.toFrame)
     (hst : st.tree ⊆ U) (hjm : st.hj < st.hmax)
     (hBm : ∃ B ∈ st.tree, (st.σ B.root).h = st.hmax)
     {Pb : AC.Blk sp.n (List (FG.Att sp.n))} (hPJ : Anc U Pb st.J) (hJP : st.J.root ≠ Pb.root)
@@ -93,14 +95,14 @@ theorem anc_getHead_of_hi'_core {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU
     (hheld : ∀ {X Y}, Y ∈ st.tree → Anc U X Y → st.Anc X Y)
     (A : AC.ACState sp.n) (t : Time) (V : AC.View sp.n) (σ : Int)
     {dom : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
-    (hdom : dom ⊆ st.toFrame'.tree) (hdomA : ∀ B ∈ dom, ∀ X, st.toFrame'.Anc X B → X ∈ dom)
-    (hne : (st.toFrame'.viableTree dom).Nonempty ∨ st.toFrame'.tree ⊆ dom)
-    (hlocks : ∀ L ∈ AC.liveLockBlocks sp A.locks st.toFrame' t, Compatible U L Pb) :
-    Anc U Pb (AC.getHead sp A st.toFrame' t (st.toFrame'.viableTree dom) V σ) := by
-  set Φ := st.toFrame' with hΦdef
-  have hΦU : Φ.tree ⊆ U := fun Z hZ => hst (mem_tree'.1 hZ).1
-  have hF : Φ.F = st.F := Store.toFrame'_F st
-  have hfc : Φ.fcRoot = st.F := Store.toFrame'_fcRoot st
+    (hdom : dom ⊆ st.toFrame.tree) (hdomA : ∀ B ∈ dom, ∀ X, st.toFrame.Anc X B → X ∈ dom)
+    (hne : (st.toFrame.viableTree dom).Nonempty ∨ st.toFrame.tree ⊆ dom)
+    (hlocks : ∀ L ∈ AC.liveLockBlocks sp A.locks st.toFrame t, Compatible U L Pb) :
+    Anc U Pb (AC.getHead sp A st.toFrame t (st.toFrame.viableTree dom) V σ) := by
+  set Φ := st.toFrame with hΦdef
+  have hΦU : Φ.tree ⊆ U := fun Z hZ => hst (mem_tree.1 hZ).1
+  have hF : Φ.F = st.F := Store.toFrame_F st
+  have hfc : Φ.fcRoot = st.F := Store.toFrame_fcRoot st
   obtain ⟨Bm, hBmt, hBmh⟩ := hBm
   -- below `Σ.F`: the head is a block of the tree, which extends `Σ.F`
   by_cases hPF : Anc U Pb st.F
@@ -117,22 +119,22 @@ theorem anc_getHead_of_hi'_core {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU
       by_cases he : Pb = W
       · exact he ▸ hWt
       · exact (Anc.mem h he).1
-    exact mem_tree'.2 ⟨hPt, hheld hPt hFP⟩
+    exact mem_tree.2 ⟨hPt, hheld hPt hFP⟩
   have hvh : ∀ W ∈ Φ.viableHeads, Anc U Pb W ∧ W.root ≠ Pb.root :=
     fun W hW => (by
-      obtain ⟨h1, -, h3⟩ := mem_heads'.1 hW
-      exact hi_viable_head_above' hU hst hjm hPJ hJP above h1 h3)
+      obtain ⟨h1, -, h3⟩ := mem_heads.1 hW
+      exact hi_viable_head_above hU hst hjm hPJ hJP above h1 h3)
   have hFΦ : st.F ∈ Φ.tree := hfc ▸ hΦ.fcRoot_mem
   -- a viable head in the domain, strictly above `P`
   obtain ⟨W, hWd, hWv⟩ : ∃ W ∈ dom, W ∈ Φ.viableHeads := by
     rcases hne with ⟨X, -, -, W, hWd, hWv, -⟩ | hsub
     · exact ⟨W, hWd, hWv⟩
     · have hFBm := hheld hBmt (hFP.trans (above hBmt (by omega)).1)
-      exact ⟨Bm, hsub (mem_tree'.2 ⟨hBmt, hFBm⟩),
-        mem_heads'.2 ⟨hBmt, hFBm, (Store.isViable'_iff st Bm).2 (Or.inl hBmh.ge)⟩⟩
+      exact ⟨Bm, hsub (mem_tree.2 ⟨hBmt, hFBm⟩),
+        mem_heads.2 ⟨hBmt, hFBm, (Store.isViable_iff st Bm).2 (Or.inl hBmh.ge)⟩⟩
   have hPW := (hvh W hWv).1
   have hWΦ : W ∈ Φ.tree := hdom hWd
-  have hPt := hPΦ W (mem_tree'.1 hWΦ).1 hPW
+  have hPt := hPΦ W (mem_tree.1 hWΦ).1 hPW
   have hPWΦ := AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPW hWΦ
   have hPv : Pb ∈ Φ.viableTree dom :=
     ⟨hdomA W hWd _ hPWΦ, hfc ▸ AC.anc_tree_of_anc_U hU hΦ hΦU hFΦ hFP hPt, W, hWd, hWv, hPWΦ⟩
@@ -162,7 +164,7 @@ are.** A live lock block is the viable ancestor of a locked tree block (`mem_liv
 which is below it; so compatibility passes down. This is the only place the stock hlocks callers
 (`readPoint_liveLockBlocks_compatible_at`) read the frame, and it holds for every well-formed
 frame, so projected locks that move in a P-U contest change nothing. -/
-theorem liveLockBlocks_compatible_of_locked' {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
+theorem liveLockBlocks_compatible_of_locked {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hU : Coherent U) {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {locks : Set AC.Lock} {t : Time}
     {X : AC.Blk sp.n (List (FG.Att sp.n))}

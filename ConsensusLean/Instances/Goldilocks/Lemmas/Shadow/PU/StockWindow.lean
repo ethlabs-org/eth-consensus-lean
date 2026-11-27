@@ -24,10 +24,10 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- A stock window in the J-kind is the P-U top window at `M = floor + 1`. -/
-theorem toFrameWindow'_of_kind {lo hi : Time} {floor : Nat} {kindJ : Prop}
+theorem toFrameWindow_of_kind {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hw : Generic.FrameWindow tr H lo hi floor kindJ J) (hk : kindJ) :
     FrameWindow' tr H lo hi (floor + 1) True J := by
@@ -45,9 +45,9 @@ theorem toFrameWindow'_of_kind {lo hi : Time} {floor : Nat} {kindJ : Prop}
 
 /-- A stock window outside the J-kind in which no honest reader is in a contest is the P-U
 non-top window at `M = floor + 1`. -/
-theorem toFrameWindow'_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
+theorem toFrameWindow_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hw : Generic.FrameWindow tr H lo hi floor kindJ J) (hk : ¬ kindJ)
     (hnoC : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →

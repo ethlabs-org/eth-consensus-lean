@@ -29,11 +29,11 @@ variable {P : Params} {ACP : Type} (st : Store P ACP)
 
 /-- **The P-U witness clauses of a viable block**, for the store's own `h_max = M`, top status and
 justified block. -/
-theorem viable'_witness {M : Nat} {isTop : Prop} {J : NodeBlock P ACP} (hM : st.hmax = M)
+theorem viable_witness {M : Nat} {isTop : Prop} {J : NodeBlock P ACP} (hM : st.hmax = M)
     (htop : st.hmax = st.hj + 1 ↔ isTop) (hJ : isTop → st.J = J) {Q : NodeBlock P ACP}
-    (hQ : st.IsViable' Q) :
+    (hQ : st.IsViable Q) :
     M - 1 ≤ (st.σ Q.root).h ∧ (isTop → (st.σ Q.root).h = M - 1 → st.Anc J Q) := by
-  rw [isViable'_iff] at hQ
+  rw [isViable_iff] at hQ
   refine ⟨by rcases hQ with h | ⟨h, -⟩ <;> omega, fun ht he => ?_⟩
   have hjm := htop.2 ht
   rcases hQ with h | ⟨-, hgap | hanc⟩
@@ -49,25 +49,25 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **The early viable witness** at an AC call of a node honest at it, inside a shadow window:
 a viable head `Q` of the call's frame (the shadow frame) is at least `M − 1` high, and in a top
 window a witness at `M − 1` extends `J` among the blocks held while honest. -/
-theorem early_witness_viable'
+theorem early_witness_viable
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {lo hi : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Healing.FrameWindow' tr H lo hi M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a)) (hlo : lo ≤ tr.time a)
-    (hhi : tr.time a ≤ hi) {ellw : ACLabel (goldilocksNode' sp ro)}
+    (hhi : tr.time a ≤ hi) {ellw : ACLabel (goldilocksNode sp ro)}
     (hcw : tr.projAC.CallAt w a ellw) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ellw.frame.viableHeads) :
     M - 1 ≤ ((tr.state w a).fg.σ Q.root).h ∧
       (isTop → ((tr.state w a).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-  rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_viableHeads] at hQ
+  rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_viableHeads] at hQ
   obtain ⟨hQt, -, hv⟩ := hQ
-  obtain ⟨h1, h2⟩ := (tr.state w a).fg.viable'_witness (hwin.M_eq w a hw hlo hhi)
+  obtain ⟨h1, h2⟩ := (tr.state w a).fg.viable_witness (hwin.M_eq w a hw hlo hhi)
     (hwin.top_iff w a hw hlo hhi) (hwin.root_eq w a hw hlo hhi) hv
   refine ⟨h1, fun ht he => (h2 ht he).mono fun X hX => ?_⟩
   exact ⟨w, a, tr.time a, hrun.time_nonneg a, fun k hk => hrun.time_mono hk.le, hw, hX⟩

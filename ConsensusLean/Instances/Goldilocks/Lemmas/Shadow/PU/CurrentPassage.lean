@@ -24,7 +24,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 section Passage
 
@@ -44,7 +44,7 @@ variable
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
@@ -56,7 +56,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs
 
 /-- Older lock passage assembled from regular-later and stock-witness suppliers.
 Unresolved only through the regular-later interface and shared optimistic contest residue. -/
-theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
+theorem older_lock_prefix_transfer_unresolved (holder : l.slot < p) :
     Anc (tr.HonestBlocksAt H) B P := by
   have rc := hrun.toCore
   have hΔ := sp.toParams.hΔ
@@ -120,7 +120,7 @@ theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcallp, hpay, hti, hparent, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hcp hpay
   have hip : tr.time ip = sp.ts p := hti
@@ -155,7 +155,7 @@ theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
       simp only [ACParams.ts] at ht hhigh
       push_cast at hhigh
       linarith
-    have hDP := (Healing.PU.StockWindow.regular_later_heads_at' hframe hrun hnc hsvc hawake
+    have hDP := (Healing.PU.StockWindow.regular_later_heads_at hframe hrun hnc hsvc hawake
       hf hcatch hnr hlabel (by omega) (by omega) hm hgap hpb hya horigin hK p
       (by omega) le_rfl).2 hgap z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
     exact hBA.trans (hAD.trans (hDP.trans hHP))
@@ -174,7 +174,7 @@ theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
     exact hBA.trans (hAw.trans ((fcRoot_mono_at' hrun hy hai.le).trans hrootP))
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   have hv := hvQ
-  rw [rc.frame_of_projAC_at hya ha₀, Node.frame'_eq, Store.toFrame'_viableHeads] at hv
+  rw [rc.frame_of_projAC_at hya ha₀, Node.frame_eq, Store.toFrame_viableHeads] at hv
   obtain ⟨hQa, hFQ, hva⟩ := hv
   have hle : ∀ q < a, tr.time q ≤ tr.time a := fun _ hq => rc.time_mono hq.le
   have hra := rc.reachable_at (rc.time_nonneg a) hya hle
@@ -192,7 +192,7 @@ theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
       ((tr.state y a).fg.Contest ∧ (tr.state y a).fg.hmax = floor ∧
         ((tr.state y a).fg.σ Q.root).h + 1 = floor ∧
         (tr.state y a).fg.Anc (tr.state y a).fg.J Q) := by
-    rcases (Store.isViable'_iff _ Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
+    rcases (Store.isViable_iff _ Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
     · refine Or.inl ⟨by omega, fun hk => hJkind hk ?_⟩
       obtain ⟨g1, g2⟩ := hka.mpr hk
       by_contra hn
@@ -221,12 +221,12 @@ theorem older_lock_prefix_transfer_unresolved' (holder : l.slot < p) :
       dsimp only at hsel
       split_ifs at hsel with hn
       exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hsl ▸ ht)))))
-    have hAP := (Shadow.PU.Growing.optimistic_later_heads_of_stock_witness_at' hrun hnc hsvc
+    have hAP := (Shadow.PU.Growing.optimistic_later_heads_of_stock_witness_at hrun hnc hsvc
       hawake hf hcatch hnr (hm₀.trans hts) hpb hsubframe hya hop hAD hya hlow hearly ha₀
       hQ hh hJ (hAQ.mono hW.2) hK p (by omega) le_rfl).2 z ip ellp hzip hcp₀ hcallp hip
       d pay hpay₀
     exact hBA.trans (hAP.trans hHP)
-  · have hAP := (optimistic_contest_residue' hframe hrun hnc hsvc hawake hf hcatch hnr
+  · have hAP := (optimistic_contest_residue hframe hrun hnc hsvc hawake hf hcatch hnr
       hm hpb (by omega) holder hya ha₀ hop hAD hvQ (hAQ.mono hW.2)
       hcon hmax hQh hJQ hK p (by omega) le_rfl).2 z ip ellp hzip hcp₀ hcallp hip
       d pay hpay₀
@@ -254,7 +254,7 @@ theorem current_lock_passage_of_regular_base_at' :
     obtain rfl : C = B := hcoh.1 hC (hPhi.2 hB) (hCr.trans hBr.symm)
     rw [hes] at hs hop ht
     exact Or.inr ⟨hs, a, hai, D, CV, hya, hop, ht, hCD⟩
-  · exact Or.inl (older_lock_prefix_transfer_unresolved' hframe hrun hnc hsvc hawake hf
+  · exact Or.inl (older_lock_prefix_transfer_unresolved hframe hrun hnc hsvc hawake hf
       hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr hK
       (Nat.lt_of_not_ge hcurrent))
 
