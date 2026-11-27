@@ -26,6 +26,22 @@ import re
 import sys
 
 
+def empty_variables(source):
+    """Find variable commands without a surviving binder, ignoring comments."""
+    ts = tokens(source)
+    for i, (word, start, end) in enumerate(ts):
+        if word != 'variable':
+            continue
+        if i + 1 < len(ts):
+            next_word, next_start, _ = ts[i + 1]
+            same_line = '\n' not in source[end:next_start]
+            column = start - source.rfind('\n', 0, start)
+            next_column = next_start - source.rfind('\n', 0, next_start)
+            if next_word in ('(', '{', '[') and (same_line or next_column > column):
+                continue
+        yield start, end
+
+
 def tokens(source):
     """Code tokens with offsets, excluding nested comments and string literals."""
     result = []
@@ -150,12 +166,13 @@ def migrate(source):
             while start > 0 and source[start - 1] in ' \t':
                 start -= 1
         source = source[:start] + source[end:]
-    # Keep the keyword when later lines continue the variable command.
-    if re.search(r'(?m)^variable[ \t]*\n', source):
-        code_starts = {start for word, start, _ in tokens(source) if word == 'variable'}
-        source = re.sub(r'(?m)^variable[ \t]*\n',
-                        lambda match: '' if match.start() in code_starts and not re.match(
-                            r'[ \t]+[({\[]', source[match.end():]) else match[0], source)
+    # Remove only the keyword: comments survive, and later binders keep it.
+    for start, end in reversed(list(empty_variables(source))):
+        while end < len(source) and source[end] in ' \t':
+            end += 1
+        if source[start:end].strip() == 'variable' and end < len(source) and source[end] == '\n':
+            end += 1
+        source = source[:start] + source[end:]
     return source
 
 
@@ -186,10 +203,20 @@ def selftest():
          'foo\n\n  -- keep comment\n  x'),
         ('variable {ro : ReplayOrder sp FGP}\n  {t : Time}\n',
          'variable\n  {t : Time}\n'),
+        ('variable {ro : ReplayOrder /- keep me -/ sp FGP}\ndef foo : Nat := 1\n',
+         '/- keep me -/\ndef foo : Nat := 1\n'),
+        ('variable {ro : ReplayOrder sp FGP} -- keep me\ndef foo : Nat := 1\n',
+         '-- keep me\ndef foo : Nat := 1\n'),
+        ('variable {ro : ReplayOrder sp FGP} -- keep me\n  /- another -/ {t : Time}\n',
+         'variable -- keep me\n  /- another -/ {t : Time}\n'),
     ]
     for old, new in cases:
         assert migrate(old) == new, (old, migrate(old), new)
         assert migrate(new) == new, new
+        assert not list(empty_variables(new)), new
+    for source in ('variable', 'variable -- keep\ndef foo := 1',
+                   'variable /- keep -/\ndef foo := 1'):
+        assert list(empty_variables(source)), source
     print(f'PASS: {len(cases)} fixtures, including idempotence and preserved residuals')
 
 
@@ -228,6 +255,10 @@ def main():
                 residual += 1
                 line = after.count('\n', 0, start) + 1
                 print(f'RESIDUAL {path}:{line}: {word}', file=sys.stderr)
+        for start, _ in empty_variables(after):
+            residual += 1
+            line = after.count('\n', 0, start) + 1
+            print(f'RESIDUAL {path}:{line}: empty variable', file=sys.stderr)
     print(f'{len(files)} files scanned; {changed} changed; {residual} residual tokens', file=sys.stderr)
     return 1 if args.check and (changed or residual) else 0
 
