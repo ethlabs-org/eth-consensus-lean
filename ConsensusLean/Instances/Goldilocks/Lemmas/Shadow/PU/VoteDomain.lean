@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteReceipt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
@@ -39,19 +40,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 namespace Stub
-
-/-- **Interface stub** (`KernelProof.high_origin_frozen_head_at`, `Kernel/VoteReceipt`). -/
-theorem high_origin_frozen_head_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
-    (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
-    (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
-    ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Anc (tr.HonestBlocksAt H) O D := by
-  sorry
 
 /-- **Interface stub** (`KernelProof.row_origin_label_lt_at`, `Kernel/RowLabel`). -/
 theorem row_origin_label_lt_at'
@@ -153,7 +141,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F O →
       ∃ W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) O W := fun ho hrb' hl hFO =>
-    Stub.high_origin_frozen_head_at' hp ho hrb' hy hcast hl (hFe ▸ hFO)
+    KernelProof.high_origin_frozen_head_at' hp ho hrb' hy hcast hl (hFe ▸ hFO)
   -- the reduction: `B ⪯ Σ.F`, or `Σ.F ⪯ B` with a P-U viable frozen block above `B`
   suffices key : Anc (tr.HonestBlocksAt H) B (tr.state y i).fg.F ∨
       (Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B ∧
