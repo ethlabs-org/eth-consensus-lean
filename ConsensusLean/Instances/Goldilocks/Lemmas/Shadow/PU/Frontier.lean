@@ -2,9 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -23,9 +21,10 @@ by height, by the gap, or because it extends `Σ.J`.
 
 The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered_at'`,
 `held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
-the run-level origin family (left entries, high origins, healed covers) through the named
-**interface stubs** of section `Stub` below, each the stock lemma over the shadow run; a theorem
-reading one is unresolved (`sorryAx`) until it is proved.
+the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
+and three further facts through the named **interface stubs** of section `Stub` below, each the
+stock lemma over the shadow run; a theorem reading a stub is unresolved (`sorryAx`) until it is
+proved.
 
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
   their origins or covers directly (pairwise compatible above, so compatible), instead of through a
@@ -194,48 +193,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 namespace Stub
 
-/-- **Interface stub** (`left_entry_origin_or_covered_at`, `Clean/LeftEntry`). -/
-theorem left_entry_origin_or_covered_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧
-        ((∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ Anc (tr.HonestBlocksAt H) E O) ∨
-          (v ∈ H (max (cutZ sp.toParams g) t) ∧ CoveredUpTo tr H g a b (sp.slot t) E)) := by
-  sorry
-
-/-- **Interface stub** (`ResetPremisesUpTo.origins_compatible_at`, `Kernel/ResetFacts`). -/
-theorem origins_compatible_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {x z : Fin sp.n} {i j r l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
-    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
-
-/-- **Interface stub** (`CoveredUpTo.compatible_highOrigin`, `SourceCover`). -/
-theorem compatible_highOrigin' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hib : tr.time i ≤ b)
-    (ho : HighOrigin tr H g x i j B) : Compatible (tr.HonestBlocksAt H) E B := by
-  sorry
-
-/-- **Interface stub** (`Outcome.high_of_anc_at`, `Outcome/High`). -/
-theorem high_of_anc_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i j k : Nat} {t : Time}
-    {B W : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hz : z ∈ H t)
-    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
-    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
-  sorry
-
 /-- **Interface stub** (`ResetPremisesUpTo.reset_seed_before_slot_at`, `Kernel/Seed`). -/
 theorem reset_seed_before_slot_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
@@ -298,12 +255,12 @@ private theorem entries_compatible
   rcases h₁ with ⟨r₁, hr₁, l₁, O₁, ho₁, hEO₁⟩ | hc₁
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
     · exact compatible_of_below hU hEO₁ hEO₂
-        (Stub.origins_compatible_at' hp ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
+        (ResetPremisesUpTo'.origins_compatible_at' hp ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
     · exact compatible_of_below hU hEO₁ .refl
-        (Stub.compatible_highOrigin' hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
+        (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
     · exact compatible_of_below hU .refl hEO₂
-        (Stub.compatible_highOrigin' hp.run hp.noColl hc₁ (hb hr₂ hd₂) ho₂)
+        (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₁ (hb hr₂ hd₂) ho₂)
     · obtain ⟨hc, C₁, s₁, hC₁, -, hEC₁⟩ := coveredUpTo_iff.1 hc₁
       obtain ⟨-, C₂, s₂, hC₂, -, hEC₂⟩ := coveredUpTo_iff.1 hc₂
       exact compatible_of_below hU hEC₁ hEC₂ (hc.s1 C₁ s₁ C₂ s₂ hC₁ hC₂)
@@ -331,9 +288,9 @@ theorem Outcome.no_high_contest_at'
   have hJlt : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h <
       ((tr.state p i).fg.σ Bj.root).h := by have := hj_lt_h_with hu hr hBj; omega
   obtain ⟨-, -, -, -, v₁, d₁, -, hd₁, -, -, h₁⟩ :=
-    Stub.left_entry_origin_or_covered_at' hp ht hi hpH hib hEC hECT (by omega) hECC (by omega)
+    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hi hpH hib hEC hECT (by omega) hECC (by omega)
   obtain ⟨-, -, -, -, v₂, d₂, -, hd₂, -, -, h₂⟩ :=
-    Stub.left_entry_origin_or_covered_at' hp ht hi hpH hib hJm hJT (by omega) hEJB hJlt
+    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hi hpH hib hJm hJT (by omega) hEJB hJlt
   have hcmp := entries_compatible hp hib hd₁ hd₂ (h₁.imp_right And.right) (h₂.imp_right And.right)
   have hh : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h =
       ((tr.state p i).fg.σ EC.root).h := by rw [hJh, hBjhj, hECh]
@@ -387,7 +344,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
   have hreach := (Compose.Growing.reachable_at' hp.run ht hy hj).reachableWith
   have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := Stub.reset_seed_before_slot_at' hp hR
-  have hBh := Stub.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
+  have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
     (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
   have hnc := Outcome.no_high_contest_at' hp hy hjb
   by_contra hle
@@ -404,7 +361,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
   obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height_with hu hreach hC
     (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
-    Stub.left_entry_origin_or_covered_at' hp ht hj hy hjb hE hET (by omega) hEC (by omega)
+    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hj hy hjb hE hET (by omega) hEC (by omega)
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
@@ -454,7 +411,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
   refine ⟨hBs, hFB, ?_⟩
   set st := (tr.state p c).fg with hst
   have hBh : HZ tr H g + 1 ≤ (st.σ B.root).h :=
-    Stub.high_of_anc_at' hp.run hp.noColl ho ht hle hpH hBs .refl
+    Outcome.high_of_anc_at' hp.run hp.noColl ho ht hle hpH hBs .refl
   have hjm := hs.hj_lt_hmax
   -- the left entry of a held entry `E` above `B`'s height is compatible with `B`
   have hcmp : ∀ {E W : AC.Blk sp.n (List (FG.Att sp.n))}, E ∈ st.tree →
@@ -462,13 +419,13 @@ theorem ProposalImpl.held_high_origin_viable_at'
       (st.σ E.root).h < (st.σ W.root).h → Compatible (tr.HonestBlocksAt H) E B := by
     intro E W hE hET hEh hEW hlt
     obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
-      Stub.left_entry_origin_or_covered_at' hp ht hle hpH hcb hE hET hEh hEW hlt
+      ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hle hpH hcb hE hET hEh hEW hlt
     rcases hor with ⟨r, hrd, l, O, hoO, hEO⟩ | ⟨-, hcov⟩
-    · rcases Stub.origins_compatible_at' hp hoO
+    · rcases ResetPremisesUpTo'.origins_compatible_at' hp hoO
           ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
       · exact Or.inl (hEO.trans h)
       · exact Anc.total hU hEO h
-    · exact Stub.compatible_highOrigin' hp.run hp.noColl hcov hib ho
+    · exact CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hcov hib ho
   by_cases hm : st.hmax ≤ (st.σ B.root).h
   · exact ⟨B, hBs, hFB, isViable'_of_hmax_le hm, .refl⟩
   by_cases hlow : (st.σ B.root).h + 2 ≤ st.hmax
