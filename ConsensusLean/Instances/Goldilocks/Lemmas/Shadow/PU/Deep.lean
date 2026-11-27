@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
@@ -27,7 +28,7 @@ when a fast candidate exists. No proof needs the deep arm to fire. The proofs be
 the stock ones over `GoldilocksRun'`.
 
 The AC projection `Compose.goldilocks_ac_projection_from'` (B0b, `Shadow/PU/ACProjection`) still
-rests on pending suppliers there: a theorem reading it is unresolved (`sorryAx`) until they land.
+rests on pending suppliers there: a theorem reading it is unresolved until they land.
 -/
 
 namespace Consensus.Goldilocks.Shadow.PU
@@ -305,16 +306,6 @@ theorem high_toFG_fast_at'
 
 /-! ## `FollowLocal` over the shadow run -/
 
-/-- Stub (Lane C, `Shadow/PU/Run`): `Compose.Growing.anc_upTo_of_right` over the shadow run. -/
-theorem anc_upTo_of_right_stub {P : Params} {A : NodeAC P} {tr : RunTrace A} {d : Time}
-    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {ini}
-    (_hrun : Consensus.Goldilocks.Growing.LocalRun' proposer dg H sg tr ini)
-    (_hnc : Compose.NoCollRun dg tr) (_hd : 0 ≤ d)
-    {B C : A.Blk} (_hC : C ∈ (tr.upTo d).HonestBlocks (H d))
-    (_h : Anc (tr.HonestBlocksAt H) B C) : Anc ((tr.upTo d).HonestBlocks (H d)) B C := by
-  sorry
-
 /-- A warm node is joined at the vote deadline (`joined_voteTime_of_warm_frame_at`). -/
 theorem joined_voteTime_of_warm_frame_at'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -404,7 +395,7 @@ theorem toFG_time_ge_of_ancestor_slot_at'
   have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (AC.toFG_source hR'.2.2).1.1
   have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_leU sp hac.localRun.toU hy hR'.1 R hRc
-  have hPR' := anc_upTo_of_right_stub hrun.toLocalRun' hnc hd
+  have hPR' := RunTrace.anc_upTo_of_right' hrun hnc hd
     ((AC.frameIn_of_callAt hac.localRun hy hR'.1).2 hRc) hPR
   have hPRs := (Anc.slot_le hac.localRun.coherent hPR').1
   exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
@@ -458,8 +449,8 @@ theorem report_of_compatible_candidate_of_run_at'
     (fun C hC => by
       rw [hst] at hC
       exact (hcompat C hC).imp
-        (anc_upTo_of_right_stub hrun.toLocalRun' hnc hd (hU P hPc.1.1))
-        (anc_upTo_of_right_stub hrun.toLocalRun' hnc hd (hU C hC.1.1)))
+        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU P hPc.1.1))
+        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU C hC.1.1)))
   have hrj : tr.time r ≤ tr.time j := hrt
   exact ⟨r, ell', R, (Healing.Growing.toFGAt_upTo_iff hrun.time_mono hrj).mp hto, hrj,
     hPR.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩

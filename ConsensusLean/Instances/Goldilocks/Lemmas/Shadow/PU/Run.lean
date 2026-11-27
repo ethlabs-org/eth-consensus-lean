@@ -63,7 +63,7 @@ theorem σ_eq_honest' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
     Goldilocks.Store.finalitySpec_updateFinality'
     (Node.fg_reachable_at' hrun.toLocalRun' hz j).reachableWith
-    (Compose.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+    (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
     (fun _ hX => ⟨y, hy, i, hX⟩) (fun _ hX => ⟨z, hz, j, hX⟩) hBy hBz
 
 theorem hj_lt_hmax' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
@@ -218,11 +218,58 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- Interface pending the shadow store finalization monotonicity lift. -/
+/-- Finalized tips advance along ancestry on shadow executions. -/
 theorem run_F_mono' (h : Node.LocalRun' proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i i' : Nat} (hii : i ≤ i') :
     Anc (tr.HonestBlocks H) (tr.state y i).fg.F (tr.state y i').fg.F := by
-  sorry
+  induction i', hii using Nat.le_induction with
+  | base => exact .refl
+  | succ i' _ ih =>
+    refine ih.trans ?_
+    by_cases hc : ∃ c, tr.CallAt y i' c
+    · obtain ⟨c, hc⟩ := hc
+      rw [tr.state_succ_of_call hc]
+      rcases Node.cutStep'_fg (h.cutLaw y hy i' c hc) with he | hs
+      · rw [he]
+      · rcases (Store.step'_iff _ _).mp hs with ⟨B, hB⟩ | ⟨att, hatt⟩
+        · rw [Store.onBlock'_eq_onBlockWith] at hB
+          obtain ⟨pr, σ, -, -, -, -, -, he⟩ := Store.onBlockWith_eq_some hB
+          obtain ⟨atts, hatt⟩ := Store.addAtts_eq _ B.fgPayload
+          have hF := ((Store.finalitySpec_iff _).mp Store.finalitySpec_updateFinality'
+            { (tr.state y i').fg with
+              blocks := Function.update (tr.state y i').fg.blocks B.root (some B),
+              σ := Function.update (tr.state y i').fg.σ B.root σ } σ).2.2.2.2.2
+          rw [he, hatt]
+          rcases hF with hF | ⟨-, hF, -, -⟩
+          · rw [hF]
+          · exact hF.mono (by
+              intro X hX
+              refine ⟨y, hy, i' + 1, ?_⟩
+              rw [tr.state_succ_of_call hc]
+              rw [(Store.tree_grows_with Store.finalitySpec_updateFinality').1 B _ hB]
+              change Function.update (tr.state y i').fg.blocks B.root (some B) X.root =
+                some X at hX
+              by_cases hrB : X.root = B.root
+              · simp only [Function.update_apply, hrB, ↓reduceIte] at hX
+                exact Set.mem_insert_iff.mpr (Or.inl (Option.some.inj hX).symm)
+              · simp only [Function.update_apply, hrB, ↓reduceIte] at hX
+                exact Set.mem_insert_of_mem _ hX)
+        · obtain ⟨atts, he⟩ := Store.onAttestation_eq (tr.state y i').fg att
+          rw [hatt, he]
+    · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
+
+/-- The AC block call follows an FG acceptance at the same time, without restarting. -/
+theorem ac_block_after' (h : Node.LocalRun' proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {k : Nat} {B : A.Blk} (ha : tr.AcceptAt y k B) :
+    tr.projAC.AcceptAt y (k + 1) B ∧ tr.time (k + 1) = tr.time k ∧
+      ¬ tr.RestartAt y (k + 1) := by
+  obtain ⟨ℓ, hcall, hc, ht⟩ := Coherence.accept_next' h hy ha
+  refine ⟨⟨ℓ, Compose.projAC_callAt.2 hcall, hc⟩, ht, ?_⟩
+  rintro ⟨ℓ', hc', hr⟩
+  have := hc'.2.symm.trans hcall.2
+  simp only [Option.some.injEq, Cut.ac.injEq] at this
+  rw [this, hc] at hr
+  cases hr
 
 end Consensus.Goldilocks.Healing
 
