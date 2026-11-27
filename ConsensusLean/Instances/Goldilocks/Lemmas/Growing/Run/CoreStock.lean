@@ -10,6 +10,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 
 public section
 
@@ -84,6 +86,10 @@ theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
     obtain ⟨C, hc⟩ := hs
     obtain ⟨j, -, ht⟩ := Compose.attestCall_tick hrun.toLocalRun hy hc
     exact hrun.tick_public y hy j _ ht
+  signed_run v hv i := by
+    obtain ⟨inputs, hin, hs⟩ := Store.signed_run_of_exec (Compose.fg_exec hrun.toLocalRun) hv i
+    exact ⟨inputs, hin, fun j hj a ha =>
+      hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Compose.fg_reachable hrun.toLocalRun hy i).reachableWith
   frameOK y hy i := Compose.frameOK_state hrun.toLocalRun hy i
   projAC_state y hy i := Compose.projAC_state hrun.toLocalRun hy i

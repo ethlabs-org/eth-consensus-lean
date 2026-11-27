@@ -128,6 +128,10 @@ structure StaticRunCore
     ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧ ∀ j < i, tr.IsCall y j → tr.time j < u
   /-- Honest signings are at public times (`FGLocalRun.attest_public` of the projection). -/
   sign_public : ∀ y ∈ H, ∀ k a, tr.SignAt y k a → sp.toParams.IsPublic (tr.time k)
+  /-- The signings of an honest client are outputs of one client run over entry states
+  (`Store.signed_run_of_exec` of the FG projection). -/
+  signed_run : ∀ v ∈ H, ∀ i, ∃ inputs, FG.EntryInputs sp.toParams.fg inputs ∧
+    ∀ j < i, ∀ a, tr.SignAt v j a → a ∈ (FG.Record.run v FG.Record.empty inputs).2
   /-- `Compose.fg_reachable`. -/
   reachable : ∀ y ∈ H, ∀ i,
     Store.ReachableWith u (goldilocksNode sp ro).genesisPayload (tr.state y i).fg

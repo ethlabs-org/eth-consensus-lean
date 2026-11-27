@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 
 public section
 
@@ -538,6 +539,11 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
     obtain ⟨C, hc⟩ := hs
     obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun' hy hc
     exact hrun.tick_public y hy j _ ht
+  signed_run v hv i := by
+    obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun'
+    obtain ⟨inputs, hin, hs⟩ := Healing.signed_run' hinit hexec hv i
+    exact ⟨inputs, hin, fun j hj a ha =>
+      hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
   frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun' hy i
   projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun' hy i
