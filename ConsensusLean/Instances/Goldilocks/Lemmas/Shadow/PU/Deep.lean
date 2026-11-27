@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
@@ -26,8 +26,9 @@ for `toFrame'` and `toFrame`), the AC lock invariant over lawful frames, and the
 when a fast candidate exists. No proof needs the deep arm to fire. The proofs below are therefore
 the stock ones over `GoldilocksRun'`.
 
-The AC projection `Compose.goldilocks_ac_projection_from'` (B0b, `Shadow/PU/Trace`) is still a
-`sorry` copy there: a theorem reading it is unresolved (`sorryAx`) until it is proved. -/
+The AC projection `Compose.goldilocks_ac_projection_from'` (B0b, `Shadow/PU/ACProjection`) still
+rests on pending suppliers there: a theorem reading it is unresolved (`sorryAx`) until they land.
+-/
 
 namespace Consensus.Goldilocks.Shadow.PU
 

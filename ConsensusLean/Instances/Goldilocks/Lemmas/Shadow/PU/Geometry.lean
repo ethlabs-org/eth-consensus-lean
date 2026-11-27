@@ -340,6 +340,55 @@ theorem frame_crossing_source_before' (hr : Node.LocalRun' proposer dg H sg tr i
       ∃ D, G D ∧ IsHonestSource tr H D E.root :=
   frame_crossing_source_of' hr hbound hy (hsrc.above 0) hW (Nat.zero_le _) hj1 hj2
 
+/-- A held block compatible with a source's whole row lies below the source's entry when it is
+lower (`below_entry`). -/
+theorem below_entry' (hr : Node.LocalRun' proposer dg H sg tr ini)
+    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B D E : A.Blk}
+    (hB : B ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
+    (hD : IsHonestSource tr H D E.root) (hDB : Compatible (tr.HonestBlocks H) D B)
+    (hlt : ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ E.root).h) :
+    (tr.state y i).fg.Anc B E := by
+  obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry' hr hfg hD ⟨y, hy, i, hE⟩ rfl
+  have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx k)
+  have no : ¬ Anc (tr.HonestBlocks H) E B := fun h => by
+    have := (honest_held_height' hr hy (honest_held_anc' hr hfg hy h hB)).1
+    omega
+  rcases hDB with h | h
+  · exact absurd (hEDU.trans h) no
+  · rcases Anc.total hfg.coherent h hEDU with h' | h'
+    · exact honest_held_anc' hr hfg hy h' hE
+    · exact absurd h' no
+
+/-- **A held block reaches the P-U floor or a source entry at the floor with a viable carrier**
+(`floor_or_crossing_of`, with no contest case): the floor is `h_max − 1`, the carrier is a block
+of height `h_max`, viable by height. The stock hypothesis `hGG` (sources pairwise compatible) is
+only used by the stock proof to exclude a contest, and is not needed. -/
+theorem floor_or_crossing_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
+    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat} {G : A.Blk → Prop}
+    (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
+    {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
+    (hB : B ∈ (tr.state y i).fg.tree) :
+    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
+      ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
+        (tr.state y i).fg.Anc B E ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
+        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable' X := by
+  by_cases hle : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h
+  · exact Or.inl hle
+  right
+  obtain ⟨-, -, -, ⟨Z, hZ, -, hZj⟩, hZm, ⟨X, hX, hXh⟩, -⟩ :=
+    cache_invariants' (Node.fg_reachable_at' hr hy i)
+  have hB1 := (honest_held_chain' hr hy hB).1
+  have hZ1 := (honest_held_chain' hr hy hZ).2.1
+  have hZ2 := hZm Z hZ
+  obtain ⟨E, hE, hEX, hEh, -, D, hD, hDs⟩ :=
+    frame_crossing_source_of' hr hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
+      (by omega) (by omega)
+  exact ⟨D, E, X, hD, hDs, hE, below_entry' hr hfg hy hB hE hDs (hGB D hD) (by omega), hEh, hX,
+    hEX, Store.isViable'_of_hmax_le (by omega)⟩
+
 /-- **Compatibility with all relevant row sources implies compatibility with the justification**
 (`J_compatible`; it does not read viability). -/
 theorem J_compatible' (hr : Node.LocalRun' proposer dg H sg tr ini)
@@ -362,5 +411,22 @@ theorem J_compatible' (hr : Node.LocalRun' proposer dg H sg tr ini)
   · exact Anc.total hf.coherent hJDU h
 
 end Consensus.Goldilocks.Compose.FrameGeometry
+
+namespace Consensus.Goldilocks.Compose
+
+open AC (ACParams ReplayOrder Payload)
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+
+/-- **The FG projection of a shadow Goldilocks run is a shadow FG local run** inside the honest
+blocks (`projFG_localRun`). Unresolved until `fg_projection_from'` (lane B0b) is proved. -/
+theorem projFG_localRun' (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : NoCollRun dg tr) :
+    FGLocalRun' (goldilocksNode' sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
+  fg_projection_from' (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
+    hrun.toLocalRun' hnc
+
+end Consensus.Goldilocks.Compose
 
 end
