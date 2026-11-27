@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 
 public section
 
@@ -14,6 +16,27 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
+
+/-- **`Σ.F` below a crossing**: a finalized block `F` of `y`'s chain to `X` (observed while honest
+at `u`) is below a block `W` held by `x` (observed while honest at `t`) whose state height exceeds
+the finalized height of `X`. Certificate intersection is charged at `max u t`. -/
+theorem finalized_anc_obs
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
+    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
+    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
+    (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {X F W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y m).fg.tree)
+    (hFt : F ∈ (tr.state y m).fg.tree) (hFr : F.root = ((tr.state y m).fg.σ X.root).F)
+    (hW : W ∈ (tr.state x i).fg.tree)
+    (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
+    Anc (tr.HonestBlocksAt H) F W :=
+  honest_anc_of_store_anc_at ht hxtime hx <| Store.finalized_anc_of_safe
+    (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
+    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
+    (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
+    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    hX hFt hFr hW hlt
 
 /-- Floor comparison needs a quorum bound at the later observation, not persistent readers. -/
 theorem finalized_below_floor_held_at
