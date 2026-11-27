@@ -118,9 +118,8 @@ theorem own_block_accepted' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin
       simp only [List.length_append, List.length_cons, h0]
       omega
     cases fgDue <;>
-      simp only [exec_eq, onTick_eq, runSteps_eq, tickSteps, Bool.false_eq_true,
-        ↓reduceIte, List.foldl_cons, List.foldl_nil]
-    all_goals simp only [List.nil_append, hp]
+      simp only [exec_eq, onTick_eq, Bool.false_eq_true, ↓reduceIte]
+    all_goals simp only [hp, List.append_nil]
     · rw [List.getElem?_append_right (by omega)]
       simpa only [h0, Nat.reduceSub, List.getElem?_cons_succ] using hb
     · rw [List.getElem?_append_left hlen, List.getElem?_append_right (by omega)]

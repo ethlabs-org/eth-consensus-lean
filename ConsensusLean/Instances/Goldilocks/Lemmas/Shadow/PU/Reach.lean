@@ -69,7 +69,7 @@ private theorem NInv.mono {st : NodeState A} {t t' : Time} (h : NInv dg self s�
     (ht : t ≤ t') : NInv dg self s₀ st t' :=
   ⟨h.fg, fun hq => (h.ac hq).imp fun _ h => ⟨h.1.trans ht, h.2⟩, h.wf, h.roots⟩
 
-private theorem NInv.ac {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t)
+private theorem NInv.ac' {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t)
     (s : A.State) (hs : A.ReqPayloadFrom s₀ self →
       ∃ t₀ ≤ t, A.ReachableAtFrom s₀ self st.fg.tree s (frame st) t₀) :
     NInv dg self s₀ { st with ac := s } t := by
@@ -80,21 +80,21 @@ private theorem NInv.acCall {st : NodeState A} {t : Time} (h : NInv dg self s₀
     (c : A.Call) (hc : A.CallOK st.fg.tree (frame st) t c (frame st)) :
     NInv dg self s₀ (acCall self st t c).1 t := by
   rw [acCall_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step c hR ht₀ hc⟩
 
 private theorem NInv.acProposal {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) :
     NInv dg self s₀ (Node.acProposal st t).1 t := by
   rw [acProposal_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step .proposal hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
 private theorem NInv.acToFG {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) :
     NInv dg self s₀ (Node.acToFG st t).1 t := by
   rw [acToFG_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step .toFG hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
