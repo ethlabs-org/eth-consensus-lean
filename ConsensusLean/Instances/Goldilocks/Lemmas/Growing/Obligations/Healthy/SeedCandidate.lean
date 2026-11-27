@@ -144,7 +144,7 @@ theorem guarded_seed_ancestor_candidate_at_state_covered_at
   have hpred : (tr.state y i).fg.hmax - 1 ≤ (tr.state y i).fg.headHeightFloor := by
     unfold Store.headHeightFloor
     split_ifs <;> omega
-  rcases Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.high_floor_signed_source_or_covered_before_at
+  rcases high_floor_signed_source_or_covered_before_at
       hp hseed ht hle hy htb
       (u := sp.slot t + 1)
       (guarded_row_bound hp ht hle)
