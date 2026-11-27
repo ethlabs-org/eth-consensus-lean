@@ -12,6 +12,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.WriterCompatible
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -153,7 +158,39 @@ private theorem first_transfer_service_at'
     (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
     (hK : CommitteeHalfUpTo tr H K g b) :
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
+  change sp.slot (tr.time i) = s + 1 at hslot
+  have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
+    rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
+    exact hm
+  have hnext : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])
+  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
+  have hcarry : AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    apply carry_of_service_senders' hrun hnc hsvc hcatch hm hy hc hs
+    intro v hv
+    have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
+    obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, -, hroot, hanc, hacc⟩ :=
+      Healing.fastLock_writer hrx hac.vstart hx
+        ((AC.upTo_fastLockAt hrun.time_mono).mpr ⟨le_rfl, hfl⟩) v hv
+    obtain ⟨hkt, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
+    refine ⟨hvs, ⟨x, k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hroot,
+      (hFB.trans hBD).trans hanc, ?_⟩
+    exact hacc.imp_right fun ⟨k', hk', htime⟩ => by
+      obtain ⟨hkt', hk'⟩ := ACTrace.upTo_acceptAt.mp hk'
+      exact ⟨x, k', hrun.antitone hkt' hx, hk', htime⟩
+  exact AC.Growing.first_transfer_stored hac K
+    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
+    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
+    hx hfl hBD hy hc hs
+    (service_syncACAt' hrun hsvc ((AC.le_gbar g).trans hm)) hcarry
+    (faultBoundK_of_service_at' hK hrun hawake hnr hm (by linarith)
+      (hrun.time_nonneg i) hprev hib)
+    (hK.cs2 (s + 1) (hm.trans hss) (hnext.trans hib) _ (hrun.time_nonneg i) hib)
+    hviab hearlier
 
 /-- Unresolved AC service input: counted result votes reach the next reader. -/
 private theorem result_carry_service_at'
@@ -220,7 +257,84 @@ private theorem slow_live_locks_service_at'
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L D := by
-  sorry
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hr := hac.upTo (hrun.time_nonneg i)
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot : sp.slot (tr.time i) = s + 1 :=
+    ((AC.castAt_specU hr.localRun.toU hy hc').2.1).symm.trans hs
+  have hgs : gbar g ≤ sp.ts (s + 1 : Nat) := hm.trans ((AC.ts_le_iff sp).mpr (by omega))
+  have hsb : sp.ts (s + 1 : Nat) ≤ b :=
+    ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])).trans hib
+  have hservice (d : Time) :
+      AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) g d tr.projAC := by
+    constructor
+    · intro x k v hx hv hk y j ell hy hj _ hdl
+      exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+        ((service_syncACAt' hrun hsvc (lo := g) le_rfl).1
+          x k v hx hv hk le_rfl y j ell hy hj hdl))
+    · intro x k B hx hB hk y j ell hy hj _ hdl hanc
+      exact (service_syncACAt' hrun hsvc (lo := g) le_rfl).2
+        x k B hx hB hk le_rfl y j ell hy hj hdl hanc
+  apply AC.live_locks_of_stored_before hr K
+    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)
+    (hK.cs2 (s + 1) hgs hsb _ (hrun.time_nonneg i) hib) hy hc' hs ?_ ?_
+  · intro l hl hlive hle Y hY hYr
+    change sp.slot (tr.time i) ≤ l.slot + sp.k at hlive
+    rw [hslot] at hlive
+    rw [Trace.upTo_state tr.projAC y (fun _ hk => hrun.time_mono hk.le)] at hl
+    have hri := (hac.upTo (hrun.time_nonneg i)).localRun
+    obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, ho⟩ :=
+      AC.lock_below_origin hri hac.vstart hy i l
+        (by rwa [Trace.upTo_state tr.projAC y (fun _ hk => hrun.time_mono hk.le)])
+    obtain rfl : Y = L := hac.localRun.coherent.1 hY hL (hYr.trans hLr.symm)
+    have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
+    have hsl' : AC.SlowLockAt (tr.projAC.upTo (tr.time c)) x c s D := by
+      obtain ⟨ellx, C, hu, hconf, hdeep⟩ := hsl
+      refine ⟨ellx, C, (AC.upTo_updateAt hrun.time_mono).mpr ⟨le_rfl, hu⟩, ?_, ?_⟩
+      · rwa [Trace.upTo_state tr.projAC x (fun _ hk => hrun.time_mono hk.le)]
+      · simpa only [Trace.upTo_state tr.projAC x (fun _ hk => hrun.time_mono hk.le),
+          Trace.upTo_time] using hdeep
+    obtain ⟨kx, R, CVx, hR, hDR⟩ := AC.slow_window_results hrx hac.vstart hx
+      hsl' l.slot (by omega) hle
+    obtain ⟨hkxc, hR⟩ := (AC.upTo_resultAt hrun.time_mono).mp hR
+    have hxk := hrun.antitone hkxc hx
+    have hj : g ≤ sp.ts l.slot := (AC.le_gbar g).trans
+      (hm.trans ((AC.ts_le_iff sp).mpr (by omega)))
+    have hreset : ∀ {z q j CV B}, z ∈ H (tr.time q) →
+        AC.ResultAt tr.projAC z q j B CV →
+        ∀ r ≤ q, tr.projAC.RestartAt z r → tr.time r ≤ sp.ts j := by
+      rintro z q j CV B hz ⟨ell, hu, -, -⟩ r hr hrst
+      exact Compose.update_restarts (hac.upTo (hrun.time_nonneg q)).localRun hz
+        ((AC.upTo_updateAt hrun.time_mono).mpr ⟨le_rfl, hu⟩) r hr
+        (ACTrace.upTo_restartAt.mpr ⟨hrun.time_mono hr, hrst⟩)
+    have hcomp : Compatible (tr.HonestBlocksAt H) O R := by
+      rcases ho with ho | ho
+      · obtain ⟨hkt, ho⟩ := (AC.upTo_resultAt hrun.time_mono).mp ho
+        have hto : tr.time k = sp.ts l.slot + 6 * sp.Δ := by
+          obtain ⟨ell, hu, -, -⟩ := ho
+          exact hu.2.2.1
+        have htr : tr.time kx = sp.ts l.slot + 6 * sp.Δ := by
+          obtain ⟨ell, hu, -, -⟩ := hR
+          exact hu.2.2.1
+        exact AC.Growing.result_result_compatible_window_before_at hac
+          (hservice (sp.ts l.slot + 6 * sp.Δ)) hj
+          (hrun.antitone hkt hy) hxk ho hR hto.le
+          htr.le (hreset (hrun.antitone hkt hy) ho) (hreset hxk hR)
+      · obtain ⟨hkt, ho⟩ := (AC.upTo_optimisticLockAt hrun.time_mono).mp ho
+        obtain ⟨ellR, huR, hcR, hCVR⟩ := hR
+        have hR : AC.ResultAt tr.projAC x kx l.slot R CVx := ⟨ellR, huR, hcR, hCVR⟩
+        exact (AC.Growing.result_optimistic_compatible_window_before_at hac
+          (b := max (tr.time kx) (tr.time k))
+          (hservice _) hj hxk (hrun.antitone hkt hy) hR ho
+          (le_max_left _ _) (le_max_right _ _) (hreset hxk hR)
+          (fun v hv => hK.facts.hP.1 _ x hxk kx
+            (fun _ hk => hrun.time_mono hk.le) l.slot v hv) (hK.facts.hsize l.slot)).symm
+    rcases hcomp with hcomp | hcomp
+    · exact AC.anc_total hac.localRun.coherent (hLO.trans hcomp) hDR
+    · exact AC.anc_total hac.localRun.coherent hLO (hDR.trans hcomp)
+  · intro z hz k hki ev he hes
+    obtain ⟨hkt, he⟩ := AC.upTo_voteAt.mp he
+    exact hE z k ev hki (hrun.antitone hkt hz) he hes
 
 /-- The stock fast transfer applied to the shared shadow early-witness induction. -/
 theorem regular_fast_next_votes_of_early_witness_at'
