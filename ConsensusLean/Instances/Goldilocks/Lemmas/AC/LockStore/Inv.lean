@@ -31,7 +31,7 @@ theorem lockInv_iff {A : ACState sp.n} {Φ : Frm sp.n FGP} :
   Iff.rfl
 
 /-- Locks that move back stay below the record. -/
-private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
+theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
     {A A' : ACState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
     (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
@@ -148,7 +148,7 @@ theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ
 /-- **New locks below a live lock, the record kept.** When every new lock is on a block below a
 live lock block, and the record does not move, the invariant holds after: the live lock blocks are
 below the record. -/
-private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : ACState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = AC.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧
@@ -173,7 +173,7 @@ private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (h�
 
 /-! ### Each AC function keeps the invariant -/
 
-private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : ACState sp.n} (h : LockInv U A Φ)
+theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : ACState sp.n} (h : LockInv U A Φ)
     (hl : A'.locks = A.locks) (hr : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   exact ⟨E, hE, hEr.trans hr.symm, hEt, hl ▸ hlE⟩
@@ -186,7 +186,7 @@ theorem LockInv.unlock {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) (s : I
   h.movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 s V) rfl
 
 open Classical in
-private theorem LockInv.optimistic {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) :
+theorem LockInv.optimistic {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) :
     LockInv U (optimisticConfirmation sp A Φ t) Φ := by
   unfold optimisticConfirmation
   rcases hsel : optimisticSelect sp A Φ t with _ | B
