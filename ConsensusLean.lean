@@ -809,6 +809,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
