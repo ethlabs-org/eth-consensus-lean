@@ -1,4 +1,7 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
@@ -35,7 +38,7 @@ theorem step_σ' (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ st
 /-- The state of a block of a shadow-reachable store records the attestations of its chain
 (`prog_rows`): each validator in the progress set signed an attestation on a held block below, for
 the state's entry. -/
-theorem prog_rows' (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
+theorem prog_rows (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
     ∀ v ∈ (st.σ W.root).prog, ∃ X ∈ st.tree, st.Anc X W ∧ ∃ a ∈ X.fgPayload, a.val = v ∧
       a.T = (st.σ W.root).Th := by
   have hu := finalitySpec_updateFinality' (P := P) (ACP := ACP)
@@ -65,7 +68,7 @@ theorem prog_rows' (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ 
 
 /-- **The crossing quorum** (`crossing_quorum`): below a block of a shadow-reachable store, each
 height `j` below its own has an entry with a quorum of attestations naming it. -/
-theorem crossing_quorum' (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
+theorem crossing_quorum (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
     ∀ j, 1 ≤ j → j < (st.σ W.root).h →
       ∃ E ∈ st.tree, st.Anc E W ∧ (st.σ E.root).h = j ∧ (st.σ E.root).Th = E.root ∧
         ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ X ∈ st.tree,
@@ -104,12 +107,12 @@ theorem crossing_quorum' (h : st.Reachable' acp₀) {W : NodeBlock P ACP} (hW : 
         entry_state_of_source_with hu hr W' h1
       refine ⟨E, hE, lift E hEW', hEh.trans hjeq.symm, hET.trans hEr.symm, p, hq, fun v hv => ?_⟩
       rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
-      · obtain ⟨X, hX, hXW, a, ha, hav, haT⟩ := prog_rows' h h1 v hv
+      · obtain ⟨X, hX, hXW, a, ha, hav, haT⟩ := prog_rows h h1 v hv
         exact ⟨X, hX, lift X hXW, a, ha, hav, haT.trans hEr.symm⟩
       · exact ⟨W, h2, .refl, a, ha, hav, haT.trans hEr.symm⟩
 
 /-- The justification of a block of positive justified height names an entry (`J_entry`). -/
-theorem J_entry' (h : st.Reachable' acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree)
+theorem J_entry (h : st.Reachable' acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree)
     (hj : 1 ≤ (st.σ Z.root).hj) :
     ∃ E ∈ st.tree, E.root = (st.σ Z.root).J ∧ st.Anc E Z ∧
       (st.σ E.root).h = (st.σ Z.root).hj ∧ (st.σ E.root).Th = E.root := by
@@ -127,34 +130,34 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 
 /-- The store of an honest node before every cut of a shadow FG trace is `Reachable'`
 (`store_reachable`). -/
-theorem store_reachable' (hr : FGLocalRun' acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+theorem store_reachable' (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     (tr.store y i).Reachable' acp₀ := by
-  rw [reachable'_eq]
+  rw [reachable_eq]
   induction i with
   | zero =>
-    change Relation.ReflTransGen Step' (init acp₀) (tr.init y).1
+    change Relation.ReflTransGen Step (init acp₀) (tr.init y).1
     rw [hr.init y hy]
   | succ i ih =>
     rw [FGTrace.store, Trace.state]
     split_ifs with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      have hs : FGLabel.Step' y (tr.state y i) ℓ (tr.post i) := by
+      have hs : FGLabel.Step y (tr.state y i) ℓ (tr.post i) := by
         rw [← hnode.1]
         exact hr.exec i ℓ hℓ (hnode.1 ▸ hy)
       cases ℓ with
       | block B acc =>
-        rcases (FGLabel.step'_block _ _ _ _ _).1 hs with ⟨-, h, -⟩ | ⟨-, -, he⟩
-        exacts [ih.tail ((step'_iff _ _).2 (Or.inl ⟨B, h⟩)), he ▸ ih]
+        rcases (FGLabel.step_block _ _ _ _ _).1 hs with ⟨-, h, -⟩ | ⟨-, -, he⟩
+        exacts [ih.tail ((step_iff _ _).2 (Or.inl ⟨B, h⟩)), he ▸ ih]
       | attestation a =>
-        rw [(FGLabel.step'_attestation _ _ _ _).1 hs]
-        exact ih.tail ((step'_iff _ _).2 (Or.inr ⟨a, rfl⟩))
+        rw [(FGLabel.step_attestation _ _ _ _).1 hs]
+        exact ih.tail ((step_iff _ _).2 (Or.inr ⟨a, rfl⟩))
       | attest src signed =>
-        rw [((FGLabel.step'_attest _ _ _ _ _).1 hs).1]
+        rw [((FGLabel.step_attest _ _ _ _ _).1 hs).1]
         exact ih
     · exact ih
 
 /-- A block of an honest node's tree has its parent held (`parent_held`). -/
-theorem parent_held' (hr : FGLocalRun' acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem parent_held' (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) {r : Nat} (hp : B.parent = some r) :
     ∃ Y, ParentIn (tr.store y i).tree Y B := by
   have h := store_reachable' hr hy i
@@ -164,7 +167,7 @@ theorem parent_held' (hr : FGLocalRun' acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
   · exact ⟨Y, hY⟩
 
 /-- `U`-ancestry below a held block is ancestry in the tree (`anc_of_U`). -/
-theorem anc_of_U' (hr : FGLocalRun' acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem anc_of_U' (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {A C : NodeBlock P ACP} (h : Goldilocks.Anc U A C) (hC : C ∈ (tr.store y i).tree) :
     (tr.store y i).Anc A C := by
   induction h with
@@ -194,7 +197,7 @@ theorem store_eq' (hr : Node.LocalRun' proposer dg H sg tr ini)
 
 /-- Ancestry in the honest-block universe lifts below a held block (`honest_held_anc`). -/
 theorem honest_held_anc' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B W : A.Blk}
     (h : Anc (tr.HonestBlocks H) B W) (hW : W ∈ (tr.state y i).fg.tree) :
     (tr.state y i).fg.Anc B W := by
@@ -209,13 +212,13 @@ theorem honest_held_height' (hr : Node.LocalRun' proposer dg H sg tr ini)
     ((tr.state y i).fg.σ B.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ B.root).h →
         ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ B.root).Th) :=
-  have hR := (Node.fg_reachable_at' hr hy i).reachableWith
+  have hR := (Node.fg_reachable_at hr hy i).reachableWith
   ⟨h_le_of_store_anc_with finalitySpec_updateFinality' hR h,
     fun he => Th_eq_of_anc_with finalitySpec_updateFinality' hR h he⟩
 
 /-- Two entry blocks of one height below one held block coincide (`held_entry_unique`). -/
 theorem held_entry_unique' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {E E' W : A.Blk}
     (hW : W ∈ (tr.state y i).fg.tree)
     (hE : (tr.state y i).fg.Anc E W) (hE' : (tr.state y i).fg.Anc E' W)
@@ -235,7 +238,7 @@ theorem honest_held_chain' (hr : Node.LocalRun' proposer dg H sg tr ini)
     1 ≤ ((tr.state y i).fg.σ B.root).h ∧
       ((tr.state y i).fg.σ B.root).hj < ((tr.state y i).fg.σ B.root).h ∧
       (((tr.state y i).fg.σ B.root).hj = 0 → ((tr.state y i).fg.σ B.root).J = P.genesisRoot) := by
-  have hR := (Node.fg_reachable_at' hr hy i).reachableWith
+  have hR := (Node.fg_reachable_at hr hy i).reachableWith
   obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain_with finalitySpec_updateFinality' hR B hB
   obtain ⟨h1, -, h2, h3, -⟩ := FG.chain_invariants _ _ _ hc
   exact ⟨h1, h2, h3⟩
@@ -247,21 +250,21 @@ theorem honest_genesis_anc' (hr : Node.LocalRun' proposer dg H sg tr ini)
       Anc (tr.HonestBlocks H) (P.genesisBlock A.genesisPayload) B := by
   obtain ⟨y, hy, i, hBt⟩ := hB
   obtain ⟨-, -, hg, hanc⟩ :=
-    accepted_tree_with finalitySpec_updateFinality' (Node.fg_reachable_at' hr hy i).reachableWith
+    accepted_tree_with finalitySpec_updateFinality' (Node.fg_reachable_at hr hy i).reachableWith
   exact ⟨⟨y, hy, i, hg⟩, (hanc B hBt).mono fun X hX => ⟨y, hy, i, hX⟩⟩
 
 /-- Zero justified height names the actual genesis block (`justified_genesis`). -/
 theorem justified_genesis' (hr : Node.LocalRun' proposer dg H sg tr ini)
     {y : Fin P.n} {i : Nat} (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
     (tr.state y i).fg.J = P.genesisBlock A.genesisPayload := by
-  have hR := Node.fg_reachable_at' hr hy i
+  have hR := Node.fg_reachable_at hr hy i
   obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants' hR
   obtain ⟨-, hcoh, hg, -⟩ := accepted_tree_with finalitySpec_updateFinality' hR.reachableWith
   exact hcoh.1 hJ hg (hZJ.symm.trans ((honest_held_chain' hr hy hZ).2.2 (hZj.trans h0)))
 
 /-- A source's named entry lies on its held chain (`honest_source_entry`). -/
 theorem honest_source_entry' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {D : A.Blk} {T : Nat} (hD : IsHonestSource tr H D T)
     {E : A.Blk} (hE : E ∈ tr.HonestBlocks H) (hET : E.root = T) :
     ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ E ∈ (tr.state x k).fg.tree ∧
@@ -271,11 +274,11 @@ theorem honest_source_entry' (hr : Node.LocalRun' proposer dg H sg tr ini)
   obtain ⟨x, hx, k, hDt, hDT⟩ := isHonestSource_iff.1 hD
   obtain ⟨⟨E', hE', hE'r, hE'D, hE'h, hE'T⟩, -⟩ :=
     entry_state_of_source_with finalitySpec_updateFinality'
-      (Node.fg_reachable_at' hr hx k).reachableWith D hDt
+      (Node.fg_reachable_at hr hx k).reachableWith D hDt
   obtain rfl : E' = E := hf.coherent.1 ⟨x, hx, k, hE'⟩ hE (hE'r.trans (hDT.trans hET.symm))
   exact ⟨x, hx, k, hDt, hE', hE'D, hE'h, hE'T.trans hE'r.symm⟩
 
-private theorem honest_mem' (hf : 2 * Hᶜ.ncard < P.n) {Q : Finset (Fin P.n)}
+private theorem honest_mem (hf : 2 * Hᶜ.ncard < P.n) {Q : Finset (Fin P.n)}
     (hQ : P.fg.q ≤ Q.card) : ∃ v ∈ Q, v ∈ H := by
   by_contra hno
   have hsub : (↑Q : Set (Fin P.n)) ⊆ Hᶜ := fun v hv hvH => hno ⟨v, hv, hvH⟩
@@ -295,8 +298,8 @@ theorem frame_crossing_source_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
       ((tr.state y i).fg.σ E.root).h = j ∧ ((tr.state y i).fg.σ E.root).Th = E.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D E.root := by
   obtain ⟨E, hE, hEW, hEh, hET, Q, hQ, hv⟩ :=
-    crossing_quorum' (Node.fg_reachable_at' hr hy i) hW j hj1 hj2
-  obtain ⟨v, hvQ, hvH⟩ := honest_mem' hbound hQ
+    crossing_quorum (Node.fg_reachable_at hr hy i) hW j hj1 hj2
+  obtain ⟨v, hvQ, hvH⟩ := honest_mem hbound hQ
   obtain ⟨X, hX, -, a, ha, rfl, haT⟩ := hv v hvQ
   obtain ⟨D, hD, hDs⟩ :=
     rowsAbove_iff.1 hsrc X hX a ha hvH ⟨E, hE, haT.symm⟩ (by rw [haT, hEh]; exact hj0)
@@ -305,17 +308,17 @@ theorem frame_crossing_source_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
 /-- The justification entry has an honest source whenever its height is positive
 (`justified_honest_source_of`). -/
 theorem justified_honest_source_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hj : 1 ≤ (tr.state y i).fg.hj) :
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root := by
-  have hR := Node.fg_reachable_at' hr hy i
+  have hR := Node.fg_reachable_at hr hy i
   obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants' hR
   have hcoh := (accepted_tree_with finalitySpec_updateFinality' hR.reachableWith).2.1
-  obtain ⟨E, hE, hEr, hEZ, hEh, hET⟩ := J_entry' hR hZ (by omega)
+  obtain ⟨E, hE, hEr, hEZ, hEh, hET⟩ := J_entry hR hZ (by omega)
   have hEJ : E = (tr.state y i).fg.J := hcoh.1 hE hJ (hEr.trans hZJ)
   obtain ⟨E', -, hE'Z, hE'h, hE'T, D, hD, hDs⟩ :=
     frame_crossing_source_of' hr hbound hy hsrc hZ (j := ((tr.state y i).fg.σ Z.root).hj)
@@ -325,7 +328,7 @@ theorem justified_honest_source_of' (hr : Node.LocalRun' proposer dg H sg tr ini
   exact ⟨hEh.trans hZj, hET, D, hD, hEE' ▸ hDs⟩
 
 theorem justified_honest_source_before' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) (hj : 1 ≤ (tr.state y i).fg.hj) :
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
@@ -345,8 +348,8 @@ theorem frame_crossing_source_before' (hr : Node.LocalRun' proposer dg H sg tr i
 
 /-- A held block compatible with a source's whole row lies below the source's entry when it is
 lower (`below_entry`). -/
-theorem below_entry' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+theorem below_entry (hr : Node.LocalRun' proposer dg H sg tr ini)
+    (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B D E : A.Blk}
     (hB : B ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     (hD : IsHonestSource tr H D E.root) (hDB : Compatible (tr.HonestBlocks H) D B)
@@ -368,7 +371,7 @@ theorem below_entry' (hr : Node.LocalRun' proposer dg H sg tr ini)
 of height `h_max`, viable by height. The stock hypothesis `hGG` (sources pairwise compatible) is
 only used by the stock proof to exclude a contest, and is not needed. -/
 theorem floor_or_crossing_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat} {G : A.Blk → Prop}
     (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
@@ -377,25 +380,25 @@ theorem floor_or_crossing_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
       ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
         (tr.state y i).fg.Anc B E ∧
         ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
-        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable' X := by
+        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X := by
   by_cases hle : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h
   · exact Or.inl hle
   right
   obtain ⟨-, -, -, ⟨Z, hZ, -, hZj⟩, hZm, ⟨X, hX, hXh⟩, -⟩ :=
-    cache_invariants' (Node.fg_reachable_at' hr hy i)
+    cache_invariants' (Node.fg_reachable_at hr hy i)
   have hB1 := (honest_held_chain' hr hy hB).1
   have hZ1 := (honest_held_chain' hr hy hZ).2.1
   have hZ2 := hZm Z hZ
   obtain ⟨E, hE, hEX, hEh, -, D, hD, hDs⟩ :=
     frame_crossing_source_of' hr hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
       (by omega) (by omega)
-  exact ⟨D, E, X, hD, hDs, hE, below_entry' hr hfg hy hB hE hDs (hGB D hD) (by omega), hEh, hX,
-    hEX, Store.isViable'_of_hmax_le (by omega)⟩
+  exact ⟨D, E, X, hD, hDs, hE, below_entry hr hfg hy hB hE hDs (hGB D hD) (by omega), hEh, hX,
+    hEX, Store.isViable_of_hmax_le (by omega)⟩
 
 /-- **Compatibility with all relevant row sources implies compatibility with the justification**
 (`J_compatible`; it does not read viability). -/
 theorem J_compatible' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hf : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
@@ -405,7 +408,7 @@ theorem J_compatible' (hr : Node.LocalRun' proposer dg H sg tr ini)
   · rw [justified_genesis' hr h0 hy]
     exact Or.inl (honest_genesis_anc' hr hB).2
   obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_of' hr hf hbound hy hsrc (by omega)
-  have hJ := (cache_invariants' (Node.fg_reachable_at' hr hy i)).2.1
+  have hJ := (cache_invariants' (Node.fg_reachable_at hr hy i)).2.1
   obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry' hr hf hDs ⟨y, hy, i, hJ⟩ rfl
   have hJDU : Anc (tr.HonestBlocks H) (tr.state y i).fg.J D :=
     hJD.mono (fg_tree_subset_honest hx k)
@@ -423,35 +426,35 @@ at the floor of a maximal block (`floor_or_crossing_of'`), whose carrier has hei
 at the floor is viable, or compatible with `J` and strictly below it in a top frame, where `J` is a
 viable head. -/
 theorem held_candidate_of_rows' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) (i : Nat)
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
-    (hBt : B ∈ (Node.frame' (tr.state y i)).tree) :
-    (Node.frame' (tr.state y i)).Anc B (Node.frame' (tr.state y i)).fcRoot ∨
-      B ∈ (Node.frame' (tr.state y i)).viableTree (Node.frame' (tr.state y i)).tree := by
-  rw [Node.frame'_eq] at hBt ⊢
-  rw [Store.toFrame'_tree] at hBt
+    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
+  rw [Node.frame_eq] at hBt ⊢
+  rw [Store.toFrame_tree] at hBt
   obtain ⟨hB, hFB⟩ := hBt
   right
-  rw [Store.mem_viableTree'_iff]
+  rw [Store.mem_viableTree_iff]
   refine ⟨hB, hFB, ?_⟩
   suffices h : ∃ W ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc B W ∧
-      (tr.state y i).fg.IsViable' W by
+      (tr.state y i).fg.IsViable W by
     obtain ⟨W, hW, hBW, hv⟩ := h
     exact ⟨W, hW, hFB.trans hBW, hv, hBW⟩
-  have hR := Node.fg_reachable_at' hr hy i
+  have hR := Node.fg_reachable_at hr hy i
   have hs := hR.puSnapshot
   have hjm := hs.hj_lt_hmax
   rcases floor_or_crossing_of' hr hfg hf hy (hsrc.above _) hGB hB with hpred |
       ⟨-, E, X, -, -, -, hBE, -, hX, hEX, hXv⟩
   swap
   · exact ⟨X, hX, hBE.trans hEX, hXv⟩
-  by_cases hv : (tr.state y i).fg.IsViable' B
+  by_cases hv : (tr.state y i).fg.IsViable B
   · exact ⟨B, hB, .refl, hv⟩
   have htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 := by
     by_contra hn
-    refine hv (((tr.state y i).fg.isViable'_iff B).2 ?_)
+    refine hv (((tr.state y i).fg.isViable_iff B).2 ?_)
     by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h
     · exact Or.inl hh
     · exact Or.inr ⟨by omega, Or.inl (by omega)⟩
@@ -460,10 +463,10 @@ theorem held_candidate_of_rows' (hr : Node.LocalRun' proposer dg H sg tr ini)
     rcases hJB with h | h
     · exact Or.inl (honest_held_anc' hr hfg hy h hB)
     · exact Or.inr (honest_held_anc' hr hfg hy h hs.J_mem)
-  obtain ⟨hBJ, -⟩ := (Store.isViable'_or_lt_J_of_pred_le hpred hcomp).resolve_left hv
+  obtain ⟨hBJ, -⟩ := (Store.isViable_or_lt_J_of_pred_le hpred hcomp).resolve_left hv
   refine ⟨_, hs.J_mem, hBJ, ?_⟩
-  have := Store.J_mem_viableHeads' hs htop
-  rw [Store.toFrame'_viableHeads] at this
+  have := Store.J_mem_viableHeads hs htop
+  rw [Store.toFrame_viableHeads] at this
   exact this.2.2
 
 end Consensus.Goldilocks.Compose.FrameGeometry
@@ -474,12 +477,12 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **The FG projection of a shadow Goldilocks run is a shadow FG local run** inside the honest
 blocks (`projFG_localRun`). Unresolved until `fg_projection_from'` (lane B0b) is proved. -/
 theorem projFG_localRun' (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : NoCollRun dg tr) :
-    FGLocalRun' (goldilocksNode' sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
+    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
   fg_projection_from' (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
     hrun.toLocalRun' hnc
 

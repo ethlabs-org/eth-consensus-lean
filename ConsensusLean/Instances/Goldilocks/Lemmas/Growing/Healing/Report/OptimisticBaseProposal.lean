@@ -48,7 +48,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
-private theorem acRun_prefix' {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem acRun_prefix {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
@@ -73,8 +73,8 @@ theorem optimisticLock_pair_compatible_at
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hj0 := hrun.time_nonneg j
-  have hrx := acRun_prefix' hrun hnc hi0
-  have hry := acRun_prefix' hrun hnc hj0
+  have hrx := acRun_prefix hrun hnc hi0
+  have hry := acRun_prefix hrun hnc hj0
   have hd' : AC.OptimisticLockAt (tr.projAC.upTo (tr.time i)) x i s D CV :=
     (AC.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hd⟩
   have he' : AC.OptimisticLockAt (tr.projAC.upTo (tr.time j)) y j s E CW :=
@@ -164,7 +164,7 @@ theorem optimistic_next_proposal_of_early_witness_at
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   have hacG := Compose.Growing.goldilocks_ac_projection_from hrun hnc
-  have hacP := acRun_prefix' hrun hnc ht0
+  have hacP := acRun_prefix hrun hnc ht0
   have hr := hacP.localRun
   have hpre := hrun.upTo ht0
   have hcp : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
@@ -304,7 +304,7 @@ theorem optimistic_next_proposal_of_early_witness_at
     have hya' : y ∈ H (tr.time a') := hrun.antitone ha't hy
     have hmax : max (tr.time a') (tr.time c) ≤ tr.time i := by
       refine max_le ha't ?_
-      obtain ⟨hct, -⟩ := AC.optimisticLockAt_spec (acRun_prefix' hrun hnc (hrun.time_nonneg c)) hx
+      obtain ⟨hct, -⟩ := AC.optimisticLockAt_spec (acRun_prefix hrun hnc (hrun.time_nonneg c)) hx
         ((AC.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hopt⟩) K
         (fun σ v hv => (AC.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _).1 x hx _ σ v hv)
       change tr.time c < _ at hct

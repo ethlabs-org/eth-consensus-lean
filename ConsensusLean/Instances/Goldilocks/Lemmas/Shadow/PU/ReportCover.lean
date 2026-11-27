@@ -35,11 +35,11 @@ variable {P : Params} {ACP : Type} (st : Store P ACP)
 /-- **The shadow viability split.** A block compatible (in the store) with the store's fork-choice
 root is P-U viable, or of state height below the stock head-height floor, or strictly below
 `Σ.J`. `h_j < h_max` holds at every reachable store (`cache_invariants`). -/
-theorem isViable'_or_lt_floor_or_below_J {B : NodeBlock P ACP} (hjm : st.hj < st.hmax)
+theorem isViable_or_lt_floor_or_below_J {B : NodeBlock P ACP} (hjm : st.hj < st.hmax)
     (hroot : st.Anc st.fcRoot B ∨ st.Anc B st.fcRoot) :
-    st.IsViable' B ∨ (st.σ B.root).h < st.headHeightFloor ∨ (st.Anc B st.J ∧ B ≠ st.J) := by
+    st.IsViable B ∨ (st.σ B.root).h < st.headHeightFloor ∨ (st.Anc B st.J ∧ B ≠ st.J) := by
   classical
-  rw [isViable'_iff]
+  rw [isViable_iff]
   rcases Nat.lt_or_ge (st.σ B.root).h st.hmax with hlt | hge
   · rcases Nat.lt_or_ge ((st.σ B.root).h + 1) st.hmax with hlt2 | hge2
     · -- two or more below `h_max`: below either floor
@@ -73,7 +73,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {g ΔF a b hold : Time}
 
@@ -81,12 +81,12 @@ variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
 it** (`ReportCover.held_target_viableHeads_or_higher_report_of_cases` over the shadow frame). The
 root and floor premises are the stock ones, read from the store; the conclusion drops the stock
 `Anc fcRoot P` conjunct (the shadow root is `F`). -/
-theorem held_target_viableHeads'_or_higher_report_of_cases
+theorem held_target_viableHeads_or_higher_report_of_cases
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ (Node.frame' (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
+    (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hhighroot : ¬ (tr.state y i).fg.hj ≤ HZ tr H g →
       Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P)
@@ -94,19 +94,19 @@ theorem held_target_viableHeads'_or_higher_report_of_cases
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) :
-    P ∈ (Node.frame' (tr.state y i)).viableHeads ∨
+    P ∈ (Node.frame (tr.state y i)).viableHeads ∨
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
   have hnc := hp.noColl
   have hy := hrun.antitone (le_max_right _ _) hyz
-  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hd := hrun.time_nonneg i
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at' hrun hd hy hle).reachableWith
   have hfs := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame'_tree.1 hPt
+  obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame_tree.1 hPt
   have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
   have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
@@ -121,12 +121,12 @@ theorem held_target_viableHeads'_or_higher_report_of_cases
     split_ifs <;> assumption
   have hrootS : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot P ∨
       (tr.state y i).fg.Anc P (tr.state y i).fg.fcRoot :=
-    hroot.imp (fun h => Coherence.held_anc_at' hrun hnc hd hy hle h hPy)
-      (fun h => Coherence.held_anc_at' hrun hnc hd hy hle h hrt)
-  rcases Store.isViable'_or_lt_floor_or_below_J (tr.state y i).fg
-      (Shadow.PU.hj_lt_hmax_at' hrun hd hy hle) hrootS with hv | hfl | ⟨hPJ, hPne⟩
+    hroot.imp (fun h => Coherence.held_anc_at hrun hnc hd hy hle h hPy)
+      (fun h => Coherence.held_anc_at hrun hnc hd hy hle h hrt)
+  rcases Store.isViable_or_lt_floor_or_below_J (tr.state y i).fg
+      (Shadow.PU.hj_lt_hmax_at hrun hd hy hle) hrootS with hv | hfl | ⟨hPJ, hPne⟩
   · left
-    rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    rw [Node.frame_eq, Store.toFrame_viableHeads]
     exact ⟨hPy, hFP, hv⟩
   · exact Or.inr (hfloorrep hfl)
   · right
@@ -247,15 +247,15 @@ private theorem high_root_of_held_seed_at
 
 /-- The covered form: the root and floor premises discharged from `CompatibleWithOrigins`
 (`ReportCover.held_target_viableHeads_or_higher_report_covered_at` over the shadow frame). -/
-theorem held_target_viableHeads'_or_higher_report_covered_at
+theorem held_target_viableHeads_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ (Node.frame' (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
+    (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P) :
-    P ∈ (Node.frame' (tr.state y i)).viableHeads ∨
+    P ∈ (Node.frame (tr.state y i)).viableHeads ∨
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
@@ -264,8 +264,8 @@ theorem held_target_viableHeads'_or_higher_report_covered_at
   have hd := hr.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hr.time_mono hk.le
   have hU := hr.coherent hp.noColl
-  obtain ⟨hPy, -⟩ := Shadow.PU.mem_frame'_tree.1 hPt
-  apply held_target_viableHeads'_or_higher_report_of_cases hp hyz hib hPt hseed hqb hSP
+  obtain ⟨hPy, -⟩ := Shadow.PU.mem_frame_tree.1 hPt
+  apply held_target_viableHeads_or_higher_report_of_cases hp hyz hib hPt hseed hqb hSP
   · intro hh
     exact high_root_of_held_seed_at hp hyz hib hPy hseed hSP hcompare (by omega)
   intro hfloor
@@ -314,7 +314,7 @@ theorem held_target_viableHeads'_or_higher_report_covered_at
     · exact hr.antitone (max_le_max le_rfl (hle d hdi)) hxz
   have hxd := hr.antitone (le_max_right _ _) hxz
   obtain ⟨r, hrd, hrt, ell, D, E', hto, hD, hE', hE'r, hED, -, -, hEDh, -⟩ :=
-    signAt_report_entry' (hp.run.upTo (hr.time_nonneg d)) hxd
+    signAt_report_entry (hp.run.upTo (hr.time_nonneg d)) hxd
       ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
   have hrt' : tr.time r = tr.time d := hrt
   have he : (tr.upTo (tr.time d)).state x r = tr.state x r :=
@@ -336,11 +336,11 @@ theorem held_target_viableHeads'_or_higher_report_covered_at
 
 /-- The call form, read through the frame of an AC call (`Node.frame'`):
 `held_target_viable_or_higher_report_covered_at` over the shadow frame. -/
-theorem held_target_viable'_or_higher_report_covered_at
+theorem held_target_viable_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
@@ -350,14 +350,14 @@ theorem held_target_viable'_or_higher_report_covered_at
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hy := hp.run.antitone (le_max_right _ _) hyz
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hp.run hy hcall] at hPt ⊢
-  rcases held_target_viableHeads'_or_higher_report_covered_at hp hyz hib hPt hseed hqb hSP
+  rw [Shadow.PU.Growing.frame_of_projAC_at hp.run hy hcall] at hPt ⊢
+  rcases held_target_viableHeads_or_higher_report_covered_at hp hyz hib hPt hseed hqb hSP
       hcompare with hhead | hreport
   · refine Or.inl ⟨hPt, ?_, P, hPt, hhead, .refl⟩
     have hF := hhead
-    rw [Node.frame'_eq, Store.toFrame'_viableHeads] at hF
-    change Anc (Node.frame' (tr.state y i)).tree (Node.frame' (tr.state y i)).fcRoot P
-    rw [Node.frame'_eq, Store.toFrame'_tree, Store.toFrame'_fcRoot]
+    rw [Node.frame_eq, Store.toFrame_viableHeads] at hF
+    change Anc (Node.frame (tr.state y i)).tree (Node.frame (tr.state y i)).fcRoot P
+    rw [Node.frame_eq, Store.toFrame_tree, Store.toFrame_fcRoot]
     exact Anc.restrict .refl hF.2.1
   · exact Or.inr hreport
 
