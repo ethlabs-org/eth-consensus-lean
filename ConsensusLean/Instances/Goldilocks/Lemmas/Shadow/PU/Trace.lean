@@ -19,7 +19,7 @@ This file copies the stock trace laws that read the node's execution, over `gold
 * the component state `Compose.projFG_state'` (`Compose.projAC_state'` and
   `Compose.honest_blocks_coherent'` are in `Shadow/PU/Node`), the FG execution
   `Compose.fg_exec'` and the FG projection `Compose.fg_projection_from'`;
-* the AC projection `Compose.goldilocks_ac_projection_from'`;
+* (the AC projection `Compose.goldilocks_ac_projection_from'` is in `Shadow/PU/ACProjection`);
 * the run laws under growing faults, `Growing.LocalRun'` and `Growing.GoldilocksRun'`, copies of
   `Growing.LocalRun` and `Growing.GoldilocksRun` with the shadow cut law and groups;
 * the prefix transport `Growing.GoldilocksRun'.upTo`.
@@ -307,24 +307,6 @@ theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : No
     | attest C s => cases ha
   obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
   exact ⟨j, hj, src, projFG_callAt.2 hs⟩
-
-end Consensus.Goldilocks.Compose
-
-namespace Consensus.Goldilocks.Compose
-
-open AC (ACParams ReplayOrder Payload)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-
-/-- **The honest-object facts of a shadow run's AC projection**, from starts up to the vote
-permission (a copy of `goldilocks_ac_projection_from`; it concludes the stock `AC.ACRun`, the AC
-being the stock one). -/
-theorem goldilocks_ac_projection_from' (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) :
-    AC.ACRun proposer tr.projAC H (tr.HonestBlocks H) ini := by
-  sorry
 
 end Consensus.Goldilocks.Compose
 
