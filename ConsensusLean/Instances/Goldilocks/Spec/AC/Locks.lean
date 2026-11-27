@@ -12,9 +12,10 @@ for a slow lock, and for a fast lock the node's fast deadline (the latest expiry
 locks of earlier slots) plus `c`, at least `j + 2` and at most `j + k` (`fastExpiry`); every rule
 reads the locks through `live_locks`, which moves each live lock back to its viable ancestor
 (`Frame.viableAncestor`, the frame-level definition of claims G0.4 (frame), which goldilocks-spec
-§"Locks" also gives). The anchor is the deepest live lock block or `fc_root`; a live lock vetoes
-a block that conflicts with its block; `add_locks` returns the live locks of the stored set and
-the new locks together, each with its expiry; `unlock` against the slot-`s` votes of a view
+§"Locks" also gives). The highest live lock is the deepest live lock block. The anchor is the
+higher of it and `fc_root`; it vetoes a block that conflicts with it; `add_locks` returns the
+live locks of the stored set and the new locks together, each with its expiry; `unlock` against
+the slot-`s` votes of a view
 moves each live lock of a slot below `s` back to its deepest ancestor (at or above `Φ.F`) with
 fewer than half of the committee as opponents, or to `Φ.F`. Moving a lock back keeps its slot,
 fast bit and expiry. -/
@@ -43,13 +44,22 @@ noncomputable def fastExpiry (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : 
 def liveLockBlocks (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.tree ∧ ∃ l ∈ liveLocks sp L Φ t, l.block = B.root}
 
-/-- `conflicts_with_lock(locks, Φ, t, C)`: `C` conflicts with the block of a live lock. -/
-def conflictsWithLock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (C : Blk sp.n FGP) : Prop :=
-  ∃ B ∈ liveLockBlocks sp L Φ t, ¬ Compatible Φ.tree C B
+/-- `highest_live_lock(locks, Φ, t)`: the highest block of the live locks, or `none` when no
+lock is live. -/
+noncomputable def highestLiveLock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) :
+    Option (Blk sp.n FGP) :=
+  deepest Φ (liveLockBlocks sp L Φ t)
 
-/-- `get_anchor(𝒜, Φ, t)`: the deepest block of the live lock blocks and `fc_root`. -/
+/-- `conflicts_with_lock(locks, Φ, t, C)`: there is a highest live lock and `C` conflicts with
+it. -/
+def conflictsWithLock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (C : Blk sp.n FGP) : Prop :=
+  ∃ H, highestLiveLock sp L Φ t = some H ∧ ¬ Compatible Φ.tree C H
+
+/-- `get_anchor(𝒜, Φ, t)`: the higher of the highest live lock and `fc_root`. -/
 noncomputable def getAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
-  (deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})).getD Φ.fcRoot
+  match highestLiveLock sp A.locks Φ t with
+  | some H => if depth Φ Φ.fcRoot < depth Φ H then H else Φ.fcRoot
+  | none => Φ.fcRoot
 
 /-- `add_locks(locks, Φ, t, s, N)`: the live locks of the stored set with the new locks
 `(B, s, f, e)` for `(B, f, e) ∈ N` (blocks by root). -/

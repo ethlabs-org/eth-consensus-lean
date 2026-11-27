@@ -33,10 +33,10 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
   (the Lean form of the support bits).
 * `ac_to_fg`: for a joined node the deepest candidate (a block of the full
   viable tree under a live fast lock of slot `slot(t) − 2` or later); when there is none, deep
-  sources are on (`deepDepth = some D`) and there is a deep anchor `a` (`deepAnchor`), the deepest
-  deep candidate (a block of the full viable tree at or below `a`, not genesis, that the node
-  accepted by `t_{slot(t) − D}`). The block is returned when it is not at or below `fg_reported`
-  (in the tree), which it then records. -/
+  sources are on (`deepDepth = some D`) and there is a deep anchor `a` (`deepAnchor`), the highest
+  live lock, the deepest deep candidate (a block of the full viable tree at or below `a`, not
+  genesis, that the node accepted by `t_{slot(t) − D}`). The block is returned when it is not at
+  or below `fg_reported` (in the tree), which it then records. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -119,11 +119,10 @@ def toFGCandidates (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk 
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
 open Classical in
-/-- `deep_anchor(𝒜, Φ, t)`: the deepest block of the live locks, fast or slow, or `none` when
-there is no live lock (no `fc_root` fallback; `get_anchor` is unchanged). -/
+/-- `deep_anchor(𝒜, Φ, t)`: the highest live lock of the node's locks. -/
 noncomputable def deepAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Option (Blk sp.n FGP) :=
-  deepest Φ (liveLockBlocks sp A.locks Φ t)
+  highestLiveLock sp A.locks Φ t
 
 /-- The deep candidates of `ac_to_fg` at depth `D` under the anchor `a`: the blocks of the full
 viable tree at or below `a` (`a` itself included), other than genesis, whose stamp (the time the
