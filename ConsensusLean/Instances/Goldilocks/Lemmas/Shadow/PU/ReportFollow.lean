@@ -611,31 +611,6 @@ theorem honest_vote_heads_eq_stub
       e.msg.head = P.root := by
   sorry
 
-/-- Stub for lane C's `toFG_candidate_pre_within_at'` (stock `toFG_candidate_pre_within_at`,
-FastLockRenewal). -/
-theorem toFG_candidate_pre_within_stub {K : AC.CommitteeDict sp.n}
-    {g ΔF b hi : Time} {s₀ u M : Nat} {isTop : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : Healing.FrameWindow' tr H (sp.ts s₀) hi M isTop J)
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
-    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
-    (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (_hwarm : s₀ + 2 * sp.k ≤ u) (_hhib : hi ≤ b)
-    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
-    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
-    (_hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hK : CommitteeHalfUpTo tr H K g b)
-    {y : Fin sp.n} {i : Nat} (_hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
-    (_hc : tr.projAC.CallAt y i ell)
-    (_hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (_hhi : tr.time i ≤ hi) :
-    ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
-      Anc (tr.HonestBlocksAt H) P B := by
-  sorry
-
 /-- Stock-window stub for lane A's `Healing.Growing.Shadow.honest_vote_heads_eq_at'` (stock
 `honest_vote_heads_eq_at`, FreshVotes). -/
 theorem honest_vote_heads_eq_stock_stub
@@ -826,8 +801,8 @@ theorem proposal_report_follow_delayed_at'
   have hun := honest_vote_heads_eq_stub (hframe.mono le_rfl (by linarith only [huN', hΔ, hm1]))
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN', hΔ, hm1, hmb]) hz hdes
     hP hPs hK
-  obtain ⟨B, hB, hPB⟩ := toFG_candidate_pre_within_stub hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hwarm hmb hz hdes hP hPs hun hK hyi hc (by rw [hti]; exact hlt)
+  obtain ⟨B, hB, hPB⟩ := Healing.Growing.toFG_candidate_pre_within_primed_at' hframe hrun hnc hsvc
+    hawake hf hcatch hnr hm hwarm hmb hz hdes hP hPs hun hK hyi hc (by rw [hti]; exact hlt)
     (by rw [hti]; exact htr.trans hm2)
   -- `P` is not genesis: it was accepted by its honest proposer
   have hptime : tr.time kP = sp.ts u := by
