@@ -784,6 +784,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
