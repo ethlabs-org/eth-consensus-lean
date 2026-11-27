@@ -40,6 +40,14 @@ private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : 
   obtain rfl : X = B' := hU.1 hX (hΦU hB') (hXr.trans hB'r.symm)
   exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
 
+/-- A conflicting member of a chain of live lock blocks witnesses a lock conflict. -/
+private theorem conflictsWithLock_of_mem {Φ : Frm sp.n FGP} (_hΦ : FrameOK Φ)
+    {L : Set Lock} {t : Time}
+    (_hch : ∀ B ∈ liveLockBlocks sp L Φ t, ∀ D ∈ liveLockBlocks sp L Φ t,
+      Compatible Φ.tree B D) {C B : Blk sp.n FGP}
+    (hB : B ∈ liveLockBlocks sp L Φ t) (hCB : ¬ Compatible Φ.tree C B) :
+    conflictsWithLock sp L Φ t C := ⟨B, hB, hCB⟩
+
 open Classical in
 /-- **New locks below a new record.** The record moves to `C` (unless `C` is below it), and the
 stored locks become the live locks of the old ones with new ones on ancestors of `C`; when `C` is
@@ -53,6 +61,19 @@ theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ
     (hrec : A'.latestConfirmed =
       if AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root) :
     LockInv U A' Φ := by
+  have hchain : ∀ B ∈ liveLockBlocks sp A.locks Φ t,
+      ∀ D ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree B D := by
+    obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
+    have below : ∀ B ∈ liveLockBlocks sp A.locks Φ t, Anc U B E := by
+      rintro B ⟨hB, l', ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩, hBr⟩
+      obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB₀
+      obtain rfl : B = Φ.viableAncestor B₀ := hΦ.coherent.1 hB hvt hBr.symm
+      exact (Anc.mono hΦU hva).trans (hlE l hl B₀ (hΦU hB₀) hB₀r)
+    intro B hB D hD
+    have hEt' := hEt ((Anc.mono hΦU (hΦ.rooted.2 B hB.1)).trans (below B hB))
+    exact anc_total hΦ.coherent
+      (anc_tree_of_anc_U hU hΦ hΦU hB.1 (below B hB) hEt')
+      (anc_tree_of_anc_U hU hΦ hΦU hD.1 (below D hD) hEt')
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   -- a lock of the new set: the live lock of an old one, or of a new one
   have key : ∀ l' ∈ A'.locks, ∀ X ∈ U, X.root = l'.block →
@@ -83,7 +104,7 @@ theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ
     · -- `C` is compatible with the live lock block `X`
       have hcomp : Compatible Φ.tree C X := by
         by_contra hnc
-        exact hconf ⟨X, hYl, hnc⟩
+        exact hconf (conflictsWithLock_of_mem hΦ hchain hYl hnc)
       rcases hcomp with hCY | hYC
       · -- `C ⪯ X ⪯ E`: then `E` is in the tree and the record does not move
         exfalso
