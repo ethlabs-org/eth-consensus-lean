@@ -85,15 +85,12 @@ theorem live_lock_selection_origin_at
       Trace.upTo_time] using ho
 
 /-- A historical write below its frame root stays below the later local frame root. -/
-theorem unlocked_image_below_write_root_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H lo hi floor kindJ J)
+theorem unlocked_image_below_write_root_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {a i : Nat}
     (hy : y ∈ H (tr.time i)) (hai : a ≤ i)
     {ellw ell : ACLabel (goldilocksNode sp ro)}
     (hcw : tr.projAC.CallAt y a ellw) (hc : tr.projAC.CallAt y i ell)
-    (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
     {L B A : AC.Blk sp.n (List (FG.Att sp.n))}
     (hLB : ell.frame.Anc L B) (hBA : Anc (tr.HonestBlocksAt H) B A)
     (hroot : ellw.frame.Anc A ellw.frame.fcRoot) :
@@ -116,7 +113,7 @@ theorem unlocked_image_below_write_root_at {lo hi : Time} {floor : Nat} {kindJ :
   have hbound := hLB'.trans (hBA.trans hAw)
   rw [hwframe] at hbound
   rw [hiframe]
-  exact hbound.trans (fcRoot_mono_at hframe hrun hy hai halo hihi)
+  exact hbound.trans (hrun.toLocalRun.finalized_mono hy hai)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
