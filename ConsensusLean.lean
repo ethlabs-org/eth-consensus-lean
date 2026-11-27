@@ -284,9 +284,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.BoundariesCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainCrossing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighCarryProofs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighCarrySteps
@@ -302,7 +299,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
@@ -385,7 +381,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRoot
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowWitnessBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshEndpoint
@@ -855,6 +850,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run

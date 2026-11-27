@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
@@ -11,7 +10,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
