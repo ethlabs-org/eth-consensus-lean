@@ -290,7 +290,8 @@ theorem finalized_below_of_hj_lt_at
   have hU := Coherence.honest_blocks_coherent_at hrun hnc
   have hsub := Compose.Growing.tree_held_at ht hy hb
   have hcoh := hU.mono hsub
-  obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ := Store.cache_invariants _ _ _ _ hr
+  obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ :=
+    Store.cache_invariants _ _ _ _ hr
   have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality hr.reachableWith
   have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F W := fun he => by
@@ -371,7 +372,8 @@ theorem FrameWindow'.finalized_below_descendant_at {lo hi : Time} {M : Nat}
   by_cases hcase : isTop ∧ ((tr.state z c).fg.σ X.root).h = M - 1
   · obtain ⟨ht, he⟩ := hcase
     have hJX := hwit.2 ht he
-    have hFJ := (Store.cache_invariants _ _ _ _ (Compose.Growing.reachable_at hrun hjt hy hbj)).2.2.1
+    have hFJ :=
+      (Store.cache_invariants _ _ _ _ (Compose.Growing.reachable_at hrun hjt hy hbj)).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi ht] at hFJ
     exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans (hJX.trans hXW)
   · have hWh := Growing.le_height_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
