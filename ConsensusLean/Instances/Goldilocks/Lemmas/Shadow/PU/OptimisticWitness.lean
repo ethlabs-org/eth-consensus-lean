@@ -284,7 +284,7 @@ private theorem proposal_root_viable_at
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
   have hu := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants' hr
+  obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
   have hFQ := Store.F_anc_of_hmax_le_of_safe_with hu hr.reachableWith hr.reachableWith
     (Store.accepted_tree_with hu hr.reachableWith).2.1 subset_rfl subset_rfl hf
     (Healing.Growing.Shadow.held_atts_safe_at hrun hnc ht hb hy ht hb hy le_rfl le_rfl)

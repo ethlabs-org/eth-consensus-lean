@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
@@ -465,6 +466,58 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
     Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
   rw [Outcome.frame_of_call hp.run hy hc] at hheld ⊢
   exact hp.low_root_of_held_seed_at hy hib hS hqb hSy hlow hBS hheld
+
+open Consensus.Goldilocks.Store in
+/-- A cut of a node honest at it, with a low justified height and a held high seed, has its
+finalized-chain root compatible with every held block compatible with the seed
+(`low_root_of_held_seed_at`). The root is the store's analysis `fcRoot`. -/
+theorem low_analysis_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y v : Fin sp.n} {i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
+    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
+    (hSy : S ∈ (tr.state y i).fg.tree)
+    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
+    (hBS : Compatible (tr.HonestBlocksAt H) B S)
+    (hheld : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B →
+      B ∈ (Node.frame (tr.state y i)).tree) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot B := by
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  have hi0 := hrun.time_nonneg i
+  have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
+  have hreach := (fg_reachable_at hrun hi0 hlei hy).reachableWith
+  have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
+  have hSh := Outcome.high_of_anc_at hrun hnc hS hi0 hlei hy hSy .refl
+  have hJ : ∀ D ∈ (tr.state y i).fg.tree,
+      Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F D →
+      HZ tr H g + 1 ≤ ((tr.state y i).fg.σ D.root).h →
+      (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
+      ¬ (tr.state y i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D := by
+    intro D hD hFD hDh htop hnc
+    have hDm : ((tr.state y i).fg.σ D.root).h = (tr.state y i).fg.hmax := by
+      have := (cache_invariants_with finalitySpec_updateFinality hreach).2.2.2.2.1 D hD
+      omega
+    have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
+      by_contra hn
+      exact hnc ⟨htop, D, hD,
+        store_anc_of_honest_anc_at hrun hp.noColl hi0 hlei hy hFD hD, hDm, hn⟩
+    exact hJD.mono fun X hX => ⟨y, i, tr.time i, hi0, hlei, hy, hX⟩
+  unfold Store.fcRoot
+  split_ifs with hactive
+  · rcases hBS with hBS | hSB
+    · exact Anc.total hU
+        (hJ S hSy hFS hSh
+          hactive.1 hactive.2) hBS
+    · have hFB := hFS.trans hSB
+      have hB := (hheld hFB).1
+      exact Or.inl (hJ B hB hFB
+        (Outcome.high_of_anc_at hrun hp.noColl hS hi0 hlei hy hB hSB)
+        hactive.1 hactive.2)
+  · rcases hBS with hBS | hSB
+    · exact Anc.total hU hFS hBS
+    · exact Or.inl (hFS.trans hSB)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

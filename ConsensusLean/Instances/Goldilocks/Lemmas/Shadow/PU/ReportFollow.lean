@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
@@ -346,7 +348,7 @@ theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     linarith
   obtain ⟨j, hj⟩ := signTickAt_of_calendar_at hrun hcal hy ht0 hpub hawake hsign
   obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff tr proposer dg y j t).1 hj
-  obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick' hg
+  obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick hg
   exact ⟨j + k, ell, hc, hcall, htime, joined_of_restart_le_at hrun hnc hy (by linarith)
     (fun r _ hyr hrs => (hnr y r hyr hrs).trans hgu) htime⟩
 

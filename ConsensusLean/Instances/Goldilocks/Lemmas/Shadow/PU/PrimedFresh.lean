@@ -2,6 +2,9 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshNext
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
