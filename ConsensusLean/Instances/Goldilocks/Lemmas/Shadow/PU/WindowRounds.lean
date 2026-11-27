@@ -237,7 +237,7 @@ theorem exists_reset_in_window
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Generic.FrameWindow tr H af (af + len) M isTop J)
     (hkey : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
-      frameKey'' (tr.state y i).fg = v)
+      Generic.frameKey'' (goldilocksNode sp ro) (tr.state y i).fg = v)
     (hv : 2 * HZ tr H g ≤ v)
     (hslo : af ≤ sp.ts s₀)
     (hfit : sp.ts N + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) ≤ af + len)

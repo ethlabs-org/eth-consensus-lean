@@ -49,13 +49,14 @@ theorem report_kind_of_proposal_viable {B R : NodeBlock P ACP}
     exact Or.inr ⟨by omega, (hB.2 htop (by omega)).trans hBR⟩
 
 /-- The unchanged rise count covers the P-U proposal's height deficit. -/
-theorem pred_add_riseRounds_frameKey'' {HZ : Nat} (hkey : 2 * HZ ≤ frameKey'' st) :
-    HZ + 1 ≤ st.hmax - 1 + riseRounds HZ (frameKey'' st) := by
+theorem pred_add_riseRounds_frameKey'' {A : NodeAC P} {st : Store P A.Payload} {HZ : Nat}
+    (hkey : 2 * HZ ≤ Generic.frameKey'' A st) :
+    HZ + 1 ≤ st.hmax - 1 + riseRounds HZ (Generic.frameKey'' A st) := by
   classical
   by_cases htop : st.hmax = st.hj + 1
-  · simp only [riseRounds_eq, frameKey''_def, ite_eq_left htop] at hkey ⊢
+  · simp only [riseRounds_eq, Generic.frameKey''_eq, ite_eq_left htop] at hkey ⊢
     omega
-  · simp only [riseRounds_eq, frameKey''_def, ite_eq_right htop] at hkey ⊢
+  · simp only [riseRounds_eq, Generic.frameKey''_eq, ite_eq_right htop] at hkey ⊢
     omega
 
 end Consensus.Goldilocks.Healing
@@ -93,10 +94,10 @@ private theorem rounds_le_of_proposal_viable
     (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (tr.time kB))
     (hlo : lo ≤ tr.time kB) (hhi : tr.time kB ≤ hi)
-    (hkey : frameKey'' (tr.state z kB).fg = v) (hv : 2 * HZ ≤ v)
+    (hkey : Generic.frameKey'' (goldilocksNode sp ro) (tr.state z kB).fg = v) (hv : 2 * HZ ≤ v)
     (hB : M - 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h) :
     HZ + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + riseRounds HZ v := by
-  have h := pred_add_riseRounds_frameKey'' (st := (tr.state z kB).fg)
+  have h := pred_add_riseRounds_frameKey'' (A := goldilocksNode sp ro) (st := (tr.state z kB).fg)
     (HZ := HZ) (by rw [hkey]; exact hv)
   rw [hkey, hwin.M_eq z kB hz hlo hhi] at h
   exact h.trans (Nat.add_le_add_right hB _)
@@ -110,7 +111,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Generic.FrameWindow tr H af (af + len) M isTop J)
     (hK : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
-      frameKey'' (tr.state y i).fg = v)
+      Generic.frameKey'' (goldilocksNode sp ro) (tr.state y i).fg = v)
     (hv : 2 * HZ tr H g ≤ v) (hlo : af ≤ sp.ts u) (hhi : sp.ts u ≤ af + len)
     {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
     (hB : tr.ProposesAt z kB B) (hBs : B.slot = u)
