@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 @[expose] public section
 
 /-! # The healthy two-validator run: the client record and the AC on the chain
@@ -241,22 +242,33 @@ theorem liveLockBlocks_le (h : ChainFrame Φ f j τ) {L : Set Lock} {b : Nat} (h
   obtain ⟨m, hm, hr'⟩ := hL l hlL
   exact ⟨m, hm, (h.eq_of_root hBt (hr.symm.trans hr')).1⟩
 
-/-- The anchor is the latest live lock block (or `fc_root`). -/
+/-- The anchor is the latest live lock block (or `fc_root`): the highest live lock when it is not
+below `fc_root`. -/
 theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp.n} {t : Time} {b : Nat}
     (hL : LocksLe A.locks b) (hjb : j ≤ b) (hb : blk b ∈ liveLockBlocks sp A.locks Φ t ∨ b = j) :
     getAnchor sp A Φ t = blk b := by
-  unfold getAnchor
-  rw [h.deepest_eq (M := b)]
-  · rfl
-  · rintro B (hB | hB)
-    · exact hB.1
-    · rw [Set.mem_singleton_iff.1 hB]; exact h.fcRoot_mem'
-  · rcases hb with hb | rfl
-    · exact Or.inl hb
-    · exact Or.inr h.fcRoot.symm
-  · rintro B (hB | hB)
-    · exact h.liveLockBlocks_le hL hB
-    · rw [Set.mem_singleton_iff.1 hB, h.fcRoot]; exact ⟨j, hjb, rfl⟩
+  have hS : liveLockBlocks sp A.locks Φ t ⊆ Φ.tree := fun B hB => hB.1
+  unfold getAnchor highestLiveLock
+  rcases hb with hb | hbj
+  · have hbt := h.mem_iff.1 (hS hb)
+    rw [h.deepest_eq hS hb (fun B hB => h.liveLockBlocks_le hL hB)]
+    change (if depth Φ Φ.fcRoot < depth Φ (blk b) then blk b else Φ.fcRoot) = blk b
+    split_ifs with hlt
+    · rfl
+    · rw [h.fcRoot, h.depth_eq h.fj h.jτ, h.depth_eq hbt.1 hbt.2] at hlt
+      rw [h.fcRoot, show b = j by omega]
+  · rw [hbj]
+    have hL' : LocksLe A.locks j := hbj ▸ hL
+    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t) with
+    | none => exact h.fcRoot
+    | some H =>
+      have hHS := (deepest_mem hd).1
+      obtain ⟨m, hm, rfl⟩ := h.liveLockBlocks_le hL' hHS
+      have hmt := h.mem_iff.1 (hS hHS)
+      change (if depth Φ Φ.fcRoot < depth Φ (blk m) then blk m else Φ.fcRoot) = blk j
+      rw [ite_eq_right, h.fcRoot]
+      rw [h.fcRoot, h.depth_eq h.fj h.jτ, h.depth_eq hmt.1 hmt.2]
+      omega
 
 end ChainFrame
 

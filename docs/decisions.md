@@ -518,10 +518,12 @@ detail in `TRUST.md`.
 
 - **Graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock is live at `t` while
   `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps the locks. A slow lock
-  of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, max(s + 2, E + c))`, with `E` the
+  of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, E + c)`, with `E` the
   latest expiry of the node's live fast locks of earlier slots; it gets `s + 2` when no live fast lock of an
-  earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). `c ≥ 2` is a
-  parameter (`ACParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
+  earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). There is no inner
+  `max(s + 2, …)`: on a lawful run every lock of `E` is live and `c ≥ 2`, so `E + c ≥ s + 2` already, given the `LocksWF`
+  cap and a legal write slot (`s ≤ slot t`); raw inputs with uncapped expiries or `s > slot t` can give less.
+  `c ≥ 2` is a parameter (`ACParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
   is recent" comes from the run invariant `l.slot + 2 ≤ l.expiry ≤ l.slot + k` (`LocksWF`). The rule's four
   choices:
   - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic
@@ -586,6 +588,27 @@ detail in `TRUST.md`.
     with the static chain under HR.3 and HS.4 (`Lemmas/Healing/{Reset, Service, Acquire, AgreeFrozen,
     AgreeLater, AgreeSuffix, AgreeViews, AgreeVotes, ConsumeContinue, ConsumeUpper, ConsumeMature, Drain, Retain}`),
     and so are HS.0, HS.1 and HS.2 with their proofs (the HS.1 and HS.2 statements are retired too).
+
+- **Only the highest live lock counts.** The veto (`conflictsWithLock`), the anchor (`getAnchor`) and the deep
+  anchor (`deepAnchor`) all read one block, `highestLiveLock`: the highest block of the live locks, fast or slow
+  (`deepest` of `liveLockBlocks`, equal depths broken by the smaller root), or `none` when no lock is live. A result
+  is vetoed when a highest live lock exists and the result conflicts with it; the anchor is the higher of it and
+  `fc_root`; the update's path filter and the optimistic clause go through `conflictsWithLock`, so they become
+  single-block tests with no change of text in `Confirmation`. Reason: one rule is read in three places, and the
+  invariant already makes the live lock blocks of a lawful run a chain (`live_locks_chain`), so the highest block
+  is the whole of the lock effect there. The old forms agree with the new ones on a frame where the projected live
+  lock blocks form a chain, and `getAnchor` agrees on every `FrameOK` frame. They can differ on a lock set whose
+  live blocks are siblings: for siblings `H` and `K` with `H` the higher, the old veto rejects the candidate `H`
+  (it conflicts with `K`), the new one accepts it. Such a set does not arise on a lawful run from a start that
+  preserves the invariant. Where it can arise, the meaning of a raw definition changes: the write helpers
+  `newLocksM` and `updateConfirmationM` (they read the veto from an arbitrary lock set), the raw predicates
+  `FastUpdateAt`, `SlowLockAt` and `OptimisticLockAt` (the last through `optimisticSelect`, whose candidate test
+  contains the veto), and the trace shapes that do not constrain the stored locks: `ReachableAtUFrom` from an
+  arbitrary `s₀`, `ACLocalRunU` from an arbitrary `ini` (no `VoteStart`), and `ACLocalRunStep` replacement
+  outputs (`lawful` constrains the oracle lock set, not the output). `UpdateAt` and `ResultAt` read no veto or
+  anchor and are unchanged; `deepAnchor` is definitionally unchanged. The test
+  `highest_lock_sibling_tip` states the new behaviour on such a set, and the singleton-lock rejections are
+  unchanged. The pq-dc specification follows after this lands.
 
 ### Committee modelling
 

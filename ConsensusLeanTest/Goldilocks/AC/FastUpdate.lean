@@ -218,7 +218,8 @@ theorem notConflicts_update (s : Nat) {X : N1.Blk}
       (Node.frame (tickState N1 dg1 (4 * s + 6))) ((tickRun N1 dg1).projAC.time (8 * (4 * s + 6)))
       X := by
   obtain ⟨f, -, hf⟩ := update_frame s
-  rintro ⟨B, hB, hnc⟩
+  intro hc
+  obtain ⟨B, hB, hnc⟩ := exists_of_conflictsWithLock hc
   exact hnc (compatible_chain hf hX hB.1)
 
 /-- (a) **The fast test of the update of slot `s` passes on `blk s`**: `n = 1 ≤ 2 · 1`. -/

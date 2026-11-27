@@ -115,7 +115,9 @@ theorem optimisticSelect_two {Φ : N.Frm} {f j s : Nat} (h : ChainFrame Φ f j s
             htip, rfl, Relation.ReflTransGen.refl⟩
       rw [this, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin]
       decide
-    · rintro ⟨B, hB, hnc⟩; exact hnc (compatible_chain h htip hB.1)
+    · intro hc
+      obtain ⟨B, hB, hnc⟩ := exists_of_conflictsWithLock hc
+      exact hnc (compatible_chain h htip hB.1)
   · rintro B ⟨hB, -⟩
     obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB
     exact ⟨m, hm, rfl⟩
