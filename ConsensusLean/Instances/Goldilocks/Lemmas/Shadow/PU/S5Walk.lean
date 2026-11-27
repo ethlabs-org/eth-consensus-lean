@@ -83,8 +83,8 @@ run-level facts the stock proof reads are premises: `hst` (the store tree is hel
 (`hj < hmax`), `hBm` (a block of state height `hmax`, the cache invariant), `above` (G3′),
 `hcomp` (`Σ.F` and `P` are comparable), and `hheld` (held ancestry transfers to the store). -/
 theorem anc_getHead_of_hi'_core {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
-    {st : Store sp.toParams (Payload sp.n)} 
-    (hΦ : FrameOK st.toFrame') (hst : st.tree ⊆ U) (hjm : st.hj < st.hmax)
+    {st : Store sp.toParams (Payload sp.n)} (hΦ : FrameOK st.toFrame')
+    (hst : st.tree ⊆ U) (hjm : st.hj < st.hmax)
     (hBm : ∃ B ∈ st.tree, (st.σ B.root).h = st.hmax)
     {Pb : AC.Blk sp.n (List (FG.Att sp.n))} (hPJ : Anc U Pb st.J) (hJP : st.J.root ≠ Pb.root)
     (above : ∀ {X}, X ∈ st.tree → st.hj + 1 ≤ (st.σ X.root).h →
