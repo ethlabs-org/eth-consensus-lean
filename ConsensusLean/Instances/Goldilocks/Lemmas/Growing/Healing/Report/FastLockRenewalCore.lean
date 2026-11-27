@@ -162,7 +162,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
   rw [hst] at hconf hfs
   exact ⟨C, hconf, hPC.mono hsub, D, hfs, hPD.mono hsub⟩
 
-private theorem older_locks_compatible_after_unlock_at
+private theorem older_locks_compatible_after_unlock_slot_at
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {j k r : Nat} (hy : y ∈ H (tr.time k))
@@ -354,7 +354,7 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
       omega
     obtain ⟨x₀, hx₀⟩ : (K.committee (s + 1) ∩ H (tr.time j)).Nonempty :=
       Set.nonempty_of_ncard_ne_zero (by omega)
-    exact older_locks_compatible_after_unlock_at hrun hnc hy hb (r := s + 1) (by omega) hjk
+    exact older_locks_compatible_after_unlock_slot_at hrun hnc hy hb (r := s + 1) (by omega) hjk
       (hsupp x₀ hx₀).2 (fun x hx => Or.inr (hsupp x hx).1.2) hhalf l hl hlt L hL hLr
   have hle : l.slot ≤ s + 2 := by
     obtain ⟨r, hrk, B, horig, _⟩ := AC.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
