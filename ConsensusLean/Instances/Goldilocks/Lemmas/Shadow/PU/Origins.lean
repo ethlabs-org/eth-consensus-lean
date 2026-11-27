@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 
@@ -17,7 +18,8 @@ restated over the shadow run and the shadow reset premises `ResetPremisesUpTo'`.
   projection (`Compose.goldilocks_ac_projection_from'`).
 * `CoveredUpTo.compatible_highOrigin'` is the stock proof (S1 of the cover, generic in the run).
 * `ResetPremisesUpTo'.origins_compatible_at'` (R1) and
-  `ResetPremisesUpTo'.left_entry_origin_or_covered_at'` are **interface stubs**. Their stock
+  `ResetPremisesUpTo'.left_entry_origin_or_covered_at'` (in `Shadow/PU/LeftEntry`) are
+  the open inputs. Their stock
   proofs are the healing kernel (`Kernel/OriginCompare`, `HighInduction`, `VoteDomain`: the
   vote-domain induction, which reads `viableTree` and `fc_root` of the voters' frames) and the
   left-entry row-source argument (`Outcome/LeftEntry`, `RowSource`). Their stock import closure
@@ -102,22 +104,6 @@ theorem ResetPremisesUpTo'.origins_compatible_at'
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
     Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
-
-/-- **Interface stub** (`ResetPremisesUpTo.left_entry_origin_or_covered_at`, `Clean/LeftEntry`):
-a high entry below a higher held block is named by a row whose signer was honest, with a high
-origin above the entry or the entry covered. -/
-theorem ResetPremisesUpTo'.left_entry_origin_or_covered_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧
-        ((∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ Anc (tr.HonestBlocksAt H) E O) ∨
-          (v ∈ H (max (cutZ sp.toParams g) t) ∧ CoveredUpTo tr H g a b (sp.slot t) E)) := by
   sorry
 
 /-- **Interface stub** (`ProposalImpl.finalized_compatible_high_origin_at`, `Pivot/OldSources`):
