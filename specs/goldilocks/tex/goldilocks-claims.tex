@@ -2926,8 +2926,12 @@ G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
 G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
 G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{Store.finalized\_safety})\\
 G1.5 & \texttt{Simulation.ConflictsIff}, \texttt{Simulation.held\_att\_in\_view\_at},
-  \texttt{Simulation.final\_accountable\_at}; \texttt{Regimes.FinalAccountable}
-  & proved (\texttt{conflicts\_iff}, \texttt{final\_accountable});
+  \texttt{Simulation.final\_accountable\_at};
+  \texttt{Regimes.Growing.FinalAccountable}
+  & proved (\texttt{Simulation.conflicts\_iff},
+  \texttt{Simulation.held\_att\_in\_view\_at},
+  \texttt{Simulation.final\_accountable\_at};
+  \texttt{Regimes.Growing.final\_accountable});
   evidence universes differ, note~2\\
 G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
   (\texttt{Store.previousHeightJustified\_entry})\\
@@ -3004,13 +3008,16 @@ R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
   \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
   \texttt{outageWindow}, \texttt{outage\_final\_compatible} and R.6's rows
   are not\\
-R.7 & \texttt{Regimes.FinalAccountable}, \texttt{Regimes.NonFraming},
-  \texttt{Regimes.FinalizedSafe} & proved (\texttt{final\_accountable},
-  \texttt{non\_framing}, \texttt{finalized\_safe}); evidence scope, note~2\\
-R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
-  \texttt{Regimes.OutputsValid} & proved (\texttt{Regimes.outputs\_nested},
-  \texttt{Regimes.finalized\_monotone}, \texttt{Regimes.outputs\_valid}); local
-  nesting only\\
+R.7 & \texttt{Regimes.Growing.FinalAccountable},
+  \texttt{Regimes.Growing.NonFraming}, \texttt{Regimes.Growing.FinalizedSafe}
+  & proved under growing faults (\texttt{Regimes.Growing.always\_statements});
+  the static rows over a fixed honest set are retired; evidence scope,
+  note~2\\
+R.8 & \texttt{Regimes.Growing.OutputsNested},
+  \texttt{Regimes.Growing.FinalizedMonotone},
+  \texttt{Regimes.Growing.OutputsValid} & proved under growing faults
+  (\texttt{Regimes.Growing.always\_statements}); the static rows are
+  retired; nesting is local to one reader's tree\\
 Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
   \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
 Obligations & \texttt{MeetsObligations} & proved
@@ -3030,8 +3037,8 @@ conclusion does not expose the pair fields or the entry $E^{(2)}_j$.
 (2) G1.5 binds the evidence differently at two layers.  The engine statement
 \texttt{Simulation.final\_accountable\_at} finds the evidence in the union of
 the readers' whole views, which is weaker than the two finalized output
-chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
-held carrier chains, which need not be the finalized output prefixes (a
+chains.  The node statement \texttt{Regimes.Growing.FinalAccountable} finds it
+on two held carrier chains, which need not be the finalized output prefixes (a
 finalizing attestation can come after the block it finalizes).  The restriction to
 the two finalized output chains is not transcribed.
 (3) C1.2, C1.3, node O.1 and HR.5 were proved in Lean (C1.2 under the

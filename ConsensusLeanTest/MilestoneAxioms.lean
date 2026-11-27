@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
-public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main
@@ -96,34 +95,6 @@ theorem Consensus.Goldilocks.Compose.joinedProjection :
     Consensus.Goldilocks.Compose.JoinedProjection :=
   Consensus.Goldilocks.Compose.joined_projection
 
-/-! Goldilocks Regimes: the rows that hold in every run (R.7, R.8; `Statements/Regimes/Always`). -/
-
-/-- Goldilocks Regimes: `OutputsNested`. -/
-theorem Consensus.Goldilocks.Regimes.outputsNested : Consensus.Goldilocks.Regimes.OutputsNested :=
-  Consensus.Goldilocks.Regimes.outputs_nested
-
-/-- Goldilocks Regimes: `FinalizedMonotone`. -/
-theorem Consensus.Goldilocks.Regimes.finalizedMonotone :
-    Consensus.Goldilocks.Regimes.FinalizedMonotone :=
-  Consensus.Goldilocks.Regimes.finalized_monotone
-
-/-- Goldilocks Regimes: `OutputsValid`. -/
-theorem Consensus.Goldilocks.Regimes.outputsValid : Consensus.Goldilocks.Regimes.OutputsValid :=
-  Consensus.Goldilocks.Regimes.outputs_valid
-
-/-- Goldilocks Regimes: `FinalAccountable`. -/
-theorem Consensus.Goldilocks.Regimes.finalAccountable :
-    Consensus.Goldilocks.Regimes.FinalAccountable :=
-  Consensus.Goldilocks.Regimes.final_accountable
-
-/-- Goldilocks Regimes: `NonFraming`. -/
-theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.NonFraming :=
-  Consensus.Goldilocks.Regimes.non_framing
-
-/-- Goldilocks Regimes: `FinalizedSafe`. -/
-theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe :=
-  Consensus.Goldilocks.Regimes.finalized_safe
-
 /-! Goldilocks Regimes: sleepy strict growth (R.2) at a committee, under growing faults
 (`Results/Statements/SleepyGrowth`). -/
 
@@ -199,24 +170,6 @@ theorem Consensus.Goldilocks.Healing.Growing.cacheAcceptance :
 
 /-- info: 'Consensus.Goldilocks.Compose.joinedProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.joinedProjection
-
-/-- info: 'Consensus.Goldilocks.Regimes.outputsNested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.outputsNested
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalizedMonotone' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedMonotone
-
-/-- info: 'Consensus.Goldilocks.Regimes.outputsValid' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.outputsValid
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalAccountable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalAccountable
-
-/-- info: 'Consensus.Goldilocks.Regimes.nonFraming' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.nonFraming
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalizedSafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedSafe
 
 /--
 info: 'Consensus.Goldilocks.Regimes.Growing.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound]

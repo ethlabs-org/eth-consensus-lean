@@ -2,7 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLean.Lemmas.Model.Constant
 @[expose] public section
 
@@ -18,8 +18,9 @@ the growing-fault simulation at its constant honest keys (`Test.goldilocksRun_of
 
 * `faulty_run`: a valid engine run whose `simTrace` is a `GoldilocksRun` with `NoCollRun`, with
   `f = (honestKeys S rho)ᶜ.ncard = 1`, `q = 3` and `f < 2q − n` (`1 < 2`).
-* `faulty_run_safe`: on that run the proved R.7 rows apply: `Regimes.finalized_safe` (finalized
-  tips of honest nodes never conflict) and `Regimes.non_framing` (no honest slashable pair).
+* `faulty_run_safe`: on that run the proved growing R.7 rows apply at the constant honest set
+  (`Regimes.Growing.Test.finalizedSafe_const`: finalized tips of honest nodes never conflict;
+  `nonFraming_const`: no honest slashable pair).
 * `honestAwakeJoined_eq`, `faultBound`, `slot_faultBound`: `h_t = 3` at every `t ∈ [0, 40]`,
   so `f = 1 < h_t`; in particular at `t_s`, `t_s + Δ`, `t_s + 2Δ` up to `40`.
 * `faulty_silent`: the faulty key has no engine event and makes no call in `simTrace` (so it
@@ -243,9 +244,9 @@ theorem faulty_run :
   rw [faulty_ncard hp]
   exact one_lt_threshold S
 
-/-- (a) On a run with one faulty key, the proved R.7 rows `Regimes.finalized_safe` and
-`Regimes.non_framing` apply: the finalized tips of honest nodes never conflict, and no honest
-key signs a slashable pair. -/
+/-- (a) On a run with one faulty key, the proved growing R.7 rows `finalizedSafe` and
+`nonFraming` apply at the constant honest set: the finalized tips of honest nodes never
+conflict, and no honest key signs a slashable pair. -/
 theorem faulty_run_safe :
     ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
       rho.point = point ∧
@@ -261,8 +262,9 @@ theorem faulty_run_safe :
           v k a →
         (simTrace { S with vote := stock } rho one_le_card).SignAt v k' b → ¬ FG.slashable a b := by
   obtain ⟨rho, hp, -, -, hv, hrun, hnc, hf, hlt⟩ := faulty_run S
-  exact ⟨rho, hp, hv, hf, Regimes.finalized_safe _ _ _ _ _ _ hrun hnc hlt,
-    Regimes.non_framing _ _ _ _ _ _ hrun⟩
+  exact ⟨rho, hp, hv, hf,
+    fun _ hy _ hz i j => Regimes.Growing.Test.finalizedSafe_const hrun hnc hlt hy hz i j,
+    fun _ hv _ _ _ _ ha hb => Regimes.Growing.Test.nonFraming_const hrun hv ha hb⟩
 
 /-- (a) The run-level fault premises with `f = 1` are jointly satisfiable on one run: the run
 and collision freedom, `f = 1 < 2q − n`, `f < h_t` at every `t ∈ [0, 40]` (`h_t = 3`), and a

@@ -8,8 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Pre
 
 /-! # Goldilocks milestone Regimes under growing faults (statements)
 
-The rows of `Statements/Regimes/{Sleepy,Always}` for a time-indexed honest set `H` (antitone), over
-`Growing.GoldilocksRun`:
+The regime rows, over the vocabulary of `Statements/Regimes/{Sleepy,Always}`, for a time-indexed
+honest set `H` (antitone), over `Growing.GoldilocksRun`:
 
 * **Readers** are honest at the later of the read time and the time of the cut whose state they
   read (`y ∈ H (max t (tr.time i))`), or at their own cut; a node's reads after its compromise
