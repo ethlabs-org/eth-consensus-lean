@@ -42,20 +42,6 @@ private theorem tick_cuts_false (y : Fin P.n) (st : NodeState A) (t : Time) (x :
       (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 := by
   simp [exec_eq, onTick_eq, runSteps_eq, tickSteps]
 
-/-- The own proposal has no `fg_attest` cut (a copy of `proposal_no_attest`). -/
-private theorem proposal_no_attest (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat)
-    (C : A.Blk) (s : Option (FG.Att P.n)) :
-    Cut.fg (.attest C s) ∉ (tickStep proposer dg y st t x .proposal).2 := by
-  simp only [tickStep_eq]
-  split_ifs
-  · split
-    · simp [acProposal_eq]
-    · simp only [proposeBlock_eq, Node.onBlock_eq]
-      split_ifs
-      · simp [acProposal_eq]
-      · split <;> simp [acProposal_eq, acCall_eq]
-  · simp
-
 /-- An `fg_attest` cut is in a tick (a copy of `exec_attest`). -/
 theorem exec_attest (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
     {C : A.Blk} {s : Option (FG.Att P.n)}
@@ -67,7 +53,7 @@ theorem exec_attest (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
       rw [tick_cuts_false] at h
       rcases List.mem_append.1 h with h | h
       · simp [tickStep_eq, acCall_eq] at h
-      · exact proposal_no_attest y _ t x C s h
+      · exact proposal_no_attest proposer dg y _ t x C s h
     · exact ⟨x, rfl⟩
   | block B =>
     simp only [exec_eq, Node.onBlock_eq, acCall_eq] at h
@@ -107,7 +93,7 @@ private theorem tick_before_attest (y : Fin P.n) (st : NodeState A) (t : Time) (
     rw [List.getElem?_append_left (by omega)] at hm₂
     rcases List.mem_append.1 (List.mem_of_getElem? hm₂) with h | h
     · simp [tickStep_eq, acCall_eq] at h
-    · exact proposal_no_attest y _ t x C s h
+    · exact proposal_no_attest proposer dg y _ t x C s h
   rw [List.getElem?_append_right hl] at hm₂
   have h₂ := update_attest_pos y _ t x hm₂
   rcases lt_trichotomy m l.length with hml | hml | hml
@@ -171,26 +157,6 @@ theorem before_tick' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     rcases m with _ | m <;> simp [exec_eq, restart_eq, acCall_eq] at hm
     exact ⟨_, hm.symm, rfl⟩
   | _ => simp [Event.phase] at hph
-
-/-- **The FG cuts of a node at the time of its `fg_attest` and before it are its own
-proposal's** (a copy of `fg_before_attest`). -/
-private theorem fg_before_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {i j : Nat} {ℓ : FGLabel P A.Payload} {C : A.Blk} {s : Option (FG.Att P.n)}
-    (hc : tr.CallAt y j (.fg (.attest C s))) (hi : tr.CallAt y i (.fg ℓ)) (hij : i < j)
-    (ht : tr.time i = tr.time j) :
-    ∃ B acc, ℓ = .block B acc ∧ B.proposer = y ∧ P.slotTime B.slot = tr.time j := by
-  obtain ⟨j₀, e, k₂, hg, rfl, hk₂⟩ := Coherence.call_in_group h hy hc
-  obtain ⟨x, rfl⟩ := exec_attest y _ _ e (List.mem_of_getElem? hk₂)
-  by_cases hlt : i < j₀
-  · obtain ⟨ℓ', he, -⟩ :=
-      before_tick' h hy ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩) hi hlt ht
-    cases he
-  have hlen := (List.getElem?_eq_some_iff.1 hk₂).1
-  rw [RunTrace.groupAt_iff] at hg
-  obtain ⟨hn, -, -, -, hl⟩ := hg.2.1 (i - j₀) (by omega)
-  rw [Nat.add_sub_cancel' (not_lt.1 hlt), hi.2] at hl
-  exact tick_before_attest y _ _ x (m := i - j₀)
-    (by rw [List.getElem?_eq_getElem (by omega), ← hl]) hk₂ (by omega)
 
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
