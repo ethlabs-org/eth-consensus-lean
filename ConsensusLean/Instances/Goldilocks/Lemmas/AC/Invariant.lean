@@ -176,21 +176,11 @@ theorem receipt_pool_slot (A : ACState sp.n) (t : Time)
   exact ⟨fun v σ => (admitVote_poolOK h t v σ).1,
     fun B σ => ((blockReceipt_fields A t B).1 h σ).1⟩
 
-/-- The replay of a restart keeps the pool invariant, from the empty pools. -/
+/-- A restart establishes the pool invariant with empty pools. -/
 private theorem acRestart_poolOK (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : PoolOK (acRestart sp ro self A Φ t).1.pool := by
-  unfold acRestart
-  suffices h : ∀ (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)),
-      PoolOK acc.1.pool → PoolOK (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
-        (r.1, acc.2 ++ r.2)) acc).1.pool from
-    h _ _ fun σ => ⟨fun x hx => by simp [ACState.initial] at hx, fun i => by simp [ACState.initial]⟩
-  intro l
-  induction l with
-  | nil => exact fun _ h => h
-  | cons B l ih =>
-    intro acc h
-    simp only [List.foldl_cons]
-    exact ih _ ((acOnBlock_fields _ _ _ _ _).1 h)
+  exact fun σ => ⟨fun _ hx => False.elim (List.not_mem_nil hx),
+    fun _ => by simp [acRestart, ACState.initial]⟩
 
 /-- `step_pool_cap` with the locks after the unlock given. -/
 theorem stepWith_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set Lock)

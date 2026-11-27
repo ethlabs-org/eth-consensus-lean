@@ -97,6 +97,39 @@ theorem localRun_stamp_iff (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     simpa only [parentOracle, hl] using he
   · exact localRun_stamp
 
+/-- The former execution rule, replaying restart and leaving all other calls unchanged. -/
+noncomputable def stepWithReplay (m : WriteMode) (self : Fin sp.n) (L : Set Lock)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksAC sp FGP ro).Call) : ACState sp.n × List (Em sp FGP) :=
+  match c with
+  | .restart => restartReplay sp ro self A Φ t
+  | _ => stepWithM sp ro m self L A Φ t c
+
+/-- The old replay execution and the new stamp execution have exactly the same lawful
+traces. Their shared carrier preserves every read and emission, in both directions. -/
+theorem localRunStep_replay_iff (m : WriteMode) (u : Nat → Set Lock)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro)
+    (ini : Fin sp.n → ACState sp.n) :
+    ACLocalRunStep m u (fun _ => stepWithReplay m) H U tr ini ↔
+      ACLocalRunStep m u (fun _ => stepWithStamp m) H U tr ini := by
+  have eqstep (self : Fin sp.n) (L : Set Lock) (A : ACState sp.n)
+      (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
+      (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
+      stepWithReplay m self L A Φ t c = stepWithStamp m self L A Φ t c := by
+    cases c <;> try rfl
+    exact restartReplay_eq_stamp sp ro self A Φ t hΦ ht
+  constructor <;> intro h <;> refine { h with exec := ?_ } <;> intro i ℓ hl hy
+  all_goals
+    have hΦ : FrameOK ℓ.frame := by
+      rcases h.frameLaw (tr.node i) hy i ℓ ⟨rfl, hl⟩ with
+        ⟨_, _, _, _, hc⟩ | ⟨_, _, _, _, _, hc⟩
+      · exact hc.1.1
+      · exact hc.1.1
+    have he := h.exec i ℓ hl hy
+    first
+    | rwa [eqstep _ _ _ _ _ _ hΦ (h.time_nonneg i)] at he
+    | rwa [← eqstep _ _ _ _ _ _ hΦ (h.time_nonneg i)] at he
+
 /-- A lawful next call from any reachable state can be executed with the bulk stamp.
 This is the `AtReachable`/`CallOK` entry point, with no raw-input equality asserted. -/
 theorem stamp_atReachable : (goldilocksAC sp FGP ro).AtReachable

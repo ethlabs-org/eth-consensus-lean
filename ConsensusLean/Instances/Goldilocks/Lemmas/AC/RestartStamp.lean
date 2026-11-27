@@ -109,18 +109,47 @@ theorem restartStamp_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
           else if InTree Φ q then ETime.of t else ⊤ } := by
   rfl
 
+set_option linter.unusedVariables false in
 /-- At every well-formed nonnegative restart, for any input state and every replay order,
 the result is the bulk stamp and emits nothing. No reachability or deep-depth premise is needed. -/
 theorem acRestart_eq_stamp (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
     acRestart sp ro self A Φ t = (restartStamp sp A Φ t, []) := by
+  rw [restartStamp_eq]
+  rfl
+
+/-- The former restart replay, retained only to state its lawful equivalence to stamping. -/
+noncomputable def restartReplay (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : ACState sp.n × List (Em sp FGP) :=
+  (ro.order t Φ).foldl
+    (fun acc B => let r := acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
+    ({ ACState.initial sp.genesisRoot with
+      locks := A.locks, latestConfirmed := A.latestConfirmed,
+      restartTime := (t : WithBot Time), mayVote := A.mayVote }, [])
+
+/-- The historical restart is the block-handler fold from the reset state. -/
+theorem restartReplay_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    restartReplay sp ro self A Φ t =
+      (ro.order t Φ).foldl
+        (fun acc B => let r := acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
+        ({ ACState.initial sp.genesisRoot with
+          locks := A.locks, latestConfirmed := A.latestConfirmed,
+          restartTime := (t : WithBot Time), mayVote := A.mayVote }, []) := by
+  rfl
+
+/-- The former replay and the bulk restart agree under exactly the lawful restart guards.
+Malformed frames and negative times are deliberately not covered. -/
+theorem restartReplay_eq_stamp (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
+    restartReplay sp ro self A Φ t = (restartStamp sp A Φ t, []) := by
   classical
   have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
   let A₀ : ACState sp.n := { ACState.initial sp.genesisRoot with
     locks := A.locks, latestConfirmed := A.latestConfirmed,
     restartTime := (t : WithBot Time), mayVote := A.mayVote }
   have hn : ¬ joined sp A₀ t := not_joined_of_restartTime sp ht rfl
-  rw [acRestart, replay_eq_stamp_of_not_joined sp self Φ t (ro.order t Φ) A₀ hn]
+  rw [restartReplay, replay_eq_stamp_of_not_joined sp self Φ t (ro.order t Φ) A₀ hn]
   rw [restartStamp_eq]
   have he (q : Nat) : (∃ B ∈ ro.order t Φ, B.root = q) ↔
       q ≠ sp.genesisRoot ∧ InTree Φ q := by
