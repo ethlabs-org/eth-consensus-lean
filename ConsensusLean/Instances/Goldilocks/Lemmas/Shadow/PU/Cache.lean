@@ -2,8 +2,12 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
@@ -894,6 +898,346 @@ theorem σ_eq_of_mem_with (hu : FinalitySpec u) {st₂ : Store P ACP}
 
 end More
 
+
+/-! ## Held chains and held safety over `ReachableWith` (lane W) -/
+
+section Held
+
+variable {u : Store P ACP → FG.ChainState P.n → Store P ACP} {acp₀ : ACP} {st : Store P ACP}
+
+/-- A target bit after counting is old or set by a counted non-timeout attestation on the
+entry. -/
+private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
+    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
+    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
+  induction atts generalizing σ with
+  | nil => exact Or.inl h
+  | cons a as ih =>
+    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
+    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
+    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
+    rcases ih h with h | ⟨b, hb, hb'⟩
+    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
+        clear ih he hh hT
+        unfold FG.ChainState.processAtt at h
+        dsimp only at h
+        repeat' split at h
+        all_goals aesop
+      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
+    · rw [hh, hT] at hb'
+      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
+
+/-- A justification `(h_j, J)` with `h_j ≥ 1` has a quorum of non-timeout attestations on the
+chain with height pair `(h_j, J)` (with each target bit's attestation, for the induction). -/
+private theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
+    {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
+    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
+      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
+    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
+      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
+  refine gp.chainState_induction (P := fun c σ =>
+    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
+      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
+    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
+      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
+    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init]⟩ ?_ h
+  intro c σ B σ' _ ⟨ht, hq⟩ hB
+  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
+    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
+    exact Or.inl h
+  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
+    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append]
+    exact Or.inr (by simpa using h)
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
+  have hT := fun v => @mem_foldl_target _ { σ with s := B.slot } B.atts v
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he] at hT ⊢
+  dsimp only at hT
+  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
+      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
+    intro v hv
+    rcases hT v hv with hv | ⟨a, ha, h'⟩
+    · obtain ⟨a, ha, h'⟩ := ht v hv
+      exact ⟨a, liftA ha, h'⟩
+    · exact ⟨a, liftB ha, h'⟩
+  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
+      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
+        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
+    let ⟨Q, hQ, hv⟩ := hq h1
+    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
+  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · exact ⟨by simp [FG.ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
+  · exact ⟨by simp [FG.ChainState.advance], hq₀⟩
+  · exact ⟨ht₀, hq₀⟩
+
+
+/-- **The chain of a held block.** A block `B` of a reachable store has a chain from genesis
+whose state is `B`'s, every block of which (and genesis) is at or below `B` in the store, and
+whose attestations are on blocks at or below `B`. -/
+theorem held_chain_with {st : Store P ACP}
+    (hu : FinalitySpec u) (hR : ReachableWith u acp₀ st) {B : NodeBlock P ACP}
+    (hB : B ∈ st.tree) :
+    ∃ c : List (NodeBlock P ACP), P.fg.chainState (c.map Block.fgView) = some (st.σ B.root) ∧
+      (∀ X ∈ P.genesisBlock acp₀ :: c, X ∈ st.tree ∧ st.Anc X B) ∧
+      ∀ a ∈ P.fg.chainAtts (c.map Block.fgView), ∃ Y ∈ st.tree, st.Anc Y B ∧ a ∈ Y.fgPayload := by
+  obtain ⟨c, hc, hl, hlast, hσ⟩ := chain_state_of_chain_with hu hR B hB
+  obtain ⟨-, -, hg, -⟩ := accepted_tree_with hu hR
+  have hanc := anc_of_linked c _ hg hc hl B (by
+    rcases hlast with ⟨rfl, rfl⟩ | h
+    · rfl
+    · simp [List.getLast?_cons, h])
+  refine ⟨c, hσ, fun X hX => ⟨?_, hanc X hX⟩, fun a ha => ?_⟩
+  · rcases List.mem_cons.1 hX with rfl | h
+    exacts [hg, hc _ h]
+  · obtain ⟨_, hX, haX⟩ := List.mem_flatMap.1 ha
+    obtain ⟨X, hXc, rfl⟩ := List.mem_map.1 hX
+    exact ⟨X, hc X hXc, hanc X (List.mem_cons_of_mem _ hXc), haX⟩
+
+/-- **Two justifications at one height cross.** Held blocks of two reachable stores with the
+same `h_j` and different `J` give at least `2q − n` validators, each with an E2 pair among the
+attestations on blocks at or below the two held blocks. -/
+theorem justified_crossing_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {B B' : NodeBlock P ACP} (hB : B ∈ st₁.tree)
+    (hB' : B' ∈ st₂.tree)
+    (he : (st₁.σ B.root).hj = (st₂.σ B'.root).hj) (hne : (st₁.σ B.root).J ≠ (st₂.σ B'.root).J) :
+    ∃ W : Finset (Fin P.n), 2 * P.fg.q - P.n ≤ W.card ∧ ∀ v ∈ W,
+      ∃ a, (∃ Y ∈ st₁.tree, st₁.Anc Y B ∧ a ∈ Y.fgPayload) ∧
+        ∃ b, (∃ Y ∈ st₂.tree, st₂.Anc Y B' ∧ b ∈ Y.fgPayload) ∧ a.val = v ∧ FG.slashable a b := by
+  obtain ⟨c₁, h₁, -, ha₁⟩ := held_chain_with hu hR₁ hB
+  obtain ⟨c₂, h₂, -, ha₂⟩ := held_chain_with hu hR₂ hB'
+  have h0 : 1 ≤ (st₁.σ B.root).hj := by
+    by_contra h0
+    exact hne ((FG.chain_invariants P.fg _ _ h₁).2.2.2.1 (by omega) |>.trans
+      ((FG.chain_invariants P.fg _ _ h₂).2.2.2.1 (by omega)).symm)
+  obtain ⟨Q₁, hQ₁, hv₁⟩ := (justification_quorum P.fg h₁).2 h0
+  obtain ⟨Q₂, hQ₂, hv₂⟩ := (justification_quorum P.fg h₂).2 (he ▸ h0)
+  refine ⟨Q₁ ∩ Q₂, (FG.quorum_intersection P.fg Q₁ Q₂ hQ₁ hQ₂).1, fun v hv => ?_⟩
+  obtain ⟨a, ha, rfl, hah, haT, hat⟩ := hv₁ v (Finset.mem_inter.1 hv).1
+  obtain ⟨b, hb, hvb, hbh, hbT, hbt⟩ := hv₂ a.val (Finset.mem_inter.1 hv).2
+  exact ⟨a, ha₁ a ha, b, ha₂ b hb, rfl,
+    ⟨hvb.symm, Or.inr (Or.inr ⟨by rw [hah, hbh, he], hat, hbt, by rw [haT, hbT]; exact hne⟩)⟩⟩
+
+/-- **A finalization off a higher chain crosses it** (G1.2 at chain level). A block `F`
+finalized by the state of a held `X` of one reachable store, whose root is not the root of any
+block at or below a held `W` of another reachable store with a state height above the finalized
+height, gives at least `2q − n` validators, each with a slashable pair among the attestations on
+blocks at or below `X` and at or below `W`. -/
+theorem finalized_crossing_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {X F W : NodeBlock P ACP} (hX : X ∈ st₁.tree)
+    (hFr : F.root = (st₁.σ X.root).F) (hW : W ∈ st₂.tree)
+    (hlt : (st₁.σ X.root).hF < (st₂.σ W.root).h)
+    (hoff : ∀ Y ∈ st₂.tree, st₂.Anc Y W → Y.root ≠ F.root) :
+    ∃ S : Finset (Fin P.n), 2 * P.fg.q - P.n ≤ S.card ∧ ∀ v ∈ S,
+      ∃ a, (∃ Y ∈ st₁.tree, st₁.Anc Y X ∧ a ∈ Y.fgPayload) ∧
+        ∃ b, (∃ Y ∈ st₂.tree, st₂.Anc Y W ∧ b ∈ Y.fgPayload) ∧ a.val = v ∧ FG.slashable a b := by
+  obtain ⟨c₁, hσ₁, -, ha₁⟩ := held_chain_with hu hR₁ hX
+  obtain ⟨c₂, hσ₂, hc₂, ha₂⟩ := held_chain_with hu hR₂ hW
+  have hnot : (st₁.σ X.root).F ∉ P.fg.roots (c₂.map Block.fgView) := by
+    intro hmem
+    rw [← hFr] at hmem
+    obtain ⟨Y, hY, hYF⟩ : ∃ Y ∈ P.genesisBlock acp₀ :: c₂, Y.root = F.root := by
+      simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hmem
+    exact hoff Y (hc₂ Y hY).1 (hc₂ Y hY).2 hYF
+  have hF1 : 1 ≤ (st₁.σ X.root).hF := by
+    by_contra h0
+    apply hnot
+    rw [(FG.chain_invariants P.fg _ _ hσ₁).2.2.2.2.1 (by omega)]
+    exact List.mem_cons_self
+  obtain ⟨S, hS, hSv⟩ := P.fg.finalization_meets_crossing hσ₁ hσ₂ hF1 hlt hnot
+  refine ⟨S, hS, fun v hv => ?_⟩
+  obtain ⟨a, ha, b, hb, hav, hab⟩ := hSv v hv
+  exact ⟨a, ha₁ a ha, b, ha₂ b hb, hav, hab⟩
+
+
+/-- A set of at least `k` validators meets every set whose complement has fewer than `k`
+members. -/
+private theorem exists_mem_of_ncard_compl_lt {n k : Nat} {S : Finset (Fin n)} {V : Set (Fin n)}
+    (hS : k ≤ S.card) (hV : Vᶜ.ncard < k) : ∃ v ∈ S, v ∈ V := by
+  by_contra! h
+  have := Set.ncard_le_ncard (s := (S : Set (Fin n))) (t := Vᶜ) h
+  rw [Set.ncard_coe_finset] at this
+  omega
+
+
+/-- **Equal justified heights agree** (G1.1, G0.5 at the stores). Two justification quorums at
+one height with different `J` meet in `2q − n` validators with E2 pairs, one of them in `V`. -/
+theorem J_eq_of_hj_eq_of_safe_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {V : Set (Fin P.n)} (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {B B' : NodeBlock P ACP} (hB : B ∈ st₁.tree) (hB' : B' ∈ st₂.tree)
+    (he : (st₁.σ B.root).hj = (st₂.σ B'.root).hj) :
+    (st₁.σ B.root).J = (st₂.σ B'.root).J := by
+  by_contra hne
+  obtain ⟨W, hW, hw⟩ := justified_crossing_with hu hR₁ hR₂ hB hB' he hne
+  obtain ⟨v, hvW, hv⟩ := exists_mem_of_ncard_compl_lt hW hV
+  obtain ⟨a, ⟨Y, hY, -, ha⟩, b, ⟨Y', hY', -, hb⟩, rfl, hab⟩ := hw v hvW
+  exact hsafe a b ⟨Y, hY, ha⟩ ⟨Y', hY', hb⟩ hv hab
+
+/-- **G1.2 at the stores.** A block `F` finalized by the state of a held `X` of `st₁` is a store
+ancestor of every held `W` of `st₂` whose state height exceeds the finalized height: otherwise
+`F` is not on `W`'s chain (roots are injective on the coherent `U`), and the finality and
+crossing quorums meet in `2q − n` validators with slashable pairs, one of them in `V`. -/
+theorem finalized_anc_of_safe_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {X F W : NodeBlock P ACP} (hX : X ∈ st₁.tree) (hF : F ∈ st₁.tree)
+    (hFr : F.root = (st₁.σ X.root).F) (hW : W ∈ st₂.tree)
+    (hlt : (st₁.σ X.root).hF < (st₂.σ W.root).h) : st₂.Anc F W := by
+  by_contra hn
+  obtain ⟨S, hS, hw⟩ := finalized_crossing_with hu hR₁ hR₂ hX hFr hW hlt fun Y hY hYW hYr =>
+    hn (hU.1 (hsub₂ hY) (hsub₁ hF) hYr ▸ hYW)
+  obtain ⟨v, hvS, hv⟩ := exists_mem_of_ncard_compl_lt hS hV
+  obtain ⟨a, ⟨Y, hY, -, ha⟩, b, ⟨Y', hY', -, hb⟩, rfl, hab⟩ := hw v hvS
+  exact hsafe a b ⟨Y, hY, ha⟩ ⟨Y', hY', hb⟩ hv hab
+
+/-- **`Σ.F` below every block of state height `≥ h_max`** (G1.2 with `h_F ≤ h_j < h ≤ h_max`
+on the chain of the block whose state finalizes `Σ.F`). -/
+theorem F_anc_of_hmax_le_of_safe_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {B : NodeBlock P ACP} (hB : B ∈ st₂.tree) (hle : st₁.hmax ≤ (st₂.σ B.root).h) :
+    st₂.Anc st₁.F B := by
+  obtain ⟨hF, -, -, -, hge, -, X, hX, hXF⟩ := cache_invariants_with hu hR₁
+  obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain_with hu hR₁ X hX
+  have hinv := FG.chain_invariants _ _ _ hc
+  have hXh := hge X hX
+  have h1 := hinv.2.1
+  have h2 := hinv.2.2.1
+  exact finalized_anc_of_safe_with hu hR₁ hR₂ hU hsub₁ hsub₂ hV hsafe hX hF hXF.symm hB (by omega)
+
+
+/-- Along one block, the finalized pair and the pending pairs of the new state are old ones
+(pending, or the old finalized pair) or the old height's entry pair. -/
+private theorem step_pairs {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ') (Q : Nat × Nat → Prop)
+    (hp : ∀ p ∈ σ.pending, Q p) (hF : Q (σ.hF, σ.F)) (hE : Q (σ.h, σ.Th)) :
+    (∀ p ∈ σ'.pending, Q p) ∧ Q (σ'.hF, σ'.F) := by
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he]
+  dsimp only
+  obtain ⟨F, hF', σ₁, rfl, hFc, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  have hpend : ∀ r ∈ σ.pending.filter (fun p => hF' < p.1), Q r :=
+    fun r hr => hp r (List.mem_of_mem_filter hr)
+  have hF₁ : Q (hF', F) := by
+    rcases hFc with ⟨rfl, rfl⟩ | ⟨hm, -⟩
+    · exact hF
+    · exact hp _ hm
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · refine ⟨fun r hr => ?_, hF₁⟩
+    simp only [FG.ChainState.advance] at hr
+    rcases List.mem_append.1 (List.mem_of_mem_drop hr) with hr | hr
+    · exact hpend r hr
+    · rw [List.mem_singleton] at hr
+      subst hr
+      exact hE
+  · exact ⟨hpend, hF₁⟩
+  · exact ⟨hpend, hF₁⟩
+
+/-- **The finalized pair of a held block's state names the entry of its height** (or genesis):
+the finalized pair is the old one or a pending pair, and every pending pair was appended at a
+justification of the entry of the parent's height (G0.2 (d), (g) at the store). -/
+theorem fin_pair_entry_with
+    (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st) {X : NodeBlock P ACP} (hX : X ∈ st.tree) :
+    (st.σ X.root).F = P.genesisRoot ∨
+      ∃ W ∈ st.tree, W.root = (st.σ X.root).F ∧ (st.σ W.root).h = (st.σ X.root).hF := by
+  let Q : Nat × Nat → Prop := fun p =>
+    p.2 = P.genesisRoot ∨ ∃ W ∈ st.tree, W.root = p.2 ∧ (st.σ W.root).h = p.1
+  suffices key : (∀ p ∈ (st.σ X.root).pending, Q p) ∧ Q ((st.σ X.root).hF, (st.σ X.root).F) from
+    key.2
+  have hA := (accepted_tree_with hu hr).2.2.2 X hX
+  clear hX
+  induction hA with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr]
+    exact ⟨fun p hp => by simp [FG.ChainState.init] at hp, Or.inl rfl⟩
+  | tail _ hYW ih =>
+    obtain ⟨-, -, -, ht⟩ := step_σ_with hu hr hYW.2.1 hYW.2.2
+    obtain ⟨⟨E, hE, hEr, -, hEh, -⟩, -⟩ :=
+      entry_state_of_source_with hu hr _ hYW.1
+    exact step_pairs ht Q ih.1 ih.2 (Or.inr ⟨E, hE, hEr, hEh⟩)
+
+
+/-- `h_j < h_max` in a reachable store. -/
+theorem hj_lt_hmax_of_reachable_with {st : Store P ACP}
+    (hu : FinalitySpec u) (hR : ReachableWith u acp₀ st) :
+    st.hj < st.hmax := by
+  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ := cache_invariants_with hu hR
+  exact hBjhj ▸ (hj_lt_h_with hu hR hBj).trans_le (hge Bj hBj)
+
+/-- **Equal cached `h_j` give equal `Σ.J`.** -/
+theorem J_eq_of_cache_hj_eq_of_safe_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    (he : st₁.hj = st₂.hj) : st₁.J = st₂.J := by
+  obtain ⟨-, hJ₁, -, ⟨B₁, hB₁, hB₁J, hB₁hj⟩, -⟩ := cache_invariants_with hu hR₁
+  obtain ⟨-, hJ₂, -, ⟨B₂, hB₂, hB₂J, hB₂hj⟩, -⟩ := cache_invariants_with hu hR₂
+  have h := J_eq_of_hj_eq_of_safe_with hu hR₁ hR₂ hV hsafe hB₁ hB₂ (by omega)
+  exact hU.1 (hsub₁ hJ₁) (hsub₂ hJ₂) (hB₁J.symm.trans (h.trans hB₂J))
+
+/-- **`Σ.F` below every block of state height `> h_j`** (store-level G1.2). -/
+theorem F_anc_of_hj_lt_of_safe_with {st₁ st₂ : Store P ACP}
+    (hu : FinalitySpec u) (hR₁ : ReachableWith u acp₀ st₁)
+    (hR₂ : ReachableWith u acp₀ st₂) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {B : NodeBlock P ACP} (hB : B ∈ st₂.tree) (hlt : st₁.hj < (st₂.σ B.root).h) :
+    st₂.Anc st₁.F B := by
+  have hcoh : Coherent st₁.tree := hU.mono hsub₁
+  have hg := genesis_mem_with hu hR₁
+  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
+    cache_invariants_with hu hR₁
+  have hgF : st₁.Anc (P.genesisBlock acp₀) st₁.F :=
+    (accepted_tree_with hu hR₁).2.2.2 _ hFm
+  have hgen : st₁.F.root = P.genesisRoot → st₂.Anc st₁.F B := fun he => by
+    rw [hcoh.1 hFm hg he]
+    exact (accepted_tree_with hu hR₂).2.2.2 B hB
+  rcases fin_pair_entry_with hu hR₁ hBf with he | ⟨W, hW, hWr, hWh⟩
+  · exact hgen (hBfF.symm.trans he)
+  obtain rfl : W = st₁.F := hcoh.1 hW hFm (hWr.trans hBfF)
+  obtain ⟨E, hE, hEr, -, hcase⟩ := J_entry_with hu hR₁ hBj
+  obtain rfl : E = st₁.J := hcoh.1 hE hJm (hEr.trans hBjJ)
+  rcases hcase with hEg | ⟨hEh, -⟩
+  · rw [hEg] at hFJ
+    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
+  have h₁ := h_le_of_store_anc_with hu hR₁ hFJ
+  exact finalized_anc_of_safe_with hu hR₁ hR₂ hU hsub₁ hsub₂ hV hsafe hBf hFm
+    hBfF.symm hB (by omega)
+
+
+end Held
+
 /-! ## The shadow store
 
 The shadow `onBlock'` is the stock body with `updateFinality'`; its finality update has the
@@ -1025,6 +1369,28 @@ theorem cache_invariants' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' a
       (∃ B ∈ st.tree, (st.σ B.root).h = st.hmax) ∧
       ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root :=
   cache_invariants_with finalitySpec_updateFinality' h.reachableWith
+
+/-- Every store reached with a finality update of the stock shape is a `PUSnapshot`. -/
+theorem ReachableWith.puSnapshot {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    {acp₀ : ACP} {st : Store P ACP} (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st) :
+    st.PUSnapshot acp₀ := by
+  obtain ⟨hfin, hcoh, -, hg⟩ := accepted_tree_with hu hr
+  obtain ⟨hF, hJ, hFJ, -, hle, hmax, -⟩ := cache_invariants_with hu hr
+  obtain ⟨hcase, W, hW, hJW, hjW⟩ := store_J_entry_with hu hr
+  refine ⟨hfin, hcoh, hF, hJ, hFJ, hjW.trans_le (hle W hW), hle, hmax,
+    fun h => h_le_of_store_anc_with hu hr h,
+    fun hC _ h1 h2 => entry_at_height_with hu hr hC h1 h2,
+    store_J_height_le_with hu hr, ?_, hg, ?_⟩
+  · rcases hcase with ⟨he, -⟩ | ⟨h1, h2⟩
+    · exact Or.inl he
+    · exact Or.inr ⟨h1, h2, W, hW, hJW, hjW⟩
+  · rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr]
+    rfl
+
+/-- Every shadow-reachable store is a `PUSnapshot`. -/
+theorem Reachable'.puSnapshot {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+    st.PUSnapshot acp₀ :=
+  h.reachableWith.puSnapshot finalitySpec_updateFinality'
 
 end Consensus.Goldilocks.Store
 
