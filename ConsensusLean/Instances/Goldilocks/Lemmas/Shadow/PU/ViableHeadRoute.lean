@@ -570,7 +570,11 @@ the write's viable ancestor `A` is the P-U-only head (`σ(Q).h + 1 = floor`, `Σ
 `A ⪯ D` held. Claimed: every honest vote of a slot `r ∈ [m+1, N]` extends `A`, and every honest
 proposal at `ts r` has `A ⪯ d.head` (the stock optimistic later heads for `A`, without the stock
 witness `floor ≤ σ(Q).h`). The stock witness fails at the write and the contest/gap geometry
-(`Store.contest_gap_residue'`) does not supply it; no proof is known. -/
+(`Store.contest_gap_residue'`) does not supply it; no proof is known. **Suspected false** at
+this lemma level: a caller-valid sketch (`n ≥ 4`, one fault, a withheld timeout crossing released
+before `ts (m+1)` that moves every honest store to the gap at `floor + 1`, and only X-side next
+proposals) leaves no early viable witness extending `D`. Not a believed-true stub; do not build on
+it. -/
 theorem optimistic_contest_residue'
     {g ΔF b : Time} {s₀ m N floor : Nat} {kindJ : Prop}
     {J D Q : AC.Blk sp.n (List (FG.Att sp.n))}
