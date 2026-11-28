@@ -25,7 +25,7 @@ supplier at its data equations (`GoldilocksLocalData`), over the shared run inte
   within the latency `6Δ`;
 * `goldilocks_healthyReadPoint`: the contract `HealthyReadPoint` from the three.
 
-The bundled premises give the finite reset record (`resetPremisesUpTo_of_premises`); the reset
+The bundled premises give the finite reset record; the reset
 and an honest proposal after its drain form a trace repair schedule and opening
 (`exists_repair_opening`). A ready read at or after the opening's update, strictly before its read
 cut, has its read context (`repair_read_context_at`) and reads its effective record

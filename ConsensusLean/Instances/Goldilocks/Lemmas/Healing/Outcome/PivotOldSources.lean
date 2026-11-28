@@ -6,19 +6,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: old sources at proposals
+/-! # Goldilocks Healing: old sources at proposals (import point)
 
-Prerequisites for the post-reset proposal pivot. -/
+No declarations: the module only re-exports its imports to its importers. -/
 
-namespace Consensus.Goldilocks.Healing
-
-open AC (ACParams Payload Vote)
-
-variable {sp : ACParams}
-  {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
-
-/-! ### Old sources -/
-
-end Consensus.Goldilocks.Healing
+end

@@ -14,9 +14,7 @@ public section
 
 * **Prefix comparison before a cut** (`origins_compatible_before`): with `VoteInv` at every cut
   `< k`, a high origin written before `k` is comparable with every high origin active before `k`
-  (written before `k`, or whose label's votes all precede `k`). The strict-cut form of the cut
-  step's `origins_compatible_prefix` (`Retention/Cut`, which imports the base-case module, so the
-  base case cannot import it).
+  (written before `k`, or whose label's votes all precede `k`).
 * **The entries of a chain** (`entry_at_height`): every height `1 ≤ h ≤ σ[C].h` has its entry on
   `C`'s chain; a chain that left an entry carries an honest attestation naming it
   (`honest_att_of_left`, the contrapositive of `Store.entry_kept`).

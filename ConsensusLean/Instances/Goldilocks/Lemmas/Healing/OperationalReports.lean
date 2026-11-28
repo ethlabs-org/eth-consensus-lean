@@ -74,68 +74,6 @@ variable {tr : GoldilocksTrace sp}
 
 namespace UpTo
 
-/-- Reset and drain timing put every bounded honest restart before the preceding
-slot's join threshold; no last-wake bound at GST is assumed. -/
-theorem restart_before_unanimous_slot {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {u : Nat} (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} (hy : y ∈ H) {r : Nat} (hr : tr.RestartAt y r)
-    (hrb : tr.time r ≤ b) : tr.time r ≤ sp.ts ((u : Int) - 1) := by
-  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
-  have ha0 : 0 ≤ a := by
-    have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
-    linarith [sp.toParams.hΔ]
-  rw [Healing.cutZ_eq] at hca
-  have hqa := (AC.ts_le_iff_le_slot sp ha0 _).1 hca.le
-  rw [Healing.drainTime_eq] at hR
-  have hAu := (AC.ts_le_iff sp).1 hR
-  apply (Healing.restart_le_before hp hy hr hrb).trans
-  apply (AC.ts_le_iff sp).2
-  push_cast at hqa hAu ⊢
-  omega
-
-/-- The drain puts the slot before it at or after `c_z = g' + 8Δ`, `g' = t_{slot(ḡ)+1}`: the
-AC base from `g'` serves it. -/
-theorem slotAfter_add_le_of_drain {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {u : Nat} (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat)) :
-    AC.gbar (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) + 4 * sp.Δ ≤ sp.ts u := by
-  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
-  have ha0 : 0 ≤ a := by
-    have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
-    linarith [sp.toParams.hΔ]
-  have hcz : Healing.cutZ sp.toParams g ≤ sp.ts u := by
-    rw [Healing.cutZ_eq] at hca ⊢
-    have hqa := (AC.ts_le_iff_le_slot sp ha0 _).1 hca.le
-    rw [Healing.drainTime_eq] at hR
-    have hAu := (AC.ts_le_iff sp).1 hR
-    apply (AC.ts_le_iff sp).2
-    push_cast at hqa hAu ⊢
-    omega
-  rw [Healing.gbar_slotAfter]
-  rw [Healing.cutZ_eq_slotAfter] at hcz
-  linarith [sp.toParams.hΔ]
-
-/-- Finite reset service supplies actual votes from every honest member of the slot's committee
-by the slot deadline. -/
-theorem honest_votes_in_slot {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (hub : sp.ts u + sp.Δ ≤ b) :
-    ∀ y ∈ H, y ∈ K.committee u → ∃ j e, AC.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧
-      tr.time j ≤ sp.ts u + sp.Δ := by
-  intro y hy hyK
-  refine AC.honest_votes_in_slot_before (Healing.healthy_base_of_reset_catch_before hp hc)
-    (slotAfter_add_le_of_drain hp hR) hub ?_ y hy hyK
-  intro y hy r hr hrs
-  exact restart_before_unanimous_slot hp hR hy
-    (Compose.projAC_restartAt.mp hrs) (hr.trans hub)
-
 /-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
 theorem deepest_of_subset {FGP : Type} {Φ : AC.Frm sp.n FGP}
     {S T : Set (AC.Blk sp.n FGP)} {D : AC.Blk sp.n FGP} (hT : AC.deepest Φ T = some D)
@@ -183,7 +121,7 @@ theorem candidate_after_fast_update {A : AC.ACState sp.n} {Phi : AC.Frm sp.n FGP
     by rw [hself]⟩, rfl, rfl, hage⟩
 
 /-- The exact fast candidate persists into an adjacent call with the same frame
-and timestamp; these are the equalities supplied by `update_toFG_calls`. -/
+and timestamp. -/
 theorem candidate_at_adjacent_call
     {y : Fin sp.n} {j u : Nat} {ell ell' : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}

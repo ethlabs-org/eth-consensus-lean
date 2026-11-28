@@ -41,37 +41,6 @@ variable {sp : ACParams}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 
-/-- The bundled premises of an interface run with a reset by its horizon form the finite reset
-record: the committee facts come from the run under collision freedom, the service fields are the
-same, and restarts after `ḡ` are excluded at every cut, so also at those by the horizon. -/
-theorem resetPremisesUpTo_of_premises {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
-    (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
-    (hdeep : ∀ D, sp.deepDepth = some D →
-      b ≤ cutZ sp.toParams g + 4 * D * sp.Δ ∨ Healing.Growing.HighSourceCover tr H g a b) :
-    Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold :=
-  have hrun := (goldilocksRunInterface_run_iff cm).mp hrun
-  { beta_le := hβ
-    run := hrun.1
-    committee_pos := hrun.2.1
-    committeeFacts := hrun.2.2.2.1 hp.noColl
-    committeeFaults := hp.committee
-    noColl := hp.noColl
-    sync := ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow,
-      hp.sync.hold_le⟩
-    awake := hp.awake
-    faults := hp.faults
-    reset := hr
-    reset_le := hab
-    snapshot := hp.snapshot
-    catchUp := hp.catchUp
-    noRestart := fun y k hy hk _ => hp.noRestart y k hy hk
-    timeoutDelay := hp.timeoutDelay
-    nonempty := hp.nonempty
-    deepCover := hdeep }
-
 /-- The time `t_{slot c_z + m}` is at most `c_z + 4mΔ`: `c_z ≥ 0` is at or after the start of its
 own slot. -/
 private theorem slotTime_cutZ_add_le (g : Time) (m : Nat) :

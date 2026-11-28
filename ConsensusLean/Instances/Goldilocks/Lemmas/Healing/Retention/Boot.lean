@@ -13,10 +13,10 @@ public section
 
 HBoot (`boot_caches`), the label bound, the carries
 from a finalized ancestor (`first_carry_of_finalized_anc`, `later_carry_of_finalized_anc`), half
-the committee (`half_committee`) and (R4) (`high_records`).
+the committee (`half_committee`).
 
 Proved here: the label bound, half the committee, both carries (relay after
-the GST, `Retention/Relay`), (R4) (`Retention/Records`) and HBoot's caches from G1.2 over the run
+the GST, `Retention/Relay`) and HBoot's caches from G1.2 over the run
 (`finalized_anc_of_height_lt_of_run`, `Retention/Finality`). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -297,42 +297,6 @@ theorem half_committee (hp : ResetPremises tr H K proposer dg g ΔF a) {s' : Nat
     sp.committeeSize ≤
       2 * {x' | x' ∈ H ∧ ∃ j e', AC.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard :=
   (hp.toUpTo tr H (le_max_left a (sp.ts s' + sp.Δ))).half_committee hs (le_max_right _ _)
-
-/-- **(R4), the high-record lemma.** From (R1): before `a` no honest attestation has height
-`≥ H_z + 1` (HR.1 (c)), and its finality pair is below its height pair (G0.5), so the high record
-coordinates start empty; every later record write at `h ≥ H_z + 1` names the entry at `h` of the
-writing source's chain, which lies on the chain of a high origin (R1, attestations), and the high
-origins are pairwise comparable (R1), so two named entries at one height are equal (entry constancy
-on a chain). Induction over the serialized honest client calls. -/
-theorem high_records (hp : ResetPremises tr H K proposer dg g ΔF a)
-    (hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B → HighOrigin tr H g x' i' j' B' →
-      Compatible (tr.HonestBlocks H) B B')
-    (hrows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
-      ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
-        (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
-        ((tr.state x i).fg.σ E.root).Th = E.root) :
-    ∀ h, HZ tr H g + 1 ≤ h →
-      {r | ∃ y ∈ H, ∃ i, (tr.state y i).record.target h = some r ∨
-        r ∈ (tr.state y i).record.timeout h ∨
-        (tr.state y i).record.lock h = some r}.Subsingleton := by
-  rintro h hh r₁ ⟨y₁, hy₁, i₁, h₁⟩ r₂ ⟨y₂, hy₂, i₂, h₂⟩
-  obtain ⟨x₁, i₁', j₁, B₁, ho₁, Z₁, hZB₁, rfl, z₁, hz₁, m₁, hZ₁, hZh₁, hZT₁⟩ :=
-    high_record_entry hp hrows hy₁ hh h₁
-  obtain ⟨x₂, i₂', j₂, B₂, ho₂, Z₂, hZB₂, rfl, z₂, hz₂, m₂, hZ₂, hZh₂, hZT₂⟩ :=
-    high_record_entry hp hrows hy₂ hh h₂
-  -- both entries lie below the later of the two comparable origins
-  obtain ⟨x, hx, i, C, hC, hZ₁C, hZ₂C⟩ : ∃ x ∈ H, ∃ i C, C ∈ (tr.state x i).fg.tree ∧
-      Anc (tr.HonestBlocks H) Z₁ C ∧ Anc (tr.HonestBlocks H) Z₂ C := by
-    obtain ⟨-, -, -, -, -, -, -, -, -, hB₁⟩ := highOrigin_mem hp ho₁
-    obtain ⟨-, -, -, -, -, -, -, -, -, hB₂⟩ := highOrigin_mem hp ho₂
-    rcases hcomp _ _ _ _ _ _ _ _ ho₁ ho₂ with h₁₂ | h₂₁
-    · exact ⟨x₂, ho₂.1, i₂', B₂, hB₂, hZB₁.trans h₁₂, hZB₂⟩
-    · exact ⟨x₁, ho₁.1, i₁', B₁, hB₁, hZB₁, hZB₂.trans h₂₁⟩
-  have hZ₁' := mem_tree_of_anc hp hx hZ₁C hC
-  have hZ₂' := mem_tree_of_anc hp hx hZ₂C hC
-  rw [σ_eq_run hp hz₁ hx hZ₁ hZ₁'] at hZh₁ hZT₁
-  rw [σ_eq_run hp hz₂ hx hZ₂ hZ₂'] at hZh₂ hZT₂
-  exact entry_root_eq hp hx hC hZ₁C hZ₂C (hZh₁.trans hZh₂.symm) hZT₁ hZT₂
 
 end Consensus.Goldilocks.Healing
 
