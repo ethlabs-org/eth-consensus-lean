@@ -371,128 +371,10 @@ private theorem root_ne_genesis_of_anc {ini : Fin sp.n → (goldilocksNode sp).S
   · exact hPg (by rw [← h]; exact hg)
   · simp [hcG.2.2] at hGp
 
-/-- **The fresh candidate yields an actual report**, followed by later honest proposal heads
-(`proposal_report_follow_at` over the shadow run). -/
-theorem proposal_report_follow_at
-    {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
-      sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
-      Anc (tr.HonestBlocksAt H) P R ∧
-      ∀ x, u + 3 ≤ x → x ≤ N → ∀ w c ellp, w ∈ H (tr.time c) →
-        tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
-        ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
-          some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
-  have hΔ := sp.toParams.hΔ
-  have hk := sp.two_le_k
-  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ sp.ts N + 2 * sp.Δ := by
-    have := hts hN
-    linarith only [this]
-  have huN := hts (show u ≤ N by omega)
-  have hun := Healing.Growing.Shadow.honest_vote_heads_eq_at
-    (hframe.mono le_rfl (by linarith only [huN, hΔ]))
-    hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN, hΔ, hmb])
-    hz hdes hP hPs hK
-  have hshort := hframe.mono (hts (by omega : s₀ ≤ u)) hT
-  have hjoin := fun w hw => Healing.Growing.joined_voteTime_of_warm_frame_at hrun hnr hm
-    (by omega : s₀ + 1 ≤ u) (y := w) hw
-  have hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u := by
-    have := hts (show s₀ ≤ u by omega)
-    linarith only [hm, this, hΔ]
-  obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
-    Healing.Growing.update_toFG_calls_of_awake_at hrun hnc hawake hnr hmargin
-      (hT.trans hmb) hcal hy hsign
-  have hyk : y ∈ H (tr.time k) := by
-    have hku : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
-    rwa [hku, ← show sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ by
-      rw [AC.ts_succ]; ring]
-  obtain ⟨hvi, hconf, hfast, hva⟩ := Healing.Growing.Shadow.unanimous_update_selection_primed_at'
-    hshort hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin (hT.trans hmb)
-    hz hdes hP hPs hun hK hyk hu
-  have hnv := Healing.Growing.Shadow.unanimous_update_no_veto_primed_at' hshort hrun hnc
-    hsvc hawake hf hcatch hnr hmargin hjoin (hT.trans hmb) hz hdes hP hPs hun hK hyk hu
-  obtain ⟨e, he, hlock⟩ := Healing.Growing.fresh_fast_lock_of_selection_at hrun hnc hyk hu
-    hvi.1 hconf hnv hfast hva
-  have hl : (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-    simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock
-  have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
-  have hPc := Healing.fresh_lock_toFG_candidate (hframes.symm ▸ hvi) (hframes.symm ▸ hva) hl he ht
-  have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
-    (hrun.time_nonneg (k + 1))
-  have hj : AC.joined sp (tr.projAC.state y (k + 1)) (tr.time (k + 1)) := by
-    have hs := Trace.upTo_state tr.projAC y (d := tr.time (k + 1)) (i := k + 1)
-      (fun q hq => hrun.time_mono hq.le)
-    unfold AC.joined
-    rcases AC.restartTime_stateU hr.localRun.toU hrun.vstart hyc (k + 1) with h | ⟨q, _, hq, h⟩
-    · rw [hs] at h
-      rw [h]; exact bot_le
-    · rw [hs] at h
-      rw [h]
-      apply WithBot.coe_le_coe.mpr
-      have hq0 := ((ACTrace.upTo_restartAt (tr := tr.projAC)).mp hq).2
-      have hqt := ((ACTrace.upTo_restartAt (tr := tr.projAC)).mp hq).1
-      have hqy := hrun.antitone hqt hyc
-      have hqg := hnr y q hqy (Compose.projAC_restartAt.mp hq0)
-      have hslot : sp.slot (tr.time (k + 1)) = u + 1 := by
-        rw [ht]
-        apply AC.slot_of_mem sp (u + 1)
-        all_goals simp only [ACParams.ts]; push_cast; linarith only [hΔ]
-      rw [hslot]
-      have hcast : ((u + 1 : Nat) : Int) - 1 = u := by omega
-      rw [hcast]
-      exact hqg.trans (by linarith only [hmargin, hΔ])
-  have hptime : tr.time kP = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
-  have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [hptime]; linarith only [hΔ]) hz
-  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hacc, _⟩ :=
-    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
-      (hnc.upTo _) hzk hdes hP' hPs
-  rw [← hdes] at hacc
-  have hPg := AC.accept_ne_genesisU sp
-    (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg kP))
-      (hnc.upTo _)).localRun.toU hzk hacc
-  obtain ⟨i, ellr, R, hR, htime, hPR⟩ := report_of_compatible_candidate_of_run_at
-    hrun hnc hyc hc hto hj hPg hPc
-    (Healing.Growing.toFG_candidates_compatible_at_call_at hrun hnc hyc hc hPc)
-  have hyi := hrun.antitone htime hyc
-  have hit := htime.trans ht.le
-  refine ⟨i, ellr, R, hyi, hR,
-    Healing.Growing.toFG_time_ge_of_ancestor_slot_at hrun hnc hyi hR hPs hPR,
-    hit, hPR, ?_⟩
-  intro x hx hNx w c ellp hw hcp hcall htc d pay hd
-  have hbound : tr.time i ≤ sp.ts N + sp.Δ := by
-    have htx := hts (show u + 2 ≤ N by omega)
-    have hstep := AC.ts_succ (u + 1) (sp := sp)
-    linarith only [hit, htx, hstep, hΔ]
-  exact toFG_later_proposal_head_within_at (e := 0)
-    (hframe.mono le_rfl (by linarith only [hΔ])) hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-    (by linarith only [hmb, hΔ]) hyi hR hPs hPR hbound (by simpa using hit) (by omega) hNx hw
-    hcp hcall htc hd hK
-
-/-- **The delayed report follow** at signing gap `G` (`proposal_report_follow_delayed_at` over the
-shadow run). -/
-theorem proposal_report_follow_delayed_at
-    {g ΔF b t₀ : Time} {s₀ u N M G : Nat} {isTop : Prop}
+/-- Follow one allowed signing time within the gap. Only the candidate acquisition differs
+between the warm update and a later signing. -/
+private theorem proposal_report_follow_of_sign_at
+    {g ΔF b t' : Time} {s₀ u N M G : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀)
       (max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
@@ -510,8 +392,10 @@ theorem proposal_report_follow_delayed_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign G t₀) (ht₀ : t₀ ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
+    (htl : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ t')
+    (htr : t' ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ)
+    (hpub' : sp.toParams.IsPublic t') (hs' : sign y t' = true)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
       sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ ∧
@@ -526,37 +410,59 @@ theorem proposal_report_follow_delayed_at
   have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := AC.ts_succ a
   set T := sp.ts (u + 1 : Nat) + 2 * sp.Δ with hTdef
   have hT : T = sp.ts u + 6 * sp.Δ := by rw [hTdef, hstep]; ring
-  have hG0 : (0 : Time) ≤ (G : Time) * sp.Δ := by positivity
-  have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
-  have hpub : sp.toParams.IsPublic T := ⟨4 * (u : Int) + 6, by
-    rw [hT]; simp only [ACParams.ts]; ring⟩
-  obtain ⟨t', htl, htr, hpub', hs'⟩ := hgap.of_public (y := y) ht₀ hpub
   have hyt' : y ∈ H t' := hrun.antitone htr hy
   have hsu := hts (show s₀ ≤ u by omega)
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hm1 := le_max_left (sp.ts N + 2 * sp.Δ) (T + (G : Time) * sp.Δ)
   have hm2 := le_max_right (sp.ts N + 2 * sp.Δ) (T + (G : Time) * sp.Δ)
-  rcases htl.eq_or_lt with heq | hlt
-  · -- the calendar lets the node sign at the warm update itself
-    rw [← heq] at hs'
-    obtain ⟨i, ell, R, hyi, hR, hlo, hhi, hPR, hheads⟩ :=
-      proposal_report_follow_at (hframe.mono le_rfl hm1) hrun hnc hsvc hawake hf hcatch hnr hm
-        hwarm hN (hm1.trans hmb) hz hdes hP hPs hcal (hrun.antitone (by linarith) hy) hs' hK
-    exact ⟨i, ell, R, hyi, hR, hlo, hhi.trans (by linarith), hPR,
-      fun x hx => hheads x (by omega)⟩
-  -- a later signing time: a renewed fast lock above `P` is a candidate there
-  have ht'b : t' ≤ b := htr.trans (hm2.trans hmb)
-  obtain ⟨i, ell, hc, hcall, hti, hjoin⟩ := toFG_call_of_sign_at hrun hnc hnr hcal hyt' hgu
-    (by rw [← hT]; exact htl) hpub' (hawake y t' hyt' (by linarith) ht'b) hs'
-  have hyi : y ∈ H (tr.time i) := by rw [hti]; exact hyt'
-  have huN' : sp.ts u ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast (show u ≤ N by omega))
+  have huN := hts (show u ≤ N by omega)
   have hun := Healing.Growing.Shadow.honest_vote_heads_eq_at
-    (hframe.mono le_rfl (by linarith only [huN', hΔ, hm1]))
-    hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN', hΔ, hm1, hmb]) hz hdes
-    hP hPs hK
-  obtain ⟨B, hB, hPB⟩ := Healing.Growing.toFG_candidate_pre_within_primed_at' hframe hrun hnc hsvc
-    hawake hf hcatch hnr hm hwarm hmb hz hdes hP hPs hun hK hyi hc (by rw [hti]; exact hlt)
-    (by rw [hti]; exact htr.trans hm2)
+    (hframe.mono le_rfl (by linarith only [huN, hΔ, hm1]))
+    hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN, hΔ, hm1, hmb])
+    hz hdes hP hPs hK
+  obtain ⟨i, ell, hc, hcall, hti, hjoin, B, hB, hPB⟩ : ∃ i ell,
+      tr.projAC.CallAt y i ell ∧ ell.call = .toFG ∧ tr.time i = t' ∧
+      AC.joined sp (tr.projAC.state y i) (tr.time i) ∧
+      ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
+        Anc (tr.HonestBlocksAt H) P B := by
+    rcases htl.eq_or_lt with heq | hlt
+    · have hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u := by linarith
+      have hTN : T ≤ sp.ts N + 2 * sp.Δ := add_le_add (hts hN) le_rfl
+      have hTb := hTN.trans (hm1.trans hmb)
+      have hshort := hframe.mono hsu (hTN.trans hm1)
+      have hk := sp.two_le_k
+      have hj := fun w hw => Healing.Growing.joined_voteTime_of_warm_frame_at hrun hnr hm
+        (by omega : s₀ + 1 ≤ u) (y := w) hw
+      have hyT : y ∈ H T := heq.symm ▸ hyt'
+      have hsT : sign y T = true := heq.symm ▸ hs'
+      obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
+        Healing.Growing.update_toFG_calls_of_awake_at hrun hnc hawake hnr hmargin
+          hTb hcal hyT hsT
+      have hku : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
+      have hyk : y ∈ H (tr.time k) := by rw [hku, ← hT]; exact hyT
+      obtain ⟨hvi, hconf, hfast, hva⟩ :=
+        Healing.Growing.Shadow.unanimous_update_selection_primed_at'
+          hshort hrun hnc hsvc hawake hf hcatch hnr hmargin hj hTb hz hdes hP hPs hun hK hyk hu
+      have hnv := Healing.Growing.Shadow.unanimous_update_no_veto_primed_at' hshort hrun hnc
+        hsvc hawake hf hcatch hnr hmargin hj hTb hz hdes hP hPs hun hK hyk hu
+      obtain ⟨e, he, hlock⟩ := Healing.Growing.fresh_fast_lock_of_selection_at hrun hnc hyk hu
+        hvi.1 hconf hnv hfast hva
+      have hl : (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
+        simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock
+      have hj' := Healing.Growing.joined_of_restart_le_at hrun hnc hyT
+        (by rw [hT]; linarith only [hΔ] : sp.ts u + 4 * sp.Δ ≤ T)
+        (fun r _ hyr hrs => (hnr y r hyr hrs).trans hgu) ht
+      exact ⟨k + 1, ell', hc, hto, ht.trans heq, hj', P,
+        Healing.fresh_lock_toFG_candidate (hframes.symm ▸ hvi) (hframes.symm ▸ hva) hl he ht,
+        .refl⟩
+    · have ht'b : t' ≤ b := htr.trans (hm2.trans hmb)
+      obtain ⟨i, ell, hc, hcall, hti, hjoin⟩ := toFG_call_of_sign_at hrun hnc hnr hcal hyt' hgu
+        (by rw [← hT]; exact htl) hpub' (hawake y t' hyt' (by linarith) ht'b) hs'
+      exact ⟨i, ell, hc, hcall, hti, hjoin,
+        Healing.Growing.toFG_candidate_pre_within_primed_at' hframe hrun hnc hsvc
+          hawake hf hcatch hnr hm hwarm hmb hz hdes hP hPs hun hK (hti ▸ hyt') hc
+          (by rw [hti]; exact hlt) (by rw [hti]; exact htr.trans hm2)⟩
+  have hyi : y ∈ H (tr.time i) := hti ▸ hyt'
   -- `P` is not genesis: it was accepted by its honest proposer
   have hptime : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
@@ -597,6 +503,80 @@ theorem proposal_report_follow_delayed_at
   exact toFG_later_proposal_head_within_at (e := (G + 3) / 4) (hframe.mono le_rfl hNΔ) hrun
     hnc hsvc hawake hf hcatch hnr hm hwarm (hNΔ.trans hmb) (hrun.antitone hrt hyi) hR hPs hPR
     (by linarith) (by linarith) (by omega) hxN hw hcp hcallp htc hd hK
+
+private theorem warm_signing_public (u : Nat) :
+    sp.toParams.IsPublic (sp.ts (u + 1 : Nat) + 2 * sp.Δ) :=
+  ⟨4 * (u : Int) + 6, by rw [AC.ts_succ]; simp only [ACParams.ts]; ring⟩
+
+/-- The report and subsequent proposal heads when the calendar permits signing at the update. -/
+theorem proposal_report_follow_at
+    {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
+    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
+      sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
+      Anc (tr.HonestBlocksAt H) P R ∧
+      ∀ x, u + 3 ≤ x → x ≤ N → ∀ w c ellp, w ∈ H (tr.time c) →
+        tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
+        ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
+          some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
+  have hle : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ sp.ts N + 2 * sp.Δ :=
+    add_le_add ((AC.ts_le_iff sp).2 (by exact_mod_cast hN)) le_rfl
+  simpa only [Nat.cast_zero, zero_mul, add_zero, Nat.reduceDiv] using
+    proposal_report_follow_of_sign_at (G := 0)
+      (by simpa only [Nat.cast_zero, zero_mul, add_zero, max_eq_left hle] using hframe)
+      hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN
+      (by simpa only [Nat.cast_zero, zero_mul, add_zero, max_eq_left hle] using hmb)
+      hz hdes hP hPs hcal (by simpa using hy) le_rfl (by simp) (warm_signing_public u) hsign hK
+
+/-- The report and subsequent proposal heads under a bounded signing gap. -/
+theorem proposal_report_follow_delayed_at
+    {g ΔF b t₀ : Time} {s₀ u N M G : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀)
+      (max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
+      M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + 1 ≤ N)
+    (hmb : max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ) ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign G t₀) (ht₀ : t₀ ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ)
+    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
+      sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ ∧
+      Anc (tr.HonestBlocksAt H) P R ∧
+      ∀ x, u + 3 + (G + 3) / 4 ≤ x → x ≤ N → ∀ w c ellp, w ∈ H (tr.time c) →
+        tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
+        ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
+          some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
+  obtain ⟨t', htl, htr, hpub, hs⟩ := hgap.of_public (y := y) ht₀ (warm_signing_public u)
+  exact proposal_report_follow_of_sign_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
+    hN hmb hz hdes hP hPs hcal hy htl htr hpub hs hK
 
 end Consensus.Goldilocks.Shadow.PU.Growing
 
