@@ -1,7 +1,7 @@
 module
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LockLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
@@ -169,7 +169,10 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
     rw [rc.frame_of_projAC_at hya ha₀] at hAw
     have hrootP := hdomP.2.1.mono hPhi.2
     rw [rc.frame_of_projAC_at hy hc.1] at hrootP
-    exact hBA.trans (hAw.trans ((fcRoot_mono_at' hrun hy hai.le).trans hrootP))
+    have hroot := hrun.toLocalRun.finalized_mono_on_prefix (hrun.time_nonneg i) hy hai.le
+      (fun k hk => hrun.time_mono hk.le)
+    rw [Node.frame_eq, Store.toFrame_fcRoot] at hAw hrootP
+    exact hBA.trans (hAw.trans (hroot.trans hrootP))
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   have hearly : tr.time a < sp.ts l.slot + 2 * sp.Δ := by
     obtain ⟨ell', A', hp, hsl, hsel, -⟩ := hop
