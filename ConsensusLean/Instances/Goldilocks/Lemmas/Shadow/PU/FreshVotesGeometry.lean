@@ -6,9 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.D
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
@@ -105,20 +104,19 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
     (hBX : B.parent = some X.root) (hne : B ≠ P)
     (hB : B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  have rc := hrun.toCore
-  have hac := rc.acRun hnc
-  have hri := (hac.upTo (rc.time_nonneg i)).localRun
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hri := (hac.upTo (hrun.time_nonneg i)).localRun
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hPhi := AC.frameIn_of_callAt hri hy hci
-  have hz' : z ∈ H (tr.time ip) := rc.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
-  have hrp := (hac.upTo (rc.time_nonneg ip)).localRun
+  have hz' : z ∈ H (tr.time ip) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
+  have hrp := (hac.upTo (hrun.time_nonneg ip)).localRun
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
   have hPhip := AC.frameIn_of_callAt hrp hz' hcp'
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := AC.ts_succ s
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (AC.ts_le_iff_le_slot sp (rc.time_nonneg i) _).2 (by
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
       have hs := (AC.castAt_specU hri.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
@@ -128,7 +126,7 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
   have hiph : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
     rw [hti]; linarith only [sp.toParams.hΔ]
   have hvQ := Healing.Growing.proposal_parent_viable_full_frame_at hrun hnc hz'
-    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg ip) (hti ▸ hpb))) hcp hcall
+    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg ip) (hti ▸ hpb))) hcp hcall
     (s := s + 1) (by rw [sp.slotTime_eq]; simpa only [ACParams.ts] using hti) hpay
   have hQt := hPhip.1.viableHeads_subset hvQ
   obtain ⟨⟨hBt, _⟩, _, W, hWV, hvW, hBW⟩ := hB
@@ -154,13 +152,13 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
           change tr.time q < AC.freeze sp (s + 1) at ht
           simpa only [AC.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
         exact frame_relay_before_at hrun hnc hsvc hcatch
-          (rc.antitone (rc.time_mono hqi) hy) hz'
-          (fun r hr' hrs => hnr _ r (rc.antitone (rc.time_mono hr') hz') hrs)
+          (hrun.antitone (hrun.time_mono hqi) hy) hz'
+          (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hz') hrs)
           ((Trace.upTo_callAt _).mp hcq).2 hcp hWq
           (by rw [hti, hts]; linarith only [hm, sp.toParams.hΔ])
           (by rw [hti, hts]; linarith only [hqt]) hFW
       have hv' : W ∈ ellp.frame.viableHeads := viableHead_transfer_call_at hframe hrun hnc hz' hy
-        (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg ip) (hti ▸ hpb)))
+        (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg ip) (hti ▸ hpb)))
         hipl hiph hil hhigh hcp hc.1 hvW hWp
       exact ⟨W, hWp, hv', hBW.mono hPhi.2⟩
     · obtain rfl := proposal_frame_unique_at hrun hnc hz hdesignated hactual hPs

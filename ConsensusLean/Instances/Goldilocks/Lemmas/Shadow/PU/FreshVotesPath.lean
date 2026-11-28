@@ -4,7 +4,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalPath
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -65,18 +64,17 @@ theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
       {B | B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some X.root ∧ AC.headEligible sp ell.frame (tr.time i)
           (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
-  have rc := hrun.toCore
-  have hac := rc.acRun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hri := (hac.upTo (rc.time_nonneg i)).localRun
+  have hri := (hac.upTo (hrun.time_nonneg i)).localRun
   have hPhi := AC.frameIn_of_callAt hri hy hci
-  have hz' : z ∈ H (tr.time ip) := rc.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
+  have hz' : z ∈ H (tr.time ip) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
-  have hPhip := AC.frameIn_of_callAt (hac.upTo (rc.time_nonneg ip)).localRun hz' hcp'
+  have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (AC.ts_le_iff_le_slot sp (rc.time_nonneg i) _).2 (by
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
       have hs := (AC.castAt_specU hri.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
@@ -89,7 +87,7 @@ theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
     have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
       rw [hti]; linarith only [sp.toParams.hΔ]
     exact viableHead_transfer_call_at hframe hrun hnc hz' hy
-      (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg ip) (hti ▸ hipb)))
+      (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg ip) (hti ▸ hipb)))
       hiplo hiphi (hiplo.trans (hti ▸ hlo)) hhigh hcp hc.1 hXv hXt
   exact suffix_best_of_proposal_walk hac.localRun.coherent hPhip.1 hPhip.2 hPhi.1 hPhi.2
     (AC.proposal_slot (tr := tr.projAC) hti)
@@ -144,26 +142,25 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
       {B | B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some P.root ∧ AC.headEligible sp ell.frame (tr.time i)
           (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
-  have rc := hrun.toCore
-  have hac := rc.acRun hnc
-  have hri := hac.upTo (rc.time_nonneg i)
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hri := hac.upTo (hrun.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hPhi := AC.frameIn_of_callAt hri.localRun hy hci
-  have hz' : z ∈ H (tr.time ip) := rc.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
+  have hz' : z ∈ H (tr.time ip) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
-  have hPhip := AC.frameIn_of_callAt (hac.upTo (rc.time_nonneg ip)).localRun hz' hcp'
+  have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
   have hslot : sp.slot (tr.time ip) = s + 1 := AC.proposal_slot (tr := tr.projAC) hti
   obtain ⟨hst, hroot, hw⟩ := Healing.Growing.proposal_walk_end_at hrun hnc hz' hcp hpay
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (AC.ts_le_iff_le_slot sp (rc.time_nonneg i) _).2 (by
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
       have hs := (AC.castAt_specU hri.localRun.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
   have hipb : tr.time ip ≤ b := hti ▸ hlo.trans hib
   have hvQ := Healing.Growing.proposal_parent_viable_full_frame_at hrun hnc hz'
-    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg ip) hipb)) hcp hcall
+    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg ip) hipb)) hcp hcall
     (s := s + 1) (by rw [sp.slotTime_eq]; simpa only [ACParams.ts] using hti) hpay
   have hQt := hPhip.1.viableHeads_subset hvQ
   have hQP : Anc (tr.HonestBlocksAt H) d.head P :=
@@ -175,7 +172,7 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
   have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
     rw [hti]; linarith only [sp.toParams.hΔ]
   have hvQy := viableHead_transfer_call_at hframe hrun hnc hy hz'
-    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg i) hib))
+    (sp.toParams.fg.faults_lt_quorum_margin (hf _ (hrun.time_nonneg i) hib))
     (hiplo.trans (hti ▸ hlo)) hhigh hiplo hiphi hc.1 hcp hvQ hQy
   have hng : ∀ B ∈ ell.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
     intro B hB hpar hg
@@ -184,7 +181,7 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
     exact hpar (he ▸ hGp)
   have hv := Healing.Growing.proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
     hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hK
-  have hpH : P.proposer ∈ H (tr.time i) := hactual.2.1 ▸ rc.antitone hhigh hz
+  have hpH : P.proposer ∈ H (tr.time i) := hactual.2.1 ▸ hrun.antitone hhigh hz
   have hcore := AC.stop_core hri hy ⟨hci, hc.2⟩ hes hPs hparent hpH hng hPv
   change _ at hcore
   simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hcore
@@ -233,16 +230,15 @@ theorem vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s M : Nat}
       (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
-  have rc := hrun.toCore
-  have hac := rc.acRun hnc
-  have hri := (hac.upTo (rc.time_nonneg i)).localRun
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hri := (hac.upTo (hrun.time_nonneg i)).localRun
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hPhi := AC.frameIn_of_callAt hri hy hci
-  have hz' : z ∈ H (tr.time ip) := rc.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
+  have hz' : z ∈ H (tr.time ip) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
-  have hPhip := AC.frameIn_of_callAt (hac.upTo (rc.time_nonneg ip)).localRun hz' hcp'
+  have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
   have hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot d.head :=
     (Anc.mono hPhi.2 ((AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)).trans haX)).trans
       (hXQ.mono hPhip.2)
@@ -295,15 +291,14 @@ theorem vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s M : Nat}
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
         (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
-  have rc := hrun.toCore
-  have hac := rc.acRun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hPhi := AC.frameIn_of_callAt (hac.upTo (rc.time_nonneg i)).localRun hy hci
-  have hz' : z ∈ H (tr.time ip) := rc.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
+  have hPhi := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg i)).localRun hy hci
+  have hz' : z ∈ H (tr.time ip) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hz
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
-  have hPhip := AC.frameIn_of_callAt (hac.upTo (rc.time_nonneg ip)).localRun hz' hcp'
+  have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
   rcases anchor_on_proposal_path hac.localRun.coherent hPhip.1 hPhip.2 hPhi.1 hPhi.2
       (Healing.Growing.proposal_walk_end_at hrun hnc hz' hcp hpay) hPv.1.1 hparent haP hprefix with
     he | ⟨X, hSX, hXQ, haX, hXE⟩
