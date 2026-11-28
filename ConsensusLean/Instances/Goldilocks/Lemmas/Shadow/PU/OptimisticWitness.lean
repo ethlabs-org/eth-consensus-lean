@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
@@ -290,8 +291,8 @@ private theorem proposal_root_viable_at
     (Store.accepted_tree_with hu hr.reachableWith).2.1 subset_rfl subset_rfl hf
     (Healing.Growing.Shadow.held_atts_safe_at hrun hnc ht hb hy ht hb hy le_rfl le_rfl)
     hQ hheight.ge
-  rw [frame_of_projAC_at hrun hy hc, Node.frame_eq]
-  have hPhi := Store.frameOK_toFrame hr.puSnapshot
+  rw [Compose.Growing.frame_of_projAC_at hrun hy hc, Node.frame_eq]
+  have hPhi := (Store.frame_realization _ _ _ _ hr).1
   refine ⟨hPhi.fcRoot_mem, Relation.ReflTransGen.refl, Q, ?_, ?_, ?_⟩
   · rw [Store.toFrame_tree]; exact ⟨hQ, hFQ⟩
   · rw [Store.toFrame_viableHeads]
@@ -336,7 +337,7 @@ theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have ht0 := hrun.time_nonneg i
   have hib : tr.time i ≤ b := hhi.trans hmb
   have hFX' : Anc (tr.HonestBlocksAt H) ell.frame.F X := by
-    rwa [frame_of_projAC_at hrun hy hcast.1]
+    rwa [Compose.Growing.frame_of_projAC_at hrun hy hcast.1]
   have hcarry := carry_of_service_senders hrun hnc hsvc hcatch hm hy hcast hs
     (CV := CV) fun v hv => by
       obtain ⟨hvs, ⟨k, hk, hsend, hlo, hhi'⟩, Hv, -, hroot, hanc, hacc⟩ :=
@@ -382,7 +383,7 @@ theorem optimistic_next_votes_of_early_witness_at {K : AC.CommitteeDict sp.n}
   have hwit := early_witness_viable hrun hframe hw halo hahi hcw hvQ
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     have h := hQw
-    rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
+    rw [Compose.Growing.frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
     exact h.1
   exact optimistic_next_votes_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hm hmb hx hopt hXD
     hw hat hcw hQw (Healing.windowWitness_of_frameWindow hrun hnc hframe hw hQ hwit)
@@ -440,7 +441,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hdp : (AC.acProposal sp ((tr.projAC.upTo (tr.time i)).state y i) ell.frame
       ((tr.projAC.upTo (tr.time i)).time i)).2 = some (d, pay) := by rw [hst]; exact hd
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hcp
-  have hfr := frame_of_projAC_at hrun hy hc
+  have hfr := Compose.Growing.frame_of_projAC_at hrun hy hc
   have hFF : ell.frame.F = (tr.state y i).fg.F := by
     rw [hfr, Node.frame_eq, Store.toFrame_F]
   have hrsP : ∀ k ≤ i, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
@@ -477,7 +478,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
       show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at ht
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := fun k hk hrk =>
     hrsP k hk (ACTrace.upTo_restartAt.mpr ⟨hmono hk, hrk⟩)
-  have hfrw := frame_of_projAC_at hrun hw hcw
+  have hfrw := Compose.Growing.frame_of_projAC_at hrun hw hcw
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     rw [hfrw, Node.frame_eq, Store.toFrame_tree] at hQw
     exact hQw.1
@@ -621,7 +622,7 @@ theorem optimistic_next_proposal_of_early_witness_at {K : AC.CommitteeDict sp.n}
   have hwit := early_witness_viable hrun hframe hw halo hahi hcw hvQ
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     have h := hQw
-    rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
+    rw [Compose.Growing.frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
     exact h.1
   exact optimistic_next_proposal_of_windowWitness_at hrun hnc hsvc _hawake hf hcatch hm hmb hx
     hopt hXD
@@ -714,7 +715,7 @@ theorem optimistic_later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
   have hwit := early_witness_viable hrun hframe hw halo hahi hcw hvQ
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     have h := hQw
-    rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
+    rw [Compose.Growing.frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
     exact h.1
   exact optimistic_later_heads_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr hm hmb
     hx hopt hXD hw hat hcw hQw (Healing.windowWitness_of_frameWindow hrun hnc hframe hw hQ hwit)

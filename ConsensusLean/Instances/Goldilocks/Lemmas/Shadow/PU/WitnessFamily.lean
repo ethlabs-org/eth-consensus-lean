@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
@@ -351,7 +352,7 @@ theorem witness_frame_of_held
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
-  rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc]
+  rw [Compose.Growing.frame_of_projAC_at hrun hy hc]
   rcases AC.anc_total hU hFQ hXQ with hFX | hXF
   swap
   · exact Or.inl (by rwa [Node.frame_eq, Store.toFrame_F])
