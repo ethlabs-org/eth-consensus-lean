@@ -71,13 +71,6 @@ theorem lt_drainTime {a : Time} (ha0 : 0 ≤ a) : a < drainTime sp a := by
     (AC.ts_le_iff sp).2 (by push_cast; omega)
   exact ha.trans_le hle
 
-/-- A slot that starts at or after the drain time of a reset after `c_z` is after the slot of
-`ḡ`. -/
-theorem slot_gbar_lt_of_drainTime_le {g a : Time} {u : Nat} (hca : cutZ sp.toParams g < a)
-    (hR : drainTime sp a ≤ sp.ts u) : sp.slot (AC.gbar g) + 1 ≤ u := by
-  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, AC.gbar_nonneg g, sp.toParams.hΔ]
-  exact slot_gbar_lt_of_cutZ_le (by linarith [lt_drainTime (sp := sp) ha0])
-
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF a : Time}
@@ -113,8 +106,6 @@ theorem drain_stored_lock_label {l : AC.Lock} {t : Time}
   have hs := (AC.ts_le_iff_le_slot sp h0 _).1 ht
   rw [cleanLabel_eq]
   omega
-
-/-! ### The clean fast transfer -/
 
 /-! ### The clean slow transfer -/
 
@@ -238,173 +229,6 @@ theorem ResetPremisesUpTo.result_supporter {b : Time}
   exact AC.result_honest_supporter_of_participants sp
     (Compose.goldilocks_ac_projection_from hp.run hp.noColl) hx ⟨ell, hu, hconf, hCV⟩
     hBC hparts.le
-
-/-- Finite recent-result induction. Current vote domains and first-successor stored-lock
-comparisons are the explicit inputs `hdomain` and `hstored`, rather than whole-history
-invariants. -/
-theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s)
-    (hdomain : ∀ y ∈ H, ∀ i ell e, AC.CastAt tr.projAC y i ell e →
-      tr.time i ≤ b → s < e.msg.slot →
-      (∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
-        s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B) →
-      Anc (tr.HonestBlocks H) B ell.frame.F ∨
-        B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-    (hstored : ∀ y ∈ H, ∀ i ell e, AC.CastAt tr.projAC y i ell e →
-      tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,
-        sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
-        ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block → Compatible (tr.HonestBlocks H) Y B) :
-    ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, AC.CastAt tr.projAC y i ell e →
-      s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
-  have hr := hac.localRun
-  have hsync := sync_window_of_service hp.run hp.sync
-  have hcatch := catch_window_of_run (b := b) hp.run hc
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hgs : AC.gbar g ≤ sp.ts s := by have := lt_cutZ sp g; linarith
-  have hs1 := slot_gbar_lt_of_cutZ_le hts
-  intro i
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    intro hib y hy ell e hcast hsi
-    have hprior : ∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
-        s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B := by
-      rintro z hz q hqi e' ⟨ell', hc'⟩ hse
-      exact ih q hqi ((hp.run.time_mono hqi.le).trans hib) z hz ell' e' hc' hse
-    obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcast.1
-    rcases hdomain y hy i ell e hcast hib hsi hprior with hBF | hv
-    · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr
-        hp.run.vstart hy hcast
-      exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
-    have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
-    by_cases hfirst : e.msg.slot = s + 1
-    · have carry : AC.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-        apply Compose.carryAt_of_writer_window_before hr hp.run.vstart
-          (AC.serviceWindowBefore_of_sync hsync) hgs hcatch (by linarith only [hΔ, hgs]) hx hy
-          hcast hfirst hib
-        intro v hv
-        obtain ⟨hvs, hw, D, hD, hDr, hCD, ha⟩ := Compose.result_writer hr
-          hp.run.vstart hx hres v hv
-        exact ⟨hvs, hw, D, hD, hDr, hFB.trans (hBC.trans hCD), ha⟩
-      refine AC.result_prefix_vote_extends_of_stored hac K hp.hP hx hy
-        (hp.cs2 (by clear * - hs1; omega)) hres hBC hcast
-        hfirst carry ?_ (hstored y hy i ell e hcast hib hfirst)
-        (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by clear * - hslot; omega)) ?_
-      · rw [← hfirst]; exact Or.inl hv
-      · obtain ⟨ellX, hupd, -⟩ := hres
-        exact AC.writer_merged_window_before hac (AC.serviceWindowBefore_of_sync hsync)
-          hx hgs hupd hrb hy hcast hfirst
-    · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
-      have hsm : s < m := by omega
-      have hone : ∀ v ∈ Compose.honestVotes tr H m,
-          AC.CarryAt tr.projAC (tr.HonestBlocks H) y i e m {v} := by
-        rintro v ⟨z, hz, q, e', ⟨ell', hc'⟩, rfl, hslot⟩
-        have hqi : q < i := by
-          by_contra hn
-          have := AC.slot_mono sp (hr.time_nonneg i) (hr.time_mono (Nat.le_of_not_gt hn))
-          have := (AC.castAt_specU hr.toU hz hc').2.1
-          have := (AC.castAt_specU hr.toU hy hcast).2.1
-          omega
-        obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by
-            clear * - hsm hslot; omega)
-        obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr
-            hp.run.vstart hz hc'
-        obtain rfl : Hd = Hv := hr.coherent.1 ((AC.frameIn_of_callAt hr hz hc'.1).2 hHd)
-          hHv (hHdr.trans hHvr.symm)
-        have hgm := hgs.trans ((AC.ts_le_iff sp).mpr (show (s : Int) ≤ m by clear * - hsm; omega))
-        apply Compose.carryAt_of_writer_window_before hr hp.run.vstart
-          (AC.serviceWindowBefore_of_sync hsync) hgm hcatch (by linarith only [hΔ, hgm]) hz hy
-          hcast hm hib
-        rintro v rfl
-        have ht : tr.projAC.time q < sp.ts m + 2 * sp.Δ := by
-          rw [hslot] at hqt; linarith only [hΔ, hqt]
-        refine ⟨hslot, ⟨q, ⟨ell', hc'.1, Or.inl ⟨e', hc'.2, rfl⟩⟩,
-          (AC.ts_le_iff_le_slot sp (hr.time_nonneg q) m).mpr
-            (by rw [← (AC.castAt_specU hr.toU hz hc').2.1, hslot]), ht⟩,
-          Hd, hHv, hHvr, hFB.trans hBHv, ?_⟩
-        rcases Compose.frame_anc_acceptedU hr.toU hz q ell' hc'.1 Hd hHd Hd .refl
-            with hg | ⟨k, hk, ha⟩
-        · exact Or.inl hg
-        · exact Or.inr ⟨k, ha, (hr.time_mono hk).trans_lt ht⟩
-      have hslot := (AC.castAt_specU hr.toU hy hcast).2.1
-      have htime : sp.ts (m + 1 : Nat) ≤ tr.time i :=
-        (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by rw [← hslot, hm])
-      have hmt : sp.ts m + sp.Δ ≤ b := by
-        simp only [AC.ACParams.ts] at htime ⊢; push_cast at htime; linarith only [hΔ, hib, htime]
-      have hcut : cutZ sp.toParams g ≤ tr.time i := hts.trans
-        (((AC.ts_le_iff sp).mpr (by clear * - hsm; omega)).trans htime)
-      refine AC.next_vote_extends_before hac K hp.hP hp.hT hp.hsize hy hcast hm
-        (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by
-            rcases hslot with h | h <;> (clear * - hsm h; omega)))
-        (hp.half_committee (hts.trans ((AC.ts_le_iff sp).mpr (by clear * - hsm; omega))) hmt)
-        ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_specU hr.toU hy hcast).2.2.1,
-          fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
-        (hp.faultBoundK_late (by clear * - hs1 hsm; omega) hcut hib)
-        (hp.cs2 (by clear * - hs1 hsm; omega))
-        (hp.sync.syncAC hp.run ((AC.le_gbar g).trans
-          (hgs.trans ((AC.ts_le_iff sp).mpr (by clear * - hsm; omega))))) ?_
-      rw [← hm]
-      exact Or.inl hv
-
-/-- A raw writer's target is frame-held at a later slot start once finalization is below it.
-Old acceptances use Catch; fresh acceptances use Sync and the healthy restart bound. -/
-theorem raw_writer_held_at_slot_start
-    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
-    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
-    (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
-    (hBC : Anc (tr.HonestBlocks H) B C) (hs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    (hsu : s < u) {ell : ACLabel (goldilocksNode sp)}
-    (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u)
-    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hstep : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-    rw [hti]
-    have ht := (AC.ts_le_iff sp).mpr (show (s : Int) + 1 ≤ u by clear * - hsu; omega)
-    simp only [AC.ACParams.ts] at ht ⊢
-    linarith
-  obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source hp.committee_pos hr hp.run.vstart hx hwriter hBC
-  all_goals obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
-  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH _ _ hci
-    have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
-    subst D
-    have hGD : G ∈ ell.frame.tree := by
-      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp (hFB.trans hBD) with he | ⟨c, _, hpar⟩
-      · exact he ▸ hPhi.rooted.1
-      · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
-    exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hGD hBD hFB
-  · have hFD := hFB.trans hBD
-    have hDt : D ∈ ell.frame.tree := by
-      by_cases hg : AC.gbar g ≤ tr.time q
-      · have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.time q) < sp.ts s + 3 * sp.Δ := by
-          intro k hk
-          have hd := Compose.ac_deadline_le_of_restarts
-            (T := tr.projAC) (c := k)
-            (fun k' _ hr' => restart_le hp hpH (Compose.projAC_restartAt.mp hr')) (tr.time q)
-          have ht : max (tr.time q) (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) <
-              sp.ts s + 2 * sp.Δ := by
-            apply max_lt hqt
-            linarith only [hs, hΔ, slotAfter_le (sp := sp) g]
-          change _ ≤ max (tr.time q) (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) + sp.Δ at hd
-          linarith only [ht, hd]
-        obtain ⟨k, hki, hak, _⟩ := ((ResetService.of_gst tr H hp.healthy.1 (b := 0)).syncAC
-          hp.run (hi := tr.time q) (AC.le_gbar g)).2 x hx q D hq hg le_rfl
-          p hpH i ell hci (by
-            have := hdl i le_rfl
-            change tr.projAC.deadline p i (tr.time q) ≤ tr.time i
-            linarith only [hstep, this, hΔ]) hFD
-        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
-      · obtain ⟨k, hki, hak, _⟩ := projection_catch_of_run hp.run hc x hx q D hq (not_le.mp hg)
-          p hpH i ell hci
-          (by change _ ≤ tr.time i; linarith only [hs, hΔ, hstep]) hFD
-        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
-    exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
 
 /-- Guarded receipt of an actual acceptance: old sources use Catch, newer ones use Sync.
 The receiver's finalization bound is required; archival heldness alone is not frame membership. -/

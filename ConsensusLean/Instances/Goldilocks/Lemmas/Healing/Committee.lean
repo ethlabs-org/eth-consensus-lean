@@ -128,13 +128,6 @@ theorem gbar_lt_slotAfter (g : Time) : gbar g < sp.ts (sp.slot (gbar g) + 1 : Na
   push_cast at this
   omega
 
-/-- `g' ≤ ḡ + 4Δ`. -/
-theorem slotAfter_le (g : Time) : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ gbar g + 4 * sp.Δ := by
-  have h := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (gbar g) : Nat)).2 le_rfl
-  have : sp.ts (sp.slot (gbar g) + 1 : Nat) = sp.ts (sp.slot (gbar g) : Nat) + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
-  linarith
-
 /-- `gbar g' = g'`. -/
 theorem gbar_slotAfter (g : Time) :
     gbar (sp.ts (sp.slot (gbar g) + 1 : Nat)) = sp.ts (sp.slot (gbar g) + 1 : Nat) :=

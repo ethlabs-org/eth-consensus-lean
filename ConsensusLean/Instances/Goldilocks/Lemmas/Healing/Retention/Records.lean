@@ -289,30 +289,6 @@ theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
     Goldilocks.Store.cache_invariants _ _ _ _ hr
   exact Or.inr (hp.finalized_descendant_report hy hW hF hWF.symm h he)
 
-/-- A signed attestation naming a held entry above the target produces an actual earlier
-higher report. The signing witness is retained explicitly; a covering origin alone
-does not supply this fact. Heights are compared at the resulting reporter's cut. -/
-theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
-    {P E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
-    {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
-    (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocks H) P E)
-    (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
-    ∃ r ell C, r < i ∧ AC.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  obtain ⟨r, hrd, -, ell, C, E', hto, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
-    signAt_report_entry hp.run hz hs
-  obtain rfl : E' = E := hp.honest_coherent.1 ⟨z, hz, r, hE'⟩ ⟨y, hy, i, hE⟩
-    (hEr.trans hT)
-  have hPC := hPE.trans (hEC.mono (tree_subset_honest hz))
-  have hPr := hp.mem_tree_of_anc hz hPC hC
-  refine ⟨r, ell, C, by omega, hto, hPC, ?_⟩
-  rw [← hEh, hp.σ_eq_run hz hy hPr hP, hp.σ_eq_run hz hy hE' hE]
-  exact hlt
-
 /-- Whole-run specialization of the finite finality/report alternative. -/
 theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}

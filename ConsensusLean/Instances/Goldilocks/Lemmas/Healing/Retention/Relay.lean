@@ -119,67 +119,6 @@ theorem carryAt_of_writer_window {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP)
   · exact Or.inr (Or.inl hg)
   · exact Or.inl hw'
 
-/-- **Head-only relay to a voter, after the GST**: a block `W`
-above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
-with `t_s + 2Δ ≤ b`, is in the voter block tree of every honest vote of a slot `> s` (relayed to
-the voter, joined at its vote, before `t_{s} + 3Δ`, at or before its vote freeze). -/
-theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
-    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {a₀ b : Time} (hsync : SyncAC (AC.goldilocksAC sp FGP) H U a₀ b T) {w : Fin sp.n}
-    (hw : w ∈ H) {kw : Nat} {W : AC.Blk sp.n FGP} (hkw : T.AcceptAt w kw W)
-    (ha₀ : a₀ ≤ T.time kw) {s : Nat} (hkwt : T.time kw < sp.ts s + 2 * sp.Δ)
-    (hb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e)
-    (hs : s + 1 ≤ e.msg.slot) (hF : Anc U ℓ.frame.F W) :
-    W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  have hU := hr.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
-  have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
-    simp only [ACParams.ts]; ring
-  have hti : sp.ts e.msg.slot ≤ T.time i :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
-  have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (AC.ts_le_iff sp).2 (by omega)
-  have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
-    have hj' : AC.joined sp (T.post i) (T.time i) := by
-      unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
-    intro k hk hrk
-    have := (AC.joined_awakeU sp FGP H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
-    rwa [← hys] at this
-  have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
-    intro k hk
-    have h₁ := Compose.ac_deadline_le_of_restarts
-      (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
-    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
-        linarith only [hkwt, hsm])
-      (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
-        linarith only [hΔ])
-    change T.deadline y k (T.time kw) ≤ max (T.time kw) (sp.ts ((e.msg.slot : Int) - 1)) + sp.Δ
-      at h₁
-    linarith only [h₂, h₁]
-  obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw W hkw ha₀ (by linarith only [hkwt, hb]) y hy i
-    ℓ hc.1 (by linarith only [hΔ, hm, hti, hdl i le_rfl]) hF
-  have hkyt' : T.time ky < AC.freeze sp e.msg.slot := by
-    have := hdl ky hky
-    unfold AC.freeze
-    linarith only [hkyt, this]
-  have hfz : AC.freeze sp e.msg.slot ≤ T.time i := by unfold AC.freeze; linarith only [hΔ, hm, hti]
-  have hWt := AC.mem_tree_of_acceptAtU sp hr.toU hy hacc hky hc.1 hF
-  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hini
-    hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
-    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold AC.freeze; linarith only [hΔ]))
-    (Or.inl hfz)
-  have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
-    intro B₀ hcall hB
-    have hB₀ := (AC.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
-    obtain rfl : B₀ = W := hU.1 ((AC.frameIn_of_callAt hr hy hc.1).2 hB₀)
-      ((AC.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
-    have heq := AC.accept_uniqueU sp hr.toU hy hacc ⟨ℓ, hc.1, hcall⟩
-    rw [heq] at hkyt'
-    linarith only [hkyt', hfz]
-  rw [← AC.readPoint_blockStampU hr.toU hy hc hne] at hbs
-  exact ⟨hWt, Or.inl hbs⟩
-
 /-- A counted head reaches the actual voter freeze through either window service or
 catch-up of an old acceptance. Only recipient observations through `b` are used. -/
 private theorem relay_mem_voterBlockTree_window_aux

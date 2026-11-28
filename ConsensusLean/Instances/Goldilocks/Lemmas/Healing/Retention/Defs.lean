@@ -187,14 +187,6 @@ theorem voteInv_iff {g : Time} {k : Nat} : VoteInv tr H g k ↔
         (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
           Anc (tr.HonestBlocks H) B ℓ.frame.F) := Iff.rfl
 
-theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
-    ∀ y ∈ H, tr.IsCall y k → a ≤ tr.time k →
-      ∀ x i j B, HighOrigin tr H g x i j B → (i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) →
-        Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-          (HZ tr H g + 1 ≤ (tr.post k).fg.hj →
-            Compatible (tr.HonestBlocks H) (tr.post k).fg.J B) := Iff.rfl
-
-
 /-- **No honest restart after `t_{slot(ḡ)+1}`** (`Healthy(g)`): a restart follows a time `u` at
 which the node was asleep with no call in `[u, restart)`; `u ≥ ḡ` contradicts `Healthy(g)`, and
 `u < ḡ` contradicts the tick at the public time `t_{slot(ḡ)+1} ≥ ḡ`, at which the node is awake. -/

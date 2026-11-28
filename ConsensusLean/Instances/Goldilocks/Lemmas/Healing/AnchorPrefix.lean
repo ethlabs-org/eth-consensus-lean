@@ -154,65 +154,6 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
   exact Or.inr ⟨l, hl, by clear * - hmargin hlive; omega, by clear * - hs hold; omega, B, hB,
     hBr, hstart⟩
 
-/-- If the strict-cut induction already places the vote anchor at P, the
-walk cannot move further: every frame child would have a later slot. -/
-theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e)
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = e.msg.slot)
-    (hPt : P ∈ ell.frame.tree)
-    (haP : AC.getAnchor sp e.readPoint ell.frame (tr.time i) = P) :
-    e.msg.head = P.root := by
-  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have hPhi := (AC.frameIn_of_callAt hr hy hc.1).1
-  have hslot := AC.frame_slot_leU sp hr.toU hy hc.1
-  have hs := (AC.castAt_specU hr.toU hy hc).2.1
-  have hstop : ¬ ∃ C, AC.IsBest sp
-      (AC.headScore sp ell.frame (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot)
-        ((e.msg.slot : Int) - 1))
-      (AC.eligibleChildren
-        (ell.frame.viableTree (AC.voteDomain sp e.readPoint ell.frame e.msg.slot))
-        (AC.headEligible sp ell.frame (tr.time i)
-          (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) P)
-      C := by
-    rintro ⟨C, ⟨⟨hC, hCP, -⟩, -⟩⟩
-    have hlt := hPhi.coherent.2 P hPt C (AC.voteDomain_subset_tree hC.1) hCP
-    have hle := hslot C (AC.voteDomain_subset_tree hC.1)
-    omega
-  have heq : AC.getHead sp e.readPoint ell.frame (tr.time i)
-      (ell.frame.viableTree (AC.voteDomain sp e.readPoint ell.frame e.msg.slot))
-      (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) = P := by
-    unfold AC.getHead
-    rw [haP]
-    exact AC.ghost_fuel_stable (Nat.zero_le _) hstop
-  exact (AC.castAt_specU hr.toU hy hc).2.2.2.trans (congrArg Block.root heq)
-
-/-- Any point between the actual voter anchor and a frozen viable block is
-itself frozen-viable. In head equality the upper block is P, not a transported
-lock witness. -/
-theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e)
-    {X P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-    (haX : Anc (tr.HonestBlocks H) (AC.getAnchor sp e.readPoint ell.frame (tr.time i)) X)
-    (hXP : Anc (tr.HonestBlocks H) X P) :
-    X ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have hPhi := AC.frameIn_of_callAt hr hy hc.1
-  have hrootX := (Anc.mono hPhi.2
-    (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haX
-  have hXt := AC.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hP.1.1 hXP
-    (hrootX)
-  have hXPf := AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hXt hXP hP.1.1
-  have hrootXf := AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
-    hPhi.1.rooted.1 hrootX hXt
-  obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
-  exact ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
-    Y, hY, hvY, hXPf.trans hPY⟩
-
 /-- Actual pre-unlock live locks have genuine selection origins. Retain
 the selected candidate, rather than an update-call-only residue. -/
 theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr ini)

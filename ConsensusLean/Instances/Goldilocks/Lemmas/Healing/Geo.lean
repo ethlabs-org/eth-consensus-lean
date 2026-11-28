@@ -32,26 +32,6 @@ section Stores
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP}
 
-/-- The justification of a held block's state names a held block whose state height is at least
-the justified height. -/
-theorem J_entry_h {st : Store P ACP} (hr : st.Reachable acp₀) {W : NodeBlock P ACP}
-    (hW : W ∈ st.tree) :
-    ∃ E ∈ st.tree, E.root = (st.σ W.root).J ∧ (st.σ W.root).hj ≤ (st.σ E.root).h := by
-  have hA := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.2.2 W hW
-  clear hW
-  induction hA with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]
-    exact ⟨_, Store.genesis_mem hr, rfl, by simp [FG.ChainState.init]⟩
-  | tail _ hYW ih =>
-    obtain ⟨X, -, hXr, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases Compose.FrameGeometry.step_J ht with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
-    · obtain ⟨E, hE, h1, h2⟩ := ih
-      exact ⟨E, hE, h1.trans hJ.symm, hj ▸ h2⟩
-    · obtain ⟨⟨E, hE, h1, -, h2, -⟩, -⟩ :=
-        Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
-      exact ⟨E, hE, h1.trans hJ.symm, by rw [hj, h2]⟩
-
 /-- **The justification cache is maximal**: `Σ.h_j` is at least the justified height of every
 held state whose justification is a held block extending `Σ.F` (`update_finality` takes the
 lex-greatest such justification, and `Σ.F` only moves up). -/
