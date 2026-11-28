@@ -672,7 +672,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
-  have hS := hK.healthy_base_before_at' hrun hnc hsvc hawake hf hcatch ht0 hib
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
   have hr := hS.run.localRun
   have hf3 := hf _ ht0 hib
   have hcp : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
