@@ -67,7 +67,7 @@ theorem accepted_relay_before_at
     rwa [max_eq_left hgi] at h
   obtain ⟨k, hkj, hak, hkt⟩ := rc.toLocalRun.acRelayAt (σ := tr.time i) hx ha hy hc hFB
     fun q hqi hx' hq hj hF => by
-      have hgq : g ≤ tr.time q := hqi ▸ (Healing.le_gbar g).trans hgi
+      have hgq : g ≤ tr.time q := hqi ▸ (AC.le_gbar g).trans hgi
       have he : max (tr.time q) g = tr.time i := (max_eq_left hgq).trans hqi
       simpa only [he] using hsvc.relay x q B hx' hq hgq y j hy hj
         (by rw [he, ← Compose.projAC_deadline]; exact (hbound j le_rfl).trans hij) hF
@@ -86,12 +86,12 @@ private theorem relayed_accept_before_at
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl' : ∀ c ≤ j, tr.deadline y c (max (tr.time k) g) sp.Δ ≤ tr.time k + sp.Δ := by
       intro c hc
-      rw [max_eq_left ((Healing.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+      rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
       have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
         (fun r hrc hrs => hnr r (hrc.trans hc) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
       change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
       rwa [max_eq_left hnew] at h
-    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((Healing.le_gbar g).trans hnew)
+    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((AC.le_gbar g).trans hnew)
       y j hy ⟨_, Compose.projAC_callAt.mp hcy⟩ ((hdl' j le_rfl).trans hkt) hF
     refine ⟨a, lt_of_le_of_ne haj ?_, ha,
       lt_max_of_lt_left (hat.trans_le (hdl' a haj))⟩
