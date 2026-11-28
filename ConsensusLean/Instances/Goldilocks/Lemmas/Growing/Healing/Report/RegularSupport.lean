@@ -1,8 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
@@ -96,19 +94,13 @@ theorem result_honest_supporter_before_at
   exact ⟨z, q, hrun.antitone hqt hz, hqc, e, he, hmem, hes,
     R, hsub hR, hroot, hCR.mono hsub⟩
 
-namespace Core
-
-variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-    Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-
 /-- **CS at a slot committee from the service**: at a healthy observation `t ≤ b` whose previous
 slot starts from `ḡ`, the faulty members of a slot committee from `ḡ` by `b` are fewer than its
 members honest, awake and joined at `t`. Every validator honest at `t` is awake and joined then,
 and the committee half bound leaves more than half of the committee honest at `t`. -/
 theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
     (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
     {t : Time} (ht0 : 0 ≤ t) (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
@@ -128,18 +120,6 @@ theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
   unfold AC.FaultBoundK
   exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
-
-end Core
-
-/-- The stock run supplies the shared committee fault count. -/
-theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
-    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
-    {t : Time} (ht0 : 0 ≤ t) (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
-    AC.FaultBoundK K s tr.projAC (H t) t :=
-  Core.faultBoundK_of_service_at hK hrun.toCore hawake hnr hgs hsb ht0 hprev htb
 
 /-- The committee fault bound at `t` holds on every prefix through `d ≥ t`: the awake and joined
 nodes at `t` read the same calls there. -/

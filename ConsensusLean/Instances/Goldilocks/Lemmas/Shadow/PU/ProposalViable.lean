@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
@@ -42,7 +43,7 @@ theorem proposal_window_witness
   have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2.1, hB.2.2⟩
   obtain ⟨_, ip, ell, d, pay, hc, hcall, hd, hti, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt hr (hnc.upTo _) hzk hdes hB' hBs
+    Healing.honestProposalRun_of_proposesAt hr (hnc.upTo _) hzk hdes hB' hBs
   rw [← hdes] at hc hd
   have hip : tr.time ip = sp.ts u := hti
   have hzi : z ∈ H (tr.time ip) := hip ▸ hz
@@ -139,7 +140,7 @@ theorem proposal_viable_at_call_with_early_at
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hd, hti, hparent, _, _, _, ja, _, hacc, hta⟩ :=
-    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hja : tr.time ja = sp.ts u := hta
