@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.CappedOr
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep

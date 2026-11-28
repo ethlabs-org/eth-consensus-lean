@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -9,8 +9,8 @@ public section
 /-! # The growing drain kernel's steps
 
 The finite reset record from a bounded reset and a snapshot (`resetPremisesUpTo_of_reset_at`).
-The warm proposals and the reset bound are in `Shadow/PU/ResetDrain`; the finite reset lower bound
-is proved in `Kernel/ResetSource`. No deadline is lengthened here. -/
+The reset bound is the healing supplier's `Generic.exists_reset_within`; the finite reset lower
+bound is proved in `Kernel/ResetSource`. No deadline is lengthened here. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
