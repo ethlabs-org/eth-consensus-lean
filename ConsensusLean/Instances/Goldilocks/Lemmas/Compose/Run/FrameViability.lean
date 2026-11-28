@@ -20,13 +20,6 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
 
 include hr hfg hy
 
-private theorem held_σ_eq {z : Fin P.n} (hz : z ∈ H) {j : Nat} {B : A.Blk}
-    (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
-    (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root := by
-  rw [← store_eq hr hy i] at hBy ⊢
-  rw [← store_eq hr hz j] at hBz ⊢
-  exact Store.σ_eq_of_held hfg hy hz hBy hBz
-
 private theorem below_entry {B D E : A.Blk}
     (hB : B ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     (hD : IsHonestSource tr H D E.root) (hDB : Compatible (tr.HonestBlocks H) D B)
