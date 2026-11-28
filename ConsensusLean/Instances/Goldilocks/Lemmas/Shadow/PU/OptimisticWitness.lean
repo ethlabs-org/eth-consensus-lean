@@ -7,10 +7,26 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
+import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
+import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
+import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
+import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
+import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
+import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+import ConsensusLean.Instances.Goldilocks.Spec.Node.State
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
@@ -227,7 +243,7 @@ theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   exact AC.Growing.optimistic_transfer_stored
     (Compose.Growing.goldilocks_ac_projection_from hrun hnc) K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
-    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
+    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
     hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
     (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
     hviab (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
