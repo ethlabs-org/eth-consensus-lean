@@ -26,6 +26,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundati
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FinalizedSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedToFG
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -432,7 +433,6 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using
       ((simTraceAt_awake_bounds S rho hn _ T).mp hawake).1
   obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v T hT0.le hTh hvT hawake')
-  have hm := hp.run.time_mono
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=
@@ -466,41 +466,10 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,
       (simTraceAt S rho hn).projAC.CallAt (rho.ownKey v) (cutMap S rho hn p) ell ∧
         ell.call = .tick := ⟨_, Compose.projAC_callAt.2 hcall, rfl⟩
-  refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
-  · have hr := hp.run.upTo hT0.le
-    have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo T)).localRun
-    have hj : AC.joined sp (((simTraceAt S rho hn).upTo T).projAC.state
-        (rho.ownKey v) (cutMap S rho hn p))
-            ((simTraceAt S rho hn).time (cutMap S rho hn p)) := by
-      unfold AC.joined
-      rcases AC.restartTime_stateU hac.toU hp.run.vstart
-        hy (cutMap S rho hn p) with
-        h | ⟨r, hri, hrs, h⟩
-      · rw [h]; exact bot_le
-      · rw [h]
-        apply WithBot.coe_le_coe.mpr
-        have hrs' : (simTraceAt S rho hn).RestartAt (rho.ownKey v) r :=
-          ((RunTrace.upTo_restartAt _).mp (Compose.projAC_restartAt.mp hrs)).2
-        have hrd : (simTraceAt S rho hn).time r ≤ T :=
-          (hm hri.le).trans htime.le
-        have hrestart := hp.restart_le_before_at (hp.run.antitone hrd hy) hrs' (hrd.trans hTb)
-        have hsl : sp.slot T = u + 1 :=
-          AC.slot_of_mem sp (u + 1)
-            (by dsimp [T]; simp only [AC.ACParams.ts]; linarith)
-            (by dsimp [T]; simp only [AC.ACParams.ts]; linarith)
-        change (simTraceAt S rho hn).time r ≤
-          sp.ts ((sp.slot ((simTraceAt S rho hn).time (cutMap S rho hn p)) :
-              Int) - 1)
-        rw [htime, hsl]
-        simpa using hrestart.trans hslot'
-    have hstate : ((simTraceAt S rho hn).projAC.upTo T).state (rho.ownKey v)
-        (cutMap S rho hn p) = (simTraceAt S rho hn).projAC.state (rho.ownKey v)
-          (cutMap S rho hn p) :=
-      Trace.upTo_state _ _ (fun q hq => (hm hq.le).trans htime.le)
-    rw [RunTrace.upTo_projAC, hstate] at hj
-    exact hj
-  · have hmono := cutMap_mono S rho hn hpl
-    omega
+  refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime,
+    hp.joined_at_of_ready hy hslot' le_rfl hTb htime⟩, ?_⟩
+  have hmono := cutMap_mono S rho hn hpl
+  omega
 
 end Engine
 

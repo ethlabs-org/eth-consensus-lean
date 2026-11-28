@@ -346,9 +346,7 @@ theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK 
   have hub : sp.ts u + sp.Δ ≤ b := by linarith only [hTb, hd]
   have hjtime : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   have hyj : y ∈ H (tr.time j) := hjtime ▸ hy
-  have hyj' : y ∈ H (tr.time (j + 1)) := hnexttime ▸ hy
   have hjb : tr.time j ≤ b := hjtime ▸ hTb
-  have hnextb : tr.time (j + 1) ≤ b := hnexttime ▸ hTb
   have hRT : drainTime sp a ≤ sp.ts u + 6 * sp.Δ := by
     simp only [AC.ACParams.ts] at hR ⊢
     push_cast at hR ⊢
@@ -380,21 +378,20 @@ theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK 
   have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ AC.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u :=
     ⟨w, q, ellv, e, hrun.antitone hq hw, hv, hq.trans hub, hs⟩
-  have hlocks := hp.call_locks_compatible_of_unanimous_at hP hts hun hvote hyj hup.1 hjb
-    (hjtime ▸ hRT) hjtime.le (fun r hr B CV ho =>
+  have locks_at_deadline {k : Nat} {e : ACLabel (goldilocksNode sp)}
+      (hc : tr.projAC.CallAt y k e) (ht : tr.time k = sp.ts u + 6 * sp.Δ) :=
+    hp.call_locks_compatible_of_unanimous_at hP hts hun hvote (ht ▸ hy) hc (ht ▸ hTb)
+      (ht ▸ hRT) ht.le (fun r hr B CV ho =>
       unanimous_next_optimistic_compatible_at hp hP hslot hu hun hgu hR hub
-        (hrun.antitone (hrun.time_mono hr.le) hyj) ho ((hrun.time_mono hr.le).trans hjb))
-  have hnextlocks := hp.call_locks_compatible_of_unanimous_at hP hts hun hvote hyj' hto
-    hnextb (hnexttime ▸ hRT) hnexttime.le (fun r hr B CV ho =>
-      unanimous_next_optimistic_compatible_at hp hP hslot hu hun hgu hR hub
-        (hrun.antitone (hrun.time_mono hr.le) hyj') ho ((hrun.time_mono hr.le).trans hnextb))
+        (hrun.antitone ((hrun.time_mono hr.le).trans ht.le) hy) ho
+        ((hrun.time_mono hr.le).trans (ht ▸ hTb)))
   have hsl : sp.slot (tr.time j) = u + 1 := hjtime ▸ slot_update_deadline
   obtain ⟨r, e, R, hr, ht, hPR⟩ := report_of_viable_unanimous_pool_at hp hyj hjb hup hto htoeq
     hframe (hnexttime.trans hjtime.symm) hjoined hPg hPv (by linarith [sp.toParams.hΔ]) hpool
-    hlocks
+    (locks_at_deadline hup.1 hjtime)
     (fun C hC => by
       obtain ⟨hCv, l, hl, he, _⟩ := hC
-      exact hnextlocks C ⟨hCv.1, l, hl, he⟩)
+      exact locks_at_deadline hto hnexttime C ⟨hCv.1, l, hl, he⟩)
     (by rw [hsl]; have := sp.two_le_k; omega) (by rw [hsl]; omega)
   exact Or.inl ⟨r, e, R, hr, ht.trans hnexttime.le, hPR⟩
 
