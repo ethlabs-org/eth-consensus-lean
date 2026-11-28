@@ -486,7 +486,6 @@ private theorem CacheGood.anc {acp₀ : ACP} {st : Store P ACP} (h : CacheGood a
       subst hX
       exact Relation.ReflTransGen.refl
 
-
 section With
 
 variable {u : Store P ACP → FG.ChainState P.n → Store P ACP} {acp₀ : ACP} {st : Store P ACP}
@@ -778,7 +777,6 @@ theorem entry_at_height_with {C : NodeBlock P ACP} (hC : C ∈ st.tree) {h : Nat
 
 end With
 
-
 /-- Some `q` validators each have an attestation on the chain naming `T`. -/
 private def Quorum (gp : FG.FGParams) (c : List (FG.FGBlock gp.n)) (T : Nat) : Prop :=
   ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c, a.val = v ∧ a.T = T
@@ -839,7 +837,6 @@ private theorem named (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)} {σ : FG.C
   gp.chainState_induction (P := fun c σ => Named gp c σ)
     ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init], Or.inl rfl, Or.inl rfl⟩
     (fun _ _ _ _ hc hN hB => named_step gp hc hN hB) h
-
 
 /-! ## Further store lemmas over `ReachableWith` (lane Q) -/
 
@@ -987,80 +984,11 @@ theorem σ_eq_of_mem_with (hu : FinalitySpec u) {st₂ : Store P ACP}
 
 end More
 
-
 /-! ## Held chains and held safety over `ReachableWith` (lane W) -/
 
 section Held
 
 variable {u : Store P ACP → FG.ChainState P.n → Store P ACP} {acp₀ : ACP} {st : Store P ACP}
-
-/-- A target bit after counting is old or set by a counted non-timeout attestation on the
-entry. -/
-private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
-    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-  induction atts generalizing σ with
-  | nil => exact Or.inl h
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    rcases ih h with h | ⟨b, hb, hb'⟩
-    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
-        clear ih he hh hT
-        unfold FG.ChainState.processAtt at h
-        dsimp only at h
-        repeat' split at h
-        all_goals aesop
-      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
-    · rw [hh, hT] at hb'
-      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
-
-/-- A justification `(h_j, J)` with `h_j ≥ 1` has a quorum of non-timeout attestations on the
-chain with height pair `(h_j, J)` (with each target bit's attestation, for the induction). -/
-private theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
-    {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
-  refine gp.chainState_induction (P := fun c σ =>
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
-    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init]⟩ ?_ h
-  intro c σ B σ' _ ⟨ht, hq⟩ hB
-  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
-    exact Or.inl h
-  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append]
-    exact Or.inr (by simpa using h)
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  have hT := fun v => @mem_foldl_target _ { σ with s := B.slot } B.atts v
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hT ⊢
-  dsimp only at hT
-  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-    intro v hv
-    rcases hT v hv with hv | ⟨a, ha, h'⟩
-    · obtain ⟨a, ha, h'⟩ := ht v hv
-      exact ⟨a, liftA ha, h'⟩
-    · exact ⟨a, liftB ha, h'⟩
-  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
-      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
-        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
-    let ⟨Q, hQ, hv⟩ := hq h1
-    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
-  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨by simp [FG.ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
-  · exact ⟨by simp [FG.ChainState.advance], hq₀⟩
-  · exact ⟨ht₀, hq₀⟩
-
 
 /-- **The chain of a held block.** A block `B` of a reachable store has a chain from genesis
 whose state is `B`'s, every block of which (and genesis) is at or below `B` in the store, and
@@ -1141,7 +1069,6 @@ theorem finalized_crossing_with {st₁ st₂ : Store P ACP}
   obtain ⟨a, ha, b, hb, hav, hab⟩ := hSv v hv
   exact ⟨a, ha₁ a ha, b, ha₂ b hb, hav, hab⟩
 
-
 /-- A set of at least `k` validators meets every set whose complement has fewer than `k`
 members. -/
 private theorem exists_mem_of_ncard_compl_lt {n k : Nat} {S : Finset (Fin n)} {V : Set (Fin n)}
@@ -1150,7 +1077,6 @@ private theorem exists_mem_of_ncard_compl_lt {n k : Nat} {S : Finset (Fin n)} {V
   have := Set.ncard_le_ncard (s := (S : Set (Fin n))) (t := Vᶜ) h
   rw [Set.ncard_coe_finset] at this
   omega
-
 
 /-- **Equal justified heights agree** (G1.1, G0.5 at the stores). Two justification quorums at
 one height with different `J` meet in `2q − n` validators with E2 pairs, one of them in `V`. -/
@@ -1214,7 +1140,6 @@ theorem F_anc_of_hmax_le_of_safe_with {st₁ st₂ : Store P ACP}
   have h2 := hinv.2.2.1
   exact finalized_anc_of_safe_with hu hR₁ hR₂ hU hsub₁ hsub₂ hV hsafe hX hF hXF.symm hB (by omega)
 
-
 /-- Along one block, the finalized pair and the pending pairs of the new state are old ones
 (pending, or the old finalized pair) or the old height's entry pair. -/
 private theorem step_pairs {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
@@ -1266,7 +1191,6 @@ theorem fin_pair_entry_with
     obtain ⟨⟨E, hE, hEr, -, hEh, -⟩, -⟩ :=
       entry_state_of_source_with hu hr _ hYW.1
     exact step_pairs ht Q ih.1 ih.2 (Or.inr ⟨E, hE, hEr, hEh⟩)
-
 
 /-- `h_j < h_max` in a reachable store. -/
 theorem hj_lt_hmax_of_reachable_with {st : Store P ACP}
@@ -1323,7 +1247,6 @@ theorem F_anc_of_hj_lt_of_safe_with {st₁ st₂ : Store P ACP}
   have h₁ := h_le_of_store_anc_with hu hR₁ hFJ
   exact finalized_anc_of_safe_with hu hR₁ hR₂ hU hsub₁ hsub₂ hV hsafe hBf hFm
     hBfF.symm hB (by omega)
-
 
 end Held
 

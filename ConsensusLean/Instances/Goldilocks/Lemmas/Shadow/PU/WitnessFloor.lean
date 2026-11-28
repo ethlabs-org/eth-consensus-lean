@@ -35,106 +35,6 @@ open FG
 
 /-! ## Chain facts -/
 
-/-- A target bit after counting is old or set by a counted non-timeout entry attestation (a copy
-of the private stock `mem_foldl_target`). -/
-private theorem mem_foldl_target {n : Nat} {σ : ChainState n} {atts : List (Att n)}
-    {v : Fin n} (h : v ∈ (atts.foldl ChainState.processAtt σ).target) :
-    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-  induction atts generalizing σ with
-  | nil => exact Or.inl h
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg ChainState.Th he
-    rcases ih h with h | ⟨b, hb, hb'⟩
-    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
-        clear ih he hh hT
-        unfold ChainState.processAtt at h
-        dsimp only at h
-        repeat' split at h
-        all_goals aesop
-      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
-    · rw [hh, hT] at hb'
-      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
-
-/-- A justification `h_j ≥ 1` has a quorum of target attestations `(h_j, J)` on the chain (a
-copy of the private stock `justification_quorum`). -/
-private theorem justification_quorum (gp : FGParams) {c : List (FGBlock gp.n)}
-    {σ : ChainState gp.n} (h : gp.chainState c = some σ) :
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
-  refine gp.chainState_induction (P := fun c σ =>
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
-    ⟨by simp [ChainState.init], by simp [ChainState.init]⟩ ?_ h
-  intro c σ B σ' _ ⟨ht, hq⟩ hB
-  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
-    exact Or.inl h
-  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FGParams.chainAtts, List.flatMap_append, List.mem_append]
-    exact Or.inr (by simpa using h)
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  have hT := fun v => @mem_foldl_target _ { σ with s := B.slot } B.atts v
-  obtain ⟨f, p, t, he⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hT ⊢
-  dsimp only at hT
-  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-    intro v hv
-    rcases hT v hv with hv | ⟨a, ha, h'⟩
-    · obtain ⟨a, ha, h'⟩ := ht v hv
-      exact ⟨a, liftA ha, h'⟩
-    · exact ⟨a, liftB ha, h'⟩
-  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
-      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
-        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
-    let ⟨Q, hQ, hv⟩ := hq h1
-    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
-  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨by simp [ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
-  · exact ⟨by simp [ChainState.advance], hq₀⟩
-  · exact ⟨ht₀, hq₀⟩
-
-/-- On a chain, a finalized height equal to the justified height finalizes `J` itself. -/
-private theorem F_eq_J_of_hF_eq_hj (gp : FGParams) {c : List (FGBlock gp.n)}
-    {σ : ChainState gp.n} (h : gp.chainState c = some σ) : σ.hF = σ.hj → σ.F = σ.J := by
-  refine gp.chainState_induction (P := fun _ σ => σ.hF = σ.hj → σ.F = σ.J)
-    (fun _ => rfl) ?_ h
-  intro c σ B σ' hc ih hB
-  obtain ⟨-, -, -, -, -, -, hpw, hmem, hlast, -⟩ := chain_invariants gp c σ hc
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  obtain ⟨f, p, t, he⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he]
-  have hfJ : ∀ F hF, ((F = σ.F ∧ hF = σ.hF) ∨ ((hF, F) ∈ σ.pending ∧ gp.q ≤ (f hF).card)) →
-      hF = σ.hj → F = σ.J := by
-    rintro F hF (⟨rfl, rfl⟩ | ⟨hm, -⟩) e
-    · exact ih e
-    · have hlt := (hmem _ hm).1
-      have hl := hlast (by omega)
-      have := eq_of_pairwise_fst_lt hpw hm (List.mem_of_getLast? hl) (by simpa using e)
-      simpa using congrArg Prod.snd this
-  obtain ⟨F, hF', σ₁, rfl, hc₁, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · intro e
-    simp only [ChainState.advance] at e
-    exfalso
-    obtain ⟨-, hFj, hjh, -⟩ := chain_invariants gp c σ hc
-    dsimp only at hc₁
-    rcases hc₁ with ⟨-, h2⟩ | ⟨hm, -⟩
-    · omega
-    · have := (hmem _ hm).2
-      omega
-  · simpa [ChainState.advance] using hfJ F hF' hc₁
-  · simpa using hfJ F hF' hc₁
-
 /-- One accepted block: its attestations are below or on the parent's entry; it enters the next
 height or keeps the entry, with its pending pairs among the parent's and the counting's bits. -/
 private theorem step_rows {gp : FGParams} {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
@@ -288,38 +188,6 @@ private theorem step_hj {gp : FGParams} {σ σ' : ChainState gp.n} {B : FGBlock 
   · exact Or.inl ⟨rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl⟩
 
-omit hr in
-/-- A block that justifies an entry whose previous height is justified finalizes that
-predecessor pair `(h_j, J)` (the stock private `previousHeightJustified_justify_finalizes_block`).
--/
-private theorem justify_finalizes_pair {gp : FGParams} {c : List (FGBlock gp.n)}
-    {σ σ' : ChainState gp.n} {B : FGBlock gp.n} (hc : gp.chainState c = some σ)
-    (h : gp.stateTransition σ B = some σ') (hb : σ.previousHeightJustified)
-    (hj : σ'.hj = σ.h) : σ'.F = σ.J ∧ σ'.hF = σ.hj := by
-  have hF := gp.previousHeightJustified_justify_finalizes h hb hj
-  refine ⟨?_, hF⟩
-  obtain ⟨-, -, -, -, -, -, hpw, hmem, hlast, -⟩ := chain_invariants gp c σ hc
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  obtain ⟨f, p, t, he⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hF hj ⊢
-  obtain ⟨F, hF', σ₁, rfl, hc₁, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  have hjh := (chain_invariants gp c σ hc).2.2.1
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he'] at hF hj ⊢
-  · simp only [ChainState.advance] at hF ⊢
-    dsimp only at hc₁
-    rcases hc₁ with ⟨rfl, h2⟩ | ⟨hm, -⟩
-    · exact F_eq_J_of_hF_eq_hj gp hc (h2 ▸ hF)
-    · have hlt := (hmem _ hm).1
-      rw [hF] at hm hlt
-      have hl := hlast hlt
-      have := eq_of_pairwise_fst_lt hpw hm (List.mem_of_getLast? hl) rfl
-      simpa using congrArg Prod.snd this
-  · simp only [ChainState.advance] at hj
-    omega
-  · simp only at hj
-    omega
-
 /-- Along ancestry the justification is kept, or it is at least the ancestor's height. -/
 private theorem hj_anc {A W : NodeBlock P ACP} (h : st.Anc A W) :
     ((st.σ W.root).hj = (st.σ A.root).hj ∧ (st.σ W.root).J = (st.σ A.root).J) ∨
@@ -400,7 +268,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
       exact brow a haB (by simp only; omega) (by simp only; rw [hWT]; exact haT)
   -- the target quorum of `J`'s justification
   obtain ⟨cX, hcX, -, hattX⟩ := Goldilocks.Store.held_chain hr hX
-  obtain ⟨Qt, hQt, hvt⟩ := (justification_quorum P.fg hcX).2 (by omega)
+  obtain ⟨Qt, hQt, hvt⟩ := (Goldilocks.Store.justification_quorum P.fg hcX).2 (by omega)
   have htq : P.fg.q ≤
       (B.atts.foldl ChainState.processAtt { st.σ W.root with s := B.slot }).target.card := by
     refine hQt.trans (Finset.card_le_card fun v hv => ?_)
@@ -465,7 +333,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
       · omega
     have hbYp : (st.σ Yp.root).previousHeightJustified := ⟨by omega, by omega⟩
     obtain ⟨cYp, -, -, -, hcYp⟩ := Goldilocks.Store.chain_state_of_chain _ _ _ _ hr Yp hYp
-    obtain ⟨hYF, hYhF⟩ := justify_finalizes_pair hcYp hstY hbYp hYj
+    obtain ⟨hYF, hYhF⟩ := P.fg.previousHeightJustified_justify_finalizes_block hcYp hstY hbYp hYj
     obtain ⟨cY, hcY, -, hattY⟩ := Goldilocks.Store.held_chain hr hY
     obtain ⟨Qf, hQf, hvf⟩ := FGParams.finalized_quorum P.fg hcY (by omega)
     refine hQf.trans (Finset.card_le_card fun v hv => ?_)
