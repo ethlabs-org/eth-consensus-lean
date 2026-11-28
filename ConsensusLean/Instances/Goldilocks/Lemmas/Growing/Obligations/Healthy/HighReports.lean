@@ -99,8 +99,12 @@ theorem highOrigin_mem_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
-    B ∈ (tr.state x i).fg.tree :=
-  hrun.toCore.highOrigin_mem_at hnc ho
+    B ∈ (tr.state x i).fg.tree := by
+  obtain ⟨hx, _, ⟨CV, ℓ, D, hc, hfl, rfl⟩, -⟩ := ho
+  obtain ⟨ℓ', hc', hD⟩ := Healing.fastLock_mem hfl
+  obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
+  obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc (hrun.antitone (le_max_right _ _) hx) hc
+  exact hsub (AC.viableAncestor_anc hok hD).1
 
 /-- A report's block is held in the reporter's tree, for a reporter honest at the report (the
 static `toFG_mem_tree` on the prefix through the report). -/
@@ -160,8 +164,15 @@ theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
-    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h :=
-  hp.toCore.high_of_anc_at ho ht hle hz hW hBW
+    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
+  have hrun := hp.run
+  have hBx := highOrigin_mem_at hrun hp.noColl ho
+  have hBz := mem_of_honest_anc_at hrun hp.noColl ht hle hz hBW hW
+  have hh := Healing.h_le_of_store_anc (fg_reachable_at hrun ht hle hz)
+    (store_anc_of_honest_anc_at hrun hp.noColl ht hle hz hBW hW)
+  rw [← σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg i)
+    (fun _ hq => hrun.time_mono hq.le) (hrun.antitone (le_max_right _ _) ho.1) ht hle hz hBx hBz] at hh
+  exact ho.2.2.2.trans hh
 
 /-- **A high report has a stored high origin written before it**, under growing faults: the
 report's block `C` of a node honest at its report and at `c_z` is below the stored viable image

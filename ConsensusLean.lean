@@ -397,7 +397,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Selectio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTickCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedToFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.CappedOrigins
