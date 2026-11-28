@@ -21,31 +21,6 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 
-/-- A common frame kind makes the local root monotone through an honest reader cut. -/
-theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {a i : Nat} (hy : y ∈ H (tr.time i))
-    (hai : a ≤ i) (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi) :
-    Anc (tr.HonestBlocksAt H) (tr.state y a).fg.fcRoot (tr.state y i).fg.fcRoot := by
-  classical
-  have htime := hrun.time_mono hai
-  have hya := hrun.antitone htime hy
-  by_cases hk : kindJ
-  · have hka := (hframe.kind_iff y a hya halo (htime.trans hihi)).mpr hk
-    have hki := (hframe.kind_iff y i hy (halo.trans htime) hihi).mpr hk
-    change Anc _ (if _ then _ else _) (if _ then _ else _)
-    rw [ite_eq_left hka, ite_eq_left hki,
-      hframe.root_eq y a hya halo (htime.trans hihi) hk,
-      hframe.root_eq y i hy (halo.trans htime) hihi hk]
-    exact .refl
-  · have hka := (hframe.kind_iff y a hya halo (htime.trans hihi)).not.mpr hk
-    have hki := (hframe.kind_iff y i hy (halo.trans htime) hihi).not.mpr hk
-    change Anc _ (if _ then _ else _) (if _ then _ else _)
-    rw [ite_eq_right hka, ite_eq_right hki]
-    exact hrun.toLocalRun.finalized_mono hy hai
-
 /-- A live lock records a write made before this same reader's compromise. -/
 theorem live_lock_selection_origin_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
