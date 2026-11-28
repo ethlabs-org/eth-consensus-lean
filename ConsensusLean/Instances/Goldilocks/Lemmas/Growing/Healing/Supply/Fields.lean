@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote

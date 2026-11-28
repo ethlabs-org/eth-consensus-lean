@@ -260,7 +260,7 @@ private theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp
 /-- **A justification at a height whose previous height is justified finalizes the predecessor
 block.** On a chain, a block that justifies the current height of a state whose previous height is
 justified has `F = J` of the parent state: the predecessor block, not only its height. -/
-private theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
+theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
     {σ σ' : ChainState gp.n} {B : FGBlock gp.n} (hc : gp.chainState c = some σ)
     (h : gp.stateTransition σ B = some σ')
     (hb : σ.previousHeightJustified) (hj : σ'.hj = σ.h) : σ'.F = σ.J ∧ σ'.hF = σ.hj := by
