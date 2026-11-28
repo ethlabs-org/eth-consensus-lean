@@ -796,7 +796,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedCurrentPassage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
@@ -811,7 +810,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
