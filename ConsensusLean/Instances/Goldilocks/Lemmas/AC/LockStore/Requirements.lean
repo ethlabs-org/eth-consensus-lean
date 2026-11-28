@@ -190,13 +190,6 @@ private theorem headOK_of {U : Set (Blk sp.n FGP)} (hU : Coherent U)
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
   exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
 
-/-- Membership in the deep candidates of `ac_to_fg`. -/
-theorem mem_toFGDeepCandidates {D : Nat} {a : Blk sp.n FGP} {A : ACState sp.n}
-    {Φ : Frm sp.n FGP} {t : Time} {B : Blk sp.n FGP} :
-    B ∈ toFGDeepCandidates sp D a A Φ t ↔ B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧
-      B.root ≠ sp.genesisRoot ∧ A.blockStamp B.root ≤ ETime.of (sp.ts ((sp.slot t : Int) - D)) :=
-  Iff.rfl
-
 /-- The block `ac_to_fg` considers is a fast-lock candidate, or, with deep sources on and no
 fast-lock candidate, a deep candidate under the deep anchor. -/
 theorem fgSource_spec {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {C : Blk sp.n FGP}

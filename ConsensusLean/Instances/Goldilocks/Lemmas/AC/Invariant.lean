@@ -125,13 +125,6 @@ private theorem acOnBlockWith_fields (self : Fin sp.n) (L : Set Lock) (A : ACSta
   rw [(optimistic_fields _ _ _).1]
   exact (blockReceipt_fields _ _ _).1 h
 
-private theorem acOnBlock_fields (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (B : Blk sp.n FGP) :
-    (PoolOK A.pool → PoolOK (acOnBlock sp self A Φ t B).1.pool) ∧
-      (acOnBlock sp self A Φ t B).1.blockStamp =
-        Function.update A.blockStamp B.root (ETime.of t) :=
-  acOnBlockWith_fields (wm := WriteMode.parent sp) self _ A Φ t B
-
 private theorem acOnTick_fields (self : Fin sp.n) (L : Set Lock) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
     (PoolOK A.pool → PoolOK (acOnTickWithM sp wm self L A Φ t).1.pool) ∧
