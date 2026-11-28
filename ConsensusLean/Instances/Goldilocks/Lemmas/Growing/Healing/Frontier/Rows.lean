@@ -362,33 +362,6 @@ theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   low_seed_held_upTo hrun hnc hseed (hcv.upTo (max T t)) (le_max_left _ _) ht0 hi hy
     (le_max_right _ _) hcall hlow
 
-/-- **A low reader's `fc_root` is below a held high block `S` above its `Σ.F`**: if `fc_root` is
-`Σ.J`, then `h_max = h_j + 1 ≤ H_z + 1 ≤ h(S) ≤ h_max`, so `S` has the top height and, with no
-contest, extends `Σ.J`. -/
-theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
-    (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
-    (hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g) {x : Fin sp.n} {q l : Nat}
-    {S : AC.Blk sp.n (List (FG.Att sp.n))} (hS : Healing.Growing.HighOrigin tr H g x q l S)
-    (hSy : S ∈ (tr.state y i).fg.tree) (hFS : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S) :
-    Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot S := by
-  have hreach := Healing.Growing.fg_reachable_at hrun ht0 hi hy
-  by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬ (tr.state y i).fg.Contest
-  · rw [Goldilocks.Store.fcRoot_of_not_contest _ hk.1 hk.2]
-    have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
-      rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
-        (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS.1) hSy
-        (HighOrigin.mem_tree hrun hnc hS)]
-      exact hS.2.2.2
-    obtain ⟨-, -, -, -, hZm, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
-    have hSm := hZm S hSy
-    by_contra hJS
-    refine hk.2 ⟨hk.1, S, hSy, held_anc_at hrun hnc ht0 hy hi hFS hSy, by omega,
-      fun h => hJS (Healing.Growing.honest_anc_of_store_anc_at ht0 hi hy h)⟩
-  · rw [Goldilocks.Store.fcRoot]
-    simp only [hk, ↓reduceIte]
-    exact hFS
-
 /-! ### The high rows -/
 
 /-- **After the drain, a signing's source is below the signer's own lock write of a label `≥ r`.**
