@@ -1,7 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
@@ -57,7 +59,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ hi := by linarith
   have hsub {lo hi' : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi' ≤ hi) :
       Generic.FrameWindow tr H lo hi' M isTop J := hframe.mono hl hh
-  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
+  have hjoin := fun w hw => Goldilocks.Healing.Growing.joined_voteTime_of_warm_frame_at
     hrun hnr hm (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hyu : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := hrun.antitone hlo.le hy
   obtain ⟨j₀, ell₀, hu₀, hconf₀, hnv₀, hfast₀, _, hvi₀, _⟩ :=
@@ -66,7 +68,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have ht₀ : tr.time j₀ = sp.ts u + 6 * sp.Δ := hu₀.2.2.1
   have hy₀ : y ∈ H (tr.time j₀) := hrun.antitone (by rw [ht₀]; linarith [hstep u]) hy
   obtain ⟨⟨hPt₀, hPg, _⟩, hPf₀⟩ := (AC.deepest_mem hfast₀).1
-  obtain ⟨D₀, CV₀, hfu₀, hPD₀⟩ := Core.fast_update_of_unvetoed_at hy₀ hrun.toCore hnc hu₀
+  obtain ⟨D₀, CV₀, hfu₀, hPD₀⟩ := fast_update_of_unvetoed_at hy₀ hrun hnc hu₀
     hconf₀ hPt₀ hPg .refl hnv₀ hPf₀
   have hfr₀ := hrun.toCore.frame_of_projAC_at hy₀ hu₀.1
   have hP₀ : P ∈ (tr.state y j₀).fg.tree := by
@@ -156,21 +158,21 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     rcases Nat.eq_or_lt_of_le hur with rfl | hlt
     · exact ⟨j₀, D₀, CV₀, hfu₀, hPD₀⟩
     obtain ⟨s, rfl⟩ : ∃ s, r = s + 1 := ⟨r - 1, by omega⟩
-    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr
+    obtain ⟨j, ellj, hu⟩ := Healing.Growing.update_call_of_awake_at hrun hnc hawake hnr
       (u := s + 1) (by have := hts (show u ≤ s + 1 by omega); linarith)
       (by rw [hstep]; linarith) (hrun.antitone (by rw [hstep]; linarith) hy)
     have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
     have hyj := hrun.antitone (by rw [hjt]; linarith : tr.time j ≤ tr.time i) hy
     have hsr := hts (show s₀ ≤ s + 1 by omega)
-    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
+    have hjoinr := fun w hw => Goldilocks.Healing.Growing.joined_voteTime_of_warm_frame_at
       hrun hnr hm (by omega : s₀ + 1 ≤ s + 1) (y := w) hw
     have hnr' : NoRestartUpTo tr H (gbar g) b :=
       noRestartUpTo_iff.mpr (fun w k hw hr _ => hnr w k hw hr)
-    obtain ⟨C, hconf, hPC, D, hfast, hPD⟩ := Core.update_result_extends_of_finalized_at
-      hrun.toCore hnc hsvc hawake hf hcatch hnr' (by linarith) hjoinr hfin hPg
+    obtain ⟨C, hconf, hPC, D, hfast, hPD⟩ := update_result_extends_of_finalized_at
+      hrun hnc hsvc hawake hf hcatch hnr' (by linarith) hjoinr hfin hPg
       (hext (s + 1) (by omega) (by omega)) hyj hu
       (by rw [hjt]; linarith) (by rw [hjt]; linarith) (by rw [hjt]; linarith) hK
-    have hlocks := Core.update_locks_compatible_of_finalized_at hrun.toCore hnc hsvc hawake hf
+    have hlocks := update_locks_compatible_of_finalized_at hrun hnc hsvc hawake hf
       hcatch hnr' (by linarith) hsr hjoinr hfin hPg (hext (s + 1) (by omega) (by omega))
       (hext (s + 2) (by omega) (by omega)) hyj hu (by rw [hjt]; linarith)
       (by rw [hjt]; linarith) hK
@@ -184,7 +186,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     have hPDf := AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ.1 hΦ.2 hPt hPD hDt
     have hPCf := AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ.1 hΦ.2 hPt hPC
       (AC.deepest_mem hconf).1.1
-    exact ⟨j, Core.fast_update_of_unvetoed_at hyj hrun.toCore hnc hu hconf hPt hPg hPCf
+    exact ⟨j, fast_update_of_unvetoed_at hyj hrun hnc hu hconf hPt hPg hPCf
       (Core.no_veto_of_lock_roots_compatible_at hrun.toCore hnc hyj hu.1 hPt hlocks)
       ((AC.deepest_mem hfast).1.2.trans (Nat.mul_le_mul_left 2
         (Set.ncard_le_ncard (AC.supporters_antitone sp _ ellj.frame _ _ P D hPDf)
@@ -237,7 +239,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     apply AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ hsubtree hΦ.fcRoot_mem _ hPt
     rw [Node.frame_eq, Store.toFrame_fcRoot]
     exact hFP
-  exact Core.toFG_candidate_of_viable_head_at hrun.toCore hnc hK
+  exact toFG_candidate_of_viable_head_at hrun hnc hK
     (by have := hts (show u ≤ r + 1 by omega); linarith) hfu hPD hy hc hji
     (fun x k e hx hv hs _ => hext (r + 1) (by omega) le_rfl x k e hx hv hs) hPk hib hσr
 
