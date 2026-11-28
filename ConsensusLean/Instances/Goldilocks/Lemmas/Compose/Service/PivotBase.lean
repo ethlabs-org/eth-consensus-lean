@@ -209,7 +209,7 @@ theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
 
 /-- **The AC cuts of a tick by position** (C0.4): `ac_on_tick` first, then for the slot's
 proposer `ac_proposal` second and its own block's `ac_on_block` later, and `ac_to_fg`. -/
-private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
+theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
     {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp)}
     (h : (Node.exec proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
@@ -420,20 +420,19 @@ theorem fcRoot_of_rows_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
     exact hg
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
 
-/-- **A voter's `fc_root` is below an old origin, or genesis**
-(`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
-the vote, with a source below an origin before the signing (`attestation_source`); a regular one of
-label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
-`s`, and not `s` (`no_optimistic_before_held_row_of`, under the slot committee half bound). -/
-theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+/-- **The honest attestations at a vote have old sources**: a regular origin of label `l` is
+written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic origin has label at most `s`,
+and not `s` (`no_optimistic_before_held_row_of`, under the slot committee half bound). -/
+theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
     (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) (hyK : y ∈ K.committee s) :
-    ℓ.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O := by
+    HonestRowsSourced tr H
+      (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j := by
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ := sp.toParams.hΔ
@@ -441,11 +440,7 @@ theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hn
     hes ▸ (cast_head_fcRoot hr hrun.vstart hy hc).2
   have hsj : sp.slot (tr.projAC.time j) = s' + 1 := (AC.castAt_specU hr.toU hy hc).2.1.symm.trans
       hes
-  rw [frame_of_projAC hrun hy hc.1]
-  refine fcRoot_of_rows_of hrun hnc hf hy (j := j)
-    (R := fun B => ∃ O, OldOrigin tr H (s' + 1) O ∧ Anc (tr.HonestBlocks H) B O)
-    (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
-    (honestRowsSourced_iff.2 fun X hX a ha hav => ?_)
+  refine honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hmj, hm, k, hkm, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
   obtain ⟨D, -, hDs, C, l, hC, hDC⟩ := attestation_source hrun hnc hav hsg
   refine ⟨D, ⟨C, ?_, hDC⟩, hDs⟩
@@ -464,6 +459,21 @@ theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hn
     exact (no_optimistic_before_held_row_of hrun hnc K hP
       hsize hfK hy hyK hc hes
       hm hmj hav hkm hsg hz hck hOp).elim
+
+/-- **A voter's `fc_root` is below an old origin, or genesis** (`F ⪯ fc_root ⪯ D_s`). -/
+theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
+    (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
+    (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) (hyK : y ∈ K.committee s) :
+    ℓ.frame.fcRoot.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O := by
+  rw [frame_of_projAC hrun hy hc.1]
+  exact fcRoot_of_rows_of hrun hnc hf hy (j := j)
+    (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
+    (vote_rows_old hrun hnc hs hy hc hes K hP hsize hfK hyK)
 
 end Consensus.Goldilocks.Compose
 
