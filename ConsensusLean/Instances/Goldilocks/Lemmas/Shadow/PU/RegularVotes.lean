@@ -1,6 +1,8 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
@@ -108,10 +110,10 @@ private theorem slow_live_locks_service_at
     constructor
     · intro x k v hx hv hk y j ell hy hj _ hdl
       exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-        ((service_syncACAt hrun hsvc (lo := g) le_rfl).1
+        ((Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) le_rfl).1
           x k v hx hv hk le_rfl y j ell hy hj hdl))
     · intro x k B hx hB hk y j ell hy hj _ hdl hanc
-      exact (service_syncACAt hrun hsvc (lo := g) le_rfl).2
+      exact (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) le_rfl).2
         x k B hx hB hk le_rfl y j ell hy hj hdl hanc
   apply AC.live_locks_of_stored_before hr K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)
@@ -216,7 +218,7 @@ theorem regular_fast_next_votes_of_early_witness_at
   intro y i ell e hy hc hs hhigh hFX hviab ih
   exact KernelProof.first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy
     (Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩) hXD hc hs (hhigh.trans hmb)
-    (by rwa [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]) hviab
+    (by rwa [Compose.Growing.frame_of_projAC_at hrun hy hc.1]) hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes) hK
 
 /-- The stock slow transfer applied to the shared shadow early-witness induction. -/
@@ -262,7 +264,7 @@ theorem regular_slow_next_votes_of_early_witness_at
       (hDC.trans hCQ)
   intro y i ell e hy hc hs hhigh hFD hviab ih
   have hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C := by
-    rw [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]
+    rw [Compose.Growing.frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
   exact AC.Growing.result_transfer_anc hac hx hres hDC hy hc hs
     (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab

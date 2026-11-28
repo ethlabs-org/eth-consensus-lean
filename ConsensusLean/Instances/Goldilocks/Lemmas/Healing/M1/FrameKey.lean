@@ -8,84 +8,14 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
 public section
 
-/-! # The frame key of an honest store
+/-! # Cache facts of honest stores
 
-The frame key of a store is
-`κ = 3·h_max + c`, with `c = 2` in a contest, `c = 1` at `h_max = h_j + 1` without a contest,
-and `c = 0` otherwise. This is the lexicographic key `(h_max, b, C)` coded in `ℕ`
-(a contest implies `b`).
-
-* `frameKey_eq_*`: equal keys (at any two honest cuts) give equal `head_height_floor`, contest
-  status and root kind, and, in kind J, equal `Σ.J`. So the key determines the `FrameWindow`
-  fields. -/
+`h_j < h_max` in every honest store and `h_j` is monotone along an honest node's run. The
+frame key itself is the milestone `Generic.frameKey''`. -/
 
 namespace Consensus.Goldilocks.Healing
 
 open AC (ACParams Payload)
-
-open Classical in
-/-- The frame key `3·h_max + c`; equal keys give the fields of a `FrameWindow`. -/
-noncomputable def frameKey {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
-  3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0)
-
-open Classical in
-theorem frameKey_def {P : Params} {ACP : Type} (st : Store P ACP) : frameKey st =
-    3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0) := by
-  unfold frameKey
-  rfl
-
-/-- The merge map `φ(3h + c) = 2h + c` (`c < 3`). It identifies `3h + 2` (contest at `h`) with
-`3(h + 1)` (gap at `h + 1`): both frames have floor `h`, root `Σ.F` and no `J` constraint. -/
-def keyMerge (n : Nat) : Nat := 2 * (n / 3) + n % 3
-
-theorem keyMerge_eq (n : Nat) : keyMerge n = 2 * (n / 3) + n % 3 := by
-  unfold keyMerge
-  rfl
-
-theorem keyMerge_mono {m n : Nat} (h : m ≤ n) : keyMerge m ≤ keyMerge n := by
-  unfold keyMerge
-  omega
-
-/-- The merged frame key `κ′ = φ(κ)`. For `h_max ≥ 1` it is `2·floor + 2 + [kind J]`, so a
-contest at `h` and a gap at `h + 1` have the same key. -/
-noncomputable def frameKey' {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
-  keyMerge (frameKey st)
-
-theorem frameKey'_def {P : Params} {ACP : Type} (st : Store P ACP) :
-    frameKey' st = keyMerge (frameKey st) := by
-  unfold frameKey'
-  rfl
-
-section Store
-
-variable {P : Params} {ACP : Type} {a b : Store P ACP}
-
-theorem frameKey_bounds (st : Store P ACP) :
-    3 * st.hmax ≤ frameKey st ∧ frameKey st ≤ 3 * st.hmax + 2 := by
-  unfold frameKey
-  split_ifs <;> omega
-
-theorem frameKey'_bounds {HZ : Nat} (h1 : HZ ≤ a.hmax) (h2 : a.hmax ≤ HZ + 1) :
-    2 * HZ ≤ frameKey' a ∧ frameKey' a ≤ 2 * HZ + 4 := by
-  have := frameKey_bounds a
-  unfold frameKey' keyMerge
-  omega
-
-/-- Equal merged keys give equal `head_height_floor` and equal root kind. The contest flag and
-`h_max` can differ. -/
-theorem frameKey'_eq_floor_kind (ha : 1 ≤ a.hmax) (hb : 1 ≤ b.hmax)
-    (h : frameKey' a = frameKey' b) :
-    a.headHeightFloor = b.headHeightFloor ∧
-      ((a.hmax = a.hj + 1 ∧ ¬a.Contest) ↔ (b.hmax = b.hj + 1 ∧ ¬b.Contest)) := by
-  classical
-  unfold frameKey' keyMerge at h
-  rw [frameKey_def, frameKey_def] at h
-  unfold Store.headHeightFloor
-  by_cases ca : a.Contest <;> by_cases cb : b.Contest <;>
-    by_cases ka : a.hmax = a.hj + 1 <;> by_cases kb : b.hmax = b.hj + 1 <;>
-    (simp [ca, cb, ka, kb] at h ⊢) <;> omega
-
-end Store
 
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}

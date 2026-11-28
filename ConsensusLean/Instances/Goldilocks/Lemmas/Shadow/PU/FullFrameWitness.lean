@@ -1,4 +1,6 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -52,13 +54,11 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
   have ht := hrun.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at hrun ht hy hle
-  have hu := Store.finalitySpec_updateFinality (P := sp.toParams)
-    (ACP := Payload sp.n)
   simp only [Node.frame_eq]
   apply full_frame_viable_witness_of_max hr
   intro Q hQ hheight
-  exact Store.F_anc_of_hmax_le_of_safe_with hu hr.reachableWith hr.reachableWith
-    (Store.accepted_tree_with hu hr.reachableWith).2.1 subset_rfl subset_rfl hf
+  exact Goldilocks.Store.F_anc_of_hmax_le_of_safe hr hr
+    (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1 subset_rfl subset_rfl hf
     (held_atts_safe_at hrun hnc ht hle hy ht hle hy le_rfl le_rfl) hQ hheight.ge
 
 end Consensus.Goldilocks.Healing.Growing.Shadow

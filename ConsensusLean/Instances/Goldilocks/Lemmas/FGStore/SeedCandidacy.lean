@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 
 public section
@@ -34,19 +34,6 @@ theorem anc_of_anc_universe (hreach : st.Reachable acp₀) {U : Set (NodeBlock p
     obtain rfl : Z = _ := hU.1 (hsub hZ.1) hYC.1 (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
     exact (ih hZ.1).tail hZ
 
-/-- A reachable store is reached with the stock finality update (the store layer's copy of
-`Store.Reachable.reachableWith`). -/
-private theorem reachableWith_of_reachable (h : st.Reachable acp₀) :
-    ReachableWith updateFinality acp₀ st := by
-  rw [reachableWith_eq]
-  induction h with
-  | refl => exact .refl
-  | tail _ hs ih =>
-    refine ih.tail ((stepWith_iff _ _ _).2 ?_)
-    rcases hs with ⟨B, hB⟩ | ⟨a, ha⟩
-    · exact Or.inl ⟨B, by rw [onBlockWith_eq]; exact hB⟩
-    · exact Or.inr ⟨a, ha⟩
-
 /-- **A comparable seed, held whenever it is above finalization, supplies candidacy**, in the
 frame of a reachable store. Gap frames (`h_j + 1 < h_max`): the target, the seed or an origin's
 entry is a descendant at height at least `h_max − 1`, viable by the gap. Top frames with a low
@@ -66,14 +53,14 @@ theorem guarded_seed_ancestor_candidate (hreach : st.Reachable acp₀)
     (hsource : s < st.hmax - 1 →
       ∃ O, Origin O ∧ ∃ E ∈ st.tree, st.Anc E O ∧ st.hmax - 1 ≤ (st.σ E.root).h) :
     st.toFrame.AncestorCandidate P := by
-  have hu := finalitySpec_updateFinality (P := p) (ACP := ACP)
-  have hr := reachableWith_of_reachable hreach
   have hmono : ∀ {A B : NodeBlock p ACP}, st.Anc A B → (st.σ A.root).h ≤ (st.σ B.root).h :=
-    fun h => h_le_of_store_anc_with hu hr h
-  obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree_with hu hr
-  obtain ⟨-, hJm, hFJ, ⟨BJ, hBJ, -, hBJhj⟩, hbound, -⟩ := cache_invariants_with hu hr
+    fun h => Healing.h_le_of_store_anc hreach h
+  obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree _ _ _ _ hreach
+  obtain ⟨-, hJm, hFJ, ⟨BJ, hBJ, hBJJ, hBJhj⟩, hbound, -⟩ :=
+    cache_invariants _ _ _ _ hreach
   have hjm : st.hj < st.hmax := by
-    have := hj_lt_h_with hu hr hBJ
+    obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain _ _ _ _ hreach BJ hBJ
+    have := (FG.chain_invariants p.fg _ _ hc).2.2.1
     have := hbound BJ hBJ
     omega
   obtain ⟨hPy, hFP⟩ : P ∈ st.tree ∧ st.Anc st.F P := hPt
@@ -122,9 +109,11 @@ theorem guarded_seed_ancestor_candidate (hreach : st.Reachable acp₀)
     · exact finish S hSy hPS (Or.inl hSm.ge)
     · exact finish P hPy .refl (Or.inl (hSm.symm.trans_le (hmono hSP)))
   have hJh : (st.σ st.J.root).h = st.hj := by
-    rcases (store_J_entry_with hu hr).1 with ⟨-, h0⟩ | ⟨h, -⟩
+    obtain ⟨E, hE, hEr, -, hcase⟩ := J_entry_hj _ _ hreach hBJ
+    obtain rfl : E = st.J := hcoh.1 hE hJm (hEr.trans hBJJ)
+    rcases hcase with ⟨-, h0⟩ | ⟨h, -⟩
     · omega
-    · exact h
+    · exact h.trans hBJhj
   rcases hhighroot (by omega) hlow with hJP | hPJ
   · apply finish P hPy .refl
     have hm := hmono hJP
