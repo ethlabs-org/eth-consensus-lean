@@ -252,7 +252,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
         s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B) →
-      Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocks H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
     (hstored : ∀ y ∈ H, ∀ i ell e, AC.CastAt tr.projAC y i ell e →
       tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,

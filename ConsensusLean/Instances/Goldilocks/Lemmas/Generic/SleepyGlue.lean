@@ -26,9 +26,7 @@ theorem frames_from_sources {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D 
     exact ⟨E, ⟨x, k, tr.time k, hlocal.time_nonneg k,
       fun q hq => hlocal.time_mono hq.le, hx, hE⟩, hroot, hanchor⟩
   obtain ⟨hF, hJ⟩ := hcache cm proposer dg H tr b hrun hnc y i t hr (hpop y i t hr) hs
-  refine ⟨hF, hJ, ?_, hviable cm proposer dg H tr b hrun hnc y i t hr (hpop y i t hr) hs⟩
-  -- the fork-choice root of the frame is `Σ.F`
-  exact hF
+  exact ⟨hF, hJ, hviable cm proposer dg H tr b hrun hnc y i t hr (hpop y i t hr) hs⟩
 
 open Shape Blocks
 

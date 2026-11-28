@@ -404,7 +404,7 @@ theorem counted_supportersU
         exact h.1
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   -- a validator that is not an equivocator at `X` has at most one vote in `y`'s merged view
   have hone : ∀ w ∉ equivocators {x | x ∈ (tr.state X i₀).pool s}, ∀ v₁ v₂,
       v₁ ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes →

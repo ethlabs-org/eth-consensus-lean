@@ -60,7 +60,7 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
         ((goldilocksNode sp).head (tr.state y i).ac (Node.frame (tr.state y i)) s) := by
   have hr := Healing.Growing.fg_reachable_at ((goldilocksRunInterface_run_iff cm).mp hrun).1
     ht0 hle hy
-  have hΦ := (Store.frame_realization _ _ _ _ hr).1
+  have hΦ := Store.frame_realization _ _ _ _ hr
   obtain ⟨hC, hCH⟩ := Regimes.ac_tips (A := (tr.state y i).ac) hΦ s
   exact ⟨hC, hΦ.rooted.2 _ hC, hCH⟩
 

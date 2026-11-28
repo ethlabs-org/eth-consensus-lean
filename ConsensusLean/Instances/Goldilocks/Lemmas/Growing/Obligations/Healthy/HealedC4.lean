@@ -196,7 +196,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
   have hst : (tr.projAC.upTo (tr.time i)).state y i = tr.projAC.state y i :=
     Trace.upTo_state tr.projAC y fun _ hq => hmono hq.le
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hci'
-  have hdom : Anc (tr.HonestBlocksAt H) P ell.frame.fcRoot ∨
+  have hdom : Anc (tr.HonestBlocksAt H) P ell.frame.F ∨
       P ∈ ell.frame.viableTree ell.frame.tree := by
     refine Healing.Growing.ProposalImpl.held_target_proposal_domain_before_covered_at hp
       (by rw [hkt']; exact hpk') hy hPx hci hcall hd hti hib ?_ ?_ ?_

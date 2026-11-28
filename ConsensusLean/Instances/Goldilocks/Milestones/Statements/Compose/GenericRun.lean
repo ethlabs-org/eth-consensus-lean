@@ -83,7 +83,7 @@ genesis payload, inside the honest blocks of the run, for an AC with requirement
 genesis whose root is its digest (the premises of C0.3), under `NoColl`. Its tick-order laws
 (`own_first`, `attest_order`, `own_payload`) come from C0.4 and the group law with C0.3: the own
 block is accepted in its tick, so the acceptance of the own proposal is the first FG cut at its
-time. The proof uses requirement 1 only for the parent of the own proposal: it extends `fc_root`,
+time. The proof uses requirement 1 only for the parent of the own proposal: it extends `Φ.F`,
 so it is held; without that the own block can be refused at the tick, then accepted later at the
 same time after its parent and a copy of it arrive, against `own_first`.
 The proposal clause of requirement 1 supplies this fact directly; its vote-head clause is not

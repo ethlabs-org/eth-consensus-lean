@@ -22,7 +22,7 @@ theorem held_candidate_of_rows {ini} (hr : Node.LocalRun proposer dg H sg tr ini
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   held_viable_of_rows hr hfg hf hy (hsrc.above _) hGB hBt
 

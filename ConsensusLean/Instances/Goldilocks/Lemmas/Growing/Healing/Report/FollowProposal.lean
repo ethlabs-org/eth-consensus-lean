@@ -41,7 +41,7 @@ theorem proposal_parent_viable_full_frame_at
   apply Healing.proposal_head_viable hr.localRun hrun.vstart hy hc' hcall hti
     (by rw [RunTrace.upTo_projAC,
       Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le)]; exact hp)
-  exact ⟨(AC.frameIn_of_callAt hr.localRun hy hc').1.fcRoot_mem,
+  exact ⟨(AC.frameIn_of_callAt hr.localRun hy hc').1.rooted.1,
     Relation.ReflTransGen.refl, Q, hQ, hv, hroot⟩
 
 /-- A proposal remains unique through the proposer's honesty deadline, not after compromise. -/

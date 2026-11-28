@@ -74,11 +74,10 @@ def AcceptIsFrameStep : Prop :=
       ∀ a, (st.onAttestation a).toFrame = st.toFrame
 
 /-- **G0.4 (height), frame realization.** In a reachable FG state, `fg_to_ac(Σ)` is a
-well-formed frame (G0.4 (frame)), and the head height floor is `h_max` or `h_max − 1` (this
-clause holds by the definition of `head_height_floor`; it is kept as the claims state it). -/
+well-formed frame. -/
 def FrameRealization : Prop :=
   ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
-    FrameOK st.toFrame ∧ (st.headHeightFloor = st.hmax ∨ st.headHeightFloor = st.hmax - 1)
+    FrameOK st.toFrame
 
 /-- **G0.2 (c) and (h) at the store, the entry state of a source.** In a reachable FG state, for
 every accepted `B` the block with root `σ[B].T_h` (the entry of `B`'s height) is accepted, is an

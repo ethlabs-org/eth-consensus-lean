@@ -485,7 +485,7 @@ theorem proposal_viable_after_votes_at
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ ell.frame.tree) (hroot : ell.frame.Anc ell.frame.fcRoot P)
+    (hPt : P ∈ ell.frame.tree) (hroot : ell.frame.Anc ell.frame.F P)
     (hv : P ∈ ell.frame.viableHeads) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
       P ∈ ell.frame.viableHeads := by

@@ -118,11 +118,11 @@ pairwise compatible. -/
 theorem held_viable_of_rows (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hU := hfg.coherent
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hr hy i)).1
+    Store.frame_realization _ _ _ _ (fg_reachable hr hy i)
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hΦs : (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree := fun X hX => hX.1
   have hsU := fg_tree_subset_honest (tr := tr) hy i
@@ -154,8 +154,8 @@ theorem held_viable_of_rows (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     · exact absurd (Or.inr ⟨by omega, Or.inr (honest_held_anc hr hfg hy h hBt.1)⟩) hv
     · exact ⟨_, hJm, honest_held_anc hr hfg hy h hJm, hJv⟩
   obtain ⟨W, hWs, hBW, hWv⟩ := hW
-  have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot B :=
-    Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem (hBt.2.mono hsU) hBt
+  have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F B :=
+    Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 (hBt.2.mono hsU) hBt
   have hWΦ : W ∈ (Node.frame (tr.state y i)).tree := ⟨hWs, hBt.2.trans hBW⟩
   exact Or.inr ⟨hBt, hΦfB, W, hWΦ, ⟨hWs, hWΦ.2, hWv⟩,
     Frame.anc_tree_of_anc_U hU hΦ hΦU hBt (hBW.mono hsU) hWΦ⟩
@@ -165,7 +165,7 @@ theorem held_viable_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (_hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   held_viable_of_rows hr hfg hf hy hsrc hGB hBt
 

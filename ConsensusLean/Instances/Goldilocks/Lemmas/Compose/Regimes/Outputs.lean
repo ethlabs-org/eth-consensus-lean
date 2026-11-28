@@ -49,7 +49,7 @@ private theorem frame_ok (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) ∧
       (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree :=
-  ⟨(Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1, fun _ hX => hX.1⟩
+  ⟨Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i), fun _ hX => hX.1⟩
 
 /-- **R.8, `nested`**, at a cut of an honest node: the finalized tip is an ancestor of the
 confirmed tip, and the confirmed tip of the head, in the node's tree. -/

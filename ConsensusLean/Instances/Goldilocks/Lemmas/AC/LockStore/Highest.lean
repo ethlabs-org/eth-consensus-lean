@@ -26,9 +26,9 @@ private theorem deepest_eq_of_isDeepest {S : Set (Blk sp.n FGP)} {B : Blk sp.n F
 /-- The anchor is the deepest live lock block or finalised root, on a well-formed frame. -/
 theorem getAnchor_eq_deepest_union (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Time) :
     getAnchor sp A Φ t =
-      (deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})).getD Φ.fcRoot := by
+      (deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.F})).getD Φ.F := by
   classical
-  have hfc : ∀ B ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree B Φ.fcRoot := by
+  have hfc : ∀ B ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree B Φ.F := by
     rintro B ⟨hBt, l', ⟨l, hl, B₀, hB₀, hBr, ht, rfl⟩, hr⟩
     have he : B = Φ.viableAncestor B₀ :=
       hΦ.coherent.1 hBt (viableAncestor_anc hΦ hB₀).1 hr.symm
@@ -44,21 +44,21 @@ theorem getAnchor_eq_deepest_union (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Ti
       rw [show deepest Φ (liveLockBlocks sp A.locks Φ t) = none from hh] at hd
       cases hd
     have hd := deepest_eq_of_isDeepest (Φ := Φ)
-      (S := liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})
-      (B := Φ.fcRoot) ⟨Or.inr rfl, by simp [hempty]⟩
+      (S := liveLockBlocks sp A.locks Φ t ∪ {Φ.F})
+      (B := Φ.F) ⟨Or.inr rfl, by simp [hempty]⟩
     rw [hd]; rfl
   | some H =>
     have hH := deepest_mem hh
     dsimp only
     split_ifs with hlt
-    · have hd : IsDeepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) H := by
+    · have hd : IsDeepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.F}) H := by
         refine ⟨Or.inl hH.1, ?_⟩
         rintro B (hB | hB) hn
         · exact hH.2 B hB hn
         · obtain rfl := Set.mem_singleton_iff.mp hB
           exact Or.inl hlt
       rw [deepest_eq_of_isDeepest hd]; rfl
-    · have hd : IsDeepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) Φ.fcRoot := by
+    · have hd : IsDeepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.F}) Φ.F := by
         refine ⟨Or.inr rfl, ?_⟩
         rintro B (hB | hB) hn
         · have hdep : depth Φ B ≤ depth Φ H := by
@@ -66,7 +66,7 @@ theorem getAnchor_eq_deepest_union (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Ti
             · exact he ▸ le_rfl
             · rcases hH.2 B hB he with h | ⟨h, -⟩ <;> omega
           rcases hfc B hB with h | h
-          · exact Or.inl (depth_lt_of_anc hΦ h hn hΦ.fcRoot_mem)
+          · exact Or.inl (depth_lt_of_anc hΦ h hn hΦ.rooted.1)
           · have := depth_lt_of_anc hΦ h (Ne.symm hn) hB.1
             omega
         · exact False.elim (hn (Set.mem_singleton_iff.mp hB))

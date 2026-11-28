@@ -22,15 +22,15 @@ variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
 /-- **The walk extends a compatible anchor candidate.** If `C` is a live lock block or `fc_root`
 and every live lock block is compatible with `C`, every head extends every ancestor of `C`. -/
 theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n}
-    {t : Time} {C : Blk sp.n FGP} (hC : C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})
+    {t : Time} {C : Blk sp.n FGP} (hC : C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.F})
     (hcomp : ∀ L ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree L C)
     {tree : Set (Blk sp.n FGP)} (htree : tree ⊆ Φ.tree) (V : View sp.n) (s : Int)
     {B : Blk sp.n FGP} (hBC : Φ.Anc B C) :
     Φ.Anc B (getHead sp A Φ t tree V s) := by
-  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.rooted.1
   have hCt := hS hC
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨C, hC⟩
   have hA : getAnchor sp A Φ t = D := by
@@ -60,7 +60,7 @@ vote's head is a block of the frame that extends every ancestor `B` of `C`. -/
 theorem castAt_head_anc (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {C : Blk sp.n FGP}
-    (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪ {ℓ.frame.fcRoot})
+    (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪ {ℓ.frame.F})
     (hcomp : ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible ℓ.frame.tree L C)
     {B : Blk sp.n FGP} (hBC : ℓ.frame.Anc B C) :

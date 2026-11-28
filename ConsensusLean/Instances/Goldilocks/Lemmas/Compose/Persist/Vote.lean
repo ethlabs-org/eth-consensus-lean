@@ -87,7 +87,7 @@ theorem cast_head_fcRoot {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt tr y i ℓ e) :
-    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.F Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ := by
   have hU := hr.coherent
   obtain ⟨hcall, he⟩ := hc
@@ -105,8 +105,8 @@ theorem cast_head_fcRoot {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini
     (by rw [ACInterface.step_ofStart, ACInterface.Call.ofStart_toStart]; exact he') d hd).1
   have hs := (AC.castAt_specU hr.toU hy ⟨hcall, he⟩).2.1
   refine ⟨⟨d.head, ?_, hdr, hok'⟩, hs ▸ hle⟩
-  by_cases hne : ℓ.frame.fcRoot = d.head
-  · exact hne ▸ hok.1.1.fcRoot_mem
+  by_cases hne : ℓ.frame.F = d.head
+  · exact hne ▸ hok.1.1.rooted.1
   · exact (Anc.mem hok' hne).2
 
 end AC

@@ -266,7 +266,7 @@ private theorem caches_zero (D : OutageLockPremises tr H proposer dg ini) {y : F
   have hG := (honestAt_genesis_anc hrun D.hP.1).2
   refine ⟨⟨Or.inl (by rw [hgen _ hFt]; exact hG), Or.inl (by rw [hgen _ hJt]; exact hG)⟩,
     fun hPt => Or.inl ?_⟩
-  have hfc : (Node.frame (tr.state y 0)).fcRoot = D.P := by
+  have hfc : (Node.frame (tr.state y 0)).F = D.P := by
     rw [hgen _ hPt.1]
     exact hgen _ hFt
   rw [hfc]

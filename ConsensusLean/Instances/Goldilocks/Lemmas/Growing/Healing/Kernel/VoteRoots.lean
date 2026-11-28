@@ -40,12 +40,12 @@ theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hcomp : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B)
+    (hcomp : Compatible (tr.HonestBlocksAt H) ell.frame.F B)
     (hK2 : (∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D) ∨
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot) :
+      Anc (tr.HonestBlocksAt H) B ell.frame.F) :
     B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot := by
+      Anc (tr.HonestBlocksAt H) B ell.frame.F := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg k)).localRun
   have hc' := AC.upTo_castAt.mpr (And.intro le_rfl hc)
@@ -55,10 +55,10 @@ theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
   rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ell.frame.tree := hD.1
-      have hFB := (Anc.mono hPhiU hPhi.F_anc_fcRoot).trans hfB
+      have hFB := hfB
       have hBt := AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
       have hPhiBD := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt
-      have hPhifB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfB hBt
+      have hPhifB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.rooted.1 hfB hBt
       refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc' D hD B hPhiBD,
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD

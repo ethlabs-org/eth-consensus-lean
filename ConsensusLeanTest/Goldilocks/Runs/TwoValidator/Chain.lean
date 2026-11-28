@@ -936,7 +936,6 @@ theorem fgGood_onBlock {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood
 structure ChainFrame (Φ : N.Frm) (f j τ : Nat) : Prop where
   tree : ∀ B, B ∈ Φ.tree ↔ ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m
   F : Φ.F = blk f
-  fcRoot : Φ.fcRoot = blk f
   heads : ∀ B, B ∈ Φ.viableHeads ↔ ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m
   fj : f ≤ j
   jτ : j ≤ τ
@@ -972,7 +971,7 @@ theorem head_mem (h : ChainFrame Φ f j τ) {m : Nat} (h1 : j ≤ m) (h2 : m ≤
 fork-choice root to the tip. -/
 theorem mem_viableTree (h : ChainFrame Φ f j τ) {S : Set N.Blk} (hS : blk τ ∈ S)
     {m : Nat} (h1 : j ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
-  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
+  ⟨hm, by rw [h.F]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
     h.head_mem h.jτ le_rfl,
     h.anc (by have := h.fj; omega) h2 le_rfl⟩
 
@@ -1028,7 +1027,7 @@ theorem fgGood_frame {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood f
       by_cases hh : hgt τ ≤ hgt m
       · exact Or.inl hh
       · exact Or.inr ⟨by omega, Or.inr h1⟩
-  refine ⟨f, ⟨htree, hFe, hFe, fun B => ?_, hf, jx_le τ⟩⟩
+  refine ⟨f, ⟨htree, hFe, fun B => ?_, hf, jx_le τ⟩⟩
   change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.IsViable B) ↔ _
   rw [hFe]
   constructor

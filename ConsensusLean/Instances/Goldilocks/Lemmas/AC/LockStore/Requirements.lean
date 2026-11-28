@@ -93,7 +93,7 @@ a viable descendant there; otherwise it stays at the anchor. -/
 private theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
-    {A : Blk sp.n FGP} (hA : A ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot A)
+    {A : Blk sp.n FGP} (hA : A ∈ Φ.tree) (hroot : Φ.Anc Φ.F A)
     (t : Time) (V : View sp.n) (σ : Int) {fuel : Nat} (hf : Φ.tree.ncard ≤ fuel) :
     let E := ghost sp (Φ.viableTree dom) (headScore sp Φ V σ)
       (headEligible sp Φ t V σ) fuel A
@@ -136,7 +136,7 @@ theorem getHead_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
     (A : ACState sp.n) (t : Time) (V : View sp.n) (σ : Int)
-    (ha : getAnchor sp A Φ t ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t)) :
+    (ha : getAnchor sp A Φ t ∈ Φ.tree) (hroot : Φ.Anc Φ.F (getAnchor sp A Φ t)) :
     let hasDesc := ∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc (getAnchor sp A Φ t) W
     (hasDesc → getHead sp A Φ t (Φ.viableTree dom) V σ ∈ dom ∧
       getHead sp A Φ t (Φ.viableTree dom) V σ ∈ Φ.viableHeads) ∧
@@ -188,7 +188,7 @@ private theorem headOK_of {U : Set (Blk sp.n FGP)} (hU : Coherent U)
       ⟨getHead sp A Φ t (Φ.viableTree dom) V σ, getAnchor sp A Φ t, dom⟩ := by
   obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
-  exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
+  exact ⟨(hanc Φ.F (Or.inr rfl)).trans hah, hv⟩
 
 /-- Membership in the deep candidates of `ac_to_fg`. -/
 theorem mem_toFGDeepCandidates {D : Nat} {a : Blk sp.n FGP} {A : ACState sp.n}
@@ -317,7 +317,7 @@ theorem interface_requirements_from (FGP : Type) {s₀ : ACState sp.n}
     intro x U hU A Φ t₀ hr t _
     obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ :=
       lockInv_of_reachable hU h₀ (ACInterface.reachableAtFrom_iff.2 hr)
-    change Φ.Anc Φ.fcRoot (acHead sp A Φ t) ∧ Φ.Anc Φ.F (acConfirmed sp A Φ t) ∧
+    change Φ.Anc Φ.F (acHead sp A Φ t) ∧ Φ.Anc Φ.F (acConfirmed sp A Φ t) ∧
       Φ.Anc (acConfirmed sp A Φ t) (acHead sp A Φ t)
     obtain ⟨ha, -⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
     have hHt := (getHead_spec hΦ (fun _ h => h) (hall Φ) (latestView sp A Φ t).1

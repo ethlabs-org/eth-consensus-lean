@@ -50,7 +50,7 @@ theorem optimistic_transfer_stored
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   set SX := optimisticVoters sp A ℓx.frame s D
   have h34 : 3 * sp.committeeSize ≤ 4 * SX.ncard := by
     have h := hsel

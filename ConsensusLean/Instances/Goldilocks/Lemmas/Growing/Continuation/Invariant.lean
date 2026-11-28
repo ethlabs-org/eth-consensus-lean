@@ -76,7 +76,7 @@ structure SeededInvariant (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
     OnHealedChain tr H g rL rO (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g rL rO C s b → C ∈ (Node.frame (tr.state y i)).tree →
-        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C
+        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F C
   /-- Every live lock block is on the healed chain (state read at `t ∈ [t₁, b]`). -/
   locks : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
     ∀ L ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
@@ -92,7 +92,7 @@ structure SeededInvariant (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)
     (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
     ∀ C, OnHealedChain tr H g rL rO C b → C ∈ (Node.frame (tr.state y i)).tree →
-      (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
+      (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).F ∨
         C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
   /-- The reset seed: a high origin written by `b`, in the frame of every honest call at a time in
   `[t_{rL−k−3}, b]` whose `Σ.F` it extends. -/
@@ -153,7 +153,7 @@ theorem seeded_locks_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc
     rwa [hst] at h
   have hreach := Compose.fg_reachable (hrun.upTo ht0).toLocalRun hy i
   rw [hst] at hreach
-  have hΦ : FrameOK (Node.frame (tr.state y i)) := (Store.frame_realization _ _ _ _ hreach).1
+  have hΦ : FrameOK (Node.frame (tr.state y i)) := Store.frame_realization _ _ _ _ hreach
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, i, t, ht0, hi, hy, hX.1⟩
   rintro L ⟨hL, l, hlm, hlL⟩
@@ -257,7 +257,7 @@ theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
         C ∈ (Node.frame (tr.state y i)).tree →
-        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C :=
+        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F C :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
   seeded_caches_of hrun hnc hseed.toHandoverCore (hcv.upTo _) hTb
     (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hK hKB) ht0 hi htb hy
@@ -279,7 +279,7 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∀ C, OnHealedChain tr H g r (r + sp.k - 1) C b → C ∈ (Node.frame (tr.state y i)).tree →
-      (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
+      (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).F ∨
         C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
   fun _ hC hCt => seeded_viable_of hrun hnc hseed.toHandoverCore (hcv.upTo _) hTb

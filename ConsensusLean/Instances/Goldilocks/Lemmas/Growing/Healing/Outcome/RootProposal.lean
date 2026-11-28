@@ -46,7 +46,7 @@ theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {elly : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j elly e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    Anc (tr.HonestBlocksAt H) elly.frame.fcRoot P := by
+    Anc (tr.HonestBlocksAt H) elly.frame.F P := by
   have hpi : p ∈ H (tr.time i) := hp.run.antitone (by
     rw [hti]
     exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH

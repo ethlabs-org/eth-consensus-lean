@@ -59,7 +59,7 @@ theorem next_transfer_of_carryU
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   -- the honest voters of slot `m` are supporters of `B` at `y`
   set SX : Set (Fin sp.n) := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}
   have hsupp : SX ⊆ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) m B := by
@@ -190,7 +190,7 @@ theorem optimistic_transfer_storedU
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   -- the counted validators, three quarters of the committee, all of them members (P)
   set SX := optimisticVoters sp A ℓx.frame s D
   have h34 : 3 * sp.committeeSize ≤ 4 * SX.ncard := by
@@ -333,7 +333,7 @@ theorem first_transfer_stored_of_poolU
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   obtain ⟨⟨-, -, hBC⟩, -, hfast⟩ := (deepest_mem hfs).1
   set P := tr.state x i₀
   set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s D, v.val = w}

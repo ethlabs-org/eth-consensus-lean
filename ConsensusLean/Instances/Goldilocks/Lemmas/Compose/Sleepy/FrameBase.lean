@@ -193,7 +193,7 @@ theorem attestation_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨j, rfl, ℓ, hcj, -, -, hC, hfg⟩ := attest_source hrun.toLocalRun hx hcall
   rw [(hrun.cutLaw x hx j _ hcj).1] at hC
   have hΦ : FrameOK (Node.frame (tr.state x j)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx j)).1
+    Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx j)
   -- the source is in the viable tree, at or below the viable ancestor of a stored lock block
   obtain ⟨hsv, a, ha, hsa⟩ := AC.toFG_source_below_lock (sp := sp) hC
   obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := AC.mem_liveLockBlocks hΦ ha

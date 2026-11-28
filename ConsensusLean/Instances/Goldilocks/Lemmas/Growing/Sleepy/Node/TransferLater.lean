@@ -92,7 +92,7 @@ theorem later_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (hframe : (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
         AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
       B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
+        Anc (tr.HonestBlocksAt H) B ℓ.frame.F)
     (hall : ∀ x k e', HVoteAt tr H x k e' → e'.msg.slot = s →
       AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :

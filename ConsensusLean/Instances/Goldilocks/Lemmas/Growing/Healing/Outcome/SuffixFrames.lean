@@ -54,10 +54,10 @@ theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hPhi := Outcome.frame_realized hrun hy hc.1
   have hPhiU := Outcome.frame_tree_subset hrun hy hc.1
   have hfC := ((AC.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
-  have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
+  have hFC := hfC
   have hCt := AC.frame_mem_of_between sp hU hPhi hPhiU hP.1.1 hCP hFC
   have hCP' := AC.anc_tree_of_anc_U hU hPhi hPhiU hCt hCP hP.1.1
-  have hfC' := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfC hCt
+  have hfC' := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.rooted.1 hfC hCt
   obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
   have hCs : C ∈ AC.voterBlockTree sp e.readPoint ell.frame u := by
     rw [← hes] at hP ⊢
@@ -125,8 +125,8 @@ theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
           (Option.some_injective _ (hY.2.2.symm.trans hPQ))
         exact hBY
       exact AC.frame_mem_of_between sp hU hPhi hPhiU hQt hBQ hFB
-  have hfB := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem
-    (((hPhi.fcRoot_anc_viableHeads X hXv).mono hPhiU).trans hXB) hBt
+  have hfB := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.rooted.1
+    (((hPhi.rooted.2 X (hPhi.viableHeads_subset hXv)).mono hPhiU).trans hXB) hBt
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   have hi0 := hrun.time_nonneg i
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le

@@ -77,10 +77,10 @@ theorem frozen_viable_of_anchor_path_at
     (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haX
   have hU := Compose.Growing.honest_blocks_coherent rc hnc
   have hXt := AC.frame_mem_of_between sp hU hPhi.1 hPhi.2 hP.1.1 hXP
-    ((Anc.mono hPhi.2 hPhi.1.F_anc_fcRoot).trans hrootX)
+    (hrootX)
   have hXPf := AC.anc_tree_of_anc_U hU hPhi.1 hPhi.2 hXt hXP hP.1.1
   have hrootXf := AC.anc_tree_of_anc_U hU hPhi.1 hPhi.2
-    hPhi.1.fcRoot_mem hrootX hXt
+    hPhi.1.rooted.1 hrootX hXt
   obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
   exact ⟨AC.voterBlockTree_ancU hr.toU rc.vstart hy hc' P hP.1 X hXPf, hrootXf,
     Y, hY, hvY, hXPf.trans hPY⟩
@@ -95,7 +95,7 @@ theorem proposal_walk_end_at
     (hp : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay)) :
     d.start ∈ ellp.frame.tree ∧
-      ellp.frame.Anc ellp.frame.fcRoot d.start ∧
+      ellp.frame.Anc ellp.frame.F d.start ∧
       AC.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
         (AC.headScore sp ellp.frame (AC.View.ofLists pay) ((sp.slot (tr.time ip) : Int) - 1))
         (AC.headEligible sp ellp.frame (tr.time ip) (AC.View.ofLists pay)
@@ -103,7 +103,7 @@ theorem proposal_walk_end_at
   have hPhi := (Compose.Growing.frameIn_at rc hnc hz hcp).1
   have key (A : AC.ACState sp.n) (V : AC.View sp.n) (σ : Int) :
       AC.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree ∧
-      ellp.frame.Anc ellp.frame.fcRoot (AC.getAnchor sp A ellp.frame (tr.time ip)) ∧
+      ellp.frame.Anc ellp.frame.F (AC.getAnchor sp A ellp.frame (tr.time ip)) ∧
       AC.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
         (AC.headScore sp ellp.frame V σ)
         (AC.headEligible sp ellp.frame (tr.time ip) V σ)
@@ -111,8 +111,8 @@ theorem proposal_walk_end_at
         (AC.getHead sp A ellp.frame (tr.time ip) (ellp.frame.viableTree ellp.frame.tree) V σ) := by
     have hroot := AC.fcRoot_anc_getAnchor hPhi A (tr.time ip)
     have hstart : AC.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree := by
-      rcases eq_or_ne ellp.frame.fcRoot (AC.getAnchor sp A ellp.frame (tr.time ip)) with he | he
-      · exact he ▸ hPhi.fcRoot_mem
+      rcases eq_or_ne ellp.frame.F (AC.getAnchor sp A ellp.frame (tr.time ip)) with he | he
+      · exact he ▸ hPhi.rooted.1
       · exact (Anc.mem hroot he).2
     refine ⟨hstart, hroot, ?_⟩
     exact AC.walkEnd_ghost hPhi.coherent (fun X hX => hX.1)

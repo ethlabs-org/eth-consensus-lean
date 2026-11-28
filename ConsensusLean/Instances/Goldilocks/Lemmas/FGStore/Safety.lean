@@ -32,8 +32,6 @@ theorem toFrame_tree (st : Store P ACP) :
 
 theorem toFrame_F (st : Store P ACP) : st.toFrame.F = st.F := by rfl
 
-theorem toFrame_fcRoot (st : Store P ACP) : st.toFrame.fcRoot = st.F := by rfl
-
 theorem toFrame_viableHeads (st : Store P ACP) :
     st.toFrame.viableHeads = {B | B ∈ st.tree ∧ st.Anc st.F B ∧ st.IsViable B} := by
   rfl

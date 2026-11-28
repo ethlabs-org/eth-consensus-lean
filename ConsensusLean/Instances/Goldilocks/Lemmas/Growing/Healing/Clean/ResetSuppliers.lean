@@ -154,7 +154,7 @@ theorem castAt_facts_at {ini}
     {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ℓ e) :
     (FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H) ∧
-      ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+      ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.F Hd) ∧
         tr.time i ≤ sp.ts e.msg.slot + sp.Δ) ∧
       e.msg.slot = sp.slot (tr.time i) :=
   ⟨Compose.Growing.frameIn_at hrun hnc hy hcast.1,

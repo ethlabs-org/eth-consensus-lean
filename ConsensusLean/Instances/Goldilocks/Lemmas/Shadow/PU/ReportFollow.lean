@@ -279,10 +279,7 @@ theorem toFG_later_proposal_head_after_at
       (by linarith only [hm, sp.toParams.hΔ]) hmb (by omega) hya ha halo hat hopt hRA hAD
       ?_ (by omega) hrN hz hcp hcall hti hd hK
     rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
-    · have hfe : ellw.frame.fcRoot = ellw.frame.F := by
-        rw [frame_of_projAC_at hrun hya ha, Node.frame_eq, Store.toFrame_fcRoot,
-          Store.toFrame_F]
-      exact Or.inl (by rw [← hfe]; exact hbelow)
+    · exact Or.inl hbelow
     · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
       exact Or.inr ⟨Q, hvQ, hAQ⟩
 

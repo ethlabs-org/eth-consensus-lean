@@ -54,9 +54,7 @@ private theorem high_roots_before (acp₀ : ACP)
     rcases hJ with hJB | hBJ
     · exact Or.inl ((hFJ.mono (hsub _ _ hy hkb)).trans hJB)
     · exact Anc.total hU (hFJ.mono (hsub _ _ hy hkb)) hBJ
-  refine ⟨hJ, hF, ?_⟩
-  unfold Store.fcRoot
-  split_ifs <;> assumption
+  exact ⟨hJ, hF⟩
 
 /-- The call-facing result uses equality with the store's actual frame. -/
 theorem high_frame_root_before (acp₀ : ACP)
@@ -68,7 +66,7 @@ theorem high_frame_root_before (acp₀ : ACP)
   intro hU hmono hsub hobs hsource y k B frame hy hkb hreach hgen hq hhigh hprior hframe
   rw [hframe]
   exact (high_roots_before acp₀ st time H Sign Origin Joined U Hz b
-    hU hmono hsub hobs hsource y k B hy hkb hreach hgen hq hhigh hprior).2.1
+    hU hmono hsub hobs hsource y k B hy hkb hreach hgen hq hhigh hprior).2
 
 end Consensus.Goldilocks.LocalSources
 

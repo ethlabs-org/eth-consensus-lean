@@ -81,7 +81,7 @@ theorem vote_extends_of_counted_batch_at {ini}
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact AC.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.rooted.1
   have hBU := frame_upTo_at hrun hnc hy hc.1 hBt
   obtain ⟨Hd, hHd, hHdr, hBHd⟩ :=
     Compose.vote_extends_of_counted_batch hr hy hc' hs hviab (SX := SX) (W := W) hSXH

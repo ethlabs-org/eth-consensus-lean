@@ -49,7 +49,7 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
     {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hs : a + κ ≤ sp.ts ((s : Int) - 1))
-    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
       (tr.state y j).fg.IsViable B) :
     0 ≤ tr.time j ∧ tr.time i ≤ tr.time j ∧ p ∈ H (tr.time j) ∧
@@ -59,7 +59,7 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
         some (d, pay) ∧
       AC.CastAt (tr.upTo (tr.time j)).projAC y j ℓy e ∧
       Compose.SuffixService (H (tr.time j)) (tr.upTo (tr.time j)) a κ (min b (tr.time j)) s ∧
-      Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) ℓy.frame.fcRoot d.head ∧
+      Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) ℓy.frame.F d.head ∧
       ∀ B ∈ ((tr.upTo (tr.time j)).state y j).fg.tree,
         Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) d.head B →
         ((tr.upTo (tr.time j)).state y j).fg.IsViable B := by
@@ -119,7 +119,7 @@ private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
-    0 < s ∧ Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head ∧
+    0 < s ∧ Anc (tr.HonestBlocksAt H) ℓy.frame.F d.head ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
         (tr.state y j).fg.IsViable B := by
   have hΔ := sp.toParams.hΔ
@@ -177,7 +177,7 @@ private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer
   · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
       K hPK hKB.hsize hfK hyK
       with hg | ⟨O, hO, hfO⟩
-    · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
+    · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.rooted.1) hg (hΦpU hQt)
     · exact Anc.mono hsub (hfO.trans (hold' O hO))
   · have hBP : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
       ⟨y, hy, j, by rw [hst]; exact hB⟩
@@ -215,7 +215,7 @@ theorem suffix_agree_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
     {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
-    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
       (tr.state y j).fg.IsViable B) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
@@ -300,7 +300,7 @@ theorem old_child_ineligible_from {ini} (hrun : Growing.GoldilocksRun proposer d
     {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
-    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
       (tr.state y j).fg.IsViable B)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -360,7 +360,7 @@ theorem proposal_at_voter_from {ini} (hrun : Growing.GoldilocksRun proposer dg H
     {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
     (hs : a + κ ≤ sp.ts ((s : Int) - 1))
-    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
       (tr.state y j).fg.IsViable B) :
     P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) := by

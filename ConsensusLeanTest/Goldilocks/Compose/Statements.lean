@@ -39,8 +39,8 @@ def P₁ : Params where
 /-- The validator. -/
 def v₀ : Fin P₁.n := ⟨0, Nat.one_pos⟩
 
-/-- An AC with no state and no messages: it proposes `fc_root` with a unit payload, returns
-`fg_confirmed = ⊥`, `ac_confirmed = Φ.F`, `ac_head = Φ.fcRoot`, and sends nothing. -/
+/-- An AC with no state and no messages: it proposes `Φ.F` with a unit payload, returns
+`fg_confirmed = ⊥`, `ac_confirmed = Φ.F`, `ac_head = Φ.F`, and sends nothing. -/
 def rootAC : NodeAC P₁ where
   State := Unit
   Msg := Empty
@@ -53,30 +53,22 @@ def rootAC : NodeAC P₁ where
   onMessage _ s _ _ _ := (s, [])
   onBlock _ s _ _ _ := (s, [])
   onTick _ s _ _ := (s, [])
-  proposal s Φ _ := (s, some (⟨Φ.fcRoot, Φ.fcRoot, ∅⟩, ()))
+  proposal s Φ _ := (s, some (⟨Φ.F, Φ.F, ∅⟩, ()))
   toFG s _ _ := (s, none)
   confirmed _ Φ _ := Φ.F
-  head _ Φ _ := Φ.fcRoot
+  head _ Φ _ := Φ.F
   restart _ s _ _ := (s, [])
 
 /-- The digest: the slot (genesis, of slot `0`, has root `0`). -/
 def dg₁ : Digest (List (FG.Att P₁.n)) Unit := fun _ s _ _ _ => s
-
-/-- The frame of the last call of a reachable AC state is well formed. -/
-theorem frameOK_of_reachableAt {P : Params} {FGP : Type} {A : ACInterface P FGP} {self : Fin P.n}
-    {U : Set A.Blk} {s : A.State} {Φ : A.Frm} {t : Time} (h : A.ReachableAt self U s Φ t) :
-    FrameOK Φ := by
-  induction h with
-  | init _ _ hin => exact hin.1
-  | step _ _ _ hok => exact hok.1.1
 
 /-- `rootAC` sends nothing. -/
 theorem rootAC_step_emits (self : Fin P₁.n) (s : rootAC.State) (Φ : rootAC.Frm) (t : Time)
     (c : rootAC.Call) : (rootAC.step self s Φ t c).2 = [] := by
   cases c <;> rfl
 
-/-- The duty head `(fc_root, fc_root, ∅)` is good at every frame. -/
-theorem headOK_fcRoot (Φ : rootAC.Frm) : rootAC.HeadOK Φ ⟨Φ.fcRoot, Φ.fcRoot, ∅⟩ := by
+/-- The duty head `(F, F, ∅)` is good at every frame. -/
+theorem headOK_F (Φ : rootAC.Frm) : rootAC.HeadOK Φ ⟨Φ.F, Φ.F, ∅⟩ := by
   refine ⟨Relation.ReflTransGen.refl, fun h => ?_⟩
   exact absurd h.1 (Set.notMem_empty _)
 
@@ -88,17 +80,15 @@ theorem rootAC_requirements : rootAC.Requirements where
     · simp only [rootAC, Option.some.injEq] at h
       injection h with hd _
       subst hd
-      exact headOK_fcRoot Φ
+      exact headOK_F Φ
     · rw [rootAC_step_emits] at he
       exact absurd he (List.not_mem_nil)
   source := by
     intro _ _ _ s Φ _ _ _ _ C h
     exact absurd h (by simp [rootAC])
   outputs := by
-    intro _ _ _ s Φ t₀ hr t _
-    have hok := frameOK_of_reachableAt hr
-    exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl,
-      hok.rooted.2 Φ.fcRoot hok.fcRoot_mem⟩
+    intro _ _ _ _ _ _ _ _ _
+    exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl, Relation.ReflTransGen.refl⟩
   payload := by
     intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     trivial

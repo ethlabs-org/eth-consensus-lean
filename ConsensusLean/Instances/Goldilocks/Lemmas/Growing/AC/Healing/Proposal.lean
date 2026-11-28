@@ -28,7 +28,7 @@ theorem optimistic_first_proposal_anc_at
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ell.frame (T.time i)).2 = some (d, pay))
     (hV : B ∈ ell.frame.tree ∧
-      (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot))
+      (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.F))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
     (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
     Anc U B d.head := by

@@ -24,7 +24,7 @@ theorem frameOK_state {P : Params} {A : NodeAC P}
     {tr : RunTrace A} {proposer : Nat → Fin P.n} {ini : Fin P.n → A.State}
     (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) :=
-  (Store.frame_realization P A.Payload _ _ (fg_reachable hrun hy i)).1
+  Store.frame_realization P A.Payload _ _ (fg_reachable hrun hy i)
 
 end Consensus.Goldilocks.Compose
 

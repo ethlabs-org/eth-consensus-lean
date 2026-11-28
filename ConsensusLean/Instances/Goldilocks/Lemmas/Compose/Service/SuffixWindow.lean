@@ -413,17 +413,17 @@ private theorem winner_voter_tree_before {a₀ κ b : Time}
     omega
   have hXC : Anc (tr.HonestBlocks H) X C := .single ⟨hΦpU (anc_mem hXQ hQt), hΦpU hCp, hCX⟩
   have hCP : Anc (tr.HonestBlocks H) C P := (hCQ.mono hΦpU).trans hQP
-  have hfC : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot C :=
+  have hfC : Anc (tr.HonestBlocks H) ℓy.frame.F C :=
     ((AC.fcRoot_anc_getAnchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans (hanc.trans hXC)
-  have hFC : Anc (tr.HonestBlocks H) ℓy.frame.F C := (hΦy.F_anc_fcRoot.mono hΦyU).trans hfC
+  have hFC : Anc (tr.HonestBlocks H) ℓy.frame.F C := hfC
   have hPt := voter_holds_proposal_before hrun hnc hsync hp hP hPs hs0 hy hcy hes hjb
     (hFC.trans hCP)
   have hCt : C ∈ ℓy.frame.tree := AC.frame_mem_of_between sp hU hΦy hΦyU hPt hCP hFC
   have hCPy : ℓy.frame.Anc C P := AC.anc_tree_of_anc_U hU hΦy hΦyU hCt hCP hPt
-  have hfP : ℓy.frame.Anc ℓy.frame.fcRoot P :=
-    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem (hfC.trans hCP) hPt
+  have hfP : ℓy.frame.Anc ℓy.frame.F P :=
+    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.rooted.1 (hfC.trans hCP) hPt
   refine ⟨⟨hCt, Or.inr ⟨P, hPt, hPs, hCPy⟩⟩,
-    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfC hCt,
+    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.rooted.1 hfC hCt,
     P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_, hCPy⟩
   -- `P` is a viable head of the voter
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfP ⊢
@@ -494,8 +494,8 @@ private theorem competitor_reflect_before {a₀ κ b : Time}
         (anc_parent hU (hBP'.mono hΦyU) hBP hPQ (hΦpU hQt)) hFB
   -- `B` is a viable head of the proposer: its height is at least that of `X`
   have hXv := hviab X hDX hXQ
-  have hfB : ℓp.frame.Anc ℓp.frame.fcRoot B := AC.anc_tree_of_anc_U hU hΦp hΦpU hΦp.fcRoot_mem
-    (((hΦp.fcRoot_anc_viableHeads X hXv).mono hΦpU).trans hXB) hBt
+  have hfB : ℓp.frame.Anc ℓp.frame.F B := AC.anc_tree_of_anc_U hU hΦp hΦpU hΦp.rooted.1
+    (((hΦp.rooted.2 X (hΦp.viableHeads_subset hXv)).mono hΦpU).trans hXB) hBt
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [frame_of_projAC hrun hp hc] at hXv hBt ⊢
   have hXBs := honest_held_anc hrun hnc hp hXB hBt.1
@@ -569,10 +569,10 @@ private theorem voter_holds_before {a₀ κ b : Time}
   have hs0 : 0 < s := by
     have := hU.2 d.head (hΦpU hQt) P hPU hPQ
     omega
-  have hfX : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot X :=
+  have hfX : Anc (tr.HonestBlocks H) ℓy.frame.F X :=
     ((AC.fcRoot_anc_getAnchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans hanc
   exact voter_holds_proposal_before hrun hnc hsync hp hP hPs hs0 hy hcy hes hjb
-    (((hΦy.F_anc_fcRoot.mono hΦyU).trans hfX).trans ((hXQ.mono hΦpU).trans hQP))
+    ((hfX).trans ((hXQ.mono hΦpU).trans hQP))
 
 omit hsl hpj hsD hDQ hviab in
 /-- **The views agree**: the proposal's view and the voter's merged view have the same
@@ -687,7 +687,7 @@ of `Q`. -/
 theorem old_child_ineligible_of {a₀ κ b : Time}
     (hsync : SuffixService H tr a₀ κ b s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
-    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
       (tr.state y j).fg.IsViable B)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -756,8 +756,8 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
       exact absurd (hBP'.mono hΦyU) hnBP
   -- `B` is in the proposer's viable tree: its height is at least that of `Q`
   have hQv := hviab d.head hDQ .refl
-  have hfB : ℓp.frame.Anc ℓp.frame.fcRoot B := AC.anc_tree_of_anc_U hU hΦp hΦpU hΦp.fcRoot_mem
-    (((hΦp.fcRoot_anc_viableHeads _ hQv).mono hΦpU).trans hQB) hBt
+  have hfB : ℓp.frame.Anc ℓp.frame.F B := AC.anc_tree_of_anc_U hU hΦp hΦpU hΦp.rooted.1
+    (((hΦp.rooted.2 _ (hΦp.viableHeads_subset hQv)).mono hΦpU).trans hQB) hBt
   have hBv : B ∈ ℓp.frame.viableTree ℓp.frame.tree := by
     refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
     have hQv' := hQv
@@ -800,14 +800,14 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
       AC.headEligible sp ℓp.frame (tr.time i) (AC.View.ofLists pay) ((s : Int) - 1) X})
       (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr h)⟩ _)
   -- `Q` is a viable head of the voter
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hfcQ.trans hQP
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.F P := hfcQ.trans hQP
   have hPt := voter_holds_proposal_before hrun hnc hsync hp hP hPs hs0 hy hcy hes hjb
-    ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
+    (hfP)
   have hFQ : Anc (tr.HonestBlocks H) ℓy.frame.F d.head :=
     below _ ((hΦy.rooted.2 B hB.1.1).mono hΦyU) ((hΦy.rooted.2 P hPt).mono hΦyU)
   have hQty : d.head ∈ ℓy.frame.tree := AC.frame_mem_of_between sp hU hΦy hΦyU hPt hQP hFQ
-  have hfQy : ℓy.frame.Anc ℓy.frame.fcRoot d.head := AC.anc_tree_of_anc_U hU hΦy hΦyU
-    hΦy.fcRoot_mem (below _ (hB.2.1.mono hΦyU) hfP) hQty
+  have hfQy : ℓy.frame.Anc ℓy.frame.F d.head := AC.anc_tree_of_anc_U hU hΦy hΦyU
+    hΦy.rooted.1 (below _ (hB.2.1.mono hΦyU) hfP) hQty
   have hQvy : d.head ∈ ℓy.frame.viableHeads := by
     rw [frame_of_projAC hrun hy hcy.1] at hQty hfQy ⊢
     exact ⟨hQty.1, hQty.2, hflQ _ hQty.1 .refl⟩
@@ -901,7 +901,7 @@ theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
-    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
+    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.F d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
       (tr.state y j).fg.IsViable B) :
     P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) := by
@@ -917,12 +917,12 @@ theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     have := hU.2 d.head (hΦpU hQt) P hPU hPQ
     omega
   -- `fc_root` of the voter is below `Q`, so below `P`
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hfcQ.trans hQP
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.F P := hfcQ.trans hQP
   have hPt := voter_holds_proposal_before hrun hnc hs
     hp hP hPs hs0 hy hcy hes hjb
-    ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
-  have hfPy : ℓy.frame.Anc ℓy.frame.fcRoot P :=
-    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfP hPt
+    (hfP)
+  have hfPy : ℓy.frame.Anc ℓy.frame.F P :=
+    AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.rooted.1 hfP hPt
   refine ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hfPy, P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_,
     .refl⟩
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfPy ⊢
