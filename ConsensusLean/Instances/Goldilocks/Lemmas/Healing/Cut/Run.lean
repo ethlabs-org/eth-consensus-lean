@@ -11,7 +11,7 @@ public section
 Over a run (`Node.LocalRun`), the FG state of an honest node changes only at its accepted blocks
 and processed attestations (`fg_step`; it is a reachable FG state, `Compose.fg_reachable`), its
 `Σ.h_max` only grows (`hmax_mono`), its blocks other than genesis were accepted at earlier cuts
-(`tree_accepted`) and its pool holds attestations processed at earlier cuts (`pool_processed`).
+(`Compose.tree_cases`) and its pool holds attestations processed at earlier cuts (`pool_processed`).
 
 **The tick order at an `fg_attest` cut** (claims C0.4, F.5 (run)): the only FG cuts of a node at
 the time of its tick and before its `fg_attest` are the acceptance of its own proposal, whose
@@ -98,37 +98,6 @@ theorem store_anc_of_honest_anc_from (h : LocalRun proposer dg H sg tr ini)
     obtain rfl : Z = _ := hU.1 ⟨y, hy, k, hZ.1⟩ hYC.1
       (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
     exact (ih hZ.1).tail hZ
-
-/-- A block of an honest node's FG state is genesis or was accepted by it at an earlier cut. -/
-theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {m : Nat} {B : A.Blk}
-    (hB : B ∈ (tr.state y m).fg.tree) :
-    B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B := by
-  induction m with
-  | zero =>
-    left
-    change (tr.init y).fg.blocks B.root = some B at hB
-    rw [h.init y hy] at hB
-    change (if B.root = P.genesisRoot then some (P.genesisBlock A.genesisPayload) else none) =
-      some B at hB
-    split_ifs at hB
-    exact (Option.some.inj hB).symm
-  | succ m ih =>
-    have lift : B ∈ (tr.state y m).fg.tree →
-        B = P.genesisBlock A.genesisPayload ∨ ∃ k < m + 1, tr.AcceptAt y k B := fun hB =>
-      (ih hB).imp_right fun ⟨k, hk, hA⟩ => ⟨k, by omega, hA⟩
-    rcases fg_step h hy m with he | ⟨B', hA, hB'⟩ | ⟨a, -, he⟩
-    · exact lift (he ▸ hB)
-    · obtain ⟨-, -, -, -, -, -, hb, -, -⟩ := Store.onBlock_fields hB'
-      change (tr.state y (m + 1)).fg.blocks B.root = some B at hB
-      rw [hb, Function.update_apply] at hB
-      split_ifs at hB
-      · cases hB
-        exact Or.inr ⟨m, by omega, hA⟩
-      · exact lift hB
-    · refine lift ?_
-      change (tr.state y m).fg.blocks B.root = some B
-      rw [← (Store.onAttestation_fields _ a).1, ← he]
-      exact hB
 
 /-- An attestation in the pool of an honest node was processed by it at an earlier cut. -/
 theorem pool_processed (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)
@@ -258,7 +227,7 @@ theorem signed_before_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ 
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) {Y : A.Blk}
     (hY : Y ∈ (tr.state y k).fg.tree) {a : FG.Att P.n} (ha : a ∈ Y.fgPayload) (haH : a.val ∈ H) :
     ∃ j, tr.SignAt a.val j a ∧ tr.time j < tr.time k := by
-  rcases tree_accepted h hy hY with rfl | ⟨i, hik, hA⟩
+  rcases Compose.tree_cases h hy hY with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨j, hji, hj⟩ := h.att_unforgeable y hy i a (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) haH
   by_cases hlt : tr.time i < tr.time k

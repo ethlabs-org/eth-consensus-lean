@@ -77,7 +77,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
     ring
   obtain ⟨hPhi, hPhiV⟩ := AC.frameIn_of_callAt hr hpH hcp
   have hPhiU := hPhiV.trans subU
-  have below : Anc (tr.HonestBlocksAt H) O ell.frame.fcRoot →
+  have below : Anc (tr.HonestBlocksAt H) O ell.frame.F →
       Anc (tr.HonestBlocksAt H) O d.head := by
     intro hOF
     obtain ⟨_, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd

@@ -27,10 +27,10 @@ theorem report_root_at {ini}
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R := by
   have hret := hR.2.2
   change (AC.acToFG sp _ _ _).2 = some R at hret
-  have hroot : R ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot R :=
+  have hroot : R ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F R :=
     ⟨(AC.toFG_source hret).1.1, (AC.toFG_source hret).1.2.1⟩
   rw [frame_of_projAC_at hrun hy hR.1, Node.frame_eq,
-    Store.toFrame_tree, Store.toFrame_fcRoot] at hroot
+    Store.toFrame_tree, Store.toFrame_F] at hroot
   exact ⟨hroot.1.1, hroot.2.mono fun _ h => by
     rw [Store.toFrame_tree] at h
     exact h.1⟩

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.ArmingSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -40,27 +41,15 @@ private theorem restart_le_of_awake_at
     (hx : x ∈ H z) (ha0 : 0 ≤ a) (haw : ∀ u, a ≤ u → u ≤ z → tr.awake x u) {k : Nat}
     (hk : tr.RestartAt x k) (hkz : tr.time k ≤ z) : tr.time k ≤ a + sp.Δ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  by_contra hlt
-  push Not at hlt
   set p := a + (-a) % sp.Δ with hp
   have hm0 : 0 ≤ (-a) % sp.Δ := Int.emod_nonneg _ hΔ.ne'
   have hm1 : (-a) % sp.Δ < sp.Δ := Int.emod_lt_of_pos _ hΔ
   have hpub : sp.toParams.IsPublic p :=
     ⟨-((-a) / sp.Δ), by rw [hp, Int.emod_def]; ring⟩
-  obtain ⟨j, y, fgDue, hg⟩ :=
-    hrun.tick_of_awake x p (hrun.antitone (by linarith) hx) (by linarith) hpub
-      (haw p (by linarith) (by linarith))
-  obtain ⟨hne, hks, -⟩ := hg
-  obtain ⟨hn0, ht0, -, -, hl0⟩ := hks 0 (List.length_pos_of_ne_nil hne)
-  simp only [Nat.add_zero] at hn0 ht0 hl0
-  have hcall : tr.IsCall x j := ⟨_, hn0, hl0⟩
-  obtain ⟨u, -, huk, hnaw, hcalls⟩ := hrun.sleep_of_restart x k (hrun.antitone hkz hx) hk
-  have hjk : j < k := by
-    by_contra h
-    have := hrun.time_mono (show k ≤ j by omega)
-    linarith
-  have hpu := hcalls j hjk hcall
-  exact hnaw (haw u (by linarith) (by linarith))
+  by_cases hpz : p ≤ z
+  · exact (restart_le_of_awakeOn_at hrun hx haw (by linarith) hpz
+      (by linarith) hpub hk hkz).trans (by linarith)
+  · linarith
 
 open Classical in
 /-- **The lock module's premise package from an armed source** on a node trace, with `P` its

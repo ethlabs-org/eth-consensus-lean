@@ -59,7 +59,7 @@ private theorem result_proposal_parent_at
     obtain ⟨ellx, hu, hconf, -⟩ := hres
     exact (frame_tree_subset_at hp.run hp.noColl hx hu.1).2
       (AC.deepest_mem hconf).1.1
-  have hdomain : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+  have hdomain : Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree ell.frame.tree := by
     refine ProposalImpl.held_target_proposal_domain_before_covered_at hp hx hpH hBx hci
       hcall hd hti hib

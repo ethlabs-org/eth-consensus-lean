@@ -67,7 +67,7 @@ theorem castAt_compatible_of_live (hr : ACLocalRun (goldilocksAC sp FGP) H U tr 
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {t : Time} {C : Blk sp.n FGP}
-    (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t ∪ {ℓ.frame.fcRoot}) :
+    (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t ∪ {ℓ.frame.F}) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t, Compatible ℓ.frame.tree L C := by
   have hΦ : FrameOK ℓ.frame := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1

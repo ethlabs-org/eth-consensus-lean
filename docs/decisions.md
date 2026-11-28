@@ -30,11 +30,9 @@ stock run. The trusted review statement is unchanged.
 The proposal-height obligation requires the pre-proposal maximum minus one to
 bound the returned proposal height, and the pre-proposal justification height
 to be strictly smaller than that height. Report membership keeps its tree
-condition and uses ancestry from the accepted finalization `F`, not the
-analysis-only `fcRoot`. The protocol reference is
-`specs/goldilocks/tex/shared/fg.tex`: lines 71–77 give the finalized-root frame
-and viability rule, lines 136–144 give viability and its descendant guard, and
-lines 147–152 give the frame returned to the available chain.
+condition and uses ancestry from the accepted finalization `F`, the frame's only
+root. The protocol reference is `specs/goldilocks/tex/shared/fg.tex`, §Finality
+caches and frame: the viability test, descendant guard, and `fg_to_ac` frame.
 
 ## Correctness and the review statements
 
@@ -557,7 +555,7 @@ lines 147–152 give the frame returned to the available chain.
 - **Proposal construction is read-only.** `acProposal` unlocks a working copy for the parent
   walk and anchor, then returns the original state. The proposer processes its block through the
   ordinary `onBlock` handler from that unchanged prestate; that handler's vote uses its own
-  frame and merged view. The generic interface requires the parent to extend `fc_root`, not to
+  frame and merged view. The generic interface requires the parent to extend `F`, not to
   equal the served head of the returned state. Requirement ids 1–3 and 5 are kept; there is no
   requirement 4. The virtually unlocked head equality is Goldilocks-specific.
 - **Graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock is live at `t` while
@@ -637,7 +635,7 @@ lines 147–152 give the frame returned to the available chain.
   anchor (`deepAnchor`) all read one block, `highestLiveLock`: the highest block of the live locks, fast or slow
   (`deepest` of `liveLockBlocks`, equal depths broken by the smaller root), or `none` when no lock is live. A result
   is vetoed when a highest live lock exists and the result conflicts with it; the anchor is the higher of it and
-  `fc_root`; the update's path filter and the optimistic clause go through `conflictsWithLock`, so they become
+  `F`; the update's path filter and the optimistic clause go through `conflictsWithLock`, so they become
   single-block tests with no change of text in `Confirmation`. Reason: one rule is read in three places, and the
   invariant already makes the live lock blocks of a lawful run a chain (`live_locks_chain`), so the highest block
   is the whole of the lock effect there. The old forms agree with the new ones on a frame where the projected live

@@ -39,7 +39,7 @@ private theorem viable_ancestor_self : ViableAncestorSelf := by
   have hB : B ∈ Φ.tree := by
     rcases hc with h | h
     · exact h.1
-    · exact AC.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.rooted.1
   exact AC.viableAncestor_self hΦ hB hc
 
 private theorem viable_tree_ancestor_closed : ViableTreeAncestorClosed := by

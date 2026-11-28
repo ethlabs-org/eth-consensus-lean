@@ -459,7 +459,7 @@ head vote $(i,s,H)$ & wire & AC \S Votes & A0.1--A0.3\\
 $\Lambda$ (client record) & durable & FG \S Validator client & G0.5\\
 $\Sigma=(\T,\sigma[\cdot],F,J,h_j,\hmax,$ $\mathsf{attestations})$ & durable & composition \S State; FG & G0.1 (store), G0.2, G0.3, G0.4 (height)\\
 $\sigma[B]$ (chain state) & derived, immutable & FG \S Attestations & G0.1 (chain), G0.2\\
-$\Fr=(\mathsf{tree},\fcroot,$ $\allowed)$ & derived & composition \S FG frame; FG & G0.3 (frame), G0.4 (frame), G0.4 (height)\\
+$\Fr=(\mathsf{tree},F,$ $\allowed)$ & derived & composition \S FG frame; FG & G0.3 (frame), G0.4 (frame), G0.4 (height)\\
 $\AC.\mathsf{locks}$, $\AC.\latestConfirmed$ & durable & AC \S State, \S Locks & A0.4, A0.5\\
 pools, stamps, saved results, $\mathsf{voted\_slot}$ & volatile & AC \S State & A0.1, A0.2, A0.7\\
 $\mathsf{restart\_time}$, joined & volatile (set at restart) & AC \S State & F.1, F.4, A0.7\\
@@ -653,8 +653,8 @@ of $\Fr_i.\mathsf{tree}$ that extends $\Fr_j.F$, $j\geq i$, is in
 $\Fr_j.\mathsf{tree}$; a block that leaves the tree never returns; each $B_i$
 enters exactly once.  Write $\Fr\sqsubseteq\Fr'$ for the reflexive-transitive
 closure of the steps $\sqsubseteq_B$.  The abstract step imposes no additional
-condition on $\fcroot$ or $\allowed$; in a frame derived from the FG store,
-$\fcroot$ follows $\Sigma.F$ and $\allowed$ is recomputed by
+condition on $\allowed$; in a frame derived from the FG store,
+$\Fr.F$ is $\Sigma.F$ and $\allowed$ is recomputed by
 $\fname{is\_viable}$.  A definition and its consequences about frames; that
 the frames of an honest node evolve so is C0.5.}
 {F.2}{composition \S``The FG frame''.}{S.}
@@ -663,16 +663,14 @@ the frames of an honest node evolve so is C0.5.}
 \emph{well formed} when: $\Fr.\mathsf{tree}$ is finite; $\Fr.F\in\Fr.\mathsf{tree}$ and every block of
 $\Fr.\mathsf{tree}$ extends $\Fr.F$; $\Fr.\mathsf{tree}$ is parent-closed down
 to $\Fr.F$, its roots are injective, and slots strictly increase along its
-parent edges (F.2 on the tree); $\Fr.F\preceq\fcroot\in\Fr.\mathsf{tree}$; $\allowed\subseteq
-\Fr.\mathsf{tree}$ and every block of $\allowed$ extends $\fcroot$.  For a
-well-formed frame: $\fname{viable\_ancestor}(\Fr,B)$, the deepest $B'\preceq B$ with
+parent edges (F.2 on the tree); $\allowed\subseteq\Fr.\mathsf{tree}$. The
+fork-choice root is $\Fr.F$. For a well-formed frame:
+$\fname{viable\_ancestor}(\Fr,B)$, the deepest $B'\preceq B$ with
 $B'\preceq\fcroot$ or $B'\in\filtered(\Fr,\Fr.\mathsf{tree})$ (a function of $\Fr$
 alone, defined here at the frame level; goldilocks-spec \S``Locks'' uses the same
 definition), exists for $B\in\Fr.\mathsf{tree}$ and is $B$
-when $B\in\filtered(\Fr,\Fr.\mathsf{tree})$ or $B\preceq\fcroot$ (not merely
-when $B$ passes the state-height test: a block of a fork that conflicts with
-$\fcroot$ can); the viable tree of a set is closed under ancestors down to
-$\fcroot$ within that set.}
+when $B\in\filtered(\Fr,\Fr.\mathsf{tree})$ or $B\preceq\fcroot$; the viable
+tree of a set is closed under ancestors down to $\fcroot$ within that set.}
 {F.2}{composition \S``The FG frame''.}{S.  A frame-level fact: the AC uses it
 as its hypothesis on frames.}
 
@@ -682,9 +680,7 @@ $\fcroot=\Sigma.F$.  The set $\allowed$ consists of the blocks of the frame
 tree that pass $\fname{is\_viable}(\Sigma,B)$: a block~$B$ is viable exactly
 when $\Sigma.\hmax\leq\Sigma.\sigma[B].h$, or
 $\Sigma.\sigma[B].h+1=\Sigma.\hmax$ and
-($\Sigma.h_j+1<\Sigma.\hmax$ or $\Sigma.J\preceq B$).  The head height floor
-is $\Sigma.\hmax$ or $\Sigma.\hmax-1$; it is an FG analysis quantity, not a
-test for membership in $\allowed$.}
+($\Sigma.h_j+1<\Sigma.\hmax$ or $\Sigma.J\preceq B$).}
 {G0.3, G0.4 (frame), F.2}{FG \S Finality caches and frame.}{S.}
 
 \dagnode{G0.5}{Client safety}{An honest validator whose $\Lambda$ persists

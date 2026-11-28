@@ -1,7 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
@@ -29,7 +28,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Lemmas.Tactic.Linarith
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 
 public section
 
@@ -65,17 +63,16 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a : Time}
 variable {hold : Time}
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
-/-- `faultBoundK_late_at` over the reset core. -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.faultBoundK_late_at
+/-- **CS at a slot committee on the AC projection**: from the reset's cut on, the committee
+members honest at the later cut are awake and joined at the earlier cut. -/
+theorem faultBoundK_late_at
     {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
     {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
     AC.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t := by
-  have rc := hp.core
+  have rc := hp.run
   have htb := htd.trans hdb
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
@@ -114,17 +111,6 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.faultBoundK_lat
   unfold AC.FaultBoundK
   exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
 
-/-- **CS at a slot committee on the AC projection**: from the reset's cut on, at `t ≤ b`, the
-faulty members at `d ∈ [t, b]` of a slot committee from `ḡ` are fewer than its members honest at
-`d` and awake and joined at `t` (every validator honest at `d` is honest, awake and joined at `t`,
-and `committee_cs2_at`). -/
-theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
-    (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
-    {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
-    AC.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t :=
-  hp.toCore.faultBoundK_late_at hgs hsb ht htd hdb
-
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
@@ -135,8 +121,6 @@ variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-! ### Node-local facts at a cut, on the prefix through its time -/
 
@@ -161,19 +145,6 @@ private theorem projAC_deadline_upTo
     (tr.upTo d).projAC.deadline y k τ = tr.projAC.deadline y k τ := by
   rw [Compose.projAC_deadline, Compose.projAC_deadline, RunTrace.upTo_deadline hrun.time_mono hk]
 
-/-- `castAt_facts_at` over the run-facts bundle. -/
-theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.castAt_facts_at {ini}
-    (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcast : AC.CastAt tr.projAC y i ℓ e) :
-    (FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H) ∧
-      ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
-        tr.time i ≤ sp.ts e.msg.slot + sp.Δ) ∧
-      e.msg.slot = sp.slot (tr.time i) :=
-  ⟨rc.frameIn_at hnc hy hcast.1, rc.cast_head_fcRoot_at hnc hy hcast,
-    (rc.castAt_spec_at hnc hy hcast).2.1⟩
-
 /-- A cast of a node honest at its cut, read on the prefix through its time: its frame is held
 while honest, its head is in the frame above `fc_root` by the slot's `Δ`, and its slot is the
 cut's. -/
@@ -183,26 +154,29 @@ theorem castAt_facts_at {ini}
     {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ℓ e) :
     (FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H) ∧
-      ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+      ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.F Hd) ∧
         tr.time i ≤ sp.ts e.msg.slot + sp.Δ) ∧
       e.msg.slot = sp.slot (tr.time i) :=
-  hrun.toCore.castAt_facts_at hnc hy hcast
+  ⟨Compose.Growing.frameIn_at hrun hnc hy hcast.1,
+    Compose.Growing.cast_head_fcRoot_at hrun hnc hy hcast,
+    (Compose.Growing.castAt_spec_at hrun hnc hy hcast).2.1⟩
 
 /-! ### The reset service on the AC projection -/
 
-/-- `reset_syncACAt` over the reset core. -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.reset_syncACAt
+/-- **The reset service gives AC synchrony** on every source window from the GST on, with each
+sender honest at its send or acceptance and each recipient at its call. -/
+theorem reset_syncACAt
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold) {lo hi : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {lo hi : Time}
     (hg : g ≤ lo) :
     SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
-  have rc := hp.core
+  have rc := hp.run
   refine ⟨?_, ?_⟩
   · intro x i m hx hsa hai _ y j ℓ hy hcj hdl
     have hsa' : tr.SendOrAdmitAt x i m := by
       obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
       refine ⟨ℓ₀, Compose.projAC_callAt.1 hc₀, ?_⟩
-      rwa [rc.projAC_state_at hx] at hm
+      rwa [Compose.Growing.projAC_state_at rc hx] at hm
     have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
     rw [Compose.projAC_deadline] at hdl
     obtain ⟨k, hk, h1, h2, h3⟩ := hp.sync.message x i m hx hsa' y j hy
@@ -215,21 +189,12 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.reset_syncACAt
       change tr.time k < tr.deadline y k (tr.time i) sp.Δ
       simpa only [he] using h3
   · intro x i B hx hacc hai _ y j ℓ hy hcj hdl hanc
-    apply rc.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
+    apply rc.toLocalRun.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
     intro k hki hx' hk hj hF
     have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
     have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
     simpa only [he] using hp.sync.relay x k B hx' hk hgi y j hy hj
       (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
-
-/-- **The reset service gives AC synchrony** on every source window from the GST on, with each
-sender honest at its send or acceptance and each recipient at its call (the growing form of
-`Healing.ResetService.syncAC`). -/
-theorem reset_syncACAt {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {lo hi : Time}
-    (hg : g ≤ lo) :
-    SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC :=
-  hp.toCore.reset_syncACAt hg
 
 /-- **The pre-GST catch-up on the AC projection**: a block that a node accepted while honest
 before `ḡ` is accepted before `ḡ + 2Δ` by a node honest at a later call whose `Σ.F` it extends. -/

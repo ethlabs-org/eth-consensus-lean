@@ -330,7 +330,7 @@ private theorem seeded_voter_facts
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (ht₁ : t₁ ≤ tr.time j) (hjb : tr.time j ≤ b) :
-    Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot Q ∧
+    Anc (tr.HonestBlocksAt H) ℓy.frame.F Q ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) Q B →
         (tr.state y j).fg.IsViable B := by
   have hdt : sp.ts (r + sp.k : Nat) ≤ tr.time j := hS.drain.trans ht₁
@@ -397,7 +397,7 @@ theorem seeded_votes_eq_proposal
       · exact hextV X hO y j e hv hjb hes)
     (fun D hDt hsD hDold X hDX hXQ => by
       have hXt : X ∈ ℓp.frame.tree := mem_of_anc_left hDX hDt
-      have hfX : ℓp.frame.Anc ℓp.frame.fcRoot X := by
+      have hfX : ℓp.frame.Anc ℓp.frame.F X := by
         have h := AC.fcRoot_anc_getAnchor hΦp A₁ (tr.time i)
         rw [← hst] at h
         exact (h.trans hsD).trans hDX

@@ -77,17 +77,17 @@ theorem isBest_transfer_low {Φp Φy : Frm sp.n FGP} {Tp Ty : Set (Blk sp.n FGP)
 /-- The anchor of a well-formed frame extends `fc_root`: it is `fc_root` or the deepest of a set
 holding `fc_root`, and a live lock block is viable (so above `fc_root`) or at or below it. -/
 theorem fcRoot_anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Time) :
-    Φ.Anc Φ.fcRoot (getAnchor sp A Φ t) := by
-  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+    Φ.Anc Φ.F (getAnchor sp A Φ t) := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.rooted.1
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.F, Or.inr rfl⟩
   have hA : getAnchor sp A Φ t = D := by
     rw [getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   rw [hA]
   have hD' := deepest_mem hD
-  have hcomp : Compatible Φ.tree Φ.fcRoot D := by
+  have hcomp : Compatible Φ.tree Φ.F D := by
     rcases hD'.1 with hL | hf
     · rcases liveLockBlock_candidate hΦ hL with h | h
       · exact Or.inl h.2.1
@@ -95,10 +95,10 @@ theorem fcRoot_anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : ACState
     · rw [Set.mem_singleton_iff.1 hf]
       exact Or.inl .refl
   refine hcomp.elim id fun hDf => ?_
-  by_cases hne : D = Φ.fcRoot
+  by_cases hne : D = Φ.F
   · exact hne ▸ .refl
   · rcases hD'.2 _ (Or.inr rfl) (Ne.symm hne) with h | ⟨h, -⟩ <;>
-      have := depth_lt_of_anc hΦ hDf hne hΦ.fcRoot_mem <;> omega
+      have := depth_lt_of_anc hΦ hDf hne hΦ.rooted.1 <;> omega
 
 /-- A nonempty set of blocks of a well-formed frame's tree has a best block for any score. -/
 theorem exists_isBest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}

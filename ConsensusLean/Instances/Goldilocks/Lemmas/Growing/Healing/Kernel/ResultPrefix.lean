@@ -64,7 +64,7 @@ theorem late_result_prefix_votes_before_at
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
         s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
     (hstored : ∀ y i ell e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ell e →
       tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,

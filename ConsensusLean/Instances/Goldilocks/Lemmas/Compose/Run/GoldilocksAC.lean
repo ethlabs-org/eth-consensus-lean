@@ -235,7 +235,7 @@ theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr ini)
     exact (hrun.cutLaw x hx k _ (projAC_callAt.mp hc)).2.1
   · intro x hx k ℓ hc
     have hf := (hrun.cutLaw x hx k _ (projAC_callAt.mp hc)).1
-    exact hf ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx k)).1
+    exact hf ▸ Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx k)
 
 /-- Before an honest emission, no wire message processed by an honest node is a vote of that
 signer and slot. This includes the emitting cut. -/
@@ -272,7 +272,7 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [tr.projAC.state_of_lastCall hc hk hn] at hv
       have hf := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
       have hΦ : FrameOK ℓ.frame :=
-        hf ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy k)).1
+        hf ▸ Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy k)
       have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
       by_cases hr : ℓ.call = .restart
@@ -368,7 +368,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
   have hrecv := fun (m : Vote sp.n) (hm : m.val = y) (hs : m.slot = e.msg.slot) =>
     emitted_slot_not_received hrun hy hy le_rfl hv hm hs
   have hΦ : FrameOK ℓ.frame := (hrun.cutLaw y hy i _ hc).1 ▸
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+    Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
   have hgoal : e.msg ∈ ((goldilocksAC sp _).step y (tr.projAC.state y i)
       ℓ.frame (tr.time i) ℓ.call).1.pool e.msg.slot := by
     cases hcall : ℓ.call with

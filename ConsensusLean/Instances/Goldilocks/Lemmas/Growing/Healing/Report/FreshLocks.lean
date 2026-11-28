@@ -1,8 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNextCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
@@ -31,16 +30,9 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 
-namespace Core
-
-variable
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-
-/-- Compatible historical roots cannot veto a proposal in the current frame, over a run bundle
-`GoldilocksRunCore`. -/
+/-- Compatible historical roots cannot veto a proposal in the current frame. -/
 theorem no_veto_of_lock_roots_compatible_at
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
@@ -49,12 +41,12 @@ theorem no_veto_of_lock_roots_compatible_at
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  have hr := (hrun.acRun_upTo hnc (hrun.time_nonneg k)).localRun
+  have hr := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   have hPhi := AC.frameIn_of_callAt hr hy hc'
-  have hsub := hrun.upTo_subset (hrun.time_nonneg k)
-  have hU := hrun.coherent hnc
+  have hsub := Compose.Growing.upTo_subset hrun (hrun.time_nonneg k)
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have down : ∀ {X Y}, Anc (tr.HonestBlocksAt H) X Y →
       Compatible (tr.HonestBlocksAt H) Y P → Compatible (tr.HonestBlocksAt H) X P := by
     rintro X Y hXY (h | h)
@@ -72,21 +64,6 @@ theorem no_veto_of_lock_roots_compatible_at
   rcases hcomp with h | h
   · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi.1 (fun Q hQ => hsub (hPhi.2 hQ)) hLt h hPt)
   · exact Or.inl (AC.anc_tree_of_anc_U hU hPhi.1 (fun Q hQ => hsub (hPhi.2 hQ)) hPt h hLt)
-
-end Core
-
-/-- Compatible historical roots cannot veto a proposal in the current frame. -/
-theorem no_veto_of_lock_roots_compatible_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
-    (hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
-      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
-        Compatible (tr.HonestBlocksAt H) L P) :
-    ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P :=
-  Core.no_veto_of_lock_roots_compatible_at hrun.toCore hnc hy hc hPt hlocks
 
 end
 
@@ -470,7 +447,7 @@ private theorem next_viable
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
     (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
       tr.time q ≤ sp.ts u + sp.Δ)
-    (hroot : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
+    (hroot : Anc (tr.HonestBlocksAt H) ell.frame.F P)
     (hv : P ∈ ell.frame.viableHeads) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
@@ -480,7 +457,7 @@ private theorem next_viable
     AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr.localRun hy hc'.1
   have hsub := Compose.Growing.upTo_subset hrun hd
-  have hFP := ((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hroot
+  have hFP := hroot
   have hti := (cast_bounds hrun hnc hy hcast).1
   have hΔ := sp.toParams.hΔ
   rw [hs] at hti
@@ -495,7 +472,7 @@ private theorem next_viable
     exact (AC.frameIn_of_callAt hr.localRun hy hca).2
       ((AC.accept_new sp hr.localRun hy ⟨ella, hca, hea⟩).1 ella hca)
   have hroot' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hPu hroot
-  have hFP' := (hPhi.F_anc_fcRoot.mono hPhiU).trans hroot'
+  have hFP' := hroot'
   have hPt := AC.mem_tree_of_acceptAtU sp hr.localRun.toU hy ha' hkj hc'.1 hFP'
   have hfreeze : AC.freeze sp e.msg.slot = sp.ts u + 3 * sp.Δ := by
     simp only [AC.freeze, hs, Nat.cast_add, Nat.cast_one, add_sub_cancel_right]
@@ -510,7 +487,7 @@ private theorem next_viable
       linarith) (by rw [hfreeze]; change _ ≤ tr.time j; linarith)
   have hPv : P ∈ AC.voterBlockTree sp e.readPoint ell.frame (u + 1) :=
     ⟨hPt, Or.inl (by simpa only [hs] using hstamp)⟩
-  have hanc := AC.anc_tree_of_anc_U hr.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hroot' hPt
+  have hanc := AC.anc_tree_of_anc_U hr.localRun.coherent hPhi hPhiU hPhi.rooted.1 hroot' hPt
   exact ⟨hFP, hPv, hanc, P, hPv, hv, .refl⟩
 
 private theorem next_votes
@@ -534,7 +511,7 @@ private theorem next_votes
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (geometry : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-      Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads) :
+      Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.viableHeads) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
@@ -601,7 +578,7 @@ theorem unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
       e.msg.slot = u → e.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b)
     (geometry : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-      Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads) :
+      Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.viableHeads) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ

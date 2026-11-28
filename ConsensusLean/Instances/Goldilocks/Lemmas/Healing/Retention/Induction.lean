@@ -44,12 +44,12 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y k ℓ e)
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hcomp : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hcomp : Compatible (tr.HonestBlocks H) ℓ.frame.F B)
     (hK2 : (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
         Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
+      Anc (tr.HonestBlocks H) B ℓ.frame.F) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
+      Anc (tr.HonestBlocks H) B ℓ.frame.F := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
@@ -58,10 +58,10 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr ini)
   rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ℓ.frame.tree := hD.1
-      have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
+      have hFB := hfB
       have hBt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
-      have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
+      have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hfB hBt
       refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc D hD B hΦBD,
         hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
@@ -83,17 +83,17 @@ theorem high_vote_extends_of_syncAC
     (hc : AC.CastAt tr.projAC y k ℓ e) (hs : j < e.msg.slot)
     (hsync0 : SyncAC (goldilocksNode sp) H (tr.HonestBlocks H)
       (sp.ts j) (tr.time k) tr.projAC)
-    (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+    (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.F →
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hcarryLater : ∀ m', e.msg.slot = m' + 1 → j < m' →
-      ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+      ¬ Anc (tr.HonestBlocks H) B ℓ.frame.F →
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m'))
     (hhalf : ∀ m', e.msg.slot = m' + 1 → j < m' →
       sp.committeeSize ≤
         2 * {x' | x' ∈ H ∧ ∃ j' e', AC.VoteAt tr.projAC x' j' e' ∧ e'.msg.slot = m'}.ncard)
     (hfault : ∀ m, j ≤ m → m < e.msg.slot → AC.FaultBoundK K m tr.projAC H (tr.time k))
     (hviab : B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
+      Anc (tr.HonestBlocks H) B ℓ.frame.F)
     (hprior : ∀ z ∈ H, ∀ j' < k, ∀ e', AC.VoteAt tr.projAC z j' e' → j < e'.msg.slot →
       AC.VoteExtends (tr.HonestBlocks H) e'.msg B)
     (hP : AC.CommitteeP K tr.projAC H) (hT : AC.CommitteeT K tr.projAC H)
@@ -106,7 +106,7 @@ theorem high_vote_extends_of_syncAC
       hrun.vstart hy hc
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-  by_cases hBf : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
+  by_cases hBf : Anc (tr.HonestBlocks H) B ℓ.frame.F
   · exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
   have hv := hviab.resolve_right hBf
   have h0 := hr.time_nonneg k
@@ -146,17 +146,17 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr ini)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) (hs : j < e.msg.slot)
     (hsync : tr.SyncRun H ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ))
-    (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+    (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.F →
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hcarryLater : ∀ m', e.msg.slot = m' + 1 → j < m' →
-      ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+      ¬ Anc (tr.HonestBlocks H) B ℓ.frame.F →
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m'))
     (hhalf : ∀ m', e.msg.slot = m' + 1 → j < m' →
       sp.committeeSize ≤
         2 * {x' | x' ∈ H ∧ ∃ j' e', AC.VoteAt tr.projAC x' j' e' ∧ e'.msg.slot = m'}.ncard)
     (hfault : ∀ m, j ≤ m → m < e.msg.slot → AC.FaultBoundK K m tr.projAC H (tr.time k))
     (hviab : B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
+      Anc (tr.HonestBlocks H) B ℓ.frame.F)
     (hprior : ∀ z ∈ H, ∀ j' < k, ∀ e', AC.VoteAt tr.projAC z j' e' → j < e'.msg.slot →
       AC.VoteExtends (tr.HonestBlocks H) e'.msg B)
     (hP : AC.CommitteeP K tr.projAC H) (hT : AC.CommitteeT K tr.projAC H)

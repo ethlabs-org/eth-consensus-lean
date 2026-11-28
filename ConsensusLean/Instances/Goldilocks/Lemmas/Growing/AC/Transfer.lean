@@ -45,7 +45,7 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
@@ -88,7 +88,7 @@ theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
@@ -147,7 +147,7 @@ theorem first_transfer_stored
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   obtain ⟨⟨_, _, hBC⟩, _, hfast⟩ := (deepest_mem hfs).1
   set P := tr.state x i₀
   set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s D, v.val = w}

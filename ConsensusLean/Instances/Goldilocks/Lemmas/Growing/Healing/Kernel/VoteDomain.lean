@@ -52,7 +52,7 @@ private theorem held_target_vote_domain_of_row_bound_before_at
       ∀ z d, z ∈ H (tr.time d) → tr.SignAt z d att → d < i → ∀ c l O,
         c < d → HighOrigin tr H g z c l O → l < e.msg.slot)
     (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
   have hle : ∀ c < i, tr.time c ≤ tr.time i := fun _ hc => hp.run.time_mono hc.le
@@ -65,7 +65,6 @@ private theorem held_target_vote_domain_of_row_bound_before_at
     fun h hY => store_anc_of_honest_anc_at hp.run hp.noColl ht hle hy h hY
   have hfr := Outcome.frame_of_call hp.run hy hcast.1
   have hFe : ell.frame.F = (tr.state y i).fg.F := by rw [hfr]; rfl
-  have hroot : ell.frame.fcRoot = (tr.state y i).fg.F := by rw [hfr]; rfl
   have hvt : ∀ {W : AC.Blk sp.n (List (FG.Att sp.n))},
       W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot →
       W ∈ (tr.state y i).fg.tree := fun hW =>
@@ -81,8 +80,8 @@ private theorem held_target_vote_domain_of_row_bound_before_at
         ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
           Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable D) by
     rcases key with h | ⟨hFB, D, hD, hBD, hvD⟩
-    · exact Or.inl (hroot ▸ h)
-    · exact (vote_viable_of_root_at hp.run hp.noColl hy hcast (Or.inl (hroot ▸ hFB))
+    · exact Or.inl (hFe ▸ h)
+    · exact (vote_viable_of_root_at hp.run hp.noColl hy hcast (Or.inl (hFe ▸ hFB))
         (Or.inl ⟨D, hD, hBD, hvD⟩)).symm
   have hjm := Healing.Store.hj_lt_hmax_of_reachable hr
   have leftOrigin : ∀ {E C : AC.Blk sp.n (List (FG.Att sp.n))},
@@ -214,7 +213,7 @@ theorem held_target_vote_domain_before_of_quarantine_at
       ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
       Compatible (tr.HonestBlocksAt H) O O')
     (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   apply held_target_vote_domain_of_row_bound_before_at hp hx hy hBx hrb hcast hib hheld
     hS hqb hm hBS hcompare hseedCompare hpair

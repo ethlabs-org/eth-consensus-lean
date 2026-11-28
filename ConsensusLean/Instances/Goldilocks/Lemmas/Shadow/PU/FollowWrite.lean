@@ -54,7 +54,7 @@ private theorem proposal_parent_viable_at
   apply Healing.proposal_head_viable hac hr.vstart hz hc' hcall
     (by rw [Trace.upTo_time, sp.slotTime_eq]; exact hti)
     (by rw [hs, Trace.upTo_time]; exact hd)
-  exact ⟨(AC.frameIn_of_callAt hac hz hc').1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
+  exact ⟨(AC.frameIn_of_callAt hac hz hc').1.rooted.1, .refl, Q, hQ, hv, hroot⟩
 
 /-- A window reader's finalized tip is below every honest proposal head in the window
 (`FrameWindow.fcRoot_anc_proposal_head_at` over the shadow frame, where `fc_root = F`). -/

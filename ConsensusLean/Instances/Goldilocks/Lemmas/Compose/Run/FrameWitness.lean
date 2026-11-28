@@ -38,10 +38,10 @@ theorem viable_of_frozen_witnesses (hr : Node.LocalRun proposer dg H sg tr ini)
     (hw : Anc (tr.HonestBlocks H) (Node.frame (tr.state y i)).F B →
       ∃ W ∈ T, Anc (tr.HonestBlocks H) B W) :
     B ∈ (Node.frame (tr.state y i)).viableTree T ∨
-      Anc (tr.HonestBlocks H) B (Node.frame (tr.state y i)).fcRoot := by
+      Anc (tr.HonestBlocks H) B (Node.frame (tr.state y i)).F := by
   have hU := hfg.coherent
   have hR := fg_reachable hr hy i
-  have hΦ : FrameOK (Node.frame (tr.state y i)) := (Store.frame_realization _ _ _ _ hR).1
+  have hΦ : FrameOK (Node.frame (tr.state y i)) := Store.frame_realization _ _ _ _ hR
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hsU := fg_tree_subset_honest (tr := tr) hy i
   obtain ⟨-, hJt, hFJ, ⟨Z, hZ, -, hZj⟩, hmax, -⟩ := Store.cache_invariants _ _ _ _ hR
@@ -69,8 +69,8 @@ theorem viable_of_frozen_witnesses (hr : Node.LocalRun proposer dg H sg tr ini)
   have hBΦ : B ∈ (Node.frame (tr.state y i)).tree := ⟨hBt, honest_held_anc hr hfg hy hFB hBt⟩
   have hΦBW : (Node.frame (tr.state y i)).Anc B W :=
     Frame.anc_tree_of_anc_U hU hΦ hΦU hBΦ hBW hWt
-  have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot B :=
-    Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hFB hBΦ
+  have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F B :=
+    Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hFB hBΦ
   refine ⟨hTa W hW B hΦBW, hΦfB, ?_⟩
   have hΦs : (Node.frame (tr.state y i)).tree ⊆ st.tree := fun X hX => hX.1
   -- a viable witness above `B`

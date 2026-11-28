@@ -1,11 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -29,49 +27,16 @@ variable {sp : ACParams}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
-namespace Core
-
-variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-    Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-
 /-- The post-GST portion of finite service, projected to AC. -/
 theorem service_syncACAt
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b lo hi : Time} (hsvc : ResetService tr H g ΔF b hold) (hg : g ≤ lo) :
-    SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
-  refine ⟨?_, ?_⟩
-  · intro x i m hx hsa hai _ y j ell hy hcj hdl
-    have hsa' : tr.SendOrAdmitAt x i m := by
-      obtain ⟨ell₀, hc₀, hm⟩ := hsa
-      refine ⟨ell₀, Compose.projAC_callAt.1 hc₀, ?_⟩
-      have hp := (hrun.upTo (hrun.time_nonneg i)).projAC_state x hx i
-      rw [RunTrace.upTo_projAC,
-        Trace.upTo_state tr.projAC x (fun _ hk => hrun.time_mono hk.le),
-        Trace.upTo_state tr x (fun _ hk => hrun.time_mono hk.le)] at hp
-      rwa [hp] at hm
-    have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
-    rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, h1, h2, h3⟩ := hsvc.message x i m hx hsa' y j hy
-      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
-    refine ⟨k, hk, h1, ?_, ?_⟩
-    · rcases h2 with ⟨ell', hc', hm'⟩ | ⟨ell', hc', e, he', hem⟩
-      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inl hm'⟩
-      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inr ⟨e, he', hem⟩⟩
-    · rw [Compose.projAC_deadline]
-      change tr.time k < tr.deadline y k (tr.time i) sp.Δ
-      simpa only [he] using h3
-  · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
-    apply hrun.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
-    intro k hki hx' hk hj hF
-    have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
-    have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
-    simpa only [he] using hsvc.relay x k B hx' hk hgi y j hy hj
-      (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
+    SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC :=
+  hsvc.toAC.syncACAt hrun hg
 
 /-- Catch transfers a historically honest acceptance to an independently honest reader. -/
 theorem service_catch_at
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
@@ -79,11 +44,11 @@ theorem service_catch_at
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ := by
-  exact hrun.acCatchAt hcatch hw ha hkw hy hcy hi hanc
+  exact hrun.toLocalRun.acCatchAt hcatch hw ha hkw hy hcy hi hanc
 
 /-- Historical sends after `ḡ` and historical accepted heads reach the next-slot cast. -/
 theorem carry_of_service_senders
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
@@ -100,7 +65,7 @@ theorem carry_of_service_senders
   have hm := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
-  have hac := hrun.acRun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo hd).localRun
   have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
   have hsync := service_syncACAt hrun hsvc (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
@@ -144,7 +109,7 @@ theorem carry_of_service_senders
 
 /-- A regular result's counted votes reach the next-slot cast even after its writer's compromise. -/
 theorem result_carry_service_at
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -154,7 +119,7 @@ theorem result_carry_service_at
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  have hac := hrun.acRun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg c)).localRun
   apply carry_of_service_senders hrun hnc hsvc hcatch hts hy hc hes
   intro v hv
@@ -170,7 +135,7 @@ theorem result_carry_service_at
 
 /-- A viable prefix of an optimistic write is reached at the next-slot cast. -/
 theorem optimistic_prefix_before_at {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} (hrun : GoldilocksRunCore u frameOf proposer dg H tr
+    {g ΔF b : Time} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -188,7 +153,7 @@ theorem optimistic_prefix_before_at {K : AC.CommitteeDict sp.n}
     ell.frame.Anc B (AC.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  have hac := hrun.acRun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
   have hry := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
@@ -213,62 +178,9 @@ theorem optimistic_prefix_before_at {K : AC.CommitteeDict sp.n}
   rw [← AC.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
   exact AC.Growing.optimistic_prefix_of_carry_at
     hac K hK.facts.hP
-    (hrun.committeeTAt hK.facts hnc) hK.facts.hsize
+    (hK.facts.committeeTAt hrun hnc) hK.facts.hsize
     hx hopt hBD (hK.cs2 s hm hsb _ (hrun.time_nonneg i) hib) hy hc hes hcarry
     (AC.viableTree_voterBlockTree_subset_voteDomain hB) haB
-
-end Core
-
-/-- The stock run supplies the shared service projection. -/
-theorem service_syncACAt
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {g ΔF b lo hi : Time} (hsvc : ResetService tr H g ΔF b hold) (hg : g ≤ lo) :
-    SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC :=
-  Core.service_syncACAt hrun.toCore hsvc hg
-
-/-- Catch transfers a historically honest acceptance to an independently honest reader. -/
-theorem service_catch_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
-    (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
-    {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
-    (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
-    (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ :=
-  Core.service_catch_at hrun.toCore hcatch hw ha hkw hy hcy hi hanc
-
-/-- Historical sends and accepted heads reach the next-slot cast. -/
-theorem carry_of_service_senders
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
-    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hcast : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
-        tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv : AC.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
-          tr.time k < sp.ts s + 2 * sp.Δ)) :
-    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
-  Core.carry_of_service_senders hrun.toCore hnc hsvc hcatch hts hy hcast hs hW
-
-/-- A regular result's counted votes reach the next-slot cast after writer compromise. -/
-theorem result_carry_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
-    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : AC.ResultAt tr.projAC x c s C CV)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
-    (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
-    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
-  Core.result_carry_service_at hrun.toCore hnc hsvc hcatch hts hx hy hres hc hes hFC
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

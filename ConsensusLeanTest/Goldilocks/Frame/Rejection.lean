@@ -32,11 +32,11 @@ def y : B1 := ⟨4, some 1, 2, 0, 0, (), ()⟩
 def x : B1 := ⟨5, some 4, 3, 0, 0, (), ()⟩
 
 /-- After accepting `c` with `F` moved to `c`: `g` and `b₁` leave. -/
-def Ψ₂ : Frame 1 Unit Unit := ⟨{c}, c, c, {c}⟩
+def Ψ₂ : Frame 1 Unit Unit := ⟨{c}, c, {c}⟩
 /-- After accepting `d` on `c`. -/
-def Ψ₃ : Frame 1 Unit Unit := ⟨{c, d}, c, c, {c}⟩
+def Ψ₃ : Frame 1 Unit Unit := ⟨{c, d}, c, {c}⟩
 /-- After accepting `b₁` again, on `d`. -/
-def Ψ₄ : Frame 1 Unit Unit := ⟨{c, d, b₁}, c, c, {c}⟩
+def Ψ₄ : Frame 1 Unit Unit := ⟨{c, d, b₁}, c, {c}⟩
 
 /-- The sequence `Φ₀, Φ₁, Ψ₂, Ψ₃, Ψ₄, Ψ₄, …`. -/
 def σ : Nat → Frame 1 Unit Unit
@@ -47,11 +47,11 @@ def σ : Nat → Frame 1 Unit Unit
   | _ + 4 => Ψ₄
 
 /-- An unrooted first frame: `x` is in it without its parent `y`. -/
-def Τ₀ : Frame 1 Unit Unit := ⟨{g, x}, g, g, {g}⟩
+def Τ₀ : Frame 1 Unit Unit := ⟨{g, x}, g, {g}⟩
 /-- After accepting `y` on `b₁`. -/
-def Τ₂ : Frame 1 Unit Unit := ⟨{g, b₁, y}, g, b₁, {b₁}⟩
+def Τ₂ : Frame 1 Unit Unit := ⟨{g, b₁, y}, g, {b₁}⟩
 /-- After accepting `x` again, on `y`. -/
-def Τ₃ : Frame 1 Unit Unit := ⟨{g, b₁, y, x}, g, b₁, {b₁}⟩
+def Τ₃ : Frame 1 Unit Unit := ⟨{g, b₁, y, x}, g, {b₁}⟩
 
 /-- The sequence `Τ₀, Φ₁, Τ₂, Τ₃, Τ₃, …`. -/
 def τ : Nat → Frame 1 Unit Unit

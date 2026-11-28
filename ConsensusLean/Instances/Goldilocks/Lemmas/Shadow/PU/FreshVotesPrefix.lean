@@ -6,7 +6,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LockLoca
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -44,19 +45,18 @@ private theorem proposal_lock_prefix_cases_window_at
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
     (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) X ell.frame.F ∨
       (∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = s →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
       ∃ a < i, ∃ D CV, z ∈ H (tr.time a) ∧ AC.OptimisticLockAt tr.projAC z a s D CV ∧
         Anc (tr.HonestBlocksAt H) X D := by
-  have rc := hrun.toCore
-  have hPhi := rc.frameIn_at hnc hz hc
+  have hPhi := Compose.Growing.frameIn_at hrun hnc hz hc
   have hΔ := sp.toParams.hΔ
   obtain ⟨a, hai, ellw, D, hza, ha, hD, hBA, ho⟩ :=
     KernelProof.live_lock_selection_origin_at hrun hnc hz hc hl hB hBr
   let A := ellw.frame.viableAncestor D
   have hXA : Anc (tr.HonestBlocksAt H) X A := (Anc.mono hPhi.2 hXB).trans hBA
-  have hW := rc.frameIn_at hnc hza ha
+  have hW := Compose.Growing.frameIn_at hrun hnc hza ha
   have hAD : Anc (tr.HonestBlocksAt H) A D :=
     Anc.mono hW.2 (AC.viableAncestor_anc hW.1 hD).2
   have hregular (ho : (∃ CV, AC.FastUpdateAt tr.projAC z a l.slot D CV) ∨
@@ -68,7 +68,7 @@ private theorem proposal_lock_prefix_cases_window_at
     have hgap : l.slot + 2 ≤ s + 1 := by
       have ht := hu.2.2.1
       change tr.time a = _ at ht
-      have htime := rc.time_mono hai.le
+      have htime := hrun.time_mono hai.le
       rw [hti] at htime
       by_contra hn
       have he : s + 1 = l.slot + 1 := by omega
@@ -91,7 +91,7 @@ private theorem proposal_lock_prefix_cases_window_at
   have hlw : sp.ts l.slot ≤ tr.time a := by
     obtain ⟨_, _, _, ht, -⟩ := hop
     change sp.slot (tr.time a) = l.slot at ht
-    exact (AC.ts_le_iff_le_slot sp (rc.time_nonneg a) _).2 (by rw [ht])
+    exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [ht])
   rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
   · exact Or.inl
       (KernelProof.unlocked_image_below_write_root_at hrun hnc hz hai.le ha hc hXB hBA hbelow)
@@ -182,15 +182,14 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
       2 * sp.toParams.fg.q - sp.n :=
     sp.toParams.fg.faults_lt_quorum_margin (hf _
       (le_max_of_le_left (hrun.time_nonneg ip)) ((max_le hphi hhi).trans hmb))
-  have hroot (hSr : Anc (tr.HonestBlocksAt H) d.start ellp.frame.fcRoot) := by
+  have hroot (hSr : Anc (tr.HonestBlocksAt H) d.start ellp.frame.F) := by
     have hrootE := fcRoot_anc_head_at_cast_at hframe hrun hnc hz' hy hfmax
       hplo hphi hlo hhi hcp hc (hes ▸ hPv.1) hvP ((Anc.mono hPhi.2 haS).trans hSr)
     have hSE := hSr.trans hrootE
     rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hSE
     exact AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hSv.1.1 hSE
       (AC.getHead_mem hPhi.1 (fun X hX => hX.1.1) _ _ _ _)
-  rcases Core.actual_proposal_start_live_origin_at hrun.toCore hnc
-    (fun ht => Healing.actual_proposal_start_live_origin (hrun.upTo ht) (hnc.upTo _))
+  rcases actual_proposal_start_live_origin_at hrun hnc
     (by
       have ht : sp.ts s₀ ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
       linarith [sp.toParams.hΔ]) (hphi.trans hmb) (by omega)
@@ -218,8 +217,8 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
         have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
         linarith) hmb hheads hy hc hes hSv haS hK
   · have hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D :=
-      (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
-    exact KernelProof.Core.optimistic_prefix_before_at hrun.toCore hnc hsvc hawake hcatch
+      (Anc.mono hPhi.2 hSv.2.1).trans hSD
+    exact KernelProof.optimistic_prefix_before_at hrun hnc hsvc hawake hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
         linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS hK

@@ -74,11 +74,11 @@ theorem anc_acHead {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
   set s := (latestView sp A Φ t).2
   set a := getAnchor sp A Φ t
   have hvt : Φ.viableTree Φ.tree ⊆ Φ.tree := fun X hX => hX.1
-  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.rooted.1
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.F, Or.inr rfl⟩
   have ha : a = D := by
     simp only [a, getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   have hdeep := deepest_mem hD
@@ -96,15 +96,15 @@ theorem anc_acHead {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
   obtain rfl | ⟨Y, hXY, hYR⟩ := Relation.ReflTransGen.cases_head_iff.1 hXR
   · exact absurd rfl hne
   -- `Y`, the child of `X` towards `R`, extends `fc_root`
-  have hfY : Φ.Anc Φ.fcRoot Y := by
+  have hfY : Φ.Anc Φ.F Y := by
     rcases anc_total hΦ.coherent hRv.2.1 hYR with h | h
     · exact h
-    by_cases hY : Y = Φ.fcRoot
+    by_cases hY : Y = Φ.F
     · exact hY ▸ Relation.ReflTransGen.refl
-    by_cases haf : a = Φ.fcRoot
+    by_cases haf : a = Φ.F
     · exact haf ▸ haX.tail hXY
-    have hlt := depth_lt_of_anc hΦ ((haX.tail hXY).trans h) haf hΦ.fcRoot_mem
-    rcases hdeep.2 Φ.fcRoot (Or.inr rfl) (Ne.symm haf) with h' | ⟨h', -⟩ <;> omega
+    have hlt := depth_lt_of_anc hΦ ((haX.tail hXY).trans h) haf hΦ.rooted.1
+    rcases hdeep.2 Φ.F (Or.inr rfl) (Ne.symm haf) with h' | ⟨h', -⟩ <;> omega
   obtain ⟨W, hW, hWv, hRW⟩ := hRv.2.2
   have hYv : Y ∈ Φ.viableTree Φ.tree := ⟨hXY.2.1, hfY, W, hW, hWv, hYR.trans hRW⟩
   have hsub : (supporters Φ V s R).ncard ≤ (supporters Φ V s Y).ncard :=
@@ -155,11 +155,11 @@ theorem acConfirmed_eq {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
 /-- At a well-formed frame, the head is in the tree. -/
 private theorem acHead_mem {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (t : Time) :
     acHead sp A Φ t ∈ Φ.tree := by
-  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.rooted.1
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.F, Or.inr rfl⟩
   have haT : getAnchor sp A Φ t ∈ Φ.tree := by
     simp only [getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
     exact hS (deepest_mem hD).1

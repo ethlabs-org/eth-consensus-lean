@@ -174,14 +174,14 @@ def MergedOpponents : Prop :=
       opponents sp Φ (mergedVoteView sp A Φ (σ + 1)) σ B ⊆ opponents sp Φ (voteView A Φ σ ⊤) σ B
 
 /-- **A0.4 (a), (b), the live locks.** At a reachable state and every time, the blocks of the
-live locks lie on one chain, and each is in the viable tree or at or below `fc_root`. -/
+live locks lie on one chain, and each is in the viable tree or at or below `Φ.F`. -/
 def LiveLocksChain : Prop :=
   ∀ (FGP : Type) ,
     (goldilocksAC sp FGP).AtReachable fun _ _ (A : ACState sp.n) Φ _ =>
     ∀ t,
       (∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
         Compatible Φ.tree B C) ∧
-      ∀ B ∈ liveLockBlocks sp A.locks Φ t, B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot
+      ∀ B ∈ liveLockBlocks sp A.locks Φ t, B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F
 
 /-- `L'` moves the locks of `L` only back: each lock of `L'` has the slot, the fast bit and the
 expiry of a lock of `L` and its block is an ancestor of that lock's block (both in the tree). -/

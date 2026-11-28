@@ -48,11 +48,11 @@ theorem reset_proposal_root_source_or_healed_at
     {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
-    ell.frame.fcRoot.root = sp.genesisRoot ∨
+    ell.frame.F.root = sp.genesisRoot ∨
       (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot O) ∨
+        Anc (tr.HonestBlocksAt H) ell.frame.F O) ∨
       (HighSourceCover tr H g a b ∧ ∃ C s, HealedMemberBefore tr H g a b C s i ∧ s < u ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot C) := by
+        Anc (tr.HonestBlocksAt H) ell.frame.F C) := by
   have ht := hp.run.time_nonneg i
   have hi : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hp.run.time_mono hq.le
   have hfr := Outcome.frame_of_call hp.run hpH hci
@@ -126,7 +126,7 @@ theorem proposal_start_supported_at
   · rw [hroot]
     rcases hp.reset_proposal_root_source_or_healed_at hpH hR hci hcall hti hib with
       hg | ⟨x, r, l, O, ho, hOld, hrb, hfO⟩ | ⟨hc, C, s, hC, hsu, hfC⟩
-    · exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg
+    · exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.rooted.1) hg
         (hPsiU hhead)
     · apply hfO.trans (extend O ?_)
       have hri : r < i :=

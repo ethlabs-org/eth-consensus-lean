@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -152,8 +153,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
         (by linarith only [hm, hΔ, hts, hjlo]) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
 
-/-- The full current frame has a viable head above its fork-choice root.
-Kind J uses the justification cache; the other cases use the hmax cache.
+/-- The full current frame has a viable head above its finalized tip, witnessed by the hmax cache.
 Unlike a frozen voter domain, the proposal domain cannot lose this witness. -/
 theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -161,29 +161,19 @@ theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∃ Q ∈ (Node.frame (tr.state y i)).tree,
       Q ∈ (Node.frame (tr.state y i)).viableHeads ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q := by
-  classical
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F Q := by
   have hr := Compose.fg_reachable hrun.toLocalRun hy i
-  obtain ⟨_, hJt, _, ⟨B, hB, hBJ, hBh⟩, _, ⟨Q, hQ, hQh⟩, _⟩ :=
+  obtain ⟨_, _, _, _, _, ⟨Q, hQ, hQh⟩, _⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hr
-  by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-      ¬ (tr.state y i).fg.Contest
-  · obtain ⟨E, hE, hEr, hh⟩ := J_entry_h hr hB
-    have he : E = (tr.state y i).fg.J :=
-      (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1.1 hE hJt (hEr.trans hBJ)
-    rw [he, hBh] at hh
-    have hheight : (tr.state y i).fg.headHeightFloor ≤
-        ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h := by
-      change (if _ then _ else _) ≤ _
-      rw [ite_eq_right hk.2, hk.1]
-      clear * - hh; omega
-    obtain ⟨hQt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hy hJt
-      hheight (fun _ _ => Relation.ReflTransGen.refl) hJt Relation.ReflTransGen.refl
-    exact ⟨_, hQt, hv, hroot⟩
-  · obtain ⟨hQt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hy hQ
-      ((Goldilocks.Store.headHeightFloor_bounds (tr.state y i).fg).2.trans_eq hQh.symm)
-      (fun hm hc => (hk ⟨hm, hc⟩).elim) hQ Relation.ReflTransGen.refl
-    exact ⟨Q, hQt, hv, hroot⟩
+  have hj := Store.hj_lt_hmax_of_reachable hr
+  obtain ⟨hFQ, hQt, hv⟩ := viable_head_of_height hrun hnc hf hy hQ
+    (by omega) (fun h => by omega)
+  have hΦ := Store.frame_realization _ _ _ _ hr
+  have hsub : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
+    fun B hB => ⟨y, hy, i, hB.1⟩
+  exact ⟨Q, hQt, hv, AC.anc_tree_of_anc_U
+    (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hΦ hsub hΦ.rooted.1
+    (hFQ.mono (fun B hB => ⟨y, hy, i, hB⟩)) hQt⟩
 
 /-- The actual proposal parent is viable in the full current frame. The old
 settled-phase supplier is unnecessary: the cache witness and current-frame
@@ -201,7 +191,7 @@ theorem proposal_parent_viable_full_frame
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness hrun hnc hf hy i
   rw [← Compose.frame_of_projAC hrun hy hc] at hQ hv hroot
   exact proposal_head_viable hac.localRun hrun.vstart hy hc hcall hti hp
-    ⟨(AC.frameIn_of_callAt hac.localRun hy hc).1.fcRoot_mem,
+    ⟨(AC.frameIn_of_callAt hac.localRun hy hc).1.rooted.1,
       Relation.ReflTransGen.refl, Q, hQ, hv, hroot⟩
 
 /-- The actual full-frame proposal walk stops at its duty head. This is the
@@ -213,7 +203,7 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr ini)
     (hp : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay)) :
     d.start ∈ ellp.frame.tree ∧
-      ellp.frame.Anc ellp.frame.fcRoot d.start ∧
+      ellp.frame.Anc ellp.frame.F d.start ∧
       AC.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
         (AC.headScore sp ellp.frame (AC.View.ofLists pay) ((sp.slot (tr.time ip) : Int) - 1))
         (AC.headEligible sp ellp.frame (tr.time ip) (AC.View.ofLists pay)
@@ -222,7 +212,7 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr ini)
   have hPhi := (AC.frameIn_of_callAt hr hz hcp).1
   have key (A : AC.ACState sp.n) (V : AC.View sp.n) (σ : Int) :
       AC.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree ∧
-      ellp.frame.Anc ellp.frame.fcRoot (AC.getAnchor sp A ellp.frame (tr.time ip)) ∧
+      ellp.frame.Anc ellp.frame.F (AC.getAnchor sp A ellp.frame (tr.time ip)) ∧
       AC.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
         (AC.headScore sp ellp.frame V σ)
         (AC.headEligible sp ellp.frame (tr.time ip) V σ)
@@ -230,8 +220,8 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr ini)
         (AC.getHead sp A ellp.frame (tr.time ip) (ellp.frame.viableTree ellp.frame.tree) V σ) := by
     have hroot := AC.fcRoot_anc_getAnchor hPhi A (tr.time ip)
     have hstart : AC.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree := by
-      rcases eq_or_ne ellp.frame.fcRoot (AC.getAnchor sp A ellp.frame (tr.time ip)) with he | he
-      · exact he ▸ hPhi.fcRoot_mem
+      rcases eq_or_ne ellp.frame.F (AC.getAnchor sp A ellp.frame (tr.time ip)) with he | he
+      · exact he ▸ hPhi.rooted.1
       · exact (Anc.mem hroot he).2
     refine ⟨hstart, hroot, ?_⟩
     exact AC.walkEnd_ghost hPhi.coherent (fun X hX => hX.1)

@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
@@ -15,9 +14,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
@@ -25,7 +27,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -53,13 +54,10 @@ theorem finalized_below_viable {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hsafe : ∀ a b, (∃ Y ∈ st.tree, a ∈ Y.fgPayload) →
       (∃ Y ∈ st.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
     {Q : NodeBlock P ACP} (hQ : Q ∈ st.tree) (hv : st.IsViable Q) : st.Anc st.F Q := by
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    hR.reachableWith
+  have hj := Healing.Store.hj_lt_hmax_of_reachable hR
   rcases (Store.isViable_iff st Q).mp hv with hh | ⟨hh, hgap | hJ⟩
-  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality
-      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
-  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality
-      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
+  · exact Healing.Store.F_anc_of_hj_lt_of_safe hR hR hU hsub hsub hV hsafe hQ (by omega)
+  · exact Healing.Store.F_anc_of_hj_lt_of_safe hR hR hU hsub hsub hV hsafe hQ (by omega)
   · exact (Store.cache_invariants _ _ _ _ hR).2.2.1.trans hJ
 
 /-- Viability transport within fixed numerical frame data. The caller separately supplies
@@ -95,9 +93,9 @@ variable {sp : ACParams}
 or top-status case split. -/
 theorem fcRoot_mono (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i) :
-    Anc (tr.HonestBlocks H) (Node.frame (tr.state y a)).fcRoot
-      (Node.frame (tr.state y i)).fcRoot := by
-  rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
+    Anc (tr.HonestBlocks H) (Node.frame (tr.state y a)).F
+      (Node.frame (tr.state y i)).F := by
+  rw [Node.frame_eq, Node.frame_eq, Store.toFrame_F]
   exact run_F_mono hrun.toLocalRun hy hai
 
 /-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
@@ -113,7 +111,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     Q ∈ (Node.frame (tr.state y i)).tree ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F Q ∧
       Q ∈ (Node.frame (tr.state y i)).viableHeads := by
   have htime := hrun.time_mono hai
   rw [Compose.frame_of_projAC hrun hy hc, Node.frame_eq,
@@ -132,10 +130,9 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
         (hframe.root_eq y i hy (halo.trans htime) hihi
           ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).symm)
       (hj_lt_hmax hrun hy i)
-      (Store.σ_eq_of_mem_with
-        (Compose.fg_reachable hrun.toLocalRun hy a).reachableWith
-        Store.finalitySpec_updateFinality
-        (Compose.fg_reachable hrun.toLocalRun hy i).reachableWith
+      (Healing.Store.σ_eq_of_mem
+        (Compose.fg_reachable hrun.toLocalRun hy a)
+        (Compose.fg_reachable hrun.toLocalRun hy i)
         (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1
         (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi)
       (fun h => h.mono (Compose.tree_mono hrun.toLocalRun hy hai)) hv.2.2
@@ -149,7 +146,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
     exact ⟨hQi, hFQ⟩
   refine ⟨?_, ?_, ?_⟩
   · rwa [Node.frame_eq]
-  · rw [Node.frame_eq, Store.toFrame_fcRoot]
+  · rw [Node.frame_eq, Store.toFrame_F]
     change Anc (tr.state y i).fg.toFrame.tree _ _
     rw [Store.toFrame_tree]
     exact Anc.restrict .refl hFQ
@@ -172,7 +169,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
     (hat : tr.time a < AC.freeze sp e.msg.slot)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot) :
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
+      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.F Q := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hR := Compose.fg_reachable hrun.toLocalRun hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
@@ -214,30 +211,10 @@ on the shadow AC projection. -/
 theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
     {K : AC.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) : AC.CommitteeTAt K tr.projAC H := by
-  intro y i ℓ e hy hcast m v hv
-  have hri := Compose.goldilocks_ac_projection_from
-    (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo (tr.time i))
-  rw [RunTrace.upTo_projAC] at hri
-  have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
-    hrun.time_mono (Nat.lt_succ_iff.mp hk)
-  have hcastU := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
-  have hpool : ∀ k, ∀ w ∈ e.readPoint.pool k, w.slot = k := fun k w hw =>
-    AC.state_pool_slotU _ hri.localRun.toU hri.vstart hy (i + 1) k w
-      (AC.readPoint_poolU hri.localRun.toU hy hcastU hw).1
-  have hmem : ∀ w ∈ e.readPoint.pool v.slot, w.val = v.val →
-      v.val ∈ K.committee v.slot := by
-    intro w hw hwv
-    have hp := (AC.readPoint_poolU hri.localRun.toU hy hcastU hw).1
-    rw [Trace.upTo_state tr.projAC y hb] at hp
-    exact hwv ▸ hK.hP.1 (tr.time i) y hy (i + 1) hb _ w hp
-  rcases AC.merged_declared_backing_at_vote_slot hpool hv with h | ⟨w, hw, -, -, -, hwv, -⟩
-  · exact hmem v h rfl
-  · exact hmem w hw hwv
+    (hnc : Compose.NoCollRun dg tr) : AC.CommitteeTAt K tr.projAC H :=
+  hK.committeeTAt hrun hnc
 
-/-- The stock-shaped healthy AC base supplier on shadow executions. The committee and
-prefix bookkeeping is unchanged. Service synchrony and catch-up restrict to the prefix;
-driven execution follows from the static shadow run on that prefix. -/
+/-- The stock healthy AC base supplier, with the same prefix interface for window callers. -/
 theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     {g ΔF b hold : Time} (hK : CommitteeHalfUpTo tr H K g b)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
@@ -247,57 +224,8 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
-      ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
-  have hpre := hrun.upTo hd0
-  have hr := Compose.goldilocks_ac_projection_from hpre (hnc.upTo d)
-  rw [RunTrace.upTo_projAC] at hr
-  refine ⟨hr, ?_, ?_, ?_, ?_, hfaults d hd0 hdb, hK.facts.hsize,
-    AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
-    AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc) d,
-    fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
-  · -- Shadow driven execution (proposal and acceptance run laws).
-    have hdr := projection_driven_of_run hpre (hnc.upTo d) hpre.genesis_root_ok
-    rwa [RunTrace.upTo_projAC] at hdr
-  · -- Restrict actual service witnesses to the read prefix.
-    have hm := hrun.time_mono
-    have hsync := Healing.Growing.KernelProof.service_syncACAt hrun hs (lo := g) (hi := d) le_rfl
-    constructor
-    · intro x hx i m hsend hi y hy j ell hj ht hd
-      obtain ⟨hid, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
-      obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
-      rw [ACTrace.upTo_deadline hm hjd] at ht hd
-      obtain ⟨k, hkj, hik, hproc, hkt⟩ := hsync.1 x i m (hrun.antitone hid hx) hsend
-        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
-      have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-      exact ⟨k, hkj, hik, ACTrace.upTo_processAt.mpr ⟨hkd, hproc⟩,
-        by rwa [ACTrace.upTo_deadline hm hkd]⟩
-    · intro x hx i B hacc hi y hy j ell hj ht hd hF
-      obtain ⟨hid, hacc⟩ := ACTrace.upTo_acceptAt.mp hacc
-      obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
-      rw [ACTrace.upTo_deadline hm hjd] at ht hd
-      obtain ⟨k, hkj, hak, hkt⟩ := hsync.2 x i B (hrun.antitone hid hx) hacc
-        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
-        (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
-      have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-      exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨hkd, hak⟩,
-        by rwa [ACTrace.upTo_deadline hm hkd]⟩
-  · -- Shadow AC catch-up on the prefix.
-    rw [← RunTrace.upTo_projAC]
-    constructor
-    intro x hx i B ha hi y hy j ell hj ht hjd hF
-    change AC.gbar g + 2 * sp.Δ ≤ tr.time j at ht
-    change tr.time j ≤ d at hjd
-    rw [RunTrace.upTo_projAC] at ha hj ⊢
-    obtain ⟨hid, ha'⟩ := ACTrace.upTo_acceptAt.mp ha
-    obtain ⟨_, hj'⟩ := (Trace.upTo_callAt _).mp hj
-    obtain ⟨k, hkj, hak, hkt⟩ := hrun.toLocalRun.acCatchAt hc
-      (hrun.antitone hid hx) ha' hi (hrun.antitone hjd hy) hj' ht
-      (hF.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd0))
-    exact ⟨k, hkj,
-      ACTrace.upTo_acceptAt.mpr ⟨(hrun.time_mono hkj).trans hjd, hak⟩, hkt⟩
-  · intro y hy t hgt htd
-    exact (Trace.upTo_awake _ y t).mpr
-      ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩
+      ((tr.upTo d).HonestBlocks (H d)) proposer g d :=
+  hK.healthy_base_before_at hrun hnc hs hawake hfaults hc hd0 hdb
 
 end Growing
 

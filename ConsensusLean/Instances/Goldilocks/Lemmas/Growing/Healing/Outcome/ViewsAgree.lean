@@ -111,7 +111,7 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       have hpre := hp.run.upTo (hp.run.time_nonneg i)
       have hBt' : B ∈ ((tr.upTo (tr.time i)).state p i).fg.tree := by
         rwa [Trace.upTo_state tr p (fun q hq => hm hq.le)]
-      rcases Healing.tree_accepted hpre.toLocalRun hpi hBt' with hgen | ⟨q, hqi, hacc⟩
+      rcases Compose.tree_cases hpre.toLocalRun hpi hBt' with hgen | ⟨q, hqi, hacc⟩
       · have hBy := Store.genesis_mem (fg_reachable_at hp.run (hp.run.time_nonneg j)
           (fun q hq => hm hq.le) hy)
         rw [← hgen] at hBy

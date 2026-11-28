@@ -129,7 +129,7 @@ private theorem held_att_signed {y i t} (ht : 0 ≤ t)
     ∃ k < i, tr.SignAt a.val k a := by
   obtain ⟨X, hX, haX⟩ := ha
   have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by rw [Trace.upTo_state tr y hle]; exact hX
-  rcases Healing.tree_accepted (hrun.upTo ht) hy hXt with rfl | ⟨k, hk, hacc⟩
+  rcases Compose.tree_cases (hrun.upTo ht) hy hXt with rfl | ⟨k, hk, hacc⟩
   · cases haX
   · have hacc' := ((Trace.upTo_callAt tr).mp hacc).2
     obtain ⟨k', hk', hs'⟩ := hrun.att_unforgeable y k a

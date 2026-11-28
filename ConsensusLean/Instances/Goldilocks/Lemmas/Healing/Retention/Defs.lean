@@ -166,7 +166,7 @@ def VoteInv (g : Time) (k : Nat) : Prop :=
     j < e.msg.slot →
       AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
       (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
+        Anc (tr.HonestBlocks H) B ℓ.frame.F)
 
 /-- (R2) after an honest call at cut `k` at a time `≥ a`, for every high origin `(B, j)` written
 at a cut `≤ k` or activated by then (`t_{j+1} ≤` the time of `k`; JointRet's activation): `Σ.F` is
@@ -185,7 +185,7 @@ theorem voteInv_iff {g : Time} {k : Nat} : VoteInv tr H g k ↔
       j < e.msg.slot →
         AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
         (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-          Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) := Iff.rfl
+          Anc (tr.HonestBlocks H) B ℓ.frame.F) := Iff.rfl
 
 theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
     ∀ y ∈ H, tr.IsCall y k → a ≤ tr.time k →

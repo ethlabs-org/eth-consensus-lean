@@ -528,7 +528,7 @@ theorem tickRun_inv (t₀ : Time) :
     rw [hfr]
     have hτ : j ≤ stTip i := le_trans (tip_ge hji) (tip_le_stTip i)
     rcases Nat.lt_or_ge m f with hmf | hmf
-    · left; rw [hf.fcRoot]; exact anc_honest hmf.le
+    · left; rw [hf.F]; exact anc_honest hmf.le
     · right
       exact hf.mem_viableTree' (hf.mem (le_trans hf.fj hf.jτ) le_rfl) hmf (by omega)
         (hf.mem hmf (by omega))
@@ -538,7 +538,7 @@ theorem tickRun_inv (t₀ : Time) :
       rw [hfr', hm']
       have hk : j ≤ k := by omega
       rcases Nat.lt_or_ge m f' with hmf | hmf
-      · right; rw [hf'.fcRoot]; exact anc_honest hmf.le
+      · right; rw [hf'.F]; exact anc_honest hmf.le
       · left
         exact hf'.mem_viableTree' (mem_voterBlockTree hf' _ (le_trans hf'.fj (jexp_le _)) le_rfl)
           hmf (by omega) (mem_voterBlockTree hf' _ hmf (by omega))
