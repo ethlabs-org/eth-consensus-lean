@@ -69,7 +69,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
     rw [hti] at ht
     exact (not_lt_of_ge ht) hrt
   have hrb := (hm hri.le).trans hib
-  have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib hri ho
+  have hlu := ProposalSources.origin_label_lt_at_proposal_at hp hpH hci hcall hti hib hri ho
   obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
   have hsucc : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [AC.ACParams.ts]
@@ -84,11 +84,11 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
     obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hsQ
     exact hOF.trans (Anc.mono hPhiU ((AC.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsQ))
-  rcases hp.proposal_holds_old_at hpH hci hcall hd hti hib ho hrt with hOt | hOF
+  rcases ProposalImpl.proposal_holds_old_at hp hpH hci hcall hd hti hib ho hrt with hOt | hOF
   swap
   · obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
     exact hOF.trans (Anc.mono hPhiU ((hPhi.rooted.2 _ hstart).trans hsQ))
-  rcases hp.held_high_origin_viable_at hpH hci hib ho hrb
+  rcases ProposalImpl.held_high_origin_viable_at hp hpH hci hib ho hrb
       (by rw [hti]; exact (AC.ts_le_iff sp).mpr (by omega)) hOt with hV | hOF
   swap
   · exact below (hOF.mono hPhiU)
@@ -182,7 +182,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
     · have ht' : tr.time r = sp.ts s + 6 * sp.Δ := ht
       rw [hsucc] at hrt
       linarith
-    refine AC.Growing.optimistic_first_proposal_anc_at hac hp.committeeFacts.hP
+    refine AC.Growing.ProposalSources.optimistic_first_proposal_anc_at hac hp.committeeFacts.hP
       (hp.committeeFacts.hsize s) (hp.committee_cs2_at (by linarith only [hsg, hΔ])
         (by linarith only [hsb, hib, hΔ]) ht0 hib) hx hop hOD hpH hci
       (AC.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'

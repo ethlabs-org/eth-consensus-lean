@@ -175,7 +175,7 @@ theorem reset_pivot_of_start_supported_at
           (Compose.Growing.hVoteAt_iff.2 ⟨hy, elly, hcy⟩) hjb (by omega)
       have hri : r < i :=
         lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hrt.trans_eq hti.symm)
-      have hlu := hp.origin_label_lt_at_proposal_at hpI hci hcall hti hib hri ho
+      have hlu := ProposalSources.origin_label_lt_at_proposal_at hp hpI hci hcall hti hib hri ho
       exact hp.high_origin_votes_before_at j hjb x r l O ho
         ((hp.run.time_mono hri.le).trans hib) y elly e hy hcy (by omega))
     (fun D hDU hQU hDQ hDold y j elly e ⟨hy, hcy, hes, hjb, hE⟩ =>
