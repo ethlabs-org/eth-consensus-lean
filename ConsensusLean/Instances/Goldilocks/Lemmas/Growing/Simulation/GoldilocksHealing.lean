@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.BoundariesCover
