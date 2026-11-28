@@ -18,9 +18,9 @@ spec's all-of-`V` committee is the specialization `committeeSize = n` (the defau
 `optimistic`, one value for the whole protocol, says whether the optimistic confirmation runs;
 the spec's protocol runs it (the default). The switch `deepDepth`, one value for the whole
 protocol, says whether `ac_to_fg` falls back to deep sources and at which depth `D` (in slots);
-the spec's protocol reads fast locks only (`none`, the default). `R`, `K_W`, `δ_t`'s lower bound
-and the source delay are the FG's and the regimes' (goldilocks-spec §"Schedule"); no AC rule
-reads them. -/
+the spec's protocol reads fast locks only (`none`, the default). `K_W`, `δ_t`'s lower bound and
+the source delay are the FG's and the regimes' (goldilocks-spec §"Schedule"); no AC rule reads
+them. -/
 
 namespace Consensus.Goldilocks.AC
 

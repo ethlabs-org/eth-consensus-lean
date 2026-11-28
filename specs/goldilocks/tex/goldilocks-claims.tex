@@ -277,11 +277,11 @@ the public parameters.  The fast, optimistic and unlock thresholds count
 $|\mathcal K_s|$, and the endpoint's regimes add committee clauses
 (\S\ref{sec:certified-rows}).
 The node statements of this file are not restated at committee bindings.
-Slot~$s$ starts at $t_s=4\Delta s$.  $\cF=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$
-and $R\geq\cF$ slots per round.  Lock window $k\geq2$ slots (the AC).  FG
+Slot~$s$ starts at $t_s=4\Delta s$.  $\cF=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$.
+Lock window $k\geq2$ slots (the AC).  FG
 window $K_W=2$; FG slack $k_F\geq0$ (distinct from~$k$); source delay
 $x\geq0$; timeout delay $\delta_{\mathrm t}\geq x+\cF+k_F$, default $x=0$
-(goldilocks-spec \S Schedule fixes only $\delta_{\mathrm t}\geq0$; $R$ and these
+(goldilocks-spec \S Schedule fixes only $\delta_{\mathrm t}\geq0$; these
 bounds are this file's).  The certified endpoint takes its own timeout
 bound: $\delta_{\mathrm t}\geq3c'$ for its final anchor spacing $c'\geq2$, so
 $\delta_{\mathrm t}\geq6$ (\S\ref{sec:obligations}); it says nothing about
