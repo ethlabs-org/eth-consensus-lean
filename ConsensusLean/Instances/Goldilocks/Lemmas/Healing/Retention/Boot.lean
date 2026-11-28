@@ -91,7 +91,7 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
     by_cases he : Y = X
     · exact he ▸ hX
     · exact (Anc.mem hYX he).1
-  rcases tree_accepted hp.run.toLocalRun hy hY with rfl | ⟨i, hik, hA⟩
+  rcases Compose.tree_cases hp.run.toLocalRun hy hY with rfl | ⟨i, hik, hA⟩
   · cases hatt
   obtain ⟨j, hji, hj⟩ := hp.run.att_unforgeable y hy i att (Or.inr ⟨Y, ⟨true, hA⟩, hatt⟩) hattH
   have := hp.reset.2 _ hattH j att hj hatth

@@ -17,6 +17,29 @@ excludes the pair. -/
 
 namespace Consensus.Goldilocks.Store
 
+section Frame
+
+variable {P : Params} {ACP : Type}
+
+theorem isViable_iff (st : Store P ACP) (B : NodeBlock P ACP) :
+    st.IsViable B ↔ st.hmax ≤ (st.σ B.root).h ∨
+      ((st.σ B.root).h + 1 = st.hmax ∧ (st.hj + 1 < st.hmax ∨ st.Anc st.J B)) := by
+  rfl
+
+theorem toFrame_tree (st : Store P ACP) :
+    st.toFrame.tree = {B | B ∈ st.tree ∧ st.Anc st.F B} := by
+  rfl
+
+theorem toFrame_F (st : Store P ACP) : st.toFrame.F = st.F := by rfl
+
+theorem toFrame_fcRoot (st : Store P ACP) : st.toFrame.fcRoot = st.F := by rfl
+
+theorem toFrame_viableHeads (st : Store P ACP) :
+    st.toFrame.viableHeads = {B | B ∈ st.tree ∧ st.Anc st.F B ∧ st.IsViable B} := by
+  rfl
+
+end Frame
+
 /-- Every block of a chain of `S` linked from `A ∈ S` (and `A`) is an ancestor of its last
 block. -/
 theorem anc_of_linked {P : Params} {ACP : Type} {S : Set (NodeBlock P ACP)} :

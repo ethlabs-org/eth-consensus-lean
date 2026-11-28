@@ -15,8 +15,9 @@ here.
 * `healthyDrainLen S X = 2k + X`: the drain length `L_drain`. It pays the producer guard
   `2k + G ≤ L_drain + 1` at the gap `G = X`.
 * `healthyResetCoeff S X = 20·L_drain + 24(δ_t + X) + 40`: `R`, with the envelope
-  `a ≤ ready + R·Δ + r`. It is the rise-round route's `resetBoundRounds` coefficient
-  `20 L_drain + 24(δ_t + X − 1) + 54` plus the lag `5λ = 10Δ` at `λ = 2Δ`.
+  `a ≤ ready + R·Δ + r`. It covers the real-time reset bound
+  `(16 L_drain + 24(δ_t + X − 1) + 52)Δ + 4GΔ` of `Generic.exists_reset_within` (and the final
+  route's `5d`).
 * `healthyResetSlack S X = 0`: `r`.
 * `healMargin S A X = 20 L_drain + 8k + 28δ_t + 28X + 56 + 5G`: the heal margin, `G = A.signGap`,
   `contract_heal = catchUp + M_f`, the final route's heal-bound margin on the key-dependent

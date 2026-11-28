@@ -45,9 +45,8 @@ private theorem unanimous_next_votes_extend_at
     (fun _ _ _ _ hy hcast hs hjb => by
       have hF := congrArg Frame.fcRoot (Outcome.frame_of_call hp.run hy hcast.1)
       change _ = (tr.state _ _).fg.F at hF
-      rw [← hF]
-      exact (hp.cast_root_anc_analysis_root_at hy hcast).trans
-        (hp.reset_vote_root_below_bound_or_covered_at hR hP hbound hcovered hy hcast hs hjb))
+      exact hF ▸ hp.reset_vote_finality_below_bound_at hR hP hbound
+        (fun _ C s hC hs => hcovered C s hC.healedOrigin hs) hy hcast hs hjb)
     (fun _ _ _ _ hy hcast hs hjb hstore =>
       hp.reset_vote_viable_above_old_or_covered_at hy hR hcast hs hjb hstore hbound
         (fun _ C s hC hs => hcovered C s hC.healedOrigin hs))

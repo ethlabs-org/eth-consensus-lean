@@ -10,7 +10,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
