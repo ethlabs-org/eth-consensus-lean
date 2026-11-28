@@ -21,6 +21,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -70,11 +71,16 @@ theorem floor_ancestor_mem_frame (hrun : GoldilocksRun proposer dg H tr ini)
   have hh' : (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ X.root).h := by
     rw [← σ_eq_honest hrun hnc hz hy hX hXt]
     exact hh
-  -- the P-U frame root is `Σ.F` (not the analysis root `Store.fcRoot`)
-  obtain ⟨hFX, hframe, -, -, hv⟩ := viable_head_of_floor hrun hnc hf hy hXt hh'
-    (fun hm hc => Compose.honest_held_anc hrun hnc hy (hJ hm hc) hXt)
-  have hΦ := (Goldilocks.Store.frame_realization _ _ _ _
-    (Compose.fg_reachable hrun.toLocalRun hy j)).1
+  have hr := Compose.fg_reachable hrun.toLocalRun hy j
+  have hj := Store.hj_lt_hmax_of_reachable hr
+  have hpred : (tr.state y j).fg.hmax - 1 ≤ ((tr.state y j).fg.σ X.root).h := by
+    unfold Goldilocks.Store.headHeightFloor at hh'
+    split_ifs at hh' <;> omega
+  obtain ⟨hFX, hframe, hv⟩ := viable_head_of_height hrun hnc hf hy hXt hpred
+    (fun h => Compose.honest_held_anc hrun hnc hy (hJ (by omega) (fun hc => by
+      simp only [Goldilocks.Store.headHeightFloor, ite_eq_left hc] at hh'
+      omega)) hXt)
+  have hΦ := (Goldilocks.Store.frame_realization _ _ _ _ hr).1
   have hsub : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocks H :=
     fun B hB => ⟨y, hy, j, hB.1⟩
   refine ⟨hframe, AC.anc_tree_of_anc_U

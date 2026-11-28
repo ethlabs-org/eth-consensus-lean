@@ -186,7 +186,7 @@ theorem proposal_viable_at_call_with_early_at
   have hPy : P ∈ ell.frame.tree := by
     by_cases ht : tr.time i < sp.ts u + sp.Δ
     · exact hearly ht
-    obtain ⟨q, hqi, haq, _⟩ := Core.accepted_relay_before_at hrun.toCore hsvc hnr hzja
+    obtain ⟨q, hqi, haq, _⟩ := accepted_relay_before_at hrun hsvc hnr hzja
       ⟨ella, hca', hblock⟩ (by rw [hja]; exact hgu) hy hc
       (by rw [hja]; exact not_lt.mp ht) hFP'
     have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y q P := by
@@ -267,7 +267,7 @@ theorem proposal_viable_at_cast_primed_at'
       obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ :=
         AC.cast_readyU hri.localRun.toU hy hci (by rw [hes]; exact hearly)
       rw [hes] at hQs
-      exact Core.proposal_frame_unique_at hrun.toCore hnc hz hdes hP hPs hp0 hy hc.1
+      exact proposal_frame_unique_at hrun hnc hz hdes hP hPs hp0 hy hc.1
         hhigh hQ hQs ▸ hQ)
   have hdom : P ∈ AC.voterBlockTree sp e.readPoint ell.frame p :=
     ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩

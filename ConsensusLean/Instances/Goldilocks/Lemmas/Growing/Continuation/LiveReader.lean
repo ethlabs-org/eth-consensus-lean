@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Liv
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
@@ -10,19 +11,16 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # A reader's caches and floor below the old family after a hand-over
+/-! # Finalized ancestry and viability after a hand-over
 
 For a reader honest at `t ∈ [t_{r+k}, t_s + Δ]` whose high rows have sources below members of
 labels below `s` (the classification of each row, `hlab`):
 
 * `old_cover`: a member of a label below `s` written before `t_s + 2Δ` is below a member of the
   old family `SeededOld s` (itself, or the optimistic origin of label `s − 1` at its cut);
-* `seeded_reader_old`: the reader's `fc_root` is below a member of the old family, and its head
-  height floor is at most the height of every block of its tree above the whole old family. High
-  reader: the justified entry and the floor crossings are below the sources of high rows
-  (`rowsAbove_of`, the store geometry). Low reader: `fc_root` is below the held reset seed,
-  a member of a label `< r` (`low_seed_held`); when the floor is above the seed's height
-  there is no contest, and the floor crossing is a high row. -/
+* `seeded_reader_old`: `F` is below a member of the old family. A held block above the whole
+  family is viable: the crossing at `hmax - 1` bounds its height, and it either extends the
+  high `J` or is strictly higher than the low `hj` by extending the held reset seed. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -56,11 +54,10 @@ theorem old_cover (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoC
     linarith
   · exact ⟨O, seededOld_iff.2 (Or.inr ⟨x, k, CV, hx, hOp⟩), hCO⟩
 
-/-- **A seeded reader's `fc_root` and floor below the old family of slot `s`**, for a reader honest
+/-- **A seeded reader's finalized ancestry and viability for slot `s`**, for a reader honest
 at `t ∈ [t_{r+k}, t_s + Δ]` (earlier cuts at times `≤ t`) that has called from `t_{r−k−3}` on,
-whose high rows have sources below members of labels below `s` (`hlab`): `fc_root` is below a
-member of `SeededOld s`, and the head height floor is at most the height of every block of the
-tree above every member of `SeededOld s`. -/
+whose high rows have sources below members of labels below `s` (`hlab`): `F` is below a member
+of `SeededOld s`, and every held block above all members of `SeededOld s` is viable. -/
 theorem seeded_reader_old
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {s : Nat}
@@ -74,7 +71,7 @@ theorem seeded_reader_old
         (AC.ResultAt tr.projAC a.val c l O OV ∨ AC.OptimisticLockAt tr.projAC a.val c l O OV) →
         l + 1 ≤ s) :
     (∃ O, SeededOld tr H g r b s O ∧
-        Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot O) ∧
+        Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F O) ∧
       ∀ B ∈ (tr.state y i).fg.tree, (∀ O, SeededOld tr H g r b s O →
           Anc (tr.HonestBlocksAt H) O B) →
         (tr.state y i).fg.IsViable B := by
@@ -89,7 +86,6 @@ theorem seeded_reader_old
   have hst := Trace.upTo_state tr y hi
   have hrun' := hrun.upTo ht0
   have hnc' := hnc.upTo t
-  have hUP := (Compose.projFG_localRun hrun' hnc').coherent
   have hsub := upTo_subset hrun ht0
   -- the high rows, sourced below members of the old family
   have hzt : Healing.cutZ sp.toParams g ≤ t := by
@@ -121,12 +117,11 @@ theorem seeded_reader_old
     exact RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 ⟨y, hy, i, by rw [hst]; exact hB⟩
       (hDO.trans (hOB O hO))
   refine ⟨?_, fun B hB hOB => ?_⟩
-  · -- `fc_root`
+  · -- Finalized ancestry, through the held seed or the high justified entry.
     by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
-    · obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
+    · obtain ⟨x, q, l, S, hS', hqT, hl, hFS, -⟩ :=
         low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
-      exact ⟨S, hseedOld hS' hqT hl,
-        low_fcRoot_below hrun hnc ht0 hi hy hlow hS' hSy hFS⟩
+      exact ⟨S, hseedOld hS' hqT hl, hFS⟩
     obtain ⟨-, hJm, hFJ, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
     have hFJ' := Healing.Growing.honest_anc_of_store_anc_at ht0 hi hy hFJ
     have hJ : ∃ O, SeededOld tr H g r b s O ∧
@@ -143,12 +138,8 @@ theorem seeded_reader_old
       obtain ⟨O, hO, hDO⟩ := hGO D hD
       exact ⟨O, hO, (Anc.mono (fun Z hZ => hsub ⟨x', hx', k', hZ⟩) hJD).trans hDO⟩
     obtain ⟨O, hO, hJO⟩ := hJ
-    refine ⟨O, hO, ?_⟩
-    rw [Goldilocks.Store.fcRoot]
-    split_ifs
-    · exact hJO
-    · exact hFJ'.trans hJO
-  · -- the floor
+    exact ⟨O, hO, hFJ'.trans hJO⟩
+  · -- Viability at the maximum or its predecessor.
     have hGB := hbelow hB hOB
     have finish : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h →
         (tr.state y i).fg.IsViable B := by
@@ -181,59 +172,34 @@ theorem seeded_reader_old
         have hheld := Compose.honest_held_anc hrun' hnc' hy hJB (by rw [hst]; exact hB)
         rwa [hst] at hheld
     apply finish
-    by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
-    · suffices hfloor : (tr.state y i).fg.headHeightFloor ≤
-          ((tr.state y i).fg.σ B.root).h by
-        unfold Goldilocks.Store.headHeightFloor at hfloor
-        split_ifs at hfloor <;> omega
-      obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
-        low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
-      have hSB : Anc (tr.HonestBlocksAt H) S B := hOB S (hseedOld hS' hqT hl)
-      have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
-        rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
-          (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS'.1) hSy
-          (HighOrigin.mem_tree hrun hnc hS')]
-        exact hS'.2.2.2
-      have hSBh := Healing.h_le_of_store_anc hreach (held_anc_at hrun hnc ht0 hy hi hSB hB)
-      by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h
-      · omega
-      have hcon : ¬ (tr.state y i).fg.Contest := fun hc => hSf (by
-        simp only [Goldilocks.Store.headHeightFloor, hc, ↓reduceIte]
-        have := hc.1
-        omega)
-      have hfl' : (tr.state y i).fg.headHeightFloor = (tr.state y i).fg.hmax - 1 := by
-        simp only [Goldilocks.Store.headHeightFloor, hcon, ↓reduceIte]
-      by_contra hlt
-      obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
-      obtain ⟨E, hE, -, hEh, -, D, hD, hDs⟩ := Compose.frame_crossing_source_of hrun' hnc' hf hy
-        hsrc (W := X) (j := (tr.state y i).fg.hmax - 1) (by rw [hst]; exact hX) (by omega)
-        (by omega) (by rw [hst, hXh]; omega)
-      rw [hst] at hE hEh
-      have hBE := held_below_entry hrun' hnc' hy (by rw [hst]; exact hB) (by rw [hst]; exact hE)
-        hDs (Or.inl (hGB D hD)) (by rw [hst, hEh]; omega)
-      rw [hst] at hBE
-      obtain ⟨x', hx', k', -, -, hED, -, -⟩ :=
-        Compose.honest_source_entry hrun' hnc' hDs ⟨y, hy, i, by rw [hst]; exact hE⟩ rfl
-      have hEB : Anc ((tr.upTo t).HonestBlocks (H t)) E B :=
-        (Anc.mono (Compose.fg_tree_subset_honest hx' k') hED).trans (hGB D hD)
-      obtain rfl : B = E := Anc.antisymm hUP
-        (Anc.mono (fun Z hZ => ⟨y, hy, i, by rw [hst]; exact hZ⟩) hBE) hEB
-      omega
-    · have hsrc' := rowsAbove_height_mono hsrc
-        (show Healing.Growing.HZ tr H g + 1 ≤ ((tr.upTo t).state y i).fg.hj by rw [hst]; omega)
-      rcases Compose.floor_or_crossing_of hrun' hnc' hf hy hsrc'
-          (fun D D' hD hD' => Anc.total hUP (hGB D hD) (hGB D' hD'))
-          (fun D hD => Or.inl (hGB D hD)) (by rw [hst]; exact hB) with
-        hle | ⟨D, E, -, hD, hDs, hE, hBE, hEh, -⟩
-      · rwa [hst] at hle
-      obtain ⟨x', hx', k', -, -, hED, -, -⟩ :=
-        Compose.honest_source_entry hrun' hnc' hDs ⟨y, hy, i, hE⟩ rfl
-      have hEB : Anc ((tr.upTo t).HonestBlocks (H t)) E B :=
-        (Anc.mono (Compose.fg_tree_subset_honest hx' k') hED).trans (hGB D hD)
-      obtain rfl : B = E := Anc.antisymm hUP
-        (Anc.mono (Compose.fg_tree_subset_honest hy i) hBE) hEB
-      rw [hst] at hEh
-      omega
+    by_contra hlt
+    have hh : ((tr.state y i).fg.σ B.root).h < (tr.state y i).fg.hmax - 1 := by omega
+    have hhigh : Healing.Growing.HZ tr H g + 1 ≤ (tr.state y i).fg.hmax - 1 := by
+      by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
+      · obtain ⟨x, q, l, S, hS', hqT, hl, _, hSy, -⟩ :=
+          low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
+        have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
+          rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
+            (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS'.1) hSy
+            (HighOrigin.mem_tree hrun hnc hS')]
+          exact hS'.2.2.2
+        have hSB := hOB S (hseedOld hS' hqT hl)
+        exact (hSh.trans (Healing.h_le_of_store_anc hreach
+          (held_anc_at hrun hnc ht0 hy hi hSB hB))).trans hh.le
+      · have := Healing.Store.hj_lt_hmax_of_reachable hreach
+        omega
+    obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
+    obtain ⟨E, hE, -, hEh, -, D, hD, hDs⟩ := Compose.frame_crossing_source_of hrun' hnc' hf hy
+      hsrc (W := X) (j := (tr.state y i).fg.hmax - 1) (by rw [hst]; exact hX) hhigh
+      (by omega) (by rw [hst, hXh]; omega)
+    obtain ⟨x', hx', k', -, -, hED, -, -⟩ :=
+      Compose.honest_source_entry hrun' hnc' hDs ⟨y, hy, i, hE⟩ rfl
+    have hEB : Anc ((tr.upTo t).HonestBlocks (H t)) E B :=
+      (hED.mono (Compose.fg_tree_subset_honest hx' k')).trans (hGB D hD)
+    have hle := Healing.h_le_of_store_anc hreach
+      (held_anc_at hrun hnc ht0 hy hi (hEB.mono hsub) hB)
+    rw [hst] at hEh
+    omega
 
 end Consensus.Goldilocks.Compose.Growing
 
