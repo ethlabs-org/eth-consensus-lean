@@ -41,27 +41,8 @@ open AC (ACParams Payload gbar)
 theorem entry_at_height {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {C : NodeBlock P ACP} (hC : C ∈ st.tree) {h : Nat} (h1 : 1 ≤ h)
     (hle : h ≤ (st.σ C.root).h) :
-    ∃ Z ∈ st.tree, st.Anc Z C ∧ (st.σ Z.root).h = h ∧ (st.σ Z.root).Th = Z.root := by
-  have key : ∀ {W : NodeBlock P ACP} {h : Nat}, W ∈ st.tree → (st.σ W.root).h = h →
-      ∃ Z ∈ st.tree, st.Anc Z W ∧ (st.σ Z.root).h = h ∧ (st.σ Z.root).Th = Z.root := by
-    intro W h hW he
-    obtain ⟨⟨E, hE, hEr, hEW, hEh, hET⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hr _ hW
-    exact ⟨E, hE, hEW, hEh.trans he, hET.trans hEr.symm⟩
-  have hA := (Store.accepted_tree _ _ _ _ hr).2.2.2 C hC
-  clear hC
-  induction hA generalizing h with
-  | refl =>
-    have hg := Store.σ_genesis hr
-    have h₁ : ((st.σ (P.genesisBlock acp₀).root)).h = 1 := by
-      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, hg]; rfl
-    exact key (Store.genesis_mem hr) (by omega)
-  | tail _ hYW ih =>
-    rcases eq_or_lt_of_le hle with he | hlt
-    · exact key hYW.2.1 he.symm
-    · obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-      obtain ⟨Z, hZ, hZY, hZh, hZT⟩ := ih h1 (by
-        rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> (clear * - hlt hh; omega))
-      exact ⟨Z, hZ, hZY.tail hYW, hZh, hZT⟩
+    ∃ Z ∈ st.tree, st.Anc Z C ∧ (st.σ Z.root).h = h ∧ (st.σ Z.root).Th = Z.root :=
+  Goldilocks.Store.entry_at_height P ACP hr hC h1 hle
 
 /-- A chain that left an entry carries an honest attestation, for any finality update
 satisfying the store contract. -/
@@ -83,9 +64,11 @@ theorem honest_att_of_left {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store 
     (hr : st.Reachable acp₀) {H : Set (Fin P.n)} (hq : Hᶜ.ncard < P.fg.q)
     {E C : NodeBlock P ACP} (hET : (st.σ E.root).Th = E.root) (hEC : st.Anc E C)
     (hlt : (st.σ E.root).h < (st.σ C.root).h) :
-    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ H :=
-  honest_att_of_left_with Goldilocks.Store.finalitySpec_updateFinality hr.reachableWith
-    hq hET hEC hlt
+    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ H := by
+  by_contra hn
+  push Not at hn
+  have := (Goldilocks.Store.entry_kept P ACP hr hq hn hEC hET).1
+  omega
 
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
