@@ -91,7 +91,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ProposalReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
