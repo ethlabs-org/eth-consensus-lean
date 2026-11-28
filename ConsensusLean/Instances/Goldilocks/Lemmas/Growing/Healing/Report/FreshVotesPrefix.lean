@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPath
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee

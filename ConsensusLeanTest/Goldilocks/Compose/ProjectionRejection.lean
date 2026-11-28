@@ -113,10 +113,6 @@ theorem tickState_one : tickState payloadAC dgP 1 = Node.init payloadAC := by
     Node.acCall, Node.acToFG, ite_false]
   rfl
 
-/-- The fork-choice root of the initial FG state is genesis. -/
-theorem init_fcRoot : (Store.init (P := P₁) ()).fcRoot = P₁.genesisBlock () := by
-  unfold Store.fcRoot; split_ifs <;> rfl
-
 /-- The own block of time `1`, on the initial FG state. -/
 noncomputable abbrev ownBlock : payloadAC.Blk :=
   mkBlock dgP v0 (Store.init (P := P₁) ()) 1 0 (P₁.genesisBlock ()) ()
