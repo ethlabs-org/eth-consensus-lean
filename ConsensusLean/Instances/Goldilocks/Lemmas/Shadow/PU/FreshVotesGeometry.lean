@@ -151,7 +151,7 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
           have ht := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hstamp)
           change tr.time q < AC.freeze sp (s + 1) at ht
           simpa only [AC.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
-        exact Core.frame_relay_before_at rc hnc hsvc hcatch
+        exact frame_relay_before_at hrun hnc hsvc hcatch
           (rc.antitone (rc.time_mono hqi) hy) hz'
           (fun r hr' hrs => hnr _ r (rc.antitone (rc.time_mono hr') hz') hrs)
           ((Trace.upTo_callAt _).mp hcq).2 hcp hWq
@@ -161,7 +161,7 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
         (sp.toParams.fg.faults_lt_quorum_margin (hf _ (rc.time_nonneg ip) (hti ▸ hpb)))
         hipl hiph hil hhigh hcp hc.1 hvW hWp
       exact ⟨W, hWp, hv', hBW.mono hPhi.2⟩
-    · obtain rfl := Core.proposal_frame_unique_at rc hnc hz hdesignated hactual hPs
+    · obtain rfl := proposal_frame_unique_at hrun hnc hz hdesignated hactual hPs
         (by omega) hy hc.1 hhigh hP' hP's
       rcases Relation.ReflTransGen.cases_tail (hBW.trans hWP') with he | ⟨Y, hBY, hYP⟩
       · exact (hne he.symm).elim
