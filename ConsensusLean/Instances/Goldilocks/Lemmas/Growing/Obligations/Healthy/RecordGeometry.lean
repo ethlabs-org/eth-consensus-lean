@@ -63,8 +63,8 @@ theorem record_step_origin_at
     rw [RunTrace.upTo_projAC] at hs
     refine Or.inr ⟨C, hC, hCr, s, CV, ?_⟩
     rcases hs with hs | hs
-    · exact Or.inl ((Compose.Growing.ac_resultAt_upTo hrun.time_mono).mp hs).2
-    · exact Or.inr ((Compose.Growing.ac_optimisticLockAt_upTo hrun.time_mono).mp hs).2
+    · exact Or.inl ((AC.upTo_resultAt hrun.time_mono).mp hs).2
+    · exact Or.inr ((AC.upTo_optimisticLockAt hrun.time_mono).mp hs).2
 
 end Consensus.Goldilocks.Obligations.Growing
 

@@ -67,7 +67,7 @@ theorem carry_of_service_senders
   have hd := hrun.time_nonneg i
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo hd).localRun
-  have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   have hsync := service_syncACAt hrun hsvc (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hgg := AC.le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
@@ -82,7 +82,7 @@ theorem carry_of_service_senders
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := i) hm le_rfl] at hdl
-      exact ac_messageServedBefore_upTo hm le_rfl
+      exact (AC.upTo_messageServedBefore hm le_rfl).2
         ((AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
           (hsync.1 w k v hwk hsend (hgg.trans (hts.trans hk1)) hk2.le y i ell hy hcast.1 hdl)))
     rcases hacc with hg | ⟨w', kw, hwkw, hkw, hkwt⟩

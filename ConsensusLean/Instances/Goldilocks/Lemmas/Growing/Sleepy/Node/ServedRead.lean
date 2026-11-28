@@ -86,7 +86,7 @@ private theorem origin_read_majority_at {ini}
       rw [hs] at hkt
       have hvp : AC.VoteAt (tr.upTo t).projAC x k e := by
         rw [RunTrace.upTo_projAC]
-        exact ac_voteAt_upTo.mpr ⟨hkt.trans hqt, ℓ, hc⟩
+        exact AC.upTo_voteAt.mpr ⟨hkt.trans hqt, ℓ, hc⟩
       have hac := (SleepyServiceBefore.upTo hrun hsync ht0).ac
       have hsyncp : ReadSyncOrService (tr.upTo t) (H t) t := Or.inr
         { message := fun x hx k v hv h0 z hz j ℓ hc hdl hj =>
@@ -121,9 +121,9 @@ private theorem originWithin_of_upTo' {ini} (hrun : Growing.GoldilocksRun propos
   obtain ⟨x, hx, k, hk, CV, hO⟩ := Compose.originBefore_iff.1 h
   rw [RunTrace.upTo_projAC] at hO
   rcases hO with hO | hO
-  · obtain ⟨hkd, hO⟩ := (ac_resultAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_resultAt hrun.time_mono).mp hO
     exact OriginWithin.of_result (hrun.antitone hkd hx) (hm k hk) hO
-  · obtain ⟨hkd, hO⟩ := (ac_optimisticLockAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_optimisticLockAt hrun.time_mono).mp hO
     exact OriginWithin.of_optimistic (hrun.antitone hkd hx) (hm k hk) hO
 
 /-- **The static read invariant of the prefix** through the read time `t ≥ 0`, for a reader
@@ -164,7 +164,7 @@ private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       vote_extends := fun C s hO x hx k hk e hv hs => by
         have hv' := hv
         rw [RunTrace.upTo_projAC] at hv'
-        obtain ⟨hkd, hv'⟩ := ac_voteAt_upTo.mp hv'
+        obtain ⟨hkd, hv'⟩ := AC.upTo_voteAt.mp hv'
         exact voteExtends_upTo hrun hnc ht0 hx hv
           (hinv.vote_extends C s hO x k e (hVoteAt_iff.2 ⟨hrun.antitone hkd hx, hv'⟩)
             (hmb m le_rfl k hk) hs)
@@ -253,9 +253,9 @@ theorem record_step_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       refine onOriginChainWithin_iff.2 (Or.inr ⟨C, s, ?_, .refl⟩)
       rcases hO with hO | hO
       · exact OriginWithin.of_result hy (hi i le_rfl)
-          ((ac_resultAt_upTo hrun.time_mono).mp hO).2
+          ((AC.upTo_resultAt hrun.time_mono).mp hO).2
       · exact OriginWithin.of_optimistic hy (hi i le_rfl)
-          ((ac_optimisticLockAt_upTo hrun.time_mono).mp hO).2)
+          ((AC.upTo_optimisticLockAt hrun.time_mono).mp hO).2)
     E hCU (by rw [hst]; exact hEr)
   exact ⟨E', hsub hE', by rw [← hst']; exact hE'r, hEE'.mono hsub⟩
 

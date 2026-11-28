@@ -187,7 +187,7 @@ theorem vote_held_before_early_at
   obtain ⟨hxi, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
   obtain ⟨Hd₀, hHd₀, hHd₀r, hHd₀s⟩ :=
-    AC.honest_head_frameU hr.toU hxi (ac_castAt_upTo.mpr ⟨le_rfl, hcv, hev⟩)
+    AC.honest_head_frameU hr.toU hxi (AC.upTo_castAt.mpr ⟨le_rfl, hcv, hev⟩)
   obtain rfl : Hd₀ = Hd := (honestBlocksAt_coherent hrun hnc).1
     ((frameIn_at hrun hnc hxi hcv).2 hHd₀) hHd (hHd₀r.trans hHdr.symm)
   have htj : tr.time i ≤ sp.ts q + sp.Δ := by
@@ -224,7 +224,7 @@ theorem gate_result_extends_at
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg c)).localRun
   have hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := fun k hk hrk =>
-    Compose.update_restarts hr hy ((ac_updateAt_upTo hm).2 ⟨le_rfl, hu⟩) k hk
+    Compose.update_restarts hr hy ((AC.upTo_updateAt hm).2 ⟨le_rfl, hu⟩) k hk
       ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hm hk, hrk⟩)
   have hct : sp.ts s + 2 * sp.Δ ≤ tr.time c := by
     have : tr.projAC.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -320,7 +320,7 @@ private theorem pool_vote_read
   have hst : (tr.projAC.upTo d).state w i = tr.projAC.state w i := Trace.upTo_state _ w hi
   have hv' : v ∈ ((tr.projAC.upTo d).state w i).pool σ := by rw [hst]; exact hv
   obtain ⟨j, hj, e, hve, hev⟩ := hr.honest.pool_vote w hw i σ v hv' hvH
-  obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+  obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
   exact ⟨AC.state_pool_slotU sp hr.localRun.toU hr.vstart hw i σ v hv', j, hj, e,
     hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
@@ -370,7 +370,7 @@ theorem read_majority_of_extending_at
     obtain ⟨hxk, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
     obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ :=
       AC.honest_headU (acRun_upTo hrun hnc (hrun.time_nonneg k)).toU hxk
-        (ac_voteAt_upTo.mpr ⟨le_rfl, ℓv, hcv, hev⟩)
+        (AC.upTo_voteAt.mpr ⟨le_rfl, ℓv, hcv, hev⟩)
     obtain rfl : Hd' = Hd₂ :=
       hU.1 hHdU (upTo_subset hrun (hrun.time_nonneg k) hHd₂) (hHdr.trans hHd₂r.symm)
     have hvotes : e.msg ∈ LV.1.votes := by

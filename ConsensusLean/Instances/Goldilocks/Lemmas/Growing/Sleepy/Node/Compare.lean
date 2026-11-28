@@ -66,7 +66,7 @@ private theorem optimistic_side_at
     hfwd, fun v hv hvH => ?_⟩
   obtain ⟨hvs, j, hj, e, hve, rfl⟩ :=
     AC.optimisticPoint_pool_voteU (hac.upTo (hrun.time_nonneg k)).toU hX hp hv hvH
-  obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+  obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
   exact ⟨hvs, j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, rfl⟩
 
 /-- **A released vote reaches an update** of slot `s` (at `t_s + 6Δ ≤ b`) of a writer honest then,
