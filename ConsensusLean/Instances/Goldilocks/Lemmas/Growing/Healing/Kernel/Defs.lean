@@ -44,22 +44,6 @@ theorem proposalGap_iff {proposer : Nat → Fin sp.n} {G s₀ N : Nat} :
         proposer x ∈ H (sp.ts x + sp.Δ) ∧
           ∃ k Q, tr.ProposesAt (proposer x) k Q ∧ Q.slot = x := Iff.rfl
 
-/-- A warm proposal on every sufficiently long frame window. Signature bounds apply to signers
-honest at their signing cuts and at `c_z`; the height frontier is the original snapshot frontier,
-not a retained one. -/
-structure DrainOutputs (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n)
-    (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
-  warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
-    FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J →
-    gbar g + 4 * sp.Δ ≤ sp.ts s₀ → s₀ + Ld ≤ N → sp.ts N + 2 * sp.Δ ≤ b →
-    (∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k ≤ sp.ts N + 2 * sp.Δ → att.h ≤ HZ tr H g) →
-    ProposalGap tr H proposer G s₀ N →
-    ∃ u, s₀ + 2 * sp.k ≤ u ∧ u ≤ s₀ + Ld ∧
-      ∃ z kP P, z ∈ H (sp.ts u + sp.Δ) ∧ z = proposer u ∧
-        tr.ProposesAt z kP P ∧ P.slot = u ∧
-          HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1
-
 end Consensus.Goldilocks.Healing.Growing
 
 end

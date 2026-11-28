@@ -6,7 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ViableEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ProposalStart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation

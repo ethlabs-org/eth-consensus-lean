@@ -38,21 +38,21 @@ theorem cast_root_anc_analysis_root_at
   · exact hFJ
   · exact .refl
 
-/-- The post-drain cast root is genesis, below a pre-slot origin, or below a healed member
+/-- The post-drain cast finality is genesis, below a pre-slot origin, or below a healed member
 whose label is strictly below the cast slot. -/
-theorem reset_vote_root_source_or_covered_at
+theorem reset_vote_finality_source_or_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    (tr.state y j).fg.fcRoot.root = sp.genesisRoot ∨
+    (tr.state y j).fg.F.root = sp.genesisRoot ∨
       (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
-        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot O) ∨
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F O) ∨
       (HighSourceCover tr H g a b ∧ ∃ C s,
         HealedMemberBefore tr H g a b C s j ∧ s < u ∧
-          Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot C) := by
+          Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F C) := by
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
@@ -60,7 +60,6 @@ theorem reset_vote_root_source_or_covered_at
   have hr := fg_reachable_at hp.run ht hj hy
   have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ hX => ⟨y, j, tr.time j, ht, hj, hy, hX⟩
-  have hfr := Outcome.frame_of_call hp.run hy hc.1
   have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
   have htupper : tr.time j ≤ sp.ts u + sp.Δ := by
@@ -71,28 +70,19 @@ theorem reset_vote_root_source_or_covered_at
     Store.cache_invariants _ _ _ _ hr
   obtain ⟨E, hEm, hEr, hEC, hcase⟩ := Store.J_entry_of_reachable hr hCm
   obtain rfl : E = (tr.state y j).fg.J := hU.1 (hsub hEm) (hsub hJm) (hEr.trans hCJ)
-  have hroot : (tr.state y j).fg.fcRoot = (tr.state y j).fg.J ∨
-      (tr.state y j).fg.fcRoot = (tr.state y j).fg.F := by
-    unfold Store.fcRoot
-    split_ifs <;> simp
   rcases hcase with hg | ⟨hJh, hJT⟩
   · left
-    rcases hroot with h | h
-    · exact congrArg (·.root) (h.trans hg)
-    · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
-      rw [← hg] at hJF
-      have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
-      exact congrArg (·.root) (h.trans (he.trans hg))
+    have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
+    rw [← hg] at hJF
+    have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
+    exact congrArg (·.root) (he.trans hg)
   right
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
   · obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hor⟩ :=
       hp.left_entry_origin_or_covered_at ht hj hy hjb hJm hJT (by omega) hEC
         (by have := Store.hj_lt_h hr hCm; omega)
     have below {B} (hJB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.J B) :
-        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot B := by
-      rcases hroot with h | h
-      · rw [h]; exact hJB
-      · rw [h]; exact (hFJ.mono hsub).trans hJB
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B := (hFJ.mono hsub).trans hJB
     rcases hor with ⟨r, hrd, l, O, ho, hJO⟩ | ⟨hvz, hcov⟩
     swap
     · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
@@ -106,24 +96,11 @@ theorem reset_vote_root_source_or_covered_at
     have hrt := Outcome.fastLock_time_lt_at hp.run hfl hlu (hrj.trans htupper)
     exact Or.inl ⟨v, r, l, O, ho, hrt, hrj.trans hjb, below hJO⟩
   obtain ⟨v, r, l, O, ho, hrb, hlu, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hFO := hp.low_finalized_below_origin_at ht hj hy hjb (by omega) ho hrb
-  refine Or.inl ⟨v, r, l, O, ho, hrt, hrb, ?_⟩
-  have hFO' : Anc (tr.HonestBlocksAt H) ell.frame.F O := by rw [hfr]; exact hFO
-  have hOf := (hp.high_origin_held_at_vote_at ho hrb hy hc hjb (by omega) hFO').1
-  have hOt := (frame_tree_subset_at hp.run hp.noColl hy hc.1).2 hOf
-  have hOh := Outcome.high_of_anc_at hp.run hp.noColl ho ht hj hy hOt .refl
-  have hOm := hmax O hOt
-  unfold Store.fcRoot
-  split_ifs with hchoose
-  · have hJO : (tr.state y j).fg.Anc (tr.state y j).fg.J O := by
-      by_contra hn
-      exact hchoose.2 ⟨hchoose.1, O, hOt,
-        store_anc_of_honest_anc_at hp.run hp.noColl ht hj hy hFO hOt, by omega, hn⟩
-    exact hJO.mono hsub
-  · exact hFO
+  exact Or.inl ⟨v, r, l, O, ho, hrt, hrb,
+    hp.low_finalized_below_origin_at ht hj hy hjb (by omega) ho hrb⟩
 
-/-- Every bounded pre-slot high origin below a target bounds the analysis cast root. -/
-theorem reset_vote_root_below_bound_at
+/-- Every bounded pre-slot high origin below a target bounds the cast finality. -/
+theorem reset_vote_finality_below_bound_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u j : Nat} (hR : drainTime sp a ≤ sp.ts u)
@@ -135,17 +112,14 @@ theorem reset_vote_root_below_bound_at
     {y : Fin sp.n} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
-  rcases hp.reset_vote_root_source_or_covered_at hR hy hc hs hjb with
+    Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P := by
+  rcases hp.reset_vote_finality_source_or_covered_at hR hy hc hs hjb with
     hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩ | ⟨hcover, C, s, hC, hsu, hroot⟩
   · have hr := fg_reachable_at hp.run (hp.run.time_nonneg j)
       (fun _ h => hp.run.time_mono h.le) hy
-    have hcache := Store.cache_invariants _ _ _ _ hr
-    have hmem : (tr.state y j).fg.fcRoot ∈ (tr.state y j).fg.tree := by
-      unfold Store.fcRoot
-      split_ifs <;> first | exact hcache.2.1 | exact hcache.1
     exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl
-      ⟨y, j, tr.time j, hp.run.time_nonneg j, fun _ h => hp.run.time_mono h.le, hy, hmem⟩ hg hP
+      ⟨y, j, tr.time j, hp.run.time_nonneg j, fun _ h => hp.run.time_mono h.le, hy,
+        (Store.cache_invariants _ _ _ _ hr).1⟩ hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
   · exact hroot.trans (hcovered hcover C s hC hsu)
 
