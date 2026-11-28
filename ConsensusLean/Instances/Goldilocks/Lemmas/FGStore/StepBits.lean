@@ -11,7 +11,7 @@ public section
 `Healing.stateTransition_bits` (one block of the state transition keeps the height or crosses with
 a progress quorum) and `Healing.Store.createAtt_eq` (the attestation `create_attestation` makes has
 its input's height and entry). They read only the FG chain and the client record, so they sit
-below every store invariant that uses them (`Lemmas/FGStore/Parametric`, `Healing/Cut/Store`). -/
+below every store invariant that uses them (`Healing/Cut/Store`). -/
 
 namespace Consensus.Goldilocks.Healing
 
