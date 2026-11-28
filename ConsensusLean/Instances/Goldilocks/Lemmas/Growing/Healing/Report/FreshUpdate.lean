@@ -1,23 +1,105 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUnlock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 
 public section
 
-/-! # Fresh fast locks and their adjacent report reads
+/-! # Fresh updates: unlock, selection and viability -/
+
+namespace Consensus.Goldilocks.Healing.Growing
+
+/-! ## Older locks after an honest next-slot unlock
+
+Only the receiver's execution through the receiving cut is retained. The supporting
+committee belongs to the unlock frame, rather than a run-wide honest cohort.
+-/
+
+section
+
+open AC (ACParams Payload)
+
+variable {sp : ACParams}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+
+/-- A vote branch of the prefix through `d` is a vote branch of the run at a time `≤ d`. -/
+theorem voteBranchAt_upTo_iff (hm : Monotone tr.time) {d : Time} {y : Fin sp.n} {j : Nat}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n} :
+    AC.VoteBranchAt (tr.projAC.upTo d) y j ell R ↔
+      tr.time j ≤ d ∧ AC.VoteBranchAt tr.projAC y j ell R := by
+  have hs (ht : tr.time j ≤ d) := Trace.upTo_state tr.projAC y (d := d) (i := j)
+    fun _ hk => (hm hk.le).trans ht
+  rw [AC.voteBranchAt_iff, AC.voteBranchAt_iff]
+  constructor
+  · rintro ⟨hc, hrest⟩
+    have ht := ((Trace.upTo_callAt _).mp hc).1
+    rw [hs ht] at hrest
+    exact ⟨ht, ((Trace.upTo_callAt _).mp hc).2, hrest⟩
+  · rintro ⟨ht, hc, hrest⟩
+    refine ⟨(Trace.upTo_callAt _).mpr ⟨ht, hc⟩, ?_⟩
+    rw [hs ht]
+    exact hrest
+
+/-- A supporting half-committee at a receiver's next-slot vote branch clears old incompatible
+labels for a receiver that is still honest at the later observation, from starts up to the vote
+permission. The branch need not emit, so the receiver need not vote in that slot. -/
+theorem older_locks_compatible_after_unlock_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} {j k u : Nat} (hy : y ∈ H (tr.time k))
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n}
+    (hb : AC.VoteBranchAt tr.projAC y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
+    {S : Set (Fin sp.n)}
+    (hS : ∀ x ∈ S,
+      x ∈ AC.equivocators (AC.mergedVoteView sp R ell.frame (u + 1)).votes ∨
+        ∃ v ∈ (AC.mergedVoteView sp R ell.frame (u + 1)).support,
+          v.val = x ∧ (v.slot : Int) = u ∧ AC.AncR ell.frame P v.head)
+    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
+    ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
+      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
+        Compatible (tr.HonestBlocksAt H) L P := by
+  have hd := hrun.time_nonneg k
+  have hr := (Compose.Growing.acRun_upTo hrun hnc hd).localRun
+  have hb' : AC.VoteBranchAt (tr.projAC.upTo (tr.time k)) y j ell R :=
+    (voteBranchAt_upTo_iff hrun.time_mono).2 ⟨hrun.time_mono hjk.le, hb⟩
+  have hstate := Trace.upTo_state tr.projAC y (i := k)
+    (fun q hq => hrun.time_mono hq.le)
+  have hsub := Compose.Growing.upTo_subset hrun hd
+  intro l hl hls L hL hLr
+  have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state y k).locks := by
+    rwa [hstate]
+  obtain ⟨_, _, _, _, B, hB, hBr, _⟩ :=
+    AC.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
+  have hLB : L = B := (hrun.toLocalRun.coherent hnc).1
+    hL (hsub hB) (hLr.trans hBr.symm)
+  subst L
+  exact (AC.older_locks_compatible_after_unlock_branch hr hy hb' hs hjk hPt hS hhalf
+    l hl' hls B hB hBr).imp (Anc.mono hsub) (Anc.mono hsub)
+
+end
+
+/-! ## Fresh fast locks and their adjacent report reads
 
 The update and report are consecutive actual calls. Local execution is retained only
 through their common timestamp; no later honesty of the original proposer is required.
 -/
 
-namespace Consensus.Goldilocks.Healing.Growing
+section
 
 open AC (ACParams Payload gbar)
 
@@ -361,39 +443,133 @@ theorem fresh_fast_lock_of_selection_at
     ∃ e, u + 2 ≤ e ∧
       (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks := by
   have hr := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
-  have hc : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
-    (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
   have hs := Trace.upTo_state tr.projAC y (i := k)
     (fun q hq => hrun.time_mono hq.le)
-  have he := hr.exec k ell hc.2 (hc.1 ▸ hy)
-  rw [hc.1, hu.2.1, hs, Trace.upTo_post, Trace.upTo_time] at he
+  have hpost := Obligations.post_of_update hr hy
+    ((AC.upTo_updateAt hrun.time_mono).2 ⟨le_rfl, hu⟩)
+  rw [Trace.upTo_post, hs, Trace.upTo_time] at hpost
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
-  have hslot : sp.slot (tr.time k) = u + 1 := by
+  have hslot : sp.slot (tr.projAC.time k) = u + 1 := by
+    change sp.slot (tr.time k) = u + 1
     rw [hkt]
     apply AC.slot_of_mem sp (u + 1)
     all_goals simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
-  have hpost : tr.projAC.post k =
-      AC.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.time k) u := by
-    rw [show tr.projAC.post k =
-      (AC.acOnTick sp y (tr.projAC.state y k) ell.frame (tr.time k)).1 from
-        (congrArg Prod.fst he).symm]
-    unfold AC.acOnTick
-    dsimp only
-    rw [hslot]
-    have ht1 : ¬ tr.time k = sp.ts (u + 1 : Nat) + sp.Δ := by
-      rw [hkt]; simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
-    have ht2 : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-      rw [hkt]; simp only [ACParams.ts]; push_cast; ring
-    have hj : AC.joined sp (tr.projAC.state y k) (tr.time k) := hu.2.2.2
-    rw [ite_eq_right (not_not.mpr hj), ite_eq_right ht1,
-      ite_eq_left ⟨ht2, Nat.succ_pos u⟩]
-    simp only [Nat.add_sub_cancel]
   rw [hpost]
   have hwf := AC.locksWF_state hr hrun.vstart hy k
   rw [hs] at hwf
   exact AC.fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast
     (by rw [hslot]; have := sp.two_le_k; omega)
     (fun l hl => hwf.cap hl) (by omega)
+
+end
+
+/-! ## Full-frame viability through an honest observation
+
+Persistence is local to the receiver. The retained frame window ends at the actual
+observation, rather than extending the receiver's honesty beyond that cut.
+-/
+
+section
+
+open AC (ACParams Payload gbar)
+
+variable {sp : ACParams}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+variable {hold : Time}
+
+/-- A call-local viability witness fixes its viable ancestor. -/
+theorem proposal_viable_after_votes_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat}
+    (hy : y ∈ H (tr.time k)) {ell : ACLabel (goldilocksNode sp)}
+    (hc : tr.projAC.CallAt y k ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ ell.frame.tree) (hroot : ell.frame.Anc ell.frame.fcRoot P)
+    (hv : P ∈ ell.frame.viableHeads) :
+    P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
+      P ∈ ell.frame.viableHeads := by
+  have hr := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
+  have hvi : P ∈ ell.frame.viableTree ell.frame.tree := ⟨hPt, hroot, P, hPt, hv, .refl⟩
+  have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
+    (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  exact ⟨hvi, AC.viableAncestor_self (AC.frameIn_of_callAt hr hy hc').1 hPt (Or.inl hvi), hv⟩
+
+/-- At an actual update the warm unanimous pool forces confirmation and fast
+selection, at the slot committees `K` of a run from `K`'s committee start. No
+lock-compatibility premise is used to select the raw result. -/
+theorem unanimous_update_selection_at
+    {K : AC.CommitteeDict sp.n}
+    {g ΔF b : Time} {u : Nat}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
+    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
+      e.msg.slot = u → e.msg.head = P.root)
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    (hK : CommitteeHalfUpTo tr H K g b)
+    (hvi : P ∈ ell.frame.viableTree ell.frame.tree)
+    (hva : ell.frame.viableAncestor P = P) :
+    P ∈ ell.frame.viableTree ell.frame.tree ∧
+      AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
+      AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
+      ell.frame.viableAncestor P = P := by
+  have _ := hdes
+  have hΔ := sp.toParams.hΔ
+  have hgu : gbar g ≤ sp.ts u := by linarith
+  have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
+  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
+    simp only [ACParams.ts]; push_cast; ring
+  have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
+  have hlate : sp.ts u + 2 * sp.Δ ≤ tr.time k := by rw [hkt]; linarith
+  have htime : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hzk : z ∈ H (tr.time kP) :=
+    hrun.antitone (by rw [htime]; linarith) hz
+  have hp := hrun.upTo (hrun.time_nonneg kP)
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  have hacc := (Healing.accept_of_proposesAt hp (hnc.upTo _) hzk hP').1
+  obtain ⟨ha', hta', _⟩ := Healing.ac_block_after hp.toLocalRun hzk hacc
+  have ha : tr.projAC.AcceptAt z (kP + 1) P := by
+    rw [RunTrace.upTo_projAC] at ha'
+    obtain ⟨ella, hca, hea⟩ := ha'
+    exact ⟨ella, ((Trace.upTo_callAt _).mp hca).2, hea⟩
+  have hta : tr.time (kP + 1) = sp.ts u := hta'.trans htime
+  have hza : z ∈ H (tr.time (kP + 1)) := hta' ▸ hzk
+  have hpool := unanimous_early_pool_of_acceptance_at hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hPs hun hza ha hta hy hu.1 hlate hkb hvi.1 hK
+  have hr := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
+  have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
+    (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
+  have hs := Trace.upTo_state tr.projAC y (i := k)
+    (fun q hq => hrun.time_mono hq.le)
+  have hPg : P.root ≠ sp.genesisRoot := by
+    have hra := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg (kP + 1))).localRun
+    apply AC.accept_ne_genesisU sp hra.toU hza
+    obtain ⟨ella, hca, hea⟩ := ha
+    exact ⟨ella, (Trace.upTo_callAt _).mpr ⟨le_rfl, hca⟩, hea⟩
+  have hslots : ∀ v ∈ (tr.projAC.state y k).pool u, v.slot = u := by
+    intro v hv
+    apply AC.state_pool_slotU sp hr.toU hrun.vstart hy k u v
+    rwa [hs]
+  obtain ⟨hconf, hfast⟩ := AC.confirmation_of_unanimous_early_pool
+    (AC.frameIn_of_callAt hr hy hc').1 hvi.1 hPg K (hK.facts.hsize u)
+    (fun v hv => hK.facts.hP.1 (tr.time k) y hy k (fun q hq => hrun.time_mono hq.le) u v hv)
+    (hK.cs2 u hgu (by linarith) _ (hrun.time_nonneg k) hkb) hslots hpool
+  exact ⟨hvi, hconf, hfast, hva⟩
+
+end
 
 end Consensus.Goldilocks.Healing.Growing
 
