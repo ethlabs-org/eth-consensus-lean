@@ -1,8 +1,10 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Contest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ViableEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
@@ -190,45 +192,6 @@ private theorem reset_left_entry_below_at
         ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
       exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
   exact hEB
-
-/-- A pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/
-theorem reset_vote_floor_above_old_or_covered_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
-    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O B)
-    (hcovered : HighSourceCover tr H g a b → ∀ C s,
-      HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C B) :
-    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have ht := hp.run.time_nonneg j
-  have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
-  have hreach := fg_reachable_at hp.run ht hj hy
-  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hBh := Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hy hB
-    (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
-  have hnc := Outcome.no_high_contest_at hp hy hjb
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by omega⟩
-  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ := Healing.entry_at_height hreach hC
-    (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
-  have hEB := reset_left_entry_below_at hp hy hc hes hjb hBold hcovered hE hET (by omega) hEC
-    (by omega)
-  have hh := Healing.h_le_of_store_anc hreach
-    (store_anc_of_honest_anc_at hp.run hp.noColl ht hj hy hEB hB)
-  omega
 
 /-- A pre-slot origin bound and a label-bounded cover bound make a held block viable at the voter
 (P-U viability): it is above every high left entry of the store. -/

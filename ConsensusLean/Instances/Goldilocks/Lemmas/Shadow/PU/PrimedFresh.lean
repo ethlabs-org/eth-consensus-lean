@@ -51,7 +51,7 @@ theorem proposal_viable_after_votes_primed_at'
     hframe hrun hnc hsvc hf hnr (by linarith)
     (by simp only [ACParams.ts]; push_cast; linarith) hTb hz hdes hP hPs hy hc
     (by linarith) hhi
-  exact Core.proposal_viable_after_votes_at hrun.toCore hnc hy hc hPt hroot hv
+  exact Healing.Growing.proposal_viable_after_votes_at hrun hnc hy hc hPt hroot hv
 
 include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK in
 /-- Primed geometry supplies the window-free unanimous selection proof. -/
@@ -68,7 +68,7 @@ theorem unanimous_update_selection_primed_at'
   obtain ⟨hvi, hva, _⟩ := proposal_viable_after_votes_primed_at' hframe hrun hnc hsvc hf hnr
     hmargin hTb hz hdes hP hPs hy hu.1
     (by rw [ht]; linarith [sp.toParams.hΔ]) (by rw [ht, hT])
-  exact Core.unanimous_update_selection_at hrun.toCore hnc hsvc hawake hf hcatch hnr
+  exact Healing.Growing.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hy hu hK hvi hva
 
 include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK in
@@ -109,10 +109,10 @@ theorem unanimous_update_no_veto_primed_at'
     exact ⟨hv, hc⟩
   · exact unanimous_next_votes_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr
       hmargin hjoin hTb hz hdes hP hPs hun hK
-  · exact Core.older_locks_compatible_at_update_at
+  · exact Healing.Growing.older_locks_compatible_at_update_at
       (fun hy' hc' hlo hhi => (proposal_viable_after_votes_primed_at' hframe hrun hnc hsvc hf hnr
         hmargin hTb hz hdes hP hPs hy' hc' hlo hhi).1)
-      hrun.toCore hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
+      hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
 
 include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK in
 /-- An awake honest update installs the fresh unanimous lock over the primed window. -/
@@ -136,7 +136,7 @@ theorem fresh_fast_lock_update_at
     hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
   have hnv := unanimous_update_no_veto_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
-  obtain ⟨e, he, hlock⟩ := Core.fresh_fast_lock_of_selection_at hrun.toCore hnc hyk hu hvi.1
+  obtain ⟨e, he, hlock⟩ := Healing.Growing.fresh_fast_lock_of_selection_at hrun hnc hyk hu hvi.1
     hconf hnv hfast hva
   refine ⟨k, ell, hu, hconf, hnv, hfast, hva, hvi, e, he, hlock, ?_⟩
   simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock

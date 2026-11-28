@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
 
@@ -27,6 +28,25 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
+/-- The local run laws transfer by `LocalRun.truncH`; the Goldilocks-specific laws preserve the
+same starts and the genesis root. -/
+private theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
+    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (Generic.truncH H b) tr ini where
+  toLocalRun := hrun.toLocalRun.truncH b
+  vstart := hrun.vstart
+  genesis_root_ok := hrun.genesis_root_ok
+
+/-- Committee facts survive truncating honesty after `b`: the sizes do not read honesty, and P
+and the gate read it only in hypotheses, where the truncation is a subset of `H`. -/
+theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.truncH
+    {K : AC.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K) (b : Time) :
+    Compose.Growing.CommitteeFacts tr (Generic.truncH H b) K where
+  hsize := hK.hsize
+  hP := ⟨fun t y hy i hi s v hv => hK.hP.1 t y hy.1 i hi s v hv,
+    fun y i ℓ A hy hO s v hv => hK.hP.2 y i ℓ A hy.1 hO s v hv⟩
+  hGate t ht x hx := hK.hGate t ht x hx.1
+
 /-- The shared Goldilocks run interface, starting each node with its committee permission. -/
 noncomputable def goldilocksRunInterface (sp : ACParams)
     (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) :
@@ -41,7 +61,7 @@ noncomputable def goldilocksRunInterface (sp : ACParams)
   run_local h := h.1.toLocalRun
   run_requirements h y := Compose.requirements_from sp (h.1.vstart y)
   run_root h := h.1.genesis_root_ok
-  run_truncH h b := ⟨KernelProof.goldilocksRun_truncH h.1 b, h.2.1, h.2.2.1,
+  run_truncH h b := ⟨goldilocksRun_truncH h.1 b, h.2.1, h.2.2.1,
     (fun hnc => (h.2.2.2.1 hnc).truncH b),
     (fun y j t x fgDue hy hg => h.2.2.2.2.1 y j t x fgDue hy.1 hg), h.2.2.2.2.2⟩
 

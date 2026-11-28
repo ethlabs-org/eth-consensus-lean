@@ -44,22 +44,6 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.
   {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
 
-private theorem frame_root_anc_analysis_root
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) :
-    Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y j)).fcRoot
-      (tr.state y j).fg.fcRoot := by
-  have ht := hrun.time_nonneg j
-  have hi : ∀ q < j, tr.time q ≤ tr.time j := fun _ h => hrun.time_mono h.le
-  have hreach := Healing.Growing.fg_reachable_at hrun ht hi hy
-  have hFJ := (Store.cache_invariants _ _ _ _ hreach).2.2.1
-  have hFJ' := Healing.Growing.honest_anc_of_store_anc_at ht hi hy hFJ
-  change Anc _ (tr.state y j).fg.F _
-  rw [Store.fcRoot]
-  split_ifs
-  · exact hFJ'
-  · exact .refl
-
 /-- A result of label `l` written at a time `≤ t_s + Δ` has `l ≤ s − 2`. -/
 private theorem result_label_le {x : Fin sp.n} {c l s : Nat}
     {O : AC.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)}
@@ -225,8 +209,7 @@ theorem seeded_start_old
       (by omega) (by linarith) hb
     exact ⟨O, hO, hLD'.trans hD'O⟩
   · rw [Set.mem_singleton_iff.1 hf, frame_of_projAC_at hrun hp hc]
-    obtain ⟨O, hO, hfO⟩ := hold.1
-    exact ⟨O, hO, (frame_root_anc_analysis_root hrun hp).trans hfO⟩
+    exact hold.1
 
 /-- **A voter's anchor is below a block above the old family, or on `P`'s chain above it**, at a
 vote of slot `s ≥ σ + 1` at a time in `[t₁, b]` whose earlier slot-`s` votes by nodes honest at
@@ -270,7 +253,7 @@ theorem seeded_vote_anchor
   · left
     rw [Set.mem_singleton_iff.1 haf, hfr]
     obtain ⟨O, hO, hfO⟩ := hold.1
-    exact (frame_root_anc_analysis_root hrun hy).trans (hfO.trans (hDold O hO))
+    exact hfO.trans (hDold O hO)
   obtain rfl : a = ℓy.frame.viableAncestor B :=
     hΦ.coherent.1 hat (AC.viableAncestor_anc hΦ hB).1 hl'r.symm
   have haB : Anc (tr.HonestBlocksAt H) (ℓy.frame.viableAncestor B) B :=
@@ -338,8 +321,8 @@ theorem seeded_vote_anchor
     exact (haB.trans (Anc.mono hΦU hB'B₁)).trans (hL₁D₁.trans (hD₁O.trans (hDold O hO)))
 
 /-- The voter facts of the suffix lemmas at a vote of slot `s ≥ σ + 1` at a time in `[t₁, b]`,
-when every member of the old family is below `Q`: `fc_root` is below `Q`, and the head height floor
-is at most the height of every block of the voter's tree above `Q` (`seeded_reader_old`). -/
+when every member of the old family is below `Q`: the frame root is below `Q`, and every held
+block above `Q` is viable (`seeded_reader_old`). -/
 private theorem seeded_voter_facts
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -359,13 +342,13 @@ private theorem seeded_voter_facts
   refine ⟨?_, fun B hB hQB => hR.2 B hB fun O hO => (hpass O hO).trans hQB⟩
   rw [frame_of_projAC_at hS.run hy hcy.1]
   obtain ⟨O, hO, hfO⟩ := hR.1
-  exact (frame_root_anc_analysis_root hS.run hy).trans (hfO.trans (hpass O hO))
+  exact hfO.trans (hpass O hO)
 
 /-- **The honest votes of a slot `s ≥ σ + 1` after a hand-over are the proposal**: for the
 proposal `P` of slot `s` at `t_s ≥ t₁` by a proposer honest at `t_s + Δ ≤ b`, every slot-`s` vote
 of a node honest at its vote is `P` (`honest_votes_eq_proposal_of`), with the pivot over the old
-family (`pivot_of`: `seeded_walk_passes`, `seeded_start_old`, `seeded_vote_anchor`, the floor of
-`seeded_reader_old`) and the suffix lemmas under the service from `ḡ`. -/
+family (`pivot_of`), the viability from `seeded_reader_old`, and the suffix lemmas under the
+service from `ḡ`. -/
 theorem seeded_votes_eq_proposal
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}

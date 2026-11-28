@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ViableSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
@@ -25,7 +25,7 @@ honest at it and at `c_z`, so that its high descendant has a high origin (`high_
   of its signer;
 * `ResetPremisesUpTo.finality_below_or_higher_report_at`: finality compatible with the target is
   below it, or an earlier strictly higher report extends it;
-* `ResetPremisesUpTo.held_target_high_floor_report_before_covered_at`: a held target below the
+* `ResetPremisesUpTo.held_target_high_pred_report_before_covered_at`: a held target below the
   head-height floor yields an earlier strictly higher report.
 
 The finalization quorum of a held chain meets the validators honest at the later of the reader's
@@ -219,19 +219,16 @@ cut `i ≤ b` of a node honest at it, when the target is above a high seed and c
 earlier high origin, and the earlier high origins are pairwise compatible and compatible with the
 seed; under the high-source cover, also with every member of the healed family of a label at most
 the cut's slot (`CompatibleWithOrigins`). -/
-theorem held_target_high_floor_report_before_covered_at
+theorem held_target_high_pred_report_before_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     {P S : AC.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
     (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocksAt H) S P)
-    (hpair : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      ∀ x' r' l' B', r' < i → HighOrigin tr H g x' r' l' B' →
-        Compatible (tr.HonestBlocksAt H) B B')
     (hseedcomp : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       Compatible (tr.HonestBlocksAt H) S B)
     (hcompare : CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P)
-    (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
+    (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.hmax - 1) :
     ∃ x r ell C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
       AC.ToFGAt tr.projAC x r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
@@ -244,11 +241,11 @@ theorem held_target_high_floor_report_before_covered_at
   have hSs := highOrigin_mem_at hrun hp.noColl hseed
   have hSh := Healing.h_le_of_store_anc hr
     (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy)
-  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
+  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.hmax - 1 := by
     rw [σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg q) (fun _ hk => hrun.time_mono hk.le)
       (hrun.antitone (le_max_right _ _) hseed.1) hd hle hy hSs hSy]
     omega
-  rcases hp.high_floor_signed_source_or_covered_before_at hseed hd hle hy hib
+  rcases hp.high_pred_signed_source_or_covered_before_at hseed hd hle hy hib
       (u := sp.slot (tr.time i) + 1)
       (fun W hW att ha z d hz hd' hdi r' l O hrd ho => by
         obtain ⟨-, -, ⟨CV, ℓ, D, -, hfl, -⟩, -⟩ := ho
@@ -260,7 +257,7 @@ theorem held_target_high_floor_report_before_covered_at
             exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
         have hlabel := (AC.ts_le_iff_le_slot sp hd l).1
           (ht.trans (hrun.time_mono (by omega)))
-        omega) hpair hseedcomp hSf with
+        omega) hseedcomp hSf with
     ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hxd, hs, hT⟩ |
       ⟨E, hE, hcov, hEf, x, d, att, hdi, hxz, hs, hT⟩
   swap
