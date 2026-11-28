@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ViableEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Lemmas.Tactic.Linarith

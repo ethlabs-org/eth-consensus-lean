@@ -57,8 +57,8 @@ theorem reset_vote_anchor_at
   rcases haS with ⟨_, l', hl', hl'r⟩ | haf
   swap
   · rw [Set.mem_singleton_iff.1 haf]
-    exact Or.inl ((hp.cast_root_anc_analysis_root_at hy hcy).trans
-      (hp.reset_vote_root_below_bound_at hR hDU hDold hDcov hy hcy hes hjb))
+    rw [Outcome.frame_of_call hp.run hy hcy.1]
+    exact Or.inl (hp.reset_vote_finality_below_bound_at hR hDU hDold hDcov hy hcy hes hjb)
   obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
   obtain rfl : an = ell.frame.viableAncestor B :=
     hPhi.coherent.1 hat (AC.viableAncestor_anc hPhi hB).1 hl'r.symm
