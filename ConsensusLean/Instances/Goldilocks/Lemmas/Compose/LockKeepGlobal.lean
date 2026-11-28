@@ -19,17 +19,6 @@ variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
-/-- The unlock premise of `lock_keep_run_view` at node `y`, cut `j`, over the node frame
-`frameOf`: `unlock` at the view of the AC call at `j` does not move `B` (for the
-slot-`(slot(t_j) − 1)` votes). `UnlockKeeps` is this at `Node.frame`. -/
-abbrev UnlockKeepsWith
-    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
-    (tr : GoldilocksTrace sp) (y : Fin sp.n) (j : Nat)
-    (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ ℓ, tr.CallAt y j (.ac ℓ) → AC.unlockTarget sp (frameOf (tr.state y j))
-    (AC.unlockView (tr.state y j).ac (frameOf (tr.state y j)) (tr.time j) ℓ.call)
-    ((sp.slot (tr.time j) : Int) - 1) B = B
-
 /-- The unlock premise of `lock_keep_run_view` at node `y`, cut `j`: `unlock` at the view of the
 AC call at `j` does not move `B` (for the slot-`(slot(t_j) − 1)` votes). -/
 abbrev UnlockKeeps (tr : GoldilocksTrace sp) (y : Fin sp.n) (j : Nat)
