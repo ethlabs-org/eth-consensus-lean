@@ -33,14 +33,10 @@ growing-fault forms (`Growing/Sleepy/Node/ServedRead`): the record step (`record
 served cuts of the latest view's slot (`exec_tick_cuts`, `tickAt_acCall`, `not_before_tick`,
 `latest_slot_tick_at_read`), the read invariant (`ReadAtCut`, `ReadInvWith`,
 `ReadSyncOrService`), the honest head in the frame (`honest_head_in_frame_at_read`), the
-supporters and the majority of the latest view (`latest_honest_supporter`,
-`latest_vote_delivered`, `latest_awake_voter`, `latest_majority`, with `latestView_lt_six`), the
+delivery of votes in the latest view (`latest_vote_delivered`, with `latestView_lt_six`), the
 record writer and its label or lock (`record_writer`, `record_label_or_lock`), and the head
 support at a read (`head_support_at`, `read_head_support_of`), given the latest view's majority
-for an older origin of the record's block. The stock callers supply that majority by
-`latest_majority`, whose slot count `hawake` charges `t_s + Δ` (`|Hᶜ|` below the honest validators
-awake and joined then) only for the slots `s` with `t_s + Δ ≤ t < t_s + 6Δ`, its one use being the
-latest view's slot at `t`. -/
+for an older origin of the record's block. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -395,28 +391,6 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   rw [htj] at h4
   exact absurd (h4.trans h3) (not_le.2 (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
 
-theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
-    (hrd : ReadAtCut proposer dg tr y i t) {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat} (hO : O R j)
-    (hjl : (j : Int) < (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
-    ∀ w ∈ AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes,
-      w ∈ H → w ∈ AC.supporters (Node.frame (tr.state y i))
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
-  obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) =
-      (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 :=
-    ⟨_, Int.toNat_of_nonneg (by omega)⟩
-  apply latest_honest_supporter_of_target_votes hrun hnc hy hR hL
-  · intro z hz q hq e hv hs
-    exact hI.vote_extends R j hO z hz q hq e hv (by rw [hs]; omega)
-  · intro z hz q e hv hs Hd hHd hHdr hF
-    exact honest_head_in_frame_at_read hrun hnc (Or.inl hI.sync) hy hrd hL hz hv hs hHd hHdr hF
-
 /-- **An honest vote of the latest view's slot reaches a read node's pool** (Sync): at a read at
 `t`, with `l` the latest view's slot, a slot-`l` vote of an honest validator, cast by `t_l + Δ`,
 is processed or retained by the node's tick at `t_l + 2Δ ≤ t`, with no restart since, so it is
@@ -532,30 +506,6 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       (by simpa [hes] using AC.state_pool_slotU sp hr.toU hrun.vstart hy _ L a' ha')
     exact absurd (h1.trans h2.symm) hne
 
-/-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest
-validator awake and joined at `t_l + Δ`, with `l` the latest view's slot, votes in slot `l` by
-then, and its vote reaches the node before `t_l + 2Δ ≤ t`, so before the read, and the node has
-not restarted since. -/
-theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} {t : Time}
-    (hsync : ReadSyncOrService tr H t ∨ ∃ a,
-      SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
-      a ≤ sp.ts (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    (hy : y ∈ H)
-    (hrd : ReadAtCut proposer dg tr y i t) {L : Nat}
-    (hL : (L : Int) = (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    {x : Fin sp.n} (hx : x ∈ H) (hxw : tr.awake x (sp.ts L + sp.Δ))
-    (hxj : tr.JoinedAt x (sp.ts L + sp.Δ)) :
-    x ∈ AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-      t).1.votes := by
-  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  obtain ⟨k, e, ⟨ℓ, hck, he⟩, hes, -⟩ :=
-    vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hxw hxj
-  obtain ⟨hval, -, -, -⟩ := AC.castAt_specU hr.toU hx ⟨hck, he⟩
-  refine ⟨e.msg, mem_latest_votes hrun hnc hy hL ?_, hval⟩
-  rw [projAC_state hrun.toLocalRun hy i]
-  exact latest_vote_delivered hrun hnc hsync hy hrd hL hx ⟨ℓ, hck, he⟩ hes
-
 /-- A read at `t ≥ 0` is before `t_l + 6Δ`, with `l` the latest view's slot at `t`. -/
 theorem latestView_lt_six {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} (ht0 : 0 ≤ t) {L : Nat} (hL : (L : Int) = (AC.latestView sp A Φ t).2) :
@@ -572,50 +522,6 @@ theorem latestView_lt_six {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att 
   · have : sp.ts (L : Int) = sp.ts (sp.slot t : Int) - 4 * sp.Δ := by
       simp only [ACParams.ts]; rw [hL]; ring
     linarith
-
-/-- **The supporter majority of an older origin**: at a read at `t`, an
-origin `R` of the frame whose label is below the latest view's slot `l` is supported by a strict
-majority of the latest view's voters: the honest voters support it, the more than `f` validators
-awake and joined at `t_l + Δ` are voters, and the other voters are faulty. -/
-theorem latest_majority (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
-    (hawake : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → t < sp.ts s + 6 * sp.Δ →
-      Hᶜ.ncard < {x | x ∈ H ∧ tr.awake x (sp.ts s + sp.Δ) ∧ tr.JoinedAt x (sp.ts s + sp.Δ)}.ncard)
-    (hrd : ReadAtCut proposer dg tr y i t)
-    {R : AC.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat}
-    (hO : O R j)
-    (hjl : (j : Int) < (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
-    (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-        t).1.votes).ncard <
-      2 * (AC.supporters (Node.frame (tr.state y i))
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-        R).ncard := by
-  set l := (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-  set Vt := AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-    t).1.votes
-  set Sp := AC.supporters (Node.frame (tr.state y i))
-    (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1 l R
-  obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) = l := ⟨l.toNat, Int.toNat_of_nonneg (by omega)⟩
-  have hHV : Vt ∩ H ⊆ Sp := fun w hwV =>
-    latest_honest_supporter hrun hnc hy hI hrd hR hO hjl w hwV.1 hwV.2
-  have hSX : {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)} ⊆
-      Vt ∩ H := fun x hx =>
-    ⟨latest_awake_voter hrun hnc (Or.inl hI.sync) hy hrd hL hx.1 hx.2.1 hx.2.2, hx.1⟩
-  have h₁ := Set.ncard_le_ncard (hSX.trans hHV) (Set.toFinite _)
-  have h₂ := Set.ncard_le_ncard hHV (Set.toFinite _)
-  have h₃ : Vt.ncard ≤ (Vt ∩ H).ncard + Hᶜ.ncard := by
-    refine (Set.ncard_le_ncard (fun w hw => ?_) (Set.toFinite _)).trans
-      (Set.ncard_union_le _ _)
-    by_cases hwH : w ∈ H
-    · exact Or.inl ⟨hw, hwH⟩
-    · exact Or.inr hwH
-  have h₄ := hawake L (by linarith [(latest_slot_tick_at_read hrun hy hrd hL).1, sp.toParams.hΔ])
-    (latestView_lt_six hrd.nonneg hL)
-  omega
 
 /-- **How the record was written** (honest node, before cut `m`): it is genesis (the initial
 record), or the root of a block `C` of the frame of an earlier call `k` that wrote it, as the
