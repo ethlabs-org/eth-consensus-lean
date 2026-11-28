@@ -259,7 +259,6 @@ private theorem finalized_anc_obs
     (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
     hX hFt hFr hW hlt
 
-
 /-- A source's replay floor passes to a descendant held at an independently honest cut. -/
 private theorem floor_le_of_honest_ancestor_at
     {sp : ACParams}
@@ -281,7 +280,6 @@ private theorem floor_le_of_honest_ancestor_at
   rw [← σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
     (fun q hq => hrun.time_mono hq.le) hz hti hbi hx hX hXt] at hle
   exact hh.trans hle
-
 
 /-- **The finalized tip of an honest observation is below every held block strictly above its
 justified height** (the quorum branch of `finalized_below_floor_held_at`, read off the justified
@@ -567,8 +565,7 @@ private theorem narrow_vote
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)
   exact ⟨W, hHdU, hWr, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdU hBW⟩
 
-/-- Prior votes extending a prefix propagate through a window witness: the window-free core of
-`unanimous_next_votes_of_witness_at'` and `unanimous_next_votes_of_stock_witness_at'`. -/
+/-- Prior votes extending a prefix propagate through a window witness to the next slot's votes. -/
 theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -639,38 +636,7 @@ theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   obtain ⟨ell, hc⟩ := hv
   exact hnext y i e hy ⟨ell, hc⟩ ((htime hy hc hs).2.trans hmb) hs
 
-/-- Prior votes extending a prefix propagate through a frozen viable witness
-(`unanimous_next_votes_of_witness_at` over the shadow run, witness clause on `Q`). -/
-theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    {m M : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m)
-    (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
-    {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
-    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
-      (isTop → ((tr.state z c).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q))
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
-    (hheld : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = m + 1 → Q ∈ (tr.state y i).fg.tree ∧
-        e.readPoint.blockStamp Q.root < AC.ETime.of (AC.freeze sp (m + 1)))
-    (hG : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
-      e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = m + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  exact unanimous_next_votes_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    (Healing.windowWitness_of_frameWindow hrun hnc hframe hz hQ hwit) hXQ hheld hG hK
-
-/-- The same prefix reaches an actual next-slot proposal head through a window witness: the
-window-free core of `unanimous_next_proposal_of_witness_at'` and its stock form. -/
+/-- The same prefix reaches an actual next-slot proposal head through a window witness. -/
 theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -795,40 +761,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     · exact Or.inl (hLO.trans hOX)
     · exact AC.anc_total hr.coherent hLO hXO
 
-/-- The same prefix reaches an actual next-slot proposal head
-(`unanimous_next_proposal_of_witness_at` over the shadow run, witness clause on `Q`). -/
-theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    {m M : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m)
-    (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
-    {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
-    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
-      (isTop → ((tr.state z c).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q))
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
-    (hG : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
-      e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
-    (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) (hK : CommitteeHalfUpTo tr H K g b) :
-    Anc (tr.HonestBlocksAt H) X d.head := by
-  exact unanimous_next_proposal_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    (Healing.windowWitness_of_frameWindow hrun hnc hframe hz hQ hwit) hXQ hG hy hc hcall hti hd
-    hQy hK
-
-/-- An early window witness propagates its prefix to later honest calls: the window-free core of
-`later_heads_of_early_witness_at'` and `later_heads_of_stock_witness_at'`, from a window witness
+/-- An early window witness propagates its prefix to later honest calls, from a window witness
 and the finalized tips below the witness. -/
 theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
@@ -1093,8 +1026,8 @@ theorem witness_voterBlockTree_at
         linarith only [hti, hts, hΔ])
   exact ⟨hQt, Or.inl (by simpa only [hs] using hstamp)⟩
 
-/-- A window witness propagates its prefix to next-slot votes: the window-free core of
-`next_votes_of_early_witness_at'` and `next_votes_of_stock_witness_at'`. -/
+/-- A window witness propagates its prefix to next-slot votes, with the lock-specific transfer
+supplied by the caller. -/
 theorem next_votes_of_windowWitness_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
