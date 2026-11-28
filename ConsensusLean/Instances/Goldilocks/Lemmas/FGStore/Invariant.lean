@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.L
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.StepBits
+public import Mathlib.Data.Set.Card
 
 public section
 
@@ -438,6 +440,112 @@ theorem entry_state_of_source : EntryStateOfSource P ACP := by
   · rcases he : (c.take c'.length).getLast? with _ | X
     · exact Or.inl rfl
     · exact Or.inr (hdc X (List.mem_of_getLast? he))
+
+/-- A held state's justification names an ancestor at its justified height, or genesis
+with justified height zero. -/
+theorem J_entry_hj {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀)
+    {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
+    ∃ E ∈ st.tree, E.root = (st.σ W.root).J ∧ st.Anc E W ∧
+      ((E = P.genesisBlock acp₀ ∧ (st.σ W.root).hj = 0) ∨
+        ((st.σ E.root).h = (st.σ W.root).hj ∧ (st.σ E.root).Th = E.root)) := by
+  have hg := good hr
+  have hA := (accepted_tree P ACP acp₀ st hr).2.2.2 W hW
+  clear hW
+  induction hA with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, hg.σ_genesis]
+    exact ⟨_, hg.genesis, rfl, .refl, Or.inl ⟨rfl, rfl⟩⟩
+  | tail _ hYW ih =>
+    obtain ⟨X, -, hXr, ht⟩ := hg.step _ hYW.2.1 _ hYW.2.2
+    rcases (step_fields ht).2 with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
+    · obtain ⟨E, hE, h1, hEY, h2⟩ := ih
+      refine ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW, ?_⟩
+      rw [hj]
+      exact h2
+    · obtain ⟨⟨E, hE, h1, hEY, h2, h3⟩, -⟩ :=
+        entry_state_of_source P ACP acp₀ st hr _ hYW.1
+      exact ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW,
+        Or.inr ⟨h2.trans hj.symm, h3.trans h1.symm⟩⟩
+
+/-- Every height of a held chain has a self-entry ancestor. -/
+theorem entry_at_height {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀)
+    {C : NodeBlock P ACP} (hC : C ∈ st.tree) {h : Nat} (h1 : 1 ≤ h)
+    (hle : h ≤ (st.σ C.root).h) :
+    ∃ Z ∈ st.tree, st.Anc Z C ∧ (st.σ Z.root).h = h ∧ (st.σ Z.root).Th = Z.root := by
+  have hg := good hr
+  have key : ∀ {W : NodeBlock P ACP} {h : Nat}, W ∈ st.tree → (st.σ W.root).h = h →
+      ∃ Z ∈ st.tree, st.Anc Z W ∧ (st.σ Z.root).h = h ∧ (st.σ Z.root).Th = Z.root := by
+    intro W h hW he
+    obtain ⟨⟨E, hE, hEr, hEW, hEh, hET⟩, -⟩ :=
+      entry_state_of_source P ACP acp₀ st hr _ hW
+    exact ⟨E, hE, hEW, hEh.trans he, hET.trans hEr.symm⟩
+  have hA := (accepted_tree P ACP acp₀ st hr).2.2.2 C hC
+  clear hC
+  induction hA generalizing h with
+  | refl =>
+    have h₁ : ((st.σ (P.genesisBlock acp₀).root)).h = 1 := by
+      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, hg.σ_genesis]; rfl
+    exact key hg.genesis (by omega)
+  | tail _ hYW ih =>
+    rcases eq_or_lt_of_le hle with he | hlt
+    · exact key hYW.2.1 he.symm
+    · obtain ⟨-, -, -, ht⟩ := hg.step _ hYW.2.1 _ hYW.2.2
+      obtain ⟨Z, hZ, hZY, hZh, hZT⟩ := ih h1 (by
+        rcases Healing.stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;>
+          (clear * - hlt hh; omega))
+      exact ⟨Z, hZ, hZY.tail hYW, hZh, hZT⟩
+
+/-- If every attestation naming an entry is faulty, no descendant leaves its height or entry. -/
+theorem entry_kept {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀)
+    {H : Set (Fin P.n)} (hq : Hᶜ.ncard < P.fg.q) {E : NodeBlock P ACP}
+    (hE : ∀ W ∈ st.tree, ∀ a ∈ W.fgPayload, a.T = E.root → a.val ∉ H)
+    {A X : NodeBlock P ACP} (hAX : st.Anc A X) (hATh : (st.σ A.root).Th = E.root) :
+    (st.σ X.root).h = (st.σ A.root).h ∧ (st.σ X.root).Th = E.root := by
+  have hg := good hr
+  have hcard : ∀ p : Finset (Fin P.n), (∀ v ∈ p, v ∉ H) → p.card < P.fg.q := fun p hp => by
+    have := Set.ncard_le_ncard (s := (p : Set (Fin P.n))) (t := Hᶜ) hp (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at this
+    omega
+  have hU : ∀ W, st.Anc (P.genesisBlock acp₀) W →
+      (st.σ W.root).target ⊆ (st.σ W.root).prog ∧ ∀ v ∈ (st.σ W.root).prog,
+        ∃ W' ∈ st.tree, st.Anc W' W ∧ ∃ a ∈ W'.fgPayload, a.val = v ∧
+          a.T = (st.σ W.root).Th := by
+    intro W hW
+    induction hW with
+    | refl =>
+      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, hg.σ_genesis]
+      exact ⟨fun _ h => h, fun v hv => (Finset.notMem_empty v hv).elim⟩
+    | tail _ hpar ih =>
+      obtain ⟨-, h2, hp⟩ := id hpar
+      obtain ⟨-, -, -, ht⟩ := hg.step _ h2 _ hp
+      obtain ⟨htp, p, hpv, hcase⟩ := step_prog ht ih.1
+      refine ⟨htp, ?_⟩
+      rcases hcase with ⟨-, hTh, hpe⟩ | ⟨-, hpe⟩
+      · rw [hpe, hTh]
+        intro v hv
+        rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
+        · obtain ⟨W', hW't, hW', a, ha, h'⟩ := ih.2 v hv
+          exact ⟨W', hW't, hW'.tail hpar, a, ha, h'⟩
+        · exact ⟨_, h2, .refl, a, ha, hav, haT⟩
+      · rw [hpe]
+        exact fun v hv => (Finset.notMem_empty v hv).elim
+  have hgen := (accepted_tree P ACP acp₀ st hr).2.2.2
+  induction hAX with
+  | refl => exact ⟨rfl, hATh⟩
+  | tail _ hpar ih =>
+    obtain ⟨h1, h2, hp⟩ := hpar
+    obtain ⟨-, -, -, ht⟩ := hg.step _ h2 _ hp
+    obtain ⟨ihh, ihT⟩ := ih
+    obtain ⟨-, p, hpv, hcase⟩ := step_prog ht (hU _ (hgen _ h1)).1
+    have hpn : ∀ v ∈ p, v ∉ H := by
+      intro v hv
+      rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
+      · obtain ⟨W', hW't, -, a, ha, hav, haT⟩ := (hU _ (hgen _ h1)).2 v hv
+        exact hav ▸ hE W' hW't a ha (haT.trans ihT)
+      · exact hav ▸ hE _ h2 a ha (haT.trans ihT)
+    rcases hcase with ⟨hh, hTh, -⟩ | ⟨hq', -⟩
+    · exact ⟨hh.trans ihh, hTh.trans ihT⟩
+    · exact absurd hq' (not_le.2 (hcard p hpn))
 
 end Consensus.Goldilocks.Store
 
