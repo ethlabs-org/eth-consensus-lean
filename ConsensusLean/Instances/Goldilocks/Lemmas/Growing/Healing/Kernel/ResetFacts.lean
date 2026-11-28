@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
@@ -9,8 +9,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.O
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighInduction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.TargetCompare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 
 public section
 
@@ -28,8 +26,6 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- Step 6 finite result induction, consumed by the latest-votes wrapper.
 The explicit domain and stored-lock inputs are unchanged from the static boundary. -/
@@ -97,24 +93,6 @@ theorem ResetPremisesUpTo.high_origin_votes_before_at
     exact hc.s2 B j (Compose.Growing.HealedOrigin.of_high hib ho) y k e
       (Compose.Growing.hVoteAt_iff.2 ⟨hy, ell, hc'⟩) hkb hj
 
-/-- R1 over the reset core, from the retained high-origin votes (R2): high origins within the
-horizon are comparable, with each writer honest at its write. -/
-theorem ResetRunCore.origins_compatible_of_votes_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
-    (hvotes : ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
-      ∀ y ell e, y ∈ H (tr.time k) → AC.CastAt tr.projAC y k ell e → j < e.msg.slot →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg B)
-    {x z : Fin sp.n} {i j r l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
-    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B O := by
-  apply hp.origins_compatible_before_at (k := max i r + 1) ?_
-    ho hib (Or.inl (by omega)) hO hrb (by omega)
-  intro x₀ i₀ j₀ B₀ ho₀ hi₀ y c e _ hy hcb hv hj
-  obtain ⟨ell, hc⟩ := hv
-  exact hvotes c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y ell e hy hc hj
-
 /-- R1: high origins within the horizon are comparable, with each writer honest at its write. -/
 theorem ResetPremisesUpTo.origins_compatible_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -122,8 +100,12 @@ theorem ResetPremisesUpTo.origins_compatible_at
     {x z : Fin sp.n} {i j r l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B O :=
-  hp.toCore.origins_compatible_of_votes_at hp.high_origin_votes_before_at ho hib hO hrb
+    Compatible (tr.HonestBlocksAt H) B O := by
+  apply KernelProof.origins_compatible_before_at hp (k := max i r + 1) ?_
+    ho hib (Or.inl (by omega)) hO hrb (by omega)
+  intro x₀ i₀ j₀ B₀ ho₀ hi₀ y c e _ hy hcb hv hj
+  obtain ⟨ell, hc⟩ := hv
+  exact hp.high_origin_votes_before_at c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y ell e hy hc hj
 
 /-- Finite domain reduction with independently honest source and cast observations,
 inside the deep quarantine (`hpre`). -/

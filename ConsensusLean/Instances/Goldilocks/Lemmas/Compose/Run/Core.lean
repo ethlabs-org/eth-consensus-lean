@@ -146,7 +146,7 @@ structure StaticRunCore
   coherent : Compose.NoCollRun dg tr → Coherent (tr.HonestBlocks H)
   /-- `Compose.tree_mono`. -/
   tree_mono : ∀ y ∈ H, ∀ {k i}, k ≤ i → (tr.state y k).fg.tree ⊆ (tr.state y i).fg.tree
-  /-- `Healing.tree_accepted`. -/
+  /-- `Compose.tree_cases`. -/
   tree_accepted : ∀ y ∈ H, ∀ {i W}, W ∈ (tr.state y i).fg.tree →
     W = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
       ∃ k < i, tr.AcceptAt y k W

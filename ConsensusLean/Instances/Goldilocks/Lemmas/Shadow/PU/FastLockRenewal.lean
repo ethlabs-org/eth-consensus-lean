@@ -6,7 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
@@ -70,7 +72,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   obtain ⟨⟨hPt₀, hPg, _⟩, hPf₀⟩ := (AC.deepest_mem hfast₀).1
   obtain ⟨D₀, CV₀, hfu₀, hPD₀⟩ := fast_update_of_unvetoed_at hy₀ hrun hnc hu₀
     hconf₀ hPt₀ hPg .refl hnv₀ hPf₀
-  have hfr₀ := hrun.toCore.frame_of_projAC_at hy₀ hu₀.1
+  have hfr₀ := Compose.Growing.frame_of_projAC_at hrun hy₀ hu₀.1
   have hP₀ : P ∈ (tr.state y j₀).fg.tree := by
     rw [hfr₀, Node.frame_eq, Store.toFrame_tree] at hPt₀
     exact hPt₀.1
@@ -81,17 +83,18 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     hsu (by linarith [hstep u]) (sp.toParams.fg.faults_lt_quorum_margin
       (hf _ (by rw [← htp]; exact hrun.time_nonneg kP) (by linarith [hstep u])))
   have hzk : z ∈ H (tr.time kP) := htp ▸ hzp
-  have hp := hrun.toCore.upTo (hrun.time_nonneg kP)
+  have hp := hrun.upTo (hrun.time_nonneg kP)
   have hp' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  obtain ⟨hacc, hta, _⟩ := hp.ac_block_after z hzk (hp.accept_of_proposesAt (hnc.upTo _) hzk hp').1
+  have haccept := (Healing.accept_of_proposesAt hp (hnc.upTo _) hzk hp').1
+  obtain ⟨hacc, hta, _⟩ := Healing.ac_block_after hp.toLocalRun hzk haccept
   have hzpa : z ∈ H (tr.time (kP + 1)) := hta ▸ hzk
   rw [RunTrace.upTo_projAC] at hacc
   obtain ⟨ella, hca, hea⟩ := hacc
-  have hra := hrun.toCore.acRun_upTo hnc (hrun.time_nonneg (kP + 1))
+  have hra := Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg (kP + 1))
   have hca' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ((Trace.upTo_callAt _).mp hca).2⟩
   have hPpa := (AC.accept_new sp hra.localRun hzpa ⟨ella, hca', hea⟩).1 ella hca'
-  rw [hrun.toCore.frame_of_projAC_at hzpa ((Trace.upTo_callAt _).mp hca').2,
+  rw [Compose.Growing.frame_of_projAC_at hrun hzpa ((Trace.upTo_callAt _).mp hca').2,
     Node.frame_eq, Store.toFrame_tree] at hPpa
   have hwit := Healing.windowWitness_of_frameWindow hrun hnc hframe hzpa hPpa.1 hpbound
   set σ := sp.slot (tr.time i)
@@ -134,8 +137,8 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
         hmargin hjoin (hT.trans hhib) hz hdes hP hPs hun hK x k e hx hv
         (by
           have ht := (Compose.cast_head_fcRoot
-            (hrun.toCore.acRun_upTo hnc (hrun.time_nonneg k)).localRun
-            (hrun.toCore.acRun_upTo hnc (hrun.time_nonneg k)).vstart hx
+            (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
+            (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).vstart hx
             (AC.upTo_castAt.mpr ⟨le_rfl, hv.choose_spec⟩)).2
           rw [hs, he] at ht
           change tr.time k ≤ _ at ht
@@ -176,18 +179,19 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
       hcatch hnr' (by linarith) hsr hjoinr hfin hPg (hext (s + 1) (by omega) (by omega))
       (hext (s + 2) (by omega) (by omega)) hyj hu (by rw [hjt]; linarith)
       (by rw [hjt]; linarith) hK
-    have hΦ := hrun.toCore.frameIn_at hnc hyj hu.1
+    have hΦ := Compose.Growing.frameIn_at hrun hnc hyj hu.1
     have hFP : Anc (tr.HonestBlocksAt H) ellj.frame.F P := by
-      rw [hrun.toCore.frame_of_projAC_at hyj hu.1, hrun.toCore.frameOf_F]
+      rw [Compose.Growing.frame_of_projAC_at hrun hyj hu.1, Node.frame_eq, Store.toFrame_F]
       exact hfin y j hyj (by rw [hjt]; linarith) (by rw [hjt]; linarith)
         (by rw [hjt]; linarith)
     have hDt := (AC.deepest_mem hfast).1.1.1
-    have hPt := AC.frame_mem_of_between sp (hrun.toCore.coherent hnc) hΦ.1 hΦ.2 hDt hPD hFP
-    have hPDf := AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ.1 hΦ.2 hPt hPD hDt
-    have hPCf := AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ.1 hΦ.2 hPt hPC
+    have hcoh := Compose.Growing.honestBlocksAt_coherent hrun hnc
+    have hPt := AC.frame_mem_of_between sp hcoh hΦ.1 hΦ.2 hDt hPD hFP
+    have hPDf := AC.anc_tree_of_anc_U hcoh hΦ.1 hΦ.2 hPt hPD hDt
+    have hPCf := AC.anc_tree_of_anc_U hcoh hΦ.1 hΦ.2 hPt hPC
       (AC.deepest_mem hconf).1.1
     exact ⟨j, fast_update_of_unvetoed_at hyj hrun hnc hu hconf hPt hPg hPCf
-      (Core.no_veto_of_lock_roots_compatible_at hrun.toCore hnc hyj hu.1 hPt hlocks)
+      (no_veto_of_lock_roots_compatible_at hrun hnc hyj hu.1 hPt hlocks)
       ((AC.deepest_mem hfast).1.2.trans (Nat.mul_le_mul_left 2
         (Set.ncard_le_ncard (AC.supporters_antitone sp _ ellj.frame _ _ P D hPDf)
           (Set.toFinite _))))⟩
@@ -199,14 +203,14 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hPj : P ∈ (tr.state y j).fg.tree := by
     obtain ⟨ellj, C, hu, _, hD, _⟩ := id hfu
     have hyj := hrun.antitone (hrun.time_mono hji.le) hy
-    have hΦ := hrun.toCore.frameIn_at hnc hyj hu.1
+    have hΦ := Compose.Growing.frameIn_at hrun hnc hyj hu.1
     have hFP : Anc (tr.HonestBlocksAt H) ellj.frame.F P := by
-      rw [hrun.toCore.frame_of_projAC_at hyj hu.1, hrun.toCore.frameOf_F]
+      rw [Compose.Growing.frame_of_projAC_at hrun hyj hu.1, Node.frame_eq, Store.toFrame_F]
       exact hfin y j hyj (by rw [hjt]; have := hts (show s₀ ≤ r by omega); linarith)
         ((hrun.time_mono hji.le).trans hhi) ((hrun.time_mono hji.le).trans hib)
-    have hPt := AC.frame_mem_of_between sp (hrun.toCore.coherent hnc) hΦ.1 hΦ.2
-      (AC.deepest_mem hD).1.1.1 hPD hFP
-    rw [hrun.toCore.frame_of_projAC_at hyj hu.1, Node.frame_eq, Store.toFrame_tree] at hPt
+    have hPt := AC.frame_mem_of_between sp (Compose.Growing.honestBlocksAt_coherent hrun hnc)
+      hΦ.1 hΦ.2 (AC.deepest_mem hD).1.1.1 hPD hFP
+    rw [Compose.Growing.frame_of_projAC_at hrun hyj hu.1, Node.frame_eq, Store.toFrame_tree] at hPt
     exact hPt.1
   have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame (tr.state y k)).tree ∧
       (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
@@ -230,13 +234,14 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
       rw [Node.frame_eq, Store.toFrame_viableHeads]
       exact ⟨hPk', hFPs, hvP⟩
     refine ⟨hPt, ?_, hvHead⟩
-    have hΦ := hrun.toCore.frameOK_at (hrun.time_nonneg k) hyk
+    have hΦ := Compose.Growing.frameOK_at hrun (hrun.time_nonneg k) hyk
       (fun q hq => hrun.time_mono hq.le)
     have hsubtree : (Node.frame (tr.state y k)).tree ⊆ tr.HonestBlocksAt H := by
       rw [Node.frame_eq, Store.toFrame_tree]
       exact fun B hB => ⟨y, k, tr.time k, hrun.time_nonneg k,
         (fun q hq => hrun.time_mono hq.le), hyk, hB.1⟩
-    apply AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ hsubtree hΦ.fcRoot_mem _ hPt
+    apply AC.anc_tree_of_anc_U (Compose.Growing.honestBlocksAt_coherent hrun hnc)
+      hΦ hsubtree hΦ.fcRoot_mem _ hPt
     rw [Node.frame_eq, Store.toFrame_fcRoot]
     exact hFP
   exact toFG_candidate_of_viable_head_at hrun hnc hK

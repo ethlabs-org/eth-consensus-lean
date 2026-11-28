@@ -79,7 +79,7 @@ theorem row_origin_not_current_at
   have hac := Compose.Growing.goldilocks_ac_projection_from rc hp.noColl
   have hW' : W ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by
     rwa [RunTrace.upTo_state_of_le hm le_rfl]
-  rcases Healing.tree_accepted (rc.upTo (rc.time_nonneg k)).toLocalRun hy hW' with
+  rcases Compose.tree_cases (rc.upTo (rc.time_nonneg k)).toLocalRun hy hW' with
     rfl | ⟨i, hik, hA⟩
   · cases ha
   have hA₀ := (RunTrace.upTo_acceptAt tr).mp hA |>.2

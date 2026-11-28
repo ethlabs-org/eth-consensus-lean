@@ -40,7 +40,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)} {T : GoldilocksT
     (hlate : ∀ k < i, T.time k ≤ c → C ∉ (T.state x (k + 1)).fg.tree) :
     AC.ETime.of c < (T.state x i).ac.blockStamp C.root := by
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-  rcases Healing.tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
+  rcases Compose.tree_cases hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
   · exact absurd rfl hg
   obtain ⟨hA', ht', -⟩ := Healing.ac_block_after hrun.toLocalRun hx hA
   obtain ⟨ℓ', hc', hcall'⟩ := hA'
