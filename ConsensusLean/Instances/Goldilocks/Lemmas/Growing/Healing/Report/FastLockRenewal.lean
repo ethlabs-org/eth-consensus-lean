@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorFast
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
@@ -412,6 +413,31 @@ theorem fast_update_of_unvetoed_at
   have hPD : ell.frame.Anc P D := anc_of_isDeepest hPhi.1 hDd hPS hPt
     (AC.anc_total hPhi.1.coherent hPC hDd.1.1.2.2)
   exact ⟨D, _, ⟨ell, C, hu, hconf, hD, rfl⟩, hPD.mono hPhi.2⟩
+
+/-- A raw fast selection above `P` forces a live fast update above `P` when finality is
+below `P` and the stored lock roots are compatible with it. -/
+theorem fast_update_of_compatible_locks_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k s : Nat}
+    (hy : y ∈ H (tr.time k)) {ell : ACLabel (goldilocksNode sp)}
+    (hu : AC.UpdateAt tr.projAC y k s ell) {C D P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hconf : AC.getConfirmation sp (tr.projAC.state y k) ell.frame s = some C)
+    (hfast : AC.fastSelect sp (tr.projAC.state y k) ell.frame s C = some D)
+    (hFP : Anc (tr.HonestBlocksAt H) ell.frame.F P) (hPg : P.root ≠ sp.genesisRoot)
+    (hPC : Anc (tr.HonestBlocksAt H) P C) (hPD : Anc (tr.HonestBlocksAt H) P D)
+    (hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
+      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block → Compatible (tr.HonestBlocksAt H) L P) :
+    ∃ B CV, AC.FastUpdateAt tr.projAC y k s B CV ∧ Anc (tr.HonestBlocksAt H) P B := by
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  obtain ⟨hΦ, hΦU⟩ := Compose.Growing.frameIn_at hrun hnc hy hu.1
+  obtain ⟨⟨hDt, _, _⟩, hDf⟩ := (AC.deepest_mem hfast).1
+  have hPt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hPD hFP
+  have hPDf := AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPD hDt
+  exact fast_update_of_unvetoed_at hy hrun hnc hu hconf hPt hPg
+    (AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPC (AC.deepest_mem hconf).1.1)
+    (no_veto_of_lock_roots_compatible_at hrun hnc hy hu.1 hPt hlocks)
+    (hDf.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
+      (AC.supporters_antitone sp _ ell.frame _ _ P D hPDf) (Set.toFinite _))))
 
 /-- The raw fast selection writes a live fast lock through the second following slot. -/
 theorem fastLock_mem_updateConfirmation_of_select {FGP : Type} {A : AC.ACState sp.n}
