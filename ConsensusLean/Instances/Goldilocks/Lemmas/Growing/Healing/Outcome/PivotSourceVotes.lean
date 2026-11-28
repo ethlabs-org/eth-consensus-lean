@@ -90,7 +90,7 @@ theorem reset_proposal_root_source_or_healed_at
           (store_anc_of_honest_anc_at hp.run hp.noColl ht hi hpH (hEO.trans hOW) hW)))
     (fun hlow => by
       obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-      have hheld := hp.proposal_holds_old_at hpH hci hcall hd hti hib ho hrt
+      have hheld := ProposalImpl.proposal_holds_old_at hp hpH hci hcall hd hti hib ho hrt
       rw [hfr] at hheld
       exact ⟨O, Or.inl ⟨v, r, l, ho, hrt, hrb⟩,
         hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb, hheld⟩) with
@@ -155,7 +155,7 @@ theorem proposal_start_supported_at
     · apply hfO.trans (extend O ?_)
       have hri : r < i :=
         lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hOld.trans_eq hti.symm)
-      have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib hri ho
+      have hlu := ProposalSources.origin_label_lt_at_proposal_at hp hpH hci hcall hti hib hri ho
       exact hp.high_origin_votes_before_at j hjb x r l O ho hrb y elly e hy hcy (by omega)
     · refine hfC.trans (extend C (hc.s2 C s hC.healedOrigin y j e
         (Compose.Growing.hVoteAt_iff.2 ⟨hy, elly, hcy⟩) hjb (by omega)))

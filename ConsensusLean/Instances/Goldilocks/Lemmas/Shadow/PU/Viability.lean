@@ -33,10 +33,6 @@ structure PUSnapshot (st : Store P ACP) (acp₀ : ACP) : Prop where
   genesis_anc : ∀ B ∈ st.tree, st.Anc (P.genesisBlock acp₀) B
   genesis_height : (st.σ (P.genesisBlock acp₀).root).h = 1
 
-/-- A block at the maximum height is viable without a root condition. -/
-theorem isViable_of_hmax_le (h : st.hmax ≤ (st.σ B.root).h) : st.IsViable B :=
-  (st.isViable_iff B).2 (Or.inl h)
-
 /-- In a top frame the lower-height viable arm extends the justified block. -/
 theorem isViable_J_of_top (htop : st.hmax = st.hj + 1)
     (hB : (st.σ B.root).h + 1 = st.hmax) (hv : st.IsViable B) : st.Anc st.J B := by
