@@ -277,7 +277,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.St
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Frontier
@@ -670,7 +669,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
@@ -768,7 +766,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
@@ -779,7 +776,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesGeom
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
