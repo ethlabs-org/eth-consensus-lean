@@ -220,23 +220,6 @@ theorem signed_row_lock_member_before_at
       (Or.inr (Or.inl ⟨hlab, v, r', by omega, hvr, (hrun.time_mono hrk.le).trans hdb', hsrc⟩)),
     hED, .refl, hvr, hsrc⟩
 
-/-- `signed_row_lock_member_before_at`, with the member read in the healed family. -/
-theorem signed_row_lock_member_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧ ∃ r < d, ∃ s C D,
-      Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b ∧
-      Anc (tr.HonestBlocksAt H) E C ∧ Anc (tr.HonestBlocksAt H) C D ∧ v ∈ H (tr.time r) ∧
-      ((∃ CV, AC.FastLockAt tr.projAC v r s D CV) ∨ AC.SlowLockAt tr.projAC v r s D) :=
-  let ⟨E, hE, hEr, r, hrd, s, C, D, hC, h⟩ :=
-    signed_row_lock_member_before_at hrun hnc hvz hs hh hsnap hc hdb
-  ⟨E, hE, hEr, r, hrd, s, C, D, hC.healedOrigin, h⟩
-
 /-- **A high signed row is covered before its signing under the high-source cover**: the row's
 entry is below a member of the healed family written before the signing
 (`signed_row_lock_member_before_at`), of label at most the signing's slot. -/
@@ -267,22 +250,6 @@ theorem signed_row_covered_before_at
   exact ⟨E, hE, hEr, coveredBefore_iff.2 ⟨hc, C, s, hC,
     hlabel.trans
       (AC.slot_mono sp (hrun.time_nonneg r) (hrun.time_mono hrd.le)), hEC⟩⟩
-
-/-- **A high signed row is covered under the high-source cover**: the row's entry is below a
-member of the healed family of label at most the signing's slot
-(`signed_row_covered_before_at`). -/
-theorem signed_row_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧
-      CoveredUpTo tr H g a b (sp.slot (tr.time d)) E :=
-  let ⟨E, hE, hEr, h⟩ := signed_row_covered_before_at hrun hnc hvz hs hh hsnap hc hdb
-  ⟨E, hE, hEr, h.coveredUpTo⟩
 
 /-- `left_entry_origin_at` under the high-source cover: the left entry is the target of a held
 attestation whose signer is honest at the observation and at `c_z`, and it is covered up to the
@@ -333,27 +300,6 @@ theorem left_entry_covered_before_at
   subst E₀
   exact ⟨W, hW, att, ha, att.val, haHz, d, hdk, hs, haT,
     hch.mono (AC.slot_mono sp (hrun.time_nonneg d) (hle d hdk)) hdk.le⟩
-
-/-- `left_entry_covered_before_at`, with the cover read up to the label only. -/
-theorem left_entry_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
-    {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
-    (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (htb : t ≤ b) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H (max (cutZ sp.toParams g) t),
-      ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧ CoveredUpTo tr H g a b (sp.slot t) E :=
-  let ⟨W, hW, att, ha, v, hv, d, hdk, hs, haT, h⟩ :=
-    left_entry_covered_before_at hrun hnc ht hle hy hq hE hET hEh hEC hlt hsnap hc htb
-  ⟨W, hW, att, ha, v, hv, d, hdk, hs, haT, h.coveredUpTo⟩
 
 end Consensus.Goldilocks.Healing.Growing.Outcome
 
