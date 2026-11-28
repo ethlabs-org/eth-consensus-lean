@@ -1,10 +1,12 @@
 module
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 
 public section
 
@@ -45,7 +47,7 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
+    (_hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
     ∃ Q ∈ (Node.frame (tr.state y i)).tree,
@@ -59,7 +61,7 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
   intro Q hQ hheight
   exact Goldilocks.Store.F_anc_of_hmax_le_of_safe hr hr
     (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1 subset_rfl subset_rfl hf
-    (held_atts_safe_at hrun hnc ht hle hy ht hle hy le_rfl le_rfl) hQ hheight.ge
+    (Healing.Growing.held_atts_safe_at hrun ht hle hy ht hle hy le_rfl le_rfl) hQ hheight.ge
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 

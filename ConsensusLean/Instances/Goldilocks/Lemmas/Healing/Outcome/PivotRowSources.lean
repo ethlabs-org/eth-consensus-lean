@@ -125,7 +125,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
             ((hp.run.time_mono hki).trans hib)) (tr.time q)
         have hdl : tr.projAC.deadline p i (tr.time q) ≤ tr.time i := by
           have ht : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts s := by
-            have hbase := (AC.ts_le_iff_le_slot sp (gbar_nonneg g)
+            have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
               (sp.slot (AC.gbar g))).mpr (by clear * -; omega)
             simp only [ACParams.ts] at hbase hs ⊢
             push_cast at hbase hs ⊢

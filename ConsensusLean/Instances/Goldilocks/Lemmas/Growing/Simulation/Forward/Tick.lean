@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 
 public section
 
@@ -10,7 +10,7 @@ public section
 `tick_proposal_acceptance_queued_at`: a node's own proposal accepted at an engine tick is queued for
 forwarding in that tick, without a constant-fault or honesty premise: the tick is an actual event,
 hence an honest one, and the carried objects of its proposal are available from the dynamic
-inventory (`proposal_releasable_at`). -/
+inventory (`proposal_releasable`). -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -56,7 +56,7 @@ theorem tick_proposal_acceptance_queued_at (hv : rho.ExecutionValid)
     (selValid_proposer S rho hn hv.selValid s) hself
     (by rw [hnow, ht]; exact slotOf_slotTime _ s) (hnow.trans ht)
     (fun hselected par info cs hprop =>
-      proposal_releasable_at S rho hn hv v i t he s par info cs hs hone hselected hprop)
+      proposal_releasable S rho hn hv v i t he s par info cs hs hone hselected hprop)
     hcover B (by simpa only [hnow, atProposal_mempool] using ha)
   exact ⟨p, by simpa only [hself, hnow] using hp⟩
 

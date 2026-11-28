@@ -119,7 +119,8 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T 
     have delivered := hdel (hdi τ hk2)
     rcases (AC.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
     swap
-    · have evidence := (retained.evidence hr hy).weaken (hdl i le_rfl _ hk2).le
+    · have evidence := AC.PoolEvidenceBefore.weaken (retained.evidence hr hy)
+        (hdl i le_rfl _ hk2).le
       have hheld (u : Vote sp.n) (hus : u.slot = s)
           (hu : AC.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
           AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by

@@ -92,11 +92,11 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
   · rw [RunTrace.upTo_projAC, projAC_upTo_state hrun hij]; exact hd
   · rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hcy⟩
   · rw [RunTrace.upTo_projAC] at hB hc' ⊢
-    obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+    obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc'⟩ := (Trace.upTo_callAt _).mp hc'
     obtain ⟨k', hkj, hk, hkt'⟩ := hsync.acOld x i' B (hrun.antitone hid hx) hB hia z j' ℓ
       (hrun.antitone hjd hz) hc' hj' (hF.mono hsub)
-    exact ⟨k', hkj.le, (ac_acceptAt_upTo _).mpr ⟨(hm hkj.le).trans hjd, hk⟩, hkt'⟩
+    exact ⟨k', hkj.le, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨(hm hkj.le).trans hjd, hk⟩, hkt'⟩
   · rw [hst] at hB ⊢
     exact hflQ B hB (hQB.mono hsub)
 

@@ -42,7 +42,7 @@ private theorem rows_delivered_service {g ΔF b v : Time}
       (fun k' _ hr => hnr p hp k' (Compose.projAC_restartAt.1 hr)) τ
     simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
     linarith
-  have hg : max (tr.time k) g ≤ v := max_le hk ((le_gbar g).trans hv)
+  have hg : max (tr.time k) g ≤ v := max_le hk ((AC.le_gbar g).trans hv)
   have hdl : ∀ j, tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := fun j => by
     have := hdl0 j (max (tr.time k) g)
     have := max_le hg hv

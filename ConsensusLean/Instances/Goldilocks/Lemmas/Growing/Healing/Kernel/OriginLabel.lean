@@ -55,7 +55,7 @@ theorem ResetRunCore.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK
   obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
   have hxZ := rc.antitone (le_max_left _ _) ho.1
   have hZ0 : 0 ≤ cutZ sp.toParams g := by
-    linarith [lt_cutZ sp g, Healing.gbar_nonneg g, sp.toParams.hΔ]
+    linarith [lt_cutZ sp g, AC.gbar_nonneg g, sp.toParams.hΔ]
   have hreachZ := rc.reachable_at hZ0 hxZ hkZ.1
   have hGZ := Store.genesis_mem_with rc.finalitySpec hreachZ
   have hbnd := (Store.cache_invariants_with rc.finalitySpec hreachZ).2.2.2.2.1 _ hGZ

@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.UnanimousStep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
@@ -6,9 +7,13 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
@@ -22,10 +27,8 @@ public section
 
 /-! # The early-witness family over the shadow run (interface)
 
-The stock family (`FollowFinality`, `WitnessUnanimity`/`FollowWitnessBoundary`, `FollowRelay`,
-`FreshVotesRelay`, `FollowInduction`, `FollowLaterBoundary`) carries a frozen witness `Q ⪰ X` by
-`floor ≤ σ(Q).h` and `kindJ → J ⪯ X`, over a stock `FrameWindow`. Over the shadow frame the `J`
-clause moves to the witness (`EarlyWitness`): a witness `Q` held by an honest `z` at cut `c` in a
+A frozen witness `Q ⪰ X` carries next-slot votes and proposals to later heads. The `J` clause
+lives in the witness (`EarlyWitness`): a witness `Q` held by an honest `z` at cut `c` in a
 `Generic.FrameWindow … M isTop J` carries
 
   `M − 1 ≤ σ_z(Q).h ∧ (isTop → σ_z(Q).h = M − 1 → J ⪯ Q)` (the witness clause),
@@ -65,12 +68,12 @@ private theorem relayed_accept_before_at
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl' : ∀ c ≤ j, tr.deadline y c (max (tr.time k) g) sp.Δ ≤ tr.time k + sp.Δ := by
       intro c hc
-      rw [max_eq_left ((Healing.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+      rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
       have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
         (fun r hrc hrs => hnr r (hrc.trans hc) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
       change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
       rwa [max_eq_left hnew] at h
-    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((Healing.le_gbar g).trans hnew)
+    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((AC.le_gbar g).trans hnew)
       y j hy ⟨_, Compose.projAC_callAt.mp hcy⟩ ((hdl' j le_rfl).trans hkt) hF
     refine ⟨a, lt_of_le_of_ne haj ?_, ha,
       lt_max_of_lt_left (hat.trans_le (hdl' a haj))⟩
@@ -182,14 +185,14 @@ theorem frame_witness_readPoint_stamp_at
     have accepted : ∃ q < i, tr.AcceptAt y q Q ∧ tr.time q < AC.freeze sp (s + 1) := by
       by_cases hnew : gbar g ≤ tr.time k
       · have hdl : tr.deadline y i (max (tr.time k) g) sp.Δ ≤ tr.time i := by
-          rw [max_eq_left ((Healing.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+          rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
           have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := i)
             (fun r hri hrs => hnr y r (hrun.antitone (hrun.time_mono hri) hy)
               (Compose.projAC_restartAt.mp hrs)) (tr.time k)
           change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
           rw [max_eq_left hnew] at h
           exact h.trans (by linarith only [hkt, hti, hts, sp.toParams.hΔ])
-        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((Healing.le_gbar g).trans hnew)
+        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((AC.le_gbar g).trans hnew)
           y i hy ⟨_, Compose.projAC_callAt.mp hc.1⟩ hdl (hfr ▸ hFQ)
         have hqi' : q < i := by
           refine lt_of_le_of_ne hqi ?_
@@ -200,7 +203,7 @@ theorem frame_witness_readPoint_stamp_at
             (Compose.projAC_restartAt.mp hrs)) (tr.time k)
         change _ ≤ max (tr.time k) (gbar g) + sp.Δ at hdead
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
-        rw [max_eq_left ((Healing.le_gbar g).trans hnew)] at hqd
+        rw [max_eq_left ((AC.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
       · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk hk
           (not_le.mp hnew) hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
@@ -235,6 +238,51 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
+
+/-- **`Σ.F` below a crossing**: a finalized block `F` of `y`'s chain to `X` (observed while honest
+at `u`) is below a block `W` held by `x` (observed while honest at `t`) whose state height exceeds
+the finalized height of `X`. Certificate intersection is charged at `max u t`. -/
+private theorem finalized_anc_obs
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
+    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
+    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
+    (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {X F W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y m).fg.tree)
+    (hFt : F ∈ (tr.state y m).fg.tree) (hFr : F.root = ((tr.state y m).fg.σ X.root).F)
+    (hW : W ∈ (tr.state x i).fg.tree)
+    (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
+    Anc (tr.HonestBlocksAt H) F W :=
+  honest_anc_of_store_anc_at ht hxtime hx <| Store.finalized_anc_of_safe
+    (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
+    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
+    (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
+    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    hX hFt hFr hW hlt
+
+
+/-- A source's replay floor passes to a descendant held at an independently honest cut. -/
+private theorem floor_le_of_honest_ancestor_at
+    {sp : ACParams}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i c : Nat}
+    (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
+    {X W : AC.Blk sp.n (List (FG.Att sp.n))} {floor : Nat}
+    (hX : X ∈ (tr.state z c).fg.tree) (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
+    (hW : W ∈ (tr.state x i).fg.tree) (hXW : Anc (tr.HonestBlocksAt H) X W) :
+    floor ≤ ((tr.state x i).fg.σ W.root).h := by
+  have hti := hrun.time_nonneg i
+  have hbi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
+  have hXt := mem_of_honest_anc_at hrun hnc hti hbi hx hXW hW
+  have ha := store_anc_of_honest_anc_at hrun hnc hti hbi hx hXW hW
+  have hle := Healing.h_le_of_store_anc (fg_reachable_at hrun hti hbi hx) ha
+  rw [← σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
+    (fun q hq => hrun.time_mono hq.le) hz hti hbi hx hX hXt] at hle
+  exact hh.trans hle
+
 
 /-- **The finalized tip of an honest observation is below every held block strictly above its
 justified height** (the quorum branch of `finalized_below_floor_held_at`, read off the justified
@@ -278,7 +326,7 @@ theorem finalized_below_of_hj_lt_at
   have hFh := Healing.h_le_of_store_anc hr hFJ
   have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
     omega
-  exact Healing.Growing.finalized_anc_obs hrun hnc ht hb hy htm hbm hz hf hX hF hXF.symm hW hstrict
+  exact finalized_anc_obs hrun hnc ht hb hy htm hbm hz hf hX hF hXF.symm hW hstrict
 
 end Consensus.Goldilocks.Healing.Growing
 
@@ -321,7 +369,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descenda
       (Store.cache_invariants _ _ _ _ (Compose.Growing.reachable_at hrun hjt hy hbj)).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi ht] at hFJ
     exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans (hJX.trans hXW)
-  · have hWh := Healing.Growing.floor_le_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
+  · have hWh := Growing.floor_le_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
     refine Growing.finalized_below_of_hj_lt_at hrun hnc hy hx hf hW ?_
     by_cases ht : isTop
     · have hX' : M ≤ ((tr.state z c).fg.σ X.root).h := by
@@ -1007,7 +1055,7 @@ theorem witness_voterBlockTree_at
       · obtain ⟨q, hqi, hq, hqt⟩ :=
           (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) (hi := tr.time (k + 1))
               le_rfl).2
-            w (k + 1) Q hwk' hacc ((Healing.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
+            w (k + 1) Q hwk' hacc ((AC.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
             (by have := hdl i le_rfl _ hkt;
                 change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
                 linarith only [this, hti, hts, hΔ]) hFQ

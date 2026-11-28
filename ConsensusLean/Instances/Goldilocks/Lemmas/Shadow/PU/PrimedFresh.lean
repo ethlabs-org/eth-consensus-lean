@@ -2,8 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshNext
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -100,7 +98,7 @@ theorem unanimous_update_no_veto_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  apply Core.unanimous_update_no_veto_at hrun.toCore hnc hsvc hawake hf hcatch
+  apply Core.unanimous_update_no_veto_at hrun hnc hsvc hawake hf hcatch
     hmargin hTb hun hy hu hK
   · intro x i hx elli hui
     obtain ⟨hv, hc, _⟩ := unanimous_update_selection_primed_at' hframe hrun hnc hsvc hawake hf

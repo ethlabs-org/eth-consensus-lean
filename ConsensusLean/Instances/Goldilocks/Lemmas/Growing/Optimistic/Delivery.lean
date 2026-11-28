@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Locks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedSteps
@@ -65,20 +66,6 @@ private theorem pool_vote_unique {ini} (hrun : Growing.GoldilocksRun proposer dg
   obtain ⟨-, rfl⟩ := one_vote_per_slot_at hrun hnc (hVoteAt_iff.2 ⟨hrun.antitone hjd hxd, hv'⟩) he
     (hs.trans hes.symm)
   rfl
-
-/-- A time in `[t_p, t_p + 4Δ)` is of slot `p`. -/
-theorem slot_eq_of_window {p : Nat} {t : Time} (h1 : sp.ts p ≤ t)
-    (h2 : t < sp.ts p + 4 * sp.Δ) : sp.slot t = p := by
-  have hp0 : (0 : Time) ≤ sp.ts p := ts_natCast_nonneg p
-  have ht0 : 0 ≤ t := hp0.trans h1
-  have hlo := (AC.ts_le_iff_le_slot sp ht0 p).1 h1
-  have hhi : ¬ ((p + 1 : Nat) : Int) ≤ sp.slot t := fun h => by
-    have := (AC.ts_le_iff_le_slot sp ht0 _).2 h
-    have hs : sp.ts ((p + 1 : Nat) : Int) = sp.ts p + 4 * sp.Δ := by
-      simp only [ACParams.ts]; push_cast; ring
-    linarith
-  push_cast at hlo hhi
-  omega
 
 /-- **B2v: a vote reaches the optimistic check before `t_p + 2Δ`.** For `y` honest at
 `t_p + 2Δ ≤ b` and awake on `[t_p, t_p + 2Δ]`, a slot-`p` vote of a validator honest at
@@ -156,7 +143,7 @@ theorem vote_point_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
         (huniq q c hc (hcv.trans hx')).symm) hac'
   -- its optimistic check point holds the vote
   have hks : sp.slot ((tr.projAC.upTo d).time k) = p :=
-    slot_eq_of_window (t := tr.time k) hk0 (by linarith)
+    AC.CompatibleSides.slot_of_lt (t := tr.time k) hk0 (by linarith)
   have h1 : ((sp.slot ((tr.projAC.upTo d).time k) : Nat) : Int) - 1 ≤ e.msg.slot := by
     rw [hks, hes]; omega
   have h2 : e.msg.slot ≤ sp.slot ((tr.projAC.upTo d).time k) := by rw [hks, hes]
@@ -181,7 +168,7 @@ theorem vote_point_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hcall : tr.IsCall y k := ⟨_, projAC_callAt.1 ((Trace.upTo_callAt _).1 hcT).2⟩
   have hnr : ∀ r, k + 1 ≤ r → r < m → ¬ ACTrace.RestartAt (tr.projAC.upTo d) y r := by
     intro r hr1 hr2 hrr
-    obtain ⟨hrd, hrr⟩ := (ac_restartAt_upTo tr.projAC).1 hrr
+    obtain ⟨hrd, hrr⟩ := (ACTrace.upTo_restartAt (tr := tr.projAC)).1 hrr
     exact no_restart_after_call hrun hy haw hcall hk0 (by omega) hrd (projAC_restartAt.1 hrr)
   have hv := AC.pool_mono hr hy (Nat.succ_le_of_lt hkm) hnr p (hpost hvA)
   have hmt : ∀ k' < m, tr.time k' ≤ d := fun k' hk' => (hm hk'.le).trans hmd.le

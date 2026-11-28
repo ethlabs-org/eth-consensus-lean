@@ -72,7 +72,7 @@ theorem ResetRunCore.half_committee_at {cm : Time → Finset (Fin sp.n)} {βK : 
   have rc := hp.core
   have hΔ := sp.toParams.hΔ
   have hgt : gbar g ≤ sp.ts m + sp.Δ := by have := lt_cutZ sp g; linarith
-  have hd0 : 0 ≤ sp.ts m + sp.Δ := (gbar_nonneg g).trans hgt
+  have hd0 : 0 ≤ sp.ts m + sp.Δ := (AC.gbar_nonneg g).trans hgt
   have hdb : sp.ts m + sp.Δ ≤ b := hmt.trans htb
   have hsl : sp.slot (sp.ts m + sp.Δ) = m :=
     AC.slot_of_mem sp m (by linarith) (by simp only [ACParams.ts]; push_cast; linarith)

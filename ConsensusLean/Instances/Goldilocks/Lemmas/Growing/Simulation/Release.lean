@@ -1,6 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 
 public section
 
@@ -28,6 +29,6 @@ theorem preNode_releasable_at (hv : rho.ExecutionValid)
       ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen := by
   rw [preNode_eq_atProposal]
   exact fun s hs hone hsel par info cs h =>
-    proposal_releasable_at S rho hn hv v i t he s par info cs hs hone hsel h
+    proposal_releasable S rho hn hv v i t he s par info cs hs hone hsel h
 
 end Consensus.Goldilocks.Simulation
