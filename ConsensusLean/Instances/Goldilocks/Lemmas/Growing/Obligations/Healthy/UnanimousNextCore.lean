@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
@@ -59,21 +61,6 @@ variable {hold : Time}
 
 /-! ### Prefix tools -/
 
-/-- The static AC run of the prefix through `tr.time i`, for the validators honest then. -/
-theorem acRun_upTo_time {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (i : Nat) :
-    AC.ACRun proposer (tr.upTo (tr.time i)).projAC (H (tr.time i))
-      ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) ini :=
-  Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo _)
-
-/-- A cast at a cut at or before `d` is one of the prefix through `d`. -/
-theorem castAt_upTo_of_le {d : Time} {y : Fin sp.n} {j : Nat}
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))} (hjd : tr.time j ≤ d)
-    (hc : AC.CastAt tr.projAC y j ell e) : AC.CastAt (tr.upTo d).projAC y j ell e := by
-  rw [RunTrace.upTo_projAC]
-  exact ⟨(Trace.upTo_callAt_of_le tr.projAC hjd).mpr hc.1, hc.2⟩
-
 /-- A block accepted before the freeze and above the voter’s finality is in the frozen tree. -/
 theorem accepted_voter_tree_of_accept_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -84,7 +71,7 @@ theorem accepted_voter_tree_of_accept_at {ini : Fin sp.n → (goldilocksNode sp)
     (ht : tr.time k < sp.ts s + 3 * sp.Δ) (hFP : Anc (tr.HonestBlocksAt H) ell.frame.F P) :
     P ∈ AC.voterBlockTree sp e.readPoint ell.frame (s + 1) := by
   have hd := hrun.time_nonneg j
-  have hr := (acRun_upTo_time hrun hnc j).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have ha' : (tr.upTo (tr.time j)).projAC.AcceptAt y k P := by
     rw [RunTrace.upTo_projAC]
     exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hrun.time_mono hkj, ha⟩
@@ -92,63 +79,9 @@ theorem accepted_voter_tree_of_accept_at {ini : Fin sp.n → (goldilocksNode sp)
     obtain ⟨ella, hca, _⟩ := id ha'
     exact (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy ha').1 ella hca)
   exact Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy
-    (castAt_upTo_of_le le_rfl hc) hs hP (Or.inr ⟨k, ha', ht⟩)
+    (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩)
+    hs hP (Or.inr ⟨k, ha', ht⟩)
     (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hP hFP)
-
-/-! ### Service and catch-up at the voter, with each sender honest at its own cut -/
-
-/-- A vote cast at or after `g` by a node honest at its cast is served to every node honest at
-a later call whose deadline for it has passed. -/
-theorem served_of_resetService
-    (hsvc : ResetService tr H g ΔF b hold) {z : Fin sp.n} {q : Nat}
-    {ell' : ACLabel (goldilocksNode sp)} {e' : AC.Em sp (List (FG.Att sp.n))}
-    (hz : z ∈ H (tr.time q)) (hcz : AC.CastAt tr.projAC z q ell' e') (hgq : g ≤ tr.time q)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
-    (hci : tr.projAC.CallAt y i ell) (hdl : tr.projAC.deadline y i (tr.time q) ≤ tr.time i) :
-    AC.MessageServedBefore tr.projAC y i (tr.time q) e'.msg := by
-  have he : max (tr.time q) g = tr.time q := max_eq_left hgq
-  obtain ⟨k, hkj, htk, hp, hlt⟩ := hsvc.message z q e'.msg hz
-    ⟨ell', Compose.projAC_callAt.mp hcz.1, Or.inl ⟨e', hcz.2, rfl⟩⟩ y i hy
-    ⟨_, Compose.projAC_callAt.mp hci⟩ (by rw [he, ← Compose.projAC_deadline]; exact hdl)
-  refine (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k, hkj, htk, ?_, ?_⟩)
-  · rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
-    exacts [⟨ℓ', Compose.projAC_callAt.2 hc', Or.inl hm'⟩,
-      ⟨ℓ', Compose.projAC_callAt.2 hc', Or.inr hm'⟩]
-  · rw [Compose.projAC_deadline]
-    change tr.time k < _
-    simpa only [he] using hlt
-
-/-- An AC acceptance at or after `g` of a node honest at it is relayed to every node honest at
-a later call whose deadline for it has passed, once the block is above that node's `Σ.F`. -/
-theorem relayed_of_resetService
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hsvc : ResetService tr H g ΔF b hold) {z : Fin sp.n} {k : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time k))
-    (hacc : tr.projAC.AcceptAt z k B) (hgk : g ≤ tr.time k)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
-    (hci : tr.projAC.CallAt y i ell) (hdl : tr.projAC.deadline y i (tr.time k) ≤ tr.time i)
-    (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    ∃ k' ≤ i, tr.projAC.AcceptAt y k' B ∧ tr.time k' < tr.projAC.deadline y k' (tr.time k) := by
-  apply hrun.toLocalRun.acRelayAt (σ := tr.time k) hz hacc hy hci hanc
-  intro q hq hz' haq hj hF
-  have hgq : g ≤ tr.time q := hq ▸ hgk
-  have he : max (tr.time q) g = tr.time k := (max_eq_left hgq).trans hq
-  simpa only [he] using hsvc.relay z q B hz' haq hgq y i hy hj
-    (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
-
-/-- An AC acceptance before `ḡ` of a node honest at it is caught up before `ḡ + 2Δ` by every node
-honest at a call from `ḡ + 2Δ` on, once the block is above that node's `Σ.F`. -/
-theorem caught_of_catchRun {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} {k : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time k))
-    (hacc : tr.projAC.AcceptAt z k B) (hkg : tr.time k < AC.gbar g)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
-    (hci : tr.projAC.CallAt y i ell) (hti : AC.gbar g + 2 * sp.Δ ≤ tr.time i)
-    (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    ∃ k' ≤ i, tr.projAC.AcceptAt y k' B ∧ tr.time k' < AC.gbar g + 2 * sp.Δ := by
-  exact hrun.toLocalRun.acCatchAt hc hz hacc hkg hy hci hti hanc
 
 /-! ### The carried slot-`u` votes -/
 
@@ -201,8 +134,11 @@ theorem unanimous_head_accepted_core_at
   -- the voter's slot-`u` vote names `P`, which it accepted by its vote
   obtain ⟨w, q, e', hwq, ⟨ellv, hv⟩, hvs, hq⟩ := hvote
   have hqj : tr.time q ≤ tr.time j := by linarith
-  have hrq := acRun_upTo_time hrun hnc q
-  have hvq := castAt_upTo_of_le le_rfl hv
+  have hrq := Compose.goldilocks_ac_projection_from
+    (hrun.upTo (hrun.time_nonneg q)) (hnc.upTo _)
+  have hvq : AC.CastAt (tr.upTo (tr.time q)).projAC w q ellv e' := by
+    rw [RunTrace.upTo_projAC]
+    exact AC.upTo_castAt.mpr ⟨le_rfl, hv⟩
   obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hrq.localRun hrq.vstart hwq hvq
   have hHdq := (AC.frameIn_of_callAt hrq.localRun hwq hvq.1).2 hHd
   obtain rfl : Hd = P := hU.1 (RunTrace.honestBlocks_upTo_subset (H := H) hm
@@ -217,13 +153,17 @@ theorem unanimous_head_accepted_core_at
     fun c hcj => Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
       (fun r hrc hrs => hnr r (hrc.trans hcj) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
   by_cases hkg : AC.gbar g ≤ tr.time k
-  · obtain ⟨k', hk'j, ha', hlt⟩ := relayed_of_resetService hrun hsvc hwk ha
-      ((AC.le_gbar g).trans hkg) hy hcall
-      ((hdl j le_rfl).trans (by rw [max_eq_left hkg]; linarith)) hanc
+  · obtain ⟨k', hk'j, ha', hlt⟩ :=
+      (hsvc.toAC.syncACAt hrun (lo := g) (hi := tr.time k) le_rfl).2 w k Hd hwk ha
+      ((AC.le_gbar g).trans hkg) le_rfl y j ell hy hcall
+      ((hdl j le_rfl).trans (by
+        change max (tr.time k) (AC.gbar g) + sp.Δ ≤ tr.time j
+        rw [max_eq_left hkg]; linarith)) hanc
+    change tr.time k' < tr.projAC.deadline y k' (tr.time k) at hlt
     have := hdl k' hk'j
     rw [max_eq_left hkg] at this
     exact ⟨k', hk'j, ha', by linarith⟩
-  · obtain ⟨k', hk'j, ha', hlt⟩ := caught_of_catchRun hrun hc hwk ha (not_le.mp hkg) hy
+  · obtain ⟨k', hk'j, ha', hlt⟩ := hrun.toLocalRun.acCatchAt hc hwk ha (not_le.mp hkg) hy
       hcall (by linarith) hanc
     exact ⟨k', hk'j, ha', by linarith⟩
 

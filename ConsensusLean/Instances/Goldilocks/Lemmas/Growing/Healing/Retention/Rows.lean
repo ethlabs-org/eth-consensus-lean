@@ -27,7 +27,7 @@ theorem store_anc_of_honest_anc_at
     {A C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc A C :=
-  Generic.store_anc_of_honest_anc_at_from hrun.toLocalRun hnc ht hle hy h hC
+  hrun.toLocalRun.held_anc_at hnc ht hle hy h hC
 
 /-- Ancestry in a tree observed while honest lies in the historical honest universe. -/
 theorem honest_anc_of_store_anc_at {y : Fin sp.n} {k : Nat} {t : Time}

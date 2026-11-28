@@ -35,7 +35,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 public section
 
 -- Keep the run-level leaves beside their independent-observation facts.
-set_option linter.style.longFile 1700
+set_option linter.style.longFile 1600
 
 /-! # Generic healing leaves
 
@@ -569,13 +569,6 @@ open AC (gbar)
 open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ CatchRun)
 
-/-- Reachability at a held-state observation, not necessarily the time of cut `i`. -/
-theorem fg_reachable_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
-    (tr.state y i).fg.Reachable A.genesisPayload := by
-  simpa only [Trace.upTo_state tr y hle] using Compose.fg_reachable (h.upTo ht) hy i
-
 /-- Ancestry in a tree observed while honest lies in the historical honest universe. -/
 theorem honest_anc_of_store_anc_at_from {y : Fin P.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -607,7 +600,7 @@ theorem F_anc_of_hmax_le_at_from
     (hle : (tr.state y m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h) :
     Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B :=
   honest_anc_of_store_anc_at_from ht hxtime hx <| Store.F_anc_of_hmax_le_of_safe
-    (fg_reachable_at_from h hu hytime hy) (fg_reachable_at_from h ht hxtime hx)
+    (h.reachable_at hu hytime hy) (h.reachable_at ht hxtime hx)
     (Compose.Growing.honest_blocks_coherent_local h hnc)
     (fun _ hX => ⟨y, m, u, hu, hytime, hy, hX⟩)
     (fun _ hX => ⟨x, i, t, ht, hxtime, hx, hX⟩) hf
@@ -651,7 +644,7 @@ theorem held_of_relay_le_at_from
     rwa [Trace.upTo_state tr x hτ]
   rcases Compose.tree_cases (h.upTo hτ0) hx hB' with he | ⟨k, hk, ha⟩
   · rw [he]
-    exact Healing.Store.genesis_mem (fg_reachable_at_from h hm0 hm hz)
+    exact Healing.Store.genesis_mem (h.reachable_at hm0 hm hz)
   have ha := ((RunTrace.upTo_acceptAt tr).mp ha).2
   have hxk := h.antitone (hτ k hk) hx
   by_cases hg : g ≤ tr.time k
@@ -696,9 +689,9 @@ theorem HZ_le_hmax_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer d
   have hc0 : 0 ≤ cutZ P g := by
     have := P.slotTime_strictMono.monotone (Nat.zero_le (P.slotOf (gbar g) + 3))
     rwa [P.slotTime_zero] at this
-  have hRx := fg_reachable_at_from h hc0 hj.1 hx
+  have hRx := h.reachable_at hc0 hj.1 hx
   have hm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => h.time_mono hk.le
-  have hRz := fg_reachable_at_from h (h.time_nonneg m) hm hz
+  have hRz := h.reachable_at (h.time_nonneg m) hm hz
   obtain ⟨-, -, -, -, -, ⟨B, hB, hBh⟩, -⟩ := Store.cache_invariants _ _ _ _ hRx
   by_cases hle : HZ tr H g ≤ (tr.state z m).fg.hmax
   · exact hle
@@ -710,31 +703,6 @@ theorem HZ_le_hmax_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer d
   omega
 
 end HZLowerBound
-
-/-! ## Store ancestry below honest blocks -/
-
-section StoreAnc
-
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-
-/-- Historical ancestry descends into the reader's actual held tree, for any node run under
-growing faults from any starts `ini`. -/
-theorem store_anc_of_honest_anc_at_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    {B C : A.Blk} (hBC : Anc (tr.HonestBlocksAt H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
-    (tr.state y k).fg.Anc B C := by
-  have hs := Trace.upTo_state tr y hle
-  have hc : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, k, by rwa [hs]⟩
-  have hanc := RunTrace.anc_upTo_of_right h hnc ht hc hBC
-  rw [← hs]
-  exact Healing.store_anc_of_honest_anc_from (h.upTo ht)
-    (Compose.NoCollRun.upTo hnc t) hy hanc (by rwa [hs])
-
-end StoreAnc
 
 /-! ## Leaf 3, the frame window -/
 
@@ -1103,7 +1071,7 @@ theorem mem_of_honest_anc_at_from
     B ∈ (tr.state y k).fg.tree := by
   by_cases he : B = C
   · exact he ▸ hC
-  · exact (Anc.mem (store_anc_of_honest_anc_at_from hrun hnc ht hle hy h hC) he).1
+  · exact (Anc.mem (hrun.held_anc_at hnc ht hle hy h hC) he).1
 
 private theorem step_pending_just {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
     {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :

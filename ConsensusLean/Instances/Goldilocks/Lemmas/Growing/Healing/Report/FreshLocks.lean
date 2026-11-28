@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNextCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
@@ -348,7 +349,10 @@ private theorem carry_votes
     refine ⟨hsl, ⟨tr.time q, hqts, by linarith, fun hdl => ?_⟩, Hd, hHdr, ?_⟩
     · rw [ACTrace.upTo_deadline (d := tr.time i) hmA le_rfl] at hdl
       exact (AC.upTo_messageServedBefore hmA le_rfl).mpr
-        (served_of_resetService hsvc hz hcz (hgg.trans (hg.trans hqts)) hy hcast.1 hdl)
+        ((AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+          ((hsvc.toAC.syncACAt hrun (lo := g) (hi := tr.time q) le_rfl).1 z q e'.msg hz
+            ⟨ell', hcz.1, Or.inl ⟨e', hcz.2, rfl⟩⟩ (hgg.trans (hg.trans hqts)) le_rfl
+            y i ell hy hcast.1 hdl)))
     rcases Compose.frame_anc_acceptedU hrq.toU hz q ell' hcz'.1 Hd hHd Hd .refl with
       h0 | ⟨k, hk, ha⟩
     · exact Or.inr (Or.inl h0)
