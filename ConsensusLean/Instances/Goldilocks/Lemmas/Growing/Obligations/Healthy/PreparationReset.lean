@@ -170,23 +170,26 @@ theorem healthy_preparation_reset_at
   have hcatch := healthy_repair_catch_at S A V Q
       (by linarith only [hgr, h4B, hb, hΔ])
   have hnr := healthy_preparation_noRestart_at Q.run Q.hn Q.valid Q.bound_le Q.healthy.2.1
-  have hdrain := Healing.Growing.drainOutputs_of_service_at hrun hnc hs haw hf hcatch
+  have hdrain := Healing.Growing.KernelProof.drainOutputs_of_service_at hrun hnc hs haw hf hcatch
     (G := (Q.index : Nat)) (Ld := healthyDrainLen S Q.index)
     (by rw [healthyDrainLen_val]; change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1
         omega)
-  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at
-    hstart hnc hf hs
-    haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
-    htimeoutG
-    hr0 hgr Q.index.1.pos hcz (hBGh.trans hb) (fun s₀ N hs₀ hN => by
-      apply Healing.Growing.proposalGap_iff.mpr
-      intro c hc hcN
-      obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V
-        Q.run Q.hn Q.valid Q.noCollision Q.nonfinal
-        (hb.trans Q.bound_le) hp
-        (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBGh, hΔ]) c hc hcN
-      exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
-    hcal hgap hr0 hδG hhalf
+  obtain ⟨a, ha, hab⟩ := by
+    simpa only [zero_add] using Healing.Growing.exists_reset_of_drain_rounds_awake_within_at
+        hstart hnc hf hs
+        haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
+        (Generic.voteLatency_zero_from hstart.toLocalRun) le_rfl
+        (by simpa only [zero_add] using htimeoutG)
+        hr0 hgr Q.index.1.pos hcz (by simpa only [zero_add] using hBGh.trans hb)
+        (fun s₀ N hs₀ hN => by
+          apply Healing.Growing.proposalGap_iff.mpr
+          intro c hc hcN
+          obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V
+            Q.run Q.hn Q.valid Q.noCollision Q.nonfinal
+            (hb.trans Q.bound_le) hp
+            (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBGh, hΔ]) c hc hcN
+          exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
+        hcal hgap hr0 hδG hhalf
   have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, AC.gbar Q.gst ≤ t →
       t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb

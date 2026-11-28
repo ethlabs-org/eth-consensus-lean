@@ -29,7 +29,7 @@ Each node is honest at its own cut and the fault bound is per time:
   `3c ≤ δ_t`, a reset `a` with its finite premises through the horizon and the placement;
 * `final_reset_premises_at`: its instance at the FG gap `c = fgSlots` and the protocol FG delay.
 
-The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_at` on the drain
+The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_within_at` on the drain
 `drainOutputs_of_service_at`; the snapshot is the static `snapshot_of_awake` on the prefix through
 the horizon. The ready scalar, the reset bound, the horizon of the gap and the placement are the
 static `final_reset_bounds`, the duties of the gap the static `final_query_duty`. -/
@@ -140,7 +140,8 @@ theorem final_reset_premises_of_shared_within_at
   have hdrain : Healing.Growing.Shadow.DrainOutputs Q.trace
       (runProposer S Q.run.2 Q.hn) H Q.gst
       (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon :=
-    Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
+    Healing.Growing.KernelProof.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults
+      hcatch
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
   obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_within_at

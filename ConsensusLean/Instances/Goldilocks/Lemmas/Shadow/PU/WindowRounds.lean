@@ -27,41 +27,6 @@ variable {sp : ACParams}
 private theorem faults_lt_quorum {f n : Nat} (hn : 1 ≤ n) (hf : 3 * f ≤ n - 1) :
     f < 2 * ((2 * n + 2) / 3) - n := by omega
 
-/-- Leaf 11's wrapper for the reset induction, through the delayed report-follow interface. -/
-theorem round_of_warm_within_interface
-    {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
-    {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
-    (hΔF : 6 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < T)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
-      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
-        ((tr.state p (kX + 1)).fg.σ X.root).h :=
-  round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
-    hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
-
 /-- Proposal acceptance, read in the proposer's prefix rather than a stock run. -/
 theorem proposal_mem_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -148,7 +113,7 @@ theorem rise_reset_rounds_within_at
       have hlt : sp.ts (u + 1 : Nat) < sp.ts (u + (r + 1) * ρ + 1 : Nat) :=
         (AC.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
       linarith
-    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_interface (N := N)
+    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_at (N := N)
       (hframe.mono le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
       hD hΔF hxl (by omega) (by linarith) hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hcal
       hgap ht₀ hδG hK
@@ -164,55 +129,6 @@ theorem rise_reset_rounds_within_at
     obtain ⟨a, ha, hat⟩ := ih (u := x) (by omega) hxN
       (by linarith [hts hnext]) hpx rfl hX hXs (by omega)
     exact ⟨a, ha, hat.trans (by linarith [hts hnext])⟩
-
-/-- Same-tick specialization. The zero-latency run supplier is still an explicit premise. -/
-theorem rise_reset_rounds_at
-    {g ΔF b T t₀ : Time} {s₀ N G M Gs : Nat} {isTop : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
-      isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
-    (hδ : 3 ≤ sp.toParams.fg.δt) (hG : 1 ≤ G)
-    (hlat : Generic.VoteLatencyAt tr H 0)
-    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hgp : ProposalGap tr H proposer G s₀ N)
-    (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
-    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
-      (Gs : Time) * sp.Δ ≤ T)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧
-      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
-        (Gs : Time) * sp.Δ := by
-  simpa only [zero_add] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hδ hG hlat le_rfl (by simpa only [zero_add] using hΔF) hgp hmb hH hTb hna r
-    hwarm hN (by simpa only [zero_add] using hT) hz hdes hP hPs hrise hcal hgap ht₀ hδG hK
-
-/-- Four P-U attempts retain the six rise rounds of the stock five-attempt budget. -/
-theorem sum_riseLen_four (d ρ s lam : Time) (HZ : Nat) :
-    ∑ j ∈ Finset.range 4, (riseLen d ρ s HZ (2 * HZ + j) + lam) =
-      4 * (d + s + lam) + 6 * ρ := by
-  simp only [Finset.sum_range_succ, Finset.sum_range_zero, riseLen_eq, riseRounds_eq,
-    Nat.add_sub_cancel_left]
-  norm_num
-  ring
 
 /-- A warm proposal supplier on P-U windows. This is a premise, not a claimed drain proof. -/
 structure DrainOutputs (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n)

@@ -43,14 +43,6 @@ open Consensus.Goldilocks.Generic (riseRounds)
 
 variable {P : Params} {A : NodeAC P}
 
-/-- The P-U floor, unlike the stock contest floor, is always `hmax - 1`. -/
-theorem le_pred_add_riseRounds (st : Store P A.Payload) {hz : Nat}
-    (hpos : 1 ≤ st.hmax) (hv : 2 * hz ≤ Generic.frameKey'' A st) :
-    hz + 1 ≤ st.hmax - 1 + riseRounds hz (Generic.frameKey'' A st) := by
-  classical
-  rw [riseRounds_eq, Generic.frameKey''_eq] at *
-  split_ifs at * <;> omega
-
 /-- A P-U viable held block is above finality. In the predecessor-height top case use
 `F ⪯ J ⪯ Q`; all other cases are strictly above `hj` and use the existing G1.2 proof. -/
 theorem finalized_below_viable {ACP : Type} {acp₀ : ACP} {st : Store P ACP}

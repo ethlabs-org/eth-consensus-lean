@@ -51,17 +51,6 @@ theorem report_kind_of_proposal_viable {B R : NodeBlock P ACP}
   · have htop : st.hmax = st.hj + 1 := by omega
     exact Or.inr ⟨by omega, (hB.2 htop (by omega)).trans hBR⟩
 
-/-- The unchanged rise count covers the P-U proposal's height deficit. -/
-theorem pred_add_riseRounds_frameKey'' {A : NodeAC P} {st : Store P A.Payload} {HZ : Nat}
-    (hkey : 2 * HZ ≤ Generic.frameKey'' A st) :
-    HZ + 1 ≤ st.hmax - 1 + riseRounds HZ (Generic.frameKey'' A st) := by
-  classical
-  by_cases htop : st.hmax = st.hj + 1
-  · simp only [riseRounds_eq, Generic.frameKey''_eq, ite_eq_left htop] at hkey ⊢
-    omega
-  · simp only [riseRounds_eq, Generic.frameKey''_eq, ite_eq_right htop] at hkey ⊢
-    omega
-
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
@@ -102,9 +91,8 @@ private theorem rounds_le_of_proposal_viable
     (hkey : Generic.frameKey'' (goldilocksNode sp) (tr.state z kB).fg = v) (hv : 2 * HZ ≤ v)
     (hB : M - 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h) :
     HZ + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + riseRounds HZ v := by
-  have h := pred_add_riseRounds_frameKey'' (A := goldilocksNode sp) (st := (tr.state z kB).fg)
-    (HZ := HZ) (by rw [hkey]; exact hv)
-  rw [hkey, hwin.M_eq z kB hz hlo hhi] at h
+  have h := Generic.pred_add_riseRounds_of_key (by rw [← hkey, Generic.frameKey''_eq]) hv
+  rw [hwin.M_eq z kB hz hlo hhi] at h
   exact h.trans (Nat.add_le_add_right hB _)
 
 /-- The shadow key bounds the height deficit at an honest proposal cut. -/

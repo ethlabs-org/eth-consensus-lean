@@ -100,8 +100,7 @@ open Healing.Growing (HZ IsReset CatchRun)
 
 The arithmetic of `frameKey''` (twice `h_max`, plus one in a top frame), restriction of a
 `FrameWindow`, and the run-independent production: four attempts of the sequential pigeonhole give
-a window from a height range, a key lag and `J` agreement. `sum_riseLen_four'`: four attempts fit
-the six rise rounds of the five-attempt budget. -/
+a window from a height range, a key lag and `J` agreement. -/
 
 section FrameWindowKey
 
@@ -230,15 +229,6 @@ theorem exists_frameWindow_seq_of_mem {tr : RunTrace A} {H : Time → Set (Fin P
       ((le_add_of_nonneg_right hlam).trans (ha.trans hi₁)) (hi₂.trans_lt hend)
       ((le_add_of_nonneg_right hlam).trans (ha.trans hm₁)) (hm₂.trans_lt hend))
   exact ⟨v, hv₁, hv₂, a, ha, hb, hK, M, isTop, J, hM, ht, hj⟩
-
-/-- Four attempts retain the six rise rounds of the five-attempt budget. -/
-theorem sum_riseLen_four' (d ρ s lam : Time) (HZ : Nat) :
-    ∑ j ∈ Finset.range 4, (Healing.riseLen d ρ s HZ (2 * HZ + j) + lam) =
-      4 * (d + s + lam) + 6 * ρ := by
-  simp only [Finset.sum_range_succ, Finset.sum_range_zero, Healing.riseLen_eq,
-    Healing.riseRounds_eq, Nat.add_sub_cancel_left]
-  norm_num
-  ring
 
 end FrameWindowKey
 

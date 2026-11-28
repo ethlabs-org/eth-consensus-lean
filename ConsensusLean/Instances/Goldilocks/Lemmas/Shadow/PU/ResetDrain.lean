@@ -14,9 +14,9 @@ public section
 
 /-! # The reset bound from finite service under P-U
 
-The finite-service reset bound of the growing kernel (`exists_reset_of_drain_rounds_awake_at`
-and its delayed form), with the callers' signatures, over the P-U window search
-`Shadow.exists_reset` (four attempts on the shadow key `frameKey''`), and the warm-proposal
+The finite-service reset bound of the growing kernel
+(`exists_reset_of_drain_rounds_awake_within_at`, latency `0` for same-tick votes), over the P-U
+window search `Shadow.exists_reset` (four attempts on the key `frameKey''`), and the warm-proposal
 supplier `drainOutputs_of_service_at` on `Generic.FrameWindow` windows. The core keeps the stock
 prelude (the height-advance case split, the height range from the snapshot and the call lag)
 and runs the four-attempt search at horizon `B - 1`, `B` the stock five-attempt bound: the
@@ -458,41 +458,6 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     (sign := sign) (fun y j t x fgDue hy hg => hcal y j t x fgDue hy.1 hg)
     hgap ht₀ hδG hK.truncH
   exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
-
-/-- Finite-service reset with same-tick vote latency: the bound keeps the five signing gaps. -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_at
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b r t₀ : Time} {G Ld Gs : Nat}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
-    (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
-    (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
-    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
-      5 * ((Gs : Time) * sp.Δ) ≤ b)
-    (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
-      sp.ts N + 2 * sp.Δ <
-        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
-          5 * ((Gs : Time) * sp.Δ) →
-      ProposalGap tr H proposer G s₀ N)
-    (hdrain : Shadow.DrainOutputs tr proposer H g G Ld b)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ r)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧
-      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
-        5 * ((Gs : Time) * sp.Δ) := by
-  simpa only [zero_add] using exists_reset_of_drain_rounds_awake_within_at hrun hnc
-    hf hsvc hawake hcatch hnr hH hδ (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
-    (by simpa only [zero_add] using hΔF) hr hgr hG hcz
-    (by simpa only [zero_add] using hb)
-    (by simpa only [zero_add] using hgp) hdrain hcal hgap ht₀ hδG hK
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
