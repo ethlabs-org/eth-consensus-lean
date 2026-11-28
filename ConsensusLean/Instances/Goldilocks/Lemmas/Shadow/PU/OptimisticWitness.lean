@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
@@ -94,7 +95,7 @@ private theorem carry_of_service_senders
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   have hsync := Healing.PU.service_syncACAt hrun hsvc
     (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
-  have hgg := AC.le_gbar g
+  have hgg := Healing.le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     have hsl := (AC.castAt_specU hr.toU hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsl
@@ -167,7 +168,7 @@ private theorem relay_source_at_proposal_at
     by_cases hqg : gbar g ≤ tr.time q
     · obtain ⟨k, hki, hk, hkt⟩ := (Healing.PU.service_syncACAt hrun hsvc
         (lo := g) (hi := tr.time q) le_rfl).2 z q Q hz hq
-        ((AC.le_gbar g).trans hqg) le_rfl y i ell hy hc
+        ((Healing.le_gbar g).trans hqg) le_rfl y i ell hy hc
         (by have := hdl i le_rfl _ hqt
             change tr.projAC.deadline y i (tr.time q) ≤ tr.time i
             linarith) hFQ
@@ -497,7 +498,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     obtain ⟨hvs, ⟨k, hk, hsend, hklo, hkhi⟩, Hv, hHvU, hHvr, hDHv, hacc⟩ :=
       optimistic_writer_votes_at hrun hnc hx hopt v hv
     have hvheld := AC.Growing.sync_window_before_forward hacG.localRun hsw hk hsend
-      ((AC.le_gbar g).trans (hm.trans hklo))
+      ((Healing.le_gbar g).trans (hm.trans hklo))
       (by change tr.time k + sp.Δ ≤ tr.time i; linarith) hy hc
       (fun k' hk' hrk => (hrs k' hk' hrk).trans hklo)
       (by change tr.time k + sp.Δ ≤ tr.time i; linarith)
