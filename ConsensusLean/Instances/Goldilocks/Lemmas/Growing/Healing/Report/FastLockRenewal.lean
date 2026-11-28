@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUnlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorFast
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
