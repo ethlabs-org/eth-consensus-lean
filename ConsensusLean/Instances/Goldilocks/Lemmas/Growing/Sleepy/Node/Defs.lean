@@ -16,10 +16,10 @@ Every node quantifier reads honesty at the cut of the event it constrains:
 * `HVoteAt tr H y i e`: a vote cast at a cut at which its node is honest. A vote of a node
   compromised at the time of the cut is not constrained by the run, so every vote quantifier of the
   invariant ranges over `HVoteAt`;
-* an **origin** (`Origin`, `OriginWithin`, `OriginBefore`): a result or an optimistic selection
+* an **origin** (`OriginWithin`, `OriginBefore`): a result or an optimistic selection
   of a node honest at its event cut. Events are immutable, so a later compromise removes no
   origin;
-* the frontier `OriginsBelowUpTo`, `VotesBelowUpTo`, the slot voters still honest at `d`
+* the frontier `OriginsBelowUpTo`, the slot voters still honest at `d`
   (`VotersAt`), the count shapes `SleepyBoundsFrom` (`f_d < n / 2` at every `d ≤ b`, and, for the
   slots from a first slot on, the slot count `FaultBoundAt (t_s + Δ) d` for `d ≤ t_s + 6Δ`), the
   finite service `SleepyServiceBefore` and its form from a start time `SleepyServiceFrom` (sends and
@@ -88,12 +88,6 @@ variable (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 def HVoteAt (y : Fin sp.n) (i : Nat) (e : AC.Em sp (List (FG.Att sp.n))) : Prop :=
   y ∈ H (tr.time i) ∧ AC.VoteAt tr.projAC y i e
 
-/-- **An origin of label `s`**: the result of an update, or the selection of an optimistic check,
-of slot `s` by a node honest at its event cut. -/
-def Origin (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat) : Prop :=
-  ∃ x i CV, x ∈ H (tr.time i) ∧
-    (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV)
-
 /-- An origin of label `s` whose event cut is at a time `≤ b`. -/
 def OriginWithin (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
   ∃ x i CV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
@@ -112,12 +106,6 @@ def OnOriginChainWithin (B : AC.Blk sp.n (List (FG.Att sp.n))) (b : Time) : Prop
 def OriginsBelowUpTo (s : Nat) (b : Time) : Prop :=
   ∀ C j C' j', j < s → j' < s → OriginWithin tr H C j b → OriginWithin tr H C' j' b →
     Compatible (tr.HonestBlocksAt H) C C'
-
-/-- **`V_s` up to `b`**: every honest vote at a time `≤ b` of a slot `m` with `j < m ≤ s`
-extends every origin within `b` of label `j`. -/
-def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
-  ∀ C j, OriginWithin tr H C j b → ∀ y i e, HVoteAt tr H y i e → tr.time i ≤ b →
-    j < e.msg.slot → e.msg.slot ≤ s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
 
 /-- The voters of slot `s` (honest at their vote) that are still honest at `d`. -/
 def VotersAt (s : Nat) (d : Time) : Set (Fin sp.n) :=
@@ -186,11 +174,6 @@ theorem hVoteAt_iff {y : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))}
     HVoteAt tr H y i e ↔ y ∈ H (tr.time i) ∧ AC.VoteAt tr.projAC y i e :=
   Iff.rfl
 
-theorem origin_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} :
-    Origin tr H C s ↔ ∃ x i CV, x ∈ H (tr.time i) ∧
-      (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV) :=
-  Iff.rfl
-
 theorem originWithin_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
     OriginWithin tr H C s b ↔ ∃ x i CV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
       (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV) :=
@@ -211,20 +194,9 @@ theorem originsBelowUpTo_iff {s : Nat} {b : Time} :
       OriginWithin tr H C' j' b → Compatible (tr.HonestBlocksAt H) C C' :=
   Iff.rfl
 
-theorem votesBelowUpTo_iff {s : Nat} {b : Time} :
-    VotesBelowUpTo tr H s b ↔ ∀ C j, OriginWithin tr H C j b → ∀ y i e, HVoteAt tr H y i e →
-      tr.time i ≤ b → j < e.msg.slot → e.msg.slot ≤ s →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg C :=
-  Iff.rfl
-
 theorem votersAt_iff {s : Nat} {d : Time} {x : Fin sp.n} :
     x ∈ VotersAt tr H s d ↔ x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s :=
   Iff.rfl
-
-theorem OriginWithin.origin {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
-    (h : OriginWithin tr H C s b) : Origin tr H C s :=
-  let ⟨x, i, CV, hx, _, h⟩ := h
-  ⟨x, i, CV, hx, h⟩
 
 theorem OriginWithin.mono {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
     (h : OriginWithin tr H C s b) (hb : b ≤ b') : OriginWithin tr H C s b' :=
