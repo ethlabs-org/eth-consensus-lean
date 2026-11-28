@@ -213,7 +213,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
     hnr hm hmb hz' hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB
     hK with hbelow | hheads | ⟨a, _, D, CV, hza, hop, hSD⟩
   · exact hroot hbelow
-  · exact Core.honest_prefix_of_finality_before_at hrun.toCore hnc hsvc hawake hf hcatch hnr
+  · exact Core.honest_prefix_of_finality_before_at hrun hnc hsvc hawake hf hcatch hnr
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
         linarith) hmb hheads hy hc hes hSv haS hK
