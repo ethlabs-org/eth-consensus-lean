@@ -365,7 +365,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Vo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.VoterReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
@@ -378,9 +377,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesLocal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesViews
@@ -488,7 +485,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Recor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Select
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.CoreLift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
@@ -525,6 +521,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FloorCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
