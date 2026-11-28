@@ -26,6 +26,7 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
+variable {hold : Time}
 
 private theorem vote_extends_upTo
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -47,7 +48,7 @@ private theorem vote_extends_upTo
 /-- The later-slot update selects above a block extended by every honest slot vote,
 when the block lies above the honest finalized tips. -/
 theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
-    {lo hi hold : Time}
+    {lo hi : Time}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
@@ -164,7 +165,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
 
 /-- Every stored label at the later-slot update is compatible with the common vote floor. -/
 theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
-    {lo hi hold : Time}
+    {lo hi : Time}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
