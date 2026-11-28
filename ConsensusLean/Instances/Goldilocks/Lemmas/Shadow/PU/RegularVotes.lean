@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
@@ -145,10 +146,10 @@ private theorem slow_live_locks_service_at
     constructor
     · intro x k v hx hv hk y j ell hy hj _ hdl
       exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-        ((service_syncACAt hrun hsvc (lo := g) le_rfl).1
+        ((Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) le_rfl).1
           x k v hx hv hk le_rfl y j ell hy hj hdl))
     · intro x k B hx hB hk y j ell hy hj _ hdl hanc
-      exact (service_syncACAt hrun hsvc (lo := g) le_rfl).2
+      exact (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) le_rfl).2
         x k B hx hB hk le_rfl y j ell hy hj hdl hanc
   apply AC.live_locks_of_stored_before hr K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)

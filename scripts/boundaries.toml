@@ -180,7 +180,6 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore",
@@ -192,7 +191,6 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix"]
 reason = """the generic healing leaves over any NodeAC (and LocalRunCoreStock, the stock instance of their run-facts bundle LocalRunCore) use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold AC lemmas, so the cut guard
@@ -206,7 +204,7 @@ holds the client-record provenance at any start, and Healing.Source the toFG-to-
 reset leaves. Healing.M1.CallLag holds the relay calls from wakefulness at any start and any slot schedule, for the
 snapshot and call-lag leaves. Healing.AcquireClient (the client record facts and signed finality pairs) and
 Healing.M1.PreAdvanceFacts (client progress from the lock premise) hold the client facts at any start, for leaf 4.
-Healing.M1.RiseWindow holds the store-level floor and rise-round bound, for leaf 8. Healing.Retention.Prefix holds
+Healing.Retention.Prefix holds
 the store-level entry at a height and the honest attestation on a left entry, for leaf 13. HealingRounds, the leaves
 over a healing supplier, imports HealingLeaves, and the same cut guard checks its constants. HealingEdges, the
 generic assembly edges, imports HealingLeaves and HealingRounds, and the same cut guard checks its

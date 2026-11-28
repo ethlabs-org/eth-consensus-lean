@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Goldiloc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -17,6 +18,8 @@ public section
 /-! # Proposal viability and height leaves for shadow P-U execution -/
 
 namespace Consensus.Goldilocks.Healing
+
+open Consensus.Goldilocks.Generic (riseRounds)
 
 variable {P : Params} {ACP : Type} {st : Store P ACP}
 
@@ -62,6 +65,8 @@ theorem pred_add_riseRounds_frameKey'' {A : NodeAC P} {st : Store P A.Payload} {
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
+
+open Consensus.Goldilocks.Generic (riseRounds)
 
 open AC (ACParams Payload)
 
@@ -317,7 +322,7 @@ theorem round_of_warm_within_at
   have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2⟩
   obtain ⟨_, c, ellp, d, pay, hc, hcall, hd, htc, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt hr (hnc.upTo _) hp hdx hX' hXs
+    Healing.honestProposalRun_of_proposesAt hr (hnc.upTo _) hp hdx hX' hXs
   rw [← hdx] at hc hd
   have hct : tr.time c = sp.ts x := htc
   have hpc := hrun.antitone (show tr.time c ≤ tr.time kX by rw [hct, htX]) hp
