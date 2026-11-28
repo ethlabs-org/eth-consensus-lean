@@ -19,10 +19,10 @@ that of growing faults use them alike:
 * `final_query_duty`: the final recurrence (`recurrence_gap` on the pattern `[0, c, 2c, 3c]`) gives,
   in every slot window `[x₀, x₀ + X)` inside `[s₀, N]`, a slot `x > 0` with `t_x ≤ horizon` whose
   designated proposer duty is honest and ready;
-* `final_reset_bounds`: the ready scalar, the snapshot fit, the reset bound
-  `B = ready + (20 L_drain + 24δ_t + 24X + 40)·Δ` between `ready + 4Δ` and the horizon, the horizon
-  of every gap window that the reset frame reads (`final_heal_horizon_fit`), and the placement
-  (H3) of every reset `0 ≤ a ≤ B` at `u_min = slot a + 2k + 5`. The coefficient input is
+* `final_reset_bounds_within`: the ready scalar, the snapshot fit, the reset bound
+  `B = ready + (20 L_drain + 24δ_t + 24X + 40)·Δ + 5d` between `ready + 4Δ` and the horizon, the
+  horizon of every gap window that the reset frame reads (`final_heal_horizon_fit`), and the
+  placement (H3) of every reset `0 ≤ a ≤ B` at `u_min = slot a + 2k + 5`. The coefficient input is
   `contract_heal_ge_final`. -/
 
 namespace Consensus.Goldilocks.Obligations
