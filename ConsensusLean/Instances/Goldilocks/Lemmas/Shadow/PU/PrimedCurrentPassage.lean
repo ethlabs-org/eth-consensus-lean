@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
@@ -117,7 +118,7 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcallp, hpay, hti, hparent, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hcp hpay
   have hip : tr.time ip = sp.ts p := hti

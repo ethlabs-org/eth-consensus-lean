@@ -51,7 +51,7 @@ theorem source_compatible_at {ini}
   obtain ⟨L, hL, hLr, hLB⟩ := hlocks l₀ hl₀
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) (mem_honestBlocksAt hrun hy hL) (hB₀r.trans hLr.symm)
   have hCB : ℓ.frame.Anc C B₀ := hCa.trans hva
-  exact compatible_of_head_anc hU (hCB.mono hΦU) hLB
+  exact compatible_of_anc_left hU (hCB.mono hΦU) hLB
 
 /-- **The rows are sourced by compatible blocks, at a read time**: with every FG source, at a cut
 before `n` of a node honest then, compatible with `B`, every attestation of the tree at cut `n` of
@@ -150,7 +150,7 @@ theorem caches_compatible_by {ini}
   obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hsub : (tr.state y n).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX =>
     upTo_subset hrun ht0 ⟨y, hy, n, by rw [hst]; exact hX⟩
-  exact ⟨compatible_of_head_anc hU (hFJ.mono hsub) hJ, hJ⟩
+  exact ⟨compatible_of_anc_left hU (hFJ.mono hsub) hJ, hJ⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

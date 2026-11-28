@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
@@ -42,43 +42,6 @@ open Consensus.Goldilocks.Healing.Growing
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
-
-/-- The shadow FG catch-up bridge supplies the stock AC acceptance witness. -/
-theorem service_catch_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {g : Time} (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    {w : Fin sp.n} {kw : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
-    (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
-    {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
-    (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
-    (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ :=
-  KernelProof.Core.service_catch_at hrun.toCore hcatch hw ha hkw hy hcy hi hanc
-
-/-- The shared AC service proof transfers a fast lock at the next cast. -/
-private theorem first_transfer_service_at
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
-    {s : Nat} (hm : gbar g ≤ sp.ts s)
-    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
-    (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
-    (hviab : AC.ViableAtVote ell e (s + 1) B)
-    (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  exact KernelProof.Core.first_transfer_service_at hrun.toCore hnc hsvc hawake hcatch hnr hm
-    hx hy hfl hBD hc hs hib hFB hviab hearlier hK
 
 /-- The shared service proof carries counted result votes to the next reader. -/
 private theorem result_carry_service_at
@@ -251,7 +214,7 @@ theorem regular_fast_next_votes_of_early_witness_at
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hQw hvQ
       (hXD.trans (hDC.trans hCQ))
   intro y i ell e hy hc hs hhigh hFX hviab ih
-  exact first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy
+  exact KernelProof.first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy
     (Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩) hXD hc hs (hhigh.trans hmb)
     (by rwa [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]) hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes) hK
@@ -389,7 +352,8 @@ theorem regular_fast_next_votes_at {s₀ s M : Nat}
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -449,7 +413,8 @@ theorem regular_slow_next_votes_at {s₀ s M : Nat}
   have hres : AC.ResultAt tr.projAC x c s C
       (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
