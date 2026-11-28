@@ -299,7 +299,7 @@ theorem unanimous_next_vote_viable_core_at
   have hr := (acRun_upTo_time hrun hnc j).localRun
   have hc' := castAt_upTo_of_le le_rfl hcast
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
-  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.F P := by
     rw [Outcome.frame_of_call hrun hy hcast.1]
     exact hroot
   -- the cast is at `t_{u+1}` or later
@@ -310,7 +310,7 @@ theorem unanimous_next_vote_viable_core_at
   have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
-    (((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hrootFrame)
+    (hrootFrame)
   -- the caster accepts `P` before the freeze
   obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hrun hnc hsvc hc hP hslot hu
     hun hg hy hcast.1 (by linarith) hjb hnr hvote hanc
@@ -322,7 +322,7 @@ theorem unanimous_next_vote_viable_core_at
     exact (AC.frameIn_of_callAt hr hy hca).2
       ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
   have hrootp := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hrootFrame
-  have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootp
+  have hFP := hrootp
   have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y P (sp.ts u + 3 * sp.Δ) :=
     Or.inr ⟨k', ha'', hk't⟩
   have hPt := Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy hc' hs hHdp hacc hFP
@@ -332,7 +332,7 @@ theorem unanimous_next_vote_viable_core_at
     have hmem := hPt.1
     rw [hfr, hst] at hmem
     exact hmem.1
-  have hroot' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hrootp hPt.1
+  have hroot' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.rooted.1 hrootp hPt.1
   refine ⟨Anc.mono hsub hFP, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
   rw [hfr, hst] at hmem ⊢

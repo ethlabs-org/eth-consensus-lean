@@ -122,7 +122,7 @@ theorem optimistic_first_proposal_anc {ini} (hrun : ACRun proposer T H U ini)
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ℓ.frame (T.time i)).2 = some (d, pay))
     (hV : B ∈ ℓ.frame.tree ∧
-      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
+      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ℓ.frame σ v)
     (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B)
     (hf : 2 * (K.committee σ ∩ Hᶜ).ncard < sp.committeeSize) :

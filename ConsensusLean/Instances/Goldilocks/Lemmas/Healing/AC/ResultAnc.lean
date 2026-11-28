@@ -41,7 +41,7 @@ theorem result_transfer_ancU
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
+    · exact mem_of_anc h hΦ.rooted.1
   have hmaj := result_majority hres
   obtain ⟨ℓX, hupd, -, rfl⟩ := hres
   have hsupp := counted_supportersU hrun hX hy hupd.1 hc hs hDC hcarry hviab hd

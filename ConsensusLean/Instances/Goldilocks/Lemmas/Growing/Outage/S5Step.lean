@@ -104,26 +104,26 @@ private theorem vote_viable_at
       Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J B)
     (hK2 : (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot) :
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.F) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.F := by
   have hd := hrun.time_nonneg k
   have hr := (acRun_upTo hrun hnc hd).localRun
   have hcT : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   have hfr := frame_of_projAC_at hrun hy hc.1
-  have hcomp : Compatible (tr.HonestBlocksAt H) ℓ.frame.fcRoot B := by
+  have hcomp : Compatible (tr.HonestBlocksAt H) ℓ.frame.F B := by
     rw [hfr]
     change Compatible _ (tr.state y k).fg.F B
     exact hcache.1
   rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ℓ.frame.tree := hD.1
-      have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
+      have hFB := hfB
       have hBt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
-      have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
+      have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hfB hBt
       refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcT D hD B
           hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
       rw [hfr] at hDt ⊢
@@ -199,7 +199,7 @@ private theorem vote_extends_of_counted_batch_run
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact AC.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.rooted.1
   have hBU := frame_upTo_at hrun hnc hy hc.1 hBt
   have h := Compose.vote_extends_of_counted_batch hr hy hc' hs hviab (SX := SX) (W := W) hSXH
     (fun x hx => by
@@ -356,8 +356,8 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
     exact Or.inl h
   · right
     have hFP' : Anc (tr.HonestBlocksAt H) ℓ.frame.F D.P := hFℓ ▸ hFP
-    have hPt := AC.frame_mem_of_between sp hU hΦ hΦU hΦ.fcRoot_mem h hFP'
-    exact AC.anc_tree_of_anc_U hU hΦ hΦU hPt h hΦ.fcRoot_mem
+    have hPt := AC.frame_mem_of_between sp hU hΦ hΦU hΦ.rooted.1 h hFP'
+    exact AC.anc_tree_of_anc_U hU hΦ hΦU hPt h hΦ.rooted.1
 
 /-- The invariant at the cuts before `i` holds at the cuts before every `k ≤ i`. -/
 theorem OutageLockInv.mono {i k : Nat} (h : OutageLockInv D i) (hk : k ≤ i) :

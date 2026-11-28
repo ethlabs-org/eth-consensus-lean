@@ -216,11 +216,6 @@ theorem updateFinality_JF (st : Store P₄ Unit) (σ : ChainState P₄.n) {X Y :
 theorem mem_tree {st : Store P₄ Unit} {B : NodeBlock P₄ Unit} (h : st.blocks B.root = some B) :
     B ∈ st.tree := h
 
-/-- The head height floor is at most `h_max`. -/
-theorem headHeightFloor_le (st : Store P₄ Unit) : st.headHeightFloor ≤ st.hmax := by
-  unfold Store.headHeightFloor
-  split_ifs <;> omega
-
 /-- The FG state when `B₁` and its chain state are added to `s₀`, before `update_finality`. -/
 def u₁ : Store P₄ Unit :=
   { s₀ with blocks := Function.update s₀.blocks B₁.root (some B₁)

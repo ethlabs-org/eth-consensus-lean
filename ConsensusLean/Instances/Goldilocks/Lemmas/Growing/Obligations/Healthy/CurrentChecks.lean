@@ -69,8 +69,8 @@ private theorem read_frame (D : RepairSchedule tr H proposer dg g b cm βK)
   have ht := C.time_nonneg
   have hle := C.readPoint.1
   have hst : (tr.upTo t).state y n = tr.state y n := Trace.upTo_state tr y hle
-  refine ⟨(Store.frame_realization _ _ _ _
-      (Healing.Growing.fg_reachable_at hrun ht hle C.honest)).1,
+  refine ⟨Store.frame_realization _ _ _ _
+      (Healing.Growing.fg_reachable_at hrun ht hle C.honest),
     fun X hX => ⟨y, n, t, ht, hle, C.honest, hX.1⟩, ?_, ?_⟩
   · have h := Compose.projAC_state (hrun.upTo ht).toLocalRun C.honest n
     rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y hle, hst] at h
@@ -97,7 +97,7 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
     (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
     ∀ X ∈ AC.liveLockBlocks sp (tr.state y n).ac.locks (Node.frame (tr.state y n))
-        t ∪ {(Node.frame (tr.state y n)).fcRoot},
+        t ∪ {(Node.frame (tr.state y n)).F},
       Goldilocks.Compatible (Node.frame (tr.state y n)).tree X R := by
   have hrun := D.reset.run
   have hnc := D.reset.noColl
@@ -116,7 +116,7 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
       rcases hX with hX | hX
       · exact hPhi.rooted.2 X hX.1
       · rw [Set.mem_singleton_iff.mp hX]
-        exact hPhi.F_anc_fcRoot
+        exact Relation.ReflTransGen.refl
     exact Or.inr hFX
   have hqb := hqt.trans C.time_bound
   have hs' : Healing.cleanLabel sp D.resetTime + 2 * sp.k + 1 ≤ s := by
@@ -160,7 +160,7 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
     (hx : x ∈ H (tr.time r)) (hr : AC.ResultAt tr.projAC x r s B CV)
     (hRB : Anc (tr.HonestBlocksAt H) R B) (hrb : tr.time r ≤ b)
     (hs : Healing.cutZ sp.toParams g ≤ sp.ts s) (hL : s < C.label)
-    (hfc : ¬ (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot)
+    (hfc : ¬ (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).F)
     (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
     R ∈ (Node.frame (tr.state y n)).viableTree (Node.frame (tr.state y n)).tree := by
@@ -172,7 +172,7 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
     C.repairedCut
   rw [hR, Option.getD_some, recordCover_iff] at hcover
   rcases hcover with hF | ⟨z, q, l, E, DV, hz, -, hqt, hl, hsrc, hRE⟩
-  · exact absurd (hF ▸ hPhi.F_anc_fcRoot) hfc
+  · exact (hfc (by rw [hF]; exact Relation.ReflTransGen.refl)).elim
   have hqb := hqt.trans C.time_bound
   have hl' : Healing.cleanLabel sp D.resetTime + 2 * sp.k + 1 ≤ l := by
     rw [← D.cleanLabel_eq]; exact hl
@@ -207,7 +207,7 @@ theorem healthy_current_vote_domain_of_quarantine_at (D : RepairSchedule tr H pr
       tr.time q ≤ b → s < e.msg.slot →
       (∀ w p e', p < q → Compose.Growing.HVoteAt tr H w p e' → s < e'.msg.slot →
         AC.VoteExtends (tr.HonestBlocksAt H) e'.msg R) →
-      Anc (tr.HonestBlocksAt H) R ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) R ell.frame.F ∨
         R ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   intro z q ell e hz he hqb hse hprior
   exact Healing.Growing.ProposalImpl.result_prefix_vote_domain_before_of_quarantine_at D.reset

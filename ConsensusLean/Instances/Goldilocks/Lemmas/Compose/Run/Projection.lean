@@ -203,7 +203,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp}
           cases Option.some.inj (hc.2.symm.trans hℓ'.2)
           rw [hr]
           have hΦ : FrameOK ℓ.frame := hlaw.1 ▸
-            (Store.frame_realization _ _ _ _ (fg_reachable h.toLocalRun hy i)).1
+            Store.frame_realization _ _ _ _ (fg_reachable h.toLocalRun hy i)
           exact (restart_state sp _ y _ ℓ.frame (tr.time i) hΦ
             (h.time_nonneg i)).2.2.2.2.2.1
         · exact step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩

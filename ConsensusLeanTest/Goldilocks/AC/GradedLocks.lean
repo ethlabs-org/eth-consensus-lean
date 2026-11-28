@@ -126,10 +126,10 @@ theorem coherent_U : Coherent U := by
     simp [g, B1, B2, B3] at h ⊢
 
 /-- The frame with both children of `B1` viable. -/
-def Φ : Frm sp.n Unit := ⟨U, g, g, {B2, B3}⟩
+def Φ : Frm sp.n Unit := ⟨U, g, {B2, B3}⟩
 
 /-- The frame with only `B2` viable. -/
-def Φv : Frm sp.n Unit := ⟨U, g, g, {B2}⟩
+def Φv : Frm sp.n Unit := ⟨U, g, {B2}⟩
 
 theorem finite_U : U.Finite := by
   simp only [U]
@@ -139,19 +139,13 @@ theorem frameOK_Φ : FrameOK Φ where
   finite := finite_U
   coherent := coherent_U
   rooted := ⟨g_mem, anc_g⟩
-  fcRoot_mem := g_mem
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by rintro W (rfl | rfl); exacts [B2_mem, B3_mem]
-  fcRoot_anc_viableHeads := by rintro W (rfl | rfl); exacts [anc_g _ B2_mem, anc_g _ B3_mem]
 
 theorem frameOK_Φv : FrameOK Φv where
   finite := finite_U
   coherent := coherent_U
   rooted := ⟨g_mem, anc_g⟩
-  fcRoot_mem := g_mem
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by rintro W rfl; exact B2_mem
-  fcRoot_anc_viableHeads := by rintro W rfl; exact anc_g _ B2_mem
 
 /-- In `Φ` every block is its own viable ancestor. -/
 theorem viableAncestor_Φ {B : Blk sp.n Unit} (hB : B ∈ U) : Φ.viableAncestor B = B := by

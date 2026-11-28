@@ -125,7 +125,7 @@ private theorem exists_isViableAncestor {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ
   have hfin : {A | Φ.Anc A B ∧ Φ.AncestorCandidate A}.Finite :=
     hΦ.finite.subset fun A hA => mem_of_anc hA.1 hB
   obtain ⟨A, ⟨hAB, hAc⟩, hmax⟩ := hfin.exists_maximalFor (fun A : Block n FGP ACP => A.slot) _
-    ⟨Φ.F, hΦ.rooted.2 B hB, Or.inl hΦ.F_anc_fcRoot⟩
+    ⟨Φ.F, hΦ.rooted.2 B hB, Or.inl Relation.ReflTransGen.refl⟩
   refine ⟨A, hAB, hAc, fun A' hA'B hA'c => ?_⟩
   rcases hA'B.total hΦ.coherent hAB with h | h
   · exact h
@@ -148,7 +148,7 @@ theorem viableAncestor_spec {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block
 viable ancestor. -/
 theorem viableAncestor_self {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
     (hB : B ∈ Φ.tree)
-    (hc : B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot) : Φ.viableAncestor B = B := by
+    (hc : B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F) : Φ.viableAncestor B = B := by
   obtain ⟨hAB, -, hmax⟩ := viableAncestor_spec hΦ hB
   exact Anc.antisymm hΦ.coherent hAB (hmax B Relation.ReflTransGen.refl hc.symm)
 

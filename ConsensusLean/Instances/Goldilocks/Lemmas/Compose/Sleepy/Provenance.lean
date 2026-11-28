@@ -236,7 +236,7 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.post i).ac := by
   obtain ⟨hfr, hstep, -, -⟩ := hrun.cutLaw y hy i _ hc
   have hΦ : FrameOK ℓ.frame :=
-    hfr ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+    hfr ▸ Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
   have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
     rw [hfr]
     exact fun X hX => hX.1
@@ -351,7 +351,7 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp).State}
     | ac ℓ =>
       obtain ⟨hfr, hstep, _, _⟩ := hrun.cutLaw y hy i _ hc
       have hΦ : FrameOK ℓ.frame :=
-        hfr ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+        hfr ▸ Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
       have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
         rw [hfr]; exact fun _ h => h.1
       have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩

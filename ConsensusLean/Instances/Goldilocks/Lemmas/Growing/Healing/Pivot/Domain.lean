@@ -50,17 +50,17 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
         (tr.state p i).fg.hmax - 1 ≤ ((tr.state p i).fg.σ E.root).h) ∨
       (∃ E ∈ (tr.state p i).fg.tree, CoveredBefore tr H g a b (sp.slot (tr.time i)) i E ∧
         (tr.state p i).fg.hmax - 1 ≤ ((tr.state p i).fg.σ E.root).h)) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
   have hroot := held_target_proposal_root_before_covered_at hp hx hpH hBx hci hcall hd hti hib
     hheld hseed hcompare
-  by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot
+  by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.F
   · exact Or.inl hcovered
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci'
   have hrootB := hroot.resolve_right hcovered
-  have hFB := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootB
+  have hFB := hrootB
   have hBt := hheld hFB
   have hBy := (frame_tree_subset_at hp.run hp.noColl hpH hci).2 hBt
   have ht := hp.run.time_nonneg i
@@ -212,7 +212,7 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
         exact ⟨(tr.state p i).fg.J, hJt, hBJ, Or.inr ⟨by omega, Or.inr .refl⟩⟩
     · exact main fun hm hh => absurd ⟨hm, hh⟩ hQ
   obtain ⟨C, hCt, hBC, hCv⟩ := hdesc
-  have hrootB' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hrootB hBt
+  have hrootB' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hPhi.rooted.1 hrootB hBt
   have hBC' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBt hBC hCt
   refine Or.inr ⟨hBt, hrootB', C, hCt, ?_, hBC'⟩
   have hCf : C ∈ (Node.frame (tr.state p i)).tree := hfr ▸ hCt
@@ -235,7 +235,7 @@ theorem held_target_proposal_domain_before_covered_at
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
     (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) B) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree :=
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨ B ∈ ell.frame.viableTree ell.frame.tree :=
   held_target_proposal_domain_before_of_sources_covered_at hp hx hpH hBx hci hcall hd hti hib
     hheld hseed hcompare fun _ _ _ _ ho hrb hfloor =>
       high_floor_source_at_proposal_or_covered_at hp ho hpH hci hcall hti hrb hib hfloor

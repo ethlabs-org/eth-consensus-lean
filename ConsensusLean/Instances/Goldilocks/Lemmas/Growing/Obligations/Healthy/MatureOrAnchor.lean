@@ -45,8 +45,8 @@ private theorem frame_by_read (D : RepairSchedule tr H proposer dg g b cm βK)
   have hrun := D.reset.run
   have hnc := D.reset.noColl
   have hst : (tr.upTo t).state y k = tr.state y k := Trace.upTo_state tr y hle
-  refine ⟨(Store.frame_realization _ _ _ _
-      (Healing.Growing.fg_reachable_at hrun ht hle hy)).1,
+  refine ⟨Store.frame_realization _ _ _ _
+      (Healing.Growing.fg_reachable_at hrun ht hle hy),
     fun X hX => ⟨y, k, t, ht, hle, hy, hX.1⟩, fun X hX => ⟨y, k, t, ht, hle, hy, hX⟩, ?_⟩
   have h := Compose.locksWF_state (hrun.upTo ht) (hnc.upTo t) hy k
   rwa [hst] at h
@@ -99,7 +99,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
       Phi.Anc R (AC.getAnchor sp (tr.state y n).ac Phi t) := by
     intro hRF
     exact (AC.anc_tree_of_anc_U hU hPhi hsub hRm hRF hPhi.rooted.1).trans
-      (hPhi.F_anc_fcRoot.trans hfc)
+      hfc
   by_cases hgen : R.root = sp.genesisRoot
   · left
     apply hfinal

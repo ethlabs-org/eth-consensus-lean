@@ -79,7 +79,7 @@ private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
     (hPhi : FrameOK Phi)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp A Phi t).2 = some (d, pay)) :
-    d.start = Phi.fcRoot ∨
+    d.start = Phi.F ∨
       d.start ∈ AC.liveLockBlocks sp
         (AC.unlock sp A.locks Phi t ((sp.slot t : Int) - 1)
           (AC.View.ofLists (AC.voteViewList A Phi ((sp.slot t : Int) - 1) ⊤))) Phi t := by
@@ -89,7 +89,7 @@ private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
   obtain ⟨rfl, -⟩ := hd
   change AC.getAnchor sp _ Phi t = _ ∨ AC.getAnchor sp _ Phi t ∈ _
   rw [AC.getAnchor_eq_deepest_union hPhi]
-  rcases hD : AC.deepest Phi (AC.liveLockBlocks sp _ Phi t ∪ {Phi.fcRoot}) with _ | D
+  rcases hD : AC.deepest Phi (AC.liveLockBlocks sp _ Phi t ∪ {Phi.F}) with _ | D
   · exact Or.inl rfl
   · rcases (AC.deepest_mem hD).1 with h | h
     · exact Or.inr h
@@ -134,7 +134,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
       some (d, pay)) :
-    d.start = ell.frame.fcRoot ∨
+    d.start = ell.frame.F ∨
       ∃ l ∈ AC.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
           B.root = l.block ∧ ell.frame.Anc d.start B := by
@@ -205,10 +205,10 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
   have hrootX := (Anc.mono hPhi.2
     (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haX
   have hXt := AC.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hP.1.1 hXP
-    ((Anc.mono hPhi.2 hPhi.1.F_anc_fcRoot).trans hrootX)
+    (hrootX)
   have hXPf := AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hXt hXP hP.1.1
   have hrootXf := AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
-    hPhi.1.fcRoot_mem hrootX hXt
+    hPhi.1.rooted.1 hrootX hXt
   obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
   exact ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
     Y, hY, hvY, hXPf.trans hPY⟩

@@ -260,7 +260,7 @@ theorem high_J_root_of_held_cover_at {cm : Time → Finset (Fin sp.n)} {βK : �
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj) (hc : HighSourceCover tr H g a b)
     (hcompare : ∀ C s, HealedMemberBefore tr H g a b C s k →
         s ≤ sp.slot t → Compatible (tr.HonestBlocksAt H) B C) :
-    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F B := by
   have hrun := hp.run
   have hnc := hp.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -318,8 +318,7 @@ theorem high_J_root_of_held_cover_at {cm : Time → Finset (Fin sp.n)} {βK : �
     rcases hJ with hJB | hBJ
     · exact Or.inl ((hFJ.mono hsub).trans hJB)
     · exact AC.anc_total hU (hFJ.mono hsub) hBJ
-  unfold Store.fcRoot
-  split_ifs <;> assumption
+  exact hF
 
 /-- A cut of a node honest at it, with a high justified height, has its store's finalized-chain
 root compatible with every held block compatible with the earlier high origins, when the cut is
@@ -333,7 +332,7 @@ theorem high_J_root_of_held_before_quarantine_at {cm : Time → Finset (Fin sp.n
     (hpre : ∀ D, sp.deepDepth = some D → tr.time k ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O) :
-    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).F B := by
   have hrun := hp.run
   have hnc := hp.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -374,29 +373,14 @@ theorem high_J_root_of_held_before_covered_at {cm : Time → Finset (Fin sp.n)} 
     (hkb : tr.time k ≤ b)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot (tr.time k)) B) :
-    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).F B := by
   rcases hp.quarantine_or_cover_at hkb with hpre | hc
   · exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hkb hhigh hpre
       (compatibleWithOrigins_iff.1 hcompare).1
-  · have hroot := hp.high_J_root_of_held_cover_at (hp.run.time_nonneg k)
+  · exact hp.high_J_root_of_held_cover_at (hp.run.time_nonneg k)
       (fun _ hq => hp.run.time_mono hq.le) hy hkb (hp.run.time_nonneg i)
       (fun _ hq => hp.run.time_mono hq.le) hx hBx hhigh hc
       ((compatibleWithOrigins_iff.1 hcompare).2 hc)
-    have hr := fg_reachable_at hp.run (hp.run.time_nonneg k)
-      (fun _ hq => hp.run.time_mono hq.le) hy
-    have hFJ := (Store.cache_invariants _ _ _ _ hr).2.2.1.mono
-      (fun X hX => (⟨y, k, tr.time k, hp.run.time_nonneg k,
-        fun _ hq => hp.run.time_mono hq.le, hy, hX⟩ : X ∈ tr.HonestBlocksAt H))
-    have hFroot : Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F
-        (tr.state y k).fg.fcRoot := by
-      unfold Store.fcRoot
-      split_ifs
-      · exact hFJ
-      · exact .refl
-    change Compatible _ (tr.state y k).fg.F B
-    rcases hroot with h | h
-    · exact Or.inl (hFroot.trans h)
-    · exact AC.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFroot h
 
 /-- `high_J_root_of_held_before_quarantine_at` at an AC call, whose frame is the store's. -/
 theorem high_J_root_of_held_at_call_before_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -409,7 +393,7 @@ theorem high_J_root_of_held_at_call_before_quarantine_at {cm : Time → Finset (
     (hpre : ∀ D, sp.deepDepth = some D → tr.time k ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) ell.frame.F B := by
   rw [Outcome.frame_of_call hp.run hy hc]
   exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hkb hhigh hpre hcompare
 
@@ -422,7 +406,7 @@ theorem high_J_root_of_held_at_call_before_covered_at {cm : Time → Finset (Fin
     (hc : tr.projAC.CallAt y k ell)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot (tr.time k)) B) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) ell.frame.F B := by
   rw [Outcome.frame_of_call hp.run hy hc]
   exact hp.high_J_root_of_held_before_covered_at hx hBx hy hkb hhigh hcompare
 
@@ -438,7 +422,7 @@ theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
     (_hheld : Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F B →
       B ∈ (Node.frame (tr.state y i)).tree) :
-    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F B := by
   have hrun := hp.run
   have hnc := hp.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -462,7 +446,7 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) ell.frame.F B := by
   rw [Outcome.frame_of_call hp.run hy hc] at hheld ⊢
   exact hp.low_root_of_held_seed_at hy hib hS hqb hSy hlow hBS hheld
 

@@ -66,7 +66,7 @@ theorem optimistic_vote_domain_before_of_quarantine_at {cm : Time → Finset (Fi
     (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
       s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hm := hp.run.time_mono
   have hΔ := sp.toParams.hΔ

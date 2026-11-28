@@ -150,8 +150,6 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
 structure HighCanonical
     (Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop)
     (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g b : Time) : Prop where
-  no_high_contest : ∀ p i, p ∈ H (tr.time i) → tr.time i ≤ b →
-    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
   row_origin : ∀ y k att, y ∈ H (max (cutZ P g) (tr.time k)) →
     tr.SignAt y k att → tr.time k ≤ b →
     HZ tr H g + 1 ≤ att.h →

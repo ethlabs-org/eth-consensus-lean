@@ -159,7 +159,7 @@ theorem next_votes_extend_of_viable
     rcases hviable y i ell e hy hc hs hib hearlier with hPF | ⟨hFP, hV⟩
     · obtain ⟨D, hD, hDr, hroot⟩ := (cast_head_fcRoot_at hrun hnc hy hc).1
       obtain ⟨hΦ, hΦU⟩ := Compose.Growing.frameIn_at hrun hnc hy hc.1
-      exact ⟨D, hΦU hD, hDr, hPF.trans (Anc.mono hΦU (hΦ.F_anc_fcRoot.trans hroot))⟩
+      exact ⟨D, hΦU hD, hDr, hPF.trans (Anc.mono hΦU hroot)⟩
     · exact htransfer y i ell e hy hc hs hib hFP hV hearlier
 
 /-- Transfer of a unanimous batch at a next-slot proposal. The viability and delivery inputs
@@ -179,7 +179,7 @@ theorem next_proposal_extends_of_votes
       e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     (hviable : Anc (tr.HonestBlocksAt H) P ell.frame.F ∨
       (Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.tree ∧
-        (P ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc P ell.frame.fcRoot)))
+        (P ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc P ell.frame.F)))
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F P →
       ∀ x ∈ H (tr.time i), ∀ j e, AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e →
         e.msg.slot = m → AC.HeldAtProposal (tr.projAC.state y i) ell.frame m e.msg)
@@ -199,7 +199,7 @@ theorem next_proposal_extends_of_votes
     exact hPF.trans ((AC.anc_getHead_of_compat hΦ (Or.inr rfl)
       (fun L hL => (AC.liveLockBlock_candidate hΦ hL).elim (fun h => Or.inr h.2.1) Or.inl)
       (fun B (hB : B ∈ ell.frame.viableTree ell.frame.tree) => hB.1)
-      _ _ hΦ.F_anc_fcRoot).mono hΦU)
+      _ _ Relation.ReflTransGen.refl).mono hΦU)
   refine (AC.batch_proposal hr (K := K) hf hhalf ?_ hy hcp
     ((hPK.upTo hm hrun.antitone (tr.time i)).1 y hy i m) (AC.proposal_slot hti)
     (by rwa [hst]) hV (by simpa only [hst] using hheld hFP) ?_).mono hsub

@@ -32,8 +32,8 @@ private theorem held_target_proposal_root_of_high
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
     (hhighroot : ¬ (tr.state p i).fg.hj ≤ HZ tr H g →
-      Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+      Compatible (tr.HonestBlocksAt H) ell.frame.F B) :
+    Compatible (tr.HonestBlocksAt H) ell.frame.F B := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
@@ -52,7 +52,7 @@ private theorem held_target_proposal_root_of_high
     have hFS := hp.low_finalized_below_origin_at ht hle hpH hib hlow hS hqb
     rw [← hFF] at hFS
     by_cases hBF : Anc (tr.HonestBlocksAt H) B ell.frame.F
-    · exact Or.inr (hBF.trans (hPhi.F_anc_fcRoot.mono hPhiU))
+    · exact Or.inr hBF
     have hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B := by
       rcases hBS with h | h
       · exact (Anc.total hU hFS h).resolve_right hBF
@@ -83,7 +83,7 @@ theorem held_target_proposal_root_before_covered_at
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
     (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) B) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B :=
+    Compatible (tr.HonestBlocksAt H) ell.frame.F B :=
   held_target_proposal_root_of_high hp hpH hci hcall hd hti hib hheld hseed
     fun hlow => hp.high_J_root_of_held_at_call_before_covered_at hx hBx hpH hib hci
       (by omega) hcompare

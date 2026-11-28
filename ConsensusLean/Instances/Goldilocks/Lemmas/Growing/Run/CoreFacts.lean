@@ -130,7 +130,7 @@ theorem castAt_spec_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
 theorem cast_head_fcRoot_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
-    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.F Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
   have ha := rc.acRun_upTo hnc (rc.time_nonneg i)
   Compose.cast_head_fcRoot ha.localRun ha.vstart hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)

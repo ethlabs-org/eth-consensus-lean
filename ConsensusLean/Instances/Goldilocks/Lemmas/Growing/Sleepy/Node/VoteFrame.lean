@@ -179,7 +179,7 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
       AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.F := by
   have hm := hrun.time_mono
   have hd := hrun.time_nonneg i
   have hf := hB.two (tr.time i) hd hib
@@ -255,7 +255,7 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     rcases hJ with h | h
     · exact Or.inl ((hFJ.mono hsub).trans h)
     · exact Anc.total hU (hFJ.mono hsub) h
-  have hfc : Compatible (tr.HonestBlocksAt H) ℓ.frame.fcRoot B := by
+  have hfc : Compatible (tr.HonestBlocksAt H) ℓ.frame.F B := by
     rw [hfr]
     change Compatible _ (tr.state y i).fg.F B
     exact hF
@@ -264,7 +264,7 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   · exact Or.inr hBf
   -- `B` lies between `Σ.F` and a frozen witness, so it is in the voter's frame
   have hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B :=
-    (Anc.mono hΦ.2 hΦ.1.F_anc_fcRoot).trans hfB
+    hfB
   obtain ⟨x, k, e', hv, hs', hext⟩ := hw
   obtain ⟨W, hW, hBW⟩ := honest_head_frozen_at hrun hnc hsync hy hc hs hib hv hs'.le hext hFB
   have hBt := AC.frame_mem_of_between sp hU hΦ.1 hΦ.2 hW.1 hBW hFB

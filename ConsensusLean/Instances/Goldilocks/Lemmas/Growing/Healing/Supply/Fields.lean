@@ -116,7 +116,7 @@ private theorem warm_proposal_store_bounds_at {ini}
     exact hdp
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc rfl
     (by rw [sp.slotTime_eq]; exact hj1) hd
-    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
+    ⟨(AC.frameIn_of_callAt hac hzk hc).1.rooted.1, .refl, Q, hQ, hv, hroot⟩
   rw [hfr, Node.frame_eq, Store.toFrame_viableHeads] at hvd
   obtain ⟨hDm, -, hDv⟩ := hvd
   -- the proposal's store, block and state

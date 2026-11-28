@@ -63,7 +63,7 @@ def bB (p : Fin n) : Blk n Unit := ⟨1, some 0, 1, p, 0, (), ([], [])⟩
 def bC (p : Fin n) : Blk n Unit := ⟨2, some 0, 1, p, 0, (), ([], [])⟩
 
 /-- The frame `{g, B, C}` rooted at `g`. -/
-def Φ (p : Fin n) : Frm n Unit := ⟨{g p, bB p, bC p}, g p, g p, {g p}⟩
+def Φ (p : Fin n) : Frm n Unit := ⟨{g p, bB p, bC p}, g p, {g p}⟩
 
 theorem mem_iff (p : Fin n) (X : Blk n Unit) :
     X ∈ (Φ p).tree ↔ X = g p ∨ X = bB p ∨ X = bC p := by
@@ -95,11 +95,7 @@ theorem frameOK (p : Fin n) : FrameOK (Φ p) where
     rcases (mem_iff p X).1 hX with rfl | h
     · exact Relation.ReflTransGen.refl
     · exact edge_g h⟩
-  fcRoot_mem := by simp [Φ]
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by simp [Φ]
-  fcRoot_anc_viableHeads := fun W hW => by
-    rw [show W = g p from hW]; exact Relation.ReflTransGen.refl
 
 /-- `B` is not below `C`, and `C` is not below `B`: each has parent `g`. -/
 theorem not_anc_children (p : Fin n) {X Y : Blk n Unit} (hX : X = bB p ∨ X = bC p)

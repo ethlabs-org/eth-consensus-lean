@@ -32,7 +32,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -808,7 +807,7 @@ theorem seeded_caches_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
         C ∈ (Node.frame (tr.state y i)).tree →
-        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C := by
+        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F C := by
   have hF := seeded_reader_F_on_chain_at hrun hnc hseed hcv hTb ht0 hi htb hy hf hcall
   exact ⟨hF, fun C s hC _ => onHealedChain_compatible hrun hnc hP hF
     (onHealedChain_iff.2 ⟨C, s, hC, .refl⟩)⟩
@@ -828,7 +827,7 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : OnHealedChain tr H g r (r + sp.k - 1) C b)
     (hCt : C ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).F ∨
       C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hΦ : FrameOK (Node.frame (tr.state y i)) := frameOK_at hrun ht0 hy hi
@@ -849,10 +848,10 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
       ⟨X, hX, Healing.Growing.honest_anc_of_store_anc_at ht0 hi hy hEX⟩)
     (fun _ => ⟨hCt.1, C, hCt.1, .refl⟩)
   rcases hw with hCF | ⟨hFC, X, hX, hCX, hXv⟩
-  · exact Or.inl (AC.anc_tree_of_anc_U hU hΦ hΦU hCt hCF hΦ.fcRoot_mem)
+  · exact Or.inl (AC.anc_tree_of_anc_U hU hΦ hΦU hCt hCF hΦ.rooted.1)
   have hCX' := held_anc_at hrun hnc ht0 hy hi hCX hX
   have hXΦ : X ∈ (Node.frame (tr.state y i)).tree := ⟨hX, hCt.2.trans hCX'⟩
-  exact Or.inr ⟨hCt, AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hFC hCt,
+  exact Or.inr ⟨hCt, AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hFC hCt,
     X, hXΦ, ⟨hX, hXΦ.2, hXv⟩, AC.anc_tree_of_anc_U hU hΦ hΦU hCt hCX hXΦ⟩
 
 /-! ### Votes: the frozen witness after the split slot -/
@@ -1094,7 +1093,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.F := by
   -- The row's own signing time bounds its member label without the legacy premise `hP`.
   have hΔ := sp.toParams.hΔ
   obtain ⟨hσT, hrσ, hgr⟩ := hseed.timing

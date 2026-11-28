@@ -158,7 +158,7 @@ private theorem proposal_root_viable_at
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell) :
-    ell.frame.fcRoot ∈ ell.frame.viableTree ell.frame.tree := by
+    ell.frame.F ∈ ell.frame.viableTree ell.frame.tree := by
   have ht := hrun.time_nonneg i
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
@@ -168,12 +168,12 @@ private theorem proposal_root_viable_at
     (Healing.Growing.held_atts_safe_at hrun ht hb hy ht hb hy le_rfl le_rfl)
     hQ hheight.ge
   rw [Compose.Growing.frame_of_projAC_at hrun hy hc, Node.frame_eq]
-  have hPhi := (Store.frame_realization _ _ _ _ hr).1
-  refine ⟨hPhi.fcRoot_mem, Relation.ReflTransGen.refl, Q, ?_, ?_, ?_⟩
+  have hPhi := Store.frame_realization _ _ _ _ hr
+  refine ⟨hPhi.rooted.1, Relation.ReflTransGen.refl, Q, ?_, ?_, ?_⟩
   · rw [Store.toFrame_tree]; exact ⟨hQ, hFQ⟩
   · rw [Store.toFrame_viableHeads]
     exact ⟨hQ, hFQ, Store.isViable_of_hmax_le hheight.ge⟩
-  · rw [Store.toFrame_fcRoot]
+  · rw [Store.toFrame_F]
     change Anc (tr.state y i).fg.toFrame.tree _ _
     rw [Store.toFrame_tree]
     exact Anc.restrict Relation.ReflTransGen.refl hFQ
@@ -304,7 +304,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
       (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
         (fun h => Or.inr h.2.1) Or.inl)
       (fun B (hB : B ∈ ell.frame.viableTree ell.frame.tree) => hB.1)
-      _ _ hPhi.F_anc_fcRoot).mono hPhiU).mono subU)
+      _ _ Relation.ReflTransGen.refl).mono hPhiU).mono subU)
   rcases AC.anc_total hU hFQ0 hXQ with hFX | hXF
   swap
   · exact hXF_case (hFF ▸ hXF)
@@ -512,12 +512,12 @@ theorem supporter_anchor_viable_head_at
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hx hc'.1
   obtain ⟨hlo, hhi⟩ := hes ▸ Compose.Growing.cast_time_at hrun hnc hx hc
   have hib : tr.time i ≤ b := hhi.trans hsb
-  have hroot : ell.frame.Anc ell.frame.fcRoot L := by
+  have hroot : ell.frame.Anc ell.frame.F L := by
     rw [hanchor]; exact AC.fcRoot_anc_getAnchor hPhi _ _
   have hvL : L ∈ ell.frame.viableTree ell.frame.tree := by
     have hR := proposal_root_viable_at hrun hx
       (sp.toParams.fg.faults_lt_quorum_margin (hf _ ht0 hib)) hc.1
-    have he : L = ell.frame.fcRoot ∨
+    have he : L = ell.frame.F ∨
         L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
       rw [hanchor]
       rw [AC.getAnchor_eq_deepest_union hPhi]

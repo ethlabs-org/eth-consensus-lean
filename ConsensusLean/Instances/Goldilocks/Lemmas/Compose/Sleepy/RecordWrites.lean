@@ -265,7 +265,7 @@ theorem call_writes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini) 
 `t`, on a block of the tree that is its own viable ancestor. -/
 def KeepOK (Φ : AC.Frm sp.n FGP) (t : Time) (l : AC.Lock) : Prop :=
   sp.slot t ≤ l.slot + 1 ∧ l.LiveAt sp t ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧
-    (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot)
+    (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F)
 
 /-- `A'` holds every lock of `A` that the lock functions keep. -/
 def KeepAll (Φ : AC.Frm sp.n FGP) (t : Time) (A A' : AC.ACState sp.n) : Prop :=
@@ -273,7 +273,7 @@ def KeepAll (Φ : AC.Frm sp.n FGP) (t : Time) (A A' : AC.ACState sp.n) : Prop :=
 
 theorem keepOK_iff {Φ : AC.Frm sp.n FGP} {t : Time} {l : AC.Lock} :
     KeepOK Φ t l ↔ sp.slot t ≤ l.slot + 1 ∧ l.LiveAt sp t ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧
-      (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot) := Iff.rfl
+      (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F) := Iff.rfl
 
 theorem keepAll_iff {Φ : AC.Frm sp.n FGP} {t : Time} {A A' : AC.ACState sp.n} :
     KeepAll Φ t A A' ↔ ∀ l ∈ A.locks, KeepOK Φ t l → l ∈ A'.locks := Iff.rfl

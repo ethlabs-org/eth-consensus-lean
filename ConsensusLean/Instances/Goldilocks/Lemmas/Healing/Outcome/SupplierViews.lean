@@ -72,8 +72,8 @@ theorem reset_competitor_reflect
           (Option.some_injective _ (hY.2.2.symm.trans hPQ))
         exact hBY
       exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hQt hBQ hFB
-  have hfB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem
-    (((hPhi.fcRoot_anc_viableHeads X hXv).mono hPhiU).trans hXB) hBt
+  have hfB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.rooted.1
+    (((hPhi.rooted.2 X (hPhi.viableHeads_subset hXv)).mono hPhiU).trans hXB) hBt
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [Compose.frame_of_projAC hp.run hP.1 hci] at hXv hBt ⊢
   have hXBs := Compose.honest_held_anc hp.run hp.noColl hP.1 hXB hBt.1
@@ -94,10 +94,10 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc.1
   have hfC := ((AC.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
-  have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
+  have hFC := hfC
   have hCt := AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hP.1.1 hCP hFC
   have hCP' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hCt hCP hP.1.1
-  have hfC' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfC hCt
+  have hfC' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.rooted.1 hfC hCt
   obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
   have hCs : C ∈ AC.voterBlockTree sp e.readPoint ell.frame u := by
     rw [← hes] at hP ⊢
@@ -154,8 +154,8 @@ theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
           (Option.some_injective _ (hY.2.2.symm.trans hPQ))
         exact hBY
       exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hQt hBQ hFB
-  have hfB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem
-    (((hPhi.fcRoot_anc_viableHeads X hXv).mono hPhiU).trans hXB) hBt
+  have hfB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.rooted.1
+    (((hPhi.rooted.2 X (hPhi.viableHeads_subset hXv)).mono hPhiU).trans hXB) hBt
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [Compose.frame_of_projAC hp.run hpH hci] at hXv hBt ⊢
   have hXBs := Compose.honest_held_anc hp.run hp.noColl hpH hXB hBt.1

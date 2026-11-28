@@ -59,7 +59,7 @@ noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksAC sp1 Uni
 def g : Blk sp1.n Unit := ⟨0, none, 0, v0, 0, (), ([], [])⟩
 
 /-- The genesis frame. -/
-def Φ₀ : Frm sp1.n Unit := ⟨{g}, g, g, {g}⟩
+def Φ₀ : Frm sp1.n Unit := ⟨{g}, g, {g}⟩
 
 /-- The genesis frame is well formed. -/
 theorem frameOK_Φ₀ : FrameOK Φ₀ where
@@ -67,11 +67,7 @@ theorem frameOK_Φ₀ : FrameOK Φ₀ where
   coherent := ⟨Set.injOn_singleton _ _, fun B hB C hC h => by
     rw [Set.mem_singleton_iff.mp hB, Set.mem_singleton_iff.mp hC] at h; simp [g] at h⟩
   rooted := ⟨rfl, fun C hC => by rw [Set.mem_singleton_iff.mp hC]; exact Relation.ReflTransGen.refl⟩
-  fcRoot_mem := rfl
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := le_rfl
-  fcRoot_anc_viableHeads := fun W hW => by
-    rw [Set.mem_singleton_iff.mp hW]; exact Relation.ReflTransGen.refl
 
 /-- `{genesis}` is coherent. -/
 theorem coherent_g : Coherent ({g} : Set (Blk sp1.n Unit)) := frameOK_Φ₀.coherent
@@ -135,7 +131,7 @@ milestone statement). For an
 honest `y` and its own vote emission `e` of slot `m + 1` at cut `i` (time `τ`): if every honest
 slot-`m` vote extends `B`, the honest slot-`m` voters are at least half of the committee,
 `Carry_y(m, S_m, B)` holds for their votes, `f < h_τ`, `Sync[t_m, τ]` holds, at `e` the block `B` is
-in `y`'s viable voter block tree or at or below its `fc_root`, and every honest slot-`(m+1)` vote at
+in `y`'s viable voter block tree or at or below its `F`, and every honest slot-`(m+1)` vote at
 an earlier cut extends `B`, then `e`'s vote extends `B`. -/
 def CaseOneA13 (sp : ACParams) : Prop :=
   ∀ (FGP : Type) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
@@ -149,7 +145,7 @@ def CaseOneA13 (sp : ACParams) : Prop :=
     FaultBound tr H (tr.time i) →
     SyncAC (goldilocksAC sp FGP) H U (sp.ts m) (tr.time i) tr →
     (B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (m + 1)) ∨
-      ℓ.frame.Anc B ℓ.frame.fcRoot) →
+      ℓ.frame.Anc B ℓ.frame.F) →
     (∀ x ∈ H, ∀ j < i, ∀ e', VoteAt tr x j e' → e'.msg.slot = m + 1 → VoteExtends U e'.msg B) →
     VoteExtends U e.msg B
 

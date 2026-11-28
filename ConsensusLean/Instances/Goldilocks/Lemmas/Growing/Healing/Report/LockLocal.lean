@@ -68,8 +68,8 @@ theorem unlocked_image_below_write_root_at
     (hcw : tr.projAC.CallAt y a ellw) (hc : tr.projAC.CallAt y i ell)
     {L B A : AC.Blk sp.n (List (FG.Att sp.n))}
     (hLB : ell.frame.Anc L B) (hBA : Anc (tr.HonestBlocksAt H) B A)
-    (hroot : ellw.frame.Anc A ellw.frame.fcRoot) :
-    Anc (tr.HonestBlocksAt H) L ell.frame.fcRoot := by
+    (hroot : ellw.frame.Anc A ellw.frame.F) :
+    Anc (tr.HonestBlocksAt H) L ell.frame.F := by
   have hd := hrun.time_nonneg i
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have htime := hrun.time_mono hai

@@ -56,10 +56,8 @@ theorem payloadAC_reqSource : payloadAC.ReqSource := by
 
 /-- Requirement 3 holds. -/
 theorem payloadAC_reqOutputs : payloadAC.ReqOutputs := by
-  intro _ _ _ s Φ t₀ hr t _
-  have hok := frameOK_of_reachableAt hr
-  exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl,
-    hok.rooted.2 Φ.fcRoot hok.fcRoot_mem⟩
+  intro _ _ _ _ _ _ _ _ _
+  exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl, Relation.ReflTransGen.refl⟩
 
 instance : Countable payloadAC.Payload := inferInstanceAs (Countable Unit)
 
@@ -113,10 +111,6 @@ theorem tickState_one : tickState payloadAC dgP 1 = Node.init payloadAC := by
     Node.acCall, Node.acToFG, ite_false]
   rfl
 
-/-- The fork-choice root of the initial FG state is genesis. -/
-theorem init_fcRoot : (Store.init (P := P₁) ()).fcRoot = P₁.genesisBlock () := by
-  unfold Store.fcRoot; split_ifs <;> rfl
-
 /-- The own block of time `1`, on the initial FG state. -/
 noncomputable abbrev ownBlock : payloadAC.Blk :=
   mkBlock dgP v0 (Store.init (P := P₁) ()) 1 0 (P₁.genesisBlock ()) ()
@@ -158,9 +152,9 @@ theorem init_onBlock : ∃ fg', (Store.init (P := P₁) ()).onBlock ownBlock = s
 theorem tickCuts_one :
     ∃ Φ, (tickCuts payloadAC dgP 1)[3]? = some (.ac ⟨.block ownBlock, Φ, []⟩) := by
   have hp : Node.Proposes (P := P₁) (fun _ => v0) v0 (1 : Time) := ⟨by decide, by decide, rfl⟩
-  have hprop : ∀ s Φ t, payloadAC.proposal s Φ t = (s, some (⟨Φ.fcRoot, Φ.fcRoot, ∅⟩, ())) :=
+  have hprop : ∀ s Φ t, payloadAC.proposal s Φ t = (s, some (⟨Φ.F, Φ.F, ∅⟩, ())) :=
     fun _ _ _ => rfl
-  have hfr : (frame (acCall v0 (Node.init payloadAC) 1 .tick).1).fcRoot = P₁.genesisBlock () :=
+  have hfr : (frame (acCall v0 (Node.init payloadAC) 1 .tick).1).F = P₁.genesisBlock () :=
     rfl
   have hfg : (acCall v0 (Node.init payloadAC) 1 .tick).1.fg = Store.init () := rfl
   have hsl : ¬ P₁.slotOf (1 : Time) < ownBlock.slot := lt_irrefl _

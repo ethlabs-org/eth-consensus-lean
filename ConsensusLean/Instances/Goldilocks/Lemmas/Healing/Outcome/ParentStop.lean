@@ -30,8 +30,8 @@ theorem parent_mem_frame_of_children {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))
     (hU : Coherent U) {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {Q P B : AC.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ U)
     (hPQ : P.parent = some Q.root) (hBQ : B.parent = some Q.root) (hBP : B ≠ P)
-    (hP : P ∈ Φ.tree) (hPr : Φ.Anc Φ.fcRoot P) (hB : B ∈ Φ.tree) (hBr : Φ.Anc Φ.fcRoot B) :
-    Q ∈ Φ.tree ∧ Φ.Anc Φ.fcRoot Q := by
+    (hP : P ∈ Φ.tree) (hPr : Φ.Anc Φ.F P) (hB : B ∈ Φ.tree) (hBr : Φ.Anc Φ.F B) :
+    Q ∈ Φ.tree ∧ Φ.Anc Φ.F Q := by
   have hQP : Anc U Q P := .single ⟨hQU, hΦU hP, hPQ⟩
   have hnBP : ¬ Anc U B P := by
     intro h
@@ -50,8 +50,8 @@ theorem parent_mem_frame_of_children {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))
       (Option.some_injective _ (hY.2.2.symm.trans hBQ))
     exact hXY
   have hfQ := below _ (hBr.mono hΦU) (hPr.mono hΦU)
-  have hQt := AC.frame_mem_of_between sp hU hΦ hΦU hP hQP ((hΦ.F_anc_fcRoot.mono hΦU).trans hfQ)
-  exact ⟨hQt, AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfQ hQt⟩
+  have hQt := AC.frame_mem_of_between sp hU hΦ hΦU hP hQP (hfQ)
+  exact ⟨hQt, AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hfQ hQt⟩
 
 /-- **An old child stays ineligible.** Let the proposal call at `t_i` (slot `s + 1`) in the
 well-formed frame `Φp` return the duty head `d.head` with the payload `pay`, and let the voter's

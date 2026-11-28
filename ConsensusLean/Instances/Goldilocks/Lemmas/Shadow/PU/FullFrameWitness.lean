@@ -22,7 +22,7 @@ private theorem full_frame_viable_witness_of_max {acp₀ : ACP}
     (hr : st.Reachable acp₀)
     (hF : ∀ Q ∈ st.tree, (st.σ Q.root).h = st.hmax → st.Anc st.F Q) :
     ∃ Q ∈ st.toFrame.tree, Q ∈ st.toFrame.viableHeads ∧
-      st.toFrame.Anc st.toFrame.fcRoot Q := by
+      st.toFrame.Anc st.toFrame.F Q := by
   obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
   have hFQ := hF Q hQ hheight
   refine ⟨Q, ?_, ?_, ?_⟩
@@ -30,8 +30,8 @@ private theorem full_frame_viable_witness_of_max {acp₀ : ACP}
     exact ⟨hQ, hFQ⟩
   · rw [Store.toFrame_viableHeads]
     exact ⟨hQ, hFQ, (Store.isViable_iff _ _).2 (Or.inl hheight.ge)⟩
-  · change Anc st.toFrame.tree st.toFrame.fcRoot Q
-    rw [Store.toFrame_tree, Store.toFrame_fcRoot]
+  · change Anc st.toFrame.tree st.toFrame.F Q
+    rw [Store.toFrame_tree, Store.toFrame_F]
     exact Anc.restrict .refl hFQ
 
 end Consensus.Goldilocks.Healing
@@ -52,7 +52,7 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
     ∃ Q ∈ (Node.frame (tr.state y i)).tree,
       Q ∈ (Node.frame (tr.state y i)).viableHeads ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q := by
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F Q := by
   have ht := hrun.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at hrun ht hy hle

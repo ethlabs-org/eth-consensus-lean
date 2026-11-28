@@ -16,7 +16,7 @@ are in `Statements/Healing/Run`.
 
 A trivial frame is not a frame of a reachable Goldilocks run: the frame of every call of an
 honest `y` is the tree of the blocks `y` has accepted, rooted at genesis, with
-`F = fc_root = genesis` and every block a viable head.
+`F = genesis` and every block a viable head.
 
 Statements only: no proofs here. -/
 
@@ -143,18 +143,18 @@ def Protected (proposer : Nat → Fin sp.n)
     ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = j → e.msg.head = B.root)
 
 /-- **The raw-target retention premise `Inv(t₀)`**: for every `(B, j) ∈ 𝒫(t₀)` and every call of
-an honest node at a time `≥ t_{j+1}`, with frame `Φ`, `B ⪯ Φ.fc_root` or `B` is in the viable
-tree of `Φ.tree` (`filtered(Φ, Φ.tree)`); at a vote, moreover, `B ⪯ Φ.fc_root` or `B` is in the
-viable tree of the voter block tree. `B ⪯ Φ.fc_root` is the block order inside `U` (the coherent
+an honest node at a time `≥ t_{j+1}`, with frame `Φ`, `B ⪯ Φ.F` or `B` is in the viable
+tree of `Φ.tree` (`filtered(Φ, Φ.tree)`); at a vote, moreover, `B ⪯ Φ.F` or `B` is in the
+viable tree of the voter block tree. `B ⪯ Φ.F` is the block order inside `U` (the coherent
 set of frame blocks), not ancestry inside `Φ.tree`: once `Φ.F` passes `B`, `B` is no longer in the
 tree. -/
 def Inv (proposer : Nat → Fin sp.n) (tr : GTrace sp FGP)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (t₀ : Time) : Prop :=
   ∀ B j, Protected proposer tr H t₀ B j → ∀ y ∈ H, ∀ i ℓ,
     tr.CallAt y i ℓ → sp.ts (j + 1 : Nat) ≤ tr.time i →
-    (Anc U B ℓ.frame.fcRoot ∨ B ∈ ℓ.frame.viableTree ℓ.frame.tree) ∧
+    (Anc U B ℓ.frame.F ∨ B ∈ ℓ.frame.viableTree ℓ.frame.tree) ∧
     ∀ e ∈ ℓ.emits, B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc U B ℓ.frame.fcRoot
+      Anc U B ℓ.frame.F
 
 /-- **Proposal geometry `Geo(P)`** for the proposal `P` of slot `p`: at every `ac_proposal` call
 of the proposer at `t_p` (frame `Φ_P`) and every vote of slot `p` of an honest voter `y` (frame

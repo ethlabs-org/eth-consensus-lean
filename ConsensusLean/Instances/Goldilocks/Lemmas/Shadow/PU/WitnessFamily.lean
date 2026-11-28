@@ -397,7 +397,7 @@ theorem witness_frame_of_held
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
     Anc (tr.HonestBlocksAt H) X ell.frame.F ∨
       (Anc (tr.HonestBlocksAt H) ell.frame.F X ∧ X ∈ ell.frame.tree ∧
-        ell.frame.Anc ell.frame.fcRoot X ∧ Q ∈ ell.frame.tree ∧ Q ∈ ell.frame.viableHeads ∧
+        ell.frame.Anc ell.frame.F X ∧ Q ∈ ell.frame.tree ∧ Q ∈ ell.frame.viableHeads ∧
         ell.frame.Anc X Q) := by
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
@@ -421,11 +421,11 @@ theorem witness_frame_of_held
     rw [Node.frame_eq, Store.toFrame_viableHeads]
     exact ⟨hQy, hFQs, hv⟩
   have hXQf := AC.anc_tree_of_anc_U hU hΦ hsub hXt hXQ hQt
-  have hFt : (Node.frame (tr.state y i)).fcRoot ∈ (Node.frame (tr.state y i)).tree :=
-    hΦ.fcRoot_mem
+  have hFt : (Node.frame (tr.state y i)).F ∈ (Node.frame (tr.state y i)).tree :=
+    hΦ.rooted.1
   refine Or.inr ⟨by rwa [Node.frame_eq, Store.toFrame_F], hXt, ?_, hQt, hvQ, hXQf⟩
   apply AC.anc_tree_of_anc_U hU hΦ hsub hFt _ hXt
-  rw [Node.frame_eq, Store.toFrame_fcRoot]
+  rw [Node.frame_eq, Store.toFrame_F]
   exact hFX
 
 /-- In a `Generic.FrameWindow`, a held block carrying the P-U witness clause at the reader is P-U
@@ -477,7 +477,7 @@ theorem witness_frame_at
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
     Anc (tr.HonestBlocksAt H) X ell.frame.F ∨
       (Anc (tr.HonestBlocksAt H) ell.frame.F X ∧ X ∈ ell.frame.tree ∧
-        ell.frame.Anc ell.frame.fcRoot X ∧ Q ∈ ell.frame.tree ∧ Q ∈ ell.frame.viableHeads ∧
+        ell.frame.Anc ell.frame.F X ∧ Q ∈ ell.frame.tree ∧ Q ∈ ell.frame.viableHeads ∧
         ell.frame.Anc X Q) := by
   exact witness_frame_of_held hrun hnc hy hc hQy
     (hframe.finalized_below_descendant_at hrun hnc hy hy hy (by rwa [max_self]) hlo hhi hQy hwit
@@ -725,7 +725,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
       (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
         (fun h => Or.inr h.2.1) Or.inl)
       (fun B (hB : B ∈ ell.frame.viableTree ell.frame.tree) => hB.1)
-      _ _ hPhi.F_anc_fcRoot).mono hPhiU).mono subU)
+      _ _ Relation.ReflTransGen.refl).mono hPhiU).mono subU)
   have hG' : ∀ x ∈ H (tr.time i), ∀ j e', AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
       e'.msg.slot = m → AC.VoteExtends ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
         e'.msg X := by

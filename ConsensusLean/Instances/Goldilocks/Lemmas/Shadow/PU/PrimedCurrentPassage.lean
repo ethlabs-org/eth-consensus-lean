@@ -165,13 +165,13 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
   have halo := hts.trans hlow
   rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
   · have hAw := hbelow.mono hW.2
-    change Anc (tr.HonestBlocksAt H) A ellw.frame.fcRoot at hAw
+    change Anc (tr.HonestBlocksAt H) A ellw.frame.F at hAw
     rw [rc.frame_of_projAC_at hya ha₀] at hAw
     have hrootP := hdomP.2.1.mono hPhi.2
     rw [rc.frame_of_projAC_at hy hc.1] at hrootP
     have hroot := hrun.toLocalRun.finalized_mono_on_prefix (hrun.time_nonneg i) hy hai.le
       (fun k hk => hrun.time_mono hk.le)
-    rw [Node.frame_eq, Store.toFrame_fcRoot] at hAw hrootP
+    rw [Node.frame_eq, Store.toFrame_F] at hAw hrootP
     exact hBA.trans (hAw.trans (hroot.trans hrootP))
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   have hearly : tr.time a < sp.ts l.slot + 2 * sp.Δ := by

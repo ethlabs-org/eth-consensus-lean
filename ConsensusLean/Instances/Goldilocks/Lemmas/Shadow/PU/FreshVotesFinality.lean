@@ -75,7 +75,7 @@ private theorem finalized_floor_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK �
     {F Y : Blk sp.n FGP} (hfloor : ∀ Q ∈ Φ.viableHeads, Φ.Anc F Q)
     (hY : Y ∈ dom) (hvY : Y ∈ Φ.viableHeads) (hFY : Φ.Anc F Y)
     (A : ACState sp.n) (t : Time) (V : View sp.n) (σ : Int)
-    (hfa : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t))
+    (hfa : Φ.Anc Φ.F (getAnchor sp A Φ t))
     (haF : Φ.Anc (getAnchor sp A Φ t) F) :
     Φ.Anc F (getHead sp A Φ t (Φ.viableTree dom) V σ) := by
   have hFt := mem_of_anc hFY (hdom hY)
@@ -145,14 +145,13 @@ theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
       hQt hwit hQt .refl
     have hFt := AC.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2
       (hPhi.1.viableHeads_subset hQ) hFQ
-      (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans
-        (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))) |>.trans haF)
+      ((Anc.mono hPhi.2 (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haF)
     exact AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hFt hFQ
       (hPhi.1.viableHeads_subset hQ)
   have hFt := AC.mem_of_anc (hfloor Y hvY) (hPhi.1.viableHeads_subset hvY)
   have hat : AC.getAnchor sp e.readPoint ell.frame (tr.time i) ∈ ell.frame.tree := by
-    by_cases he : ell.frame.fcRoot = AC.getAnchor sp e.readPoint ell.frame (tr.time i)
-    · exact he ▸ hPhi.1.fcRoot_mem
+    by_cases he : ell.frame.F = AC.getAnchor sp e.readPoint ell.frame (tr.time i)
+    · exact he ▸ hPhi.1.rooted.1
     · exact (Anc.mem (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
   have hcast : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   exact Anc.mono hPhi.2 (AC.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
@@ -177,14 +176,14 @@ theorem fcRoot_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hvY : Y ∈ ell.frame.viableHeads)
     (haF : Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ell.frame (tr.time i))
-      ellz.frame.fcRoot) :
-    Anc (tr.HonestBlocksAt H) ellz.frame.fcRoot
+      ellz.frame.F) :
+    Anc (tr.HonestBlocksAt H) ellz.frame.F
       (AC.getHead sp e.readPoint ell.frame (tr.time i)
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
-  have hroot : ellz.frame.fcRoot = (tr.state z c).fg.F := by
+  have hroot : ellz.frame.F = (tr.state z c).fg.F := by
     rw [Compose.Growing.frame_of_projAC_at hrun hz hcz,
-      Node.frame_eq, Store.toFrame_fcRoot]
+      Node.frame_eq, Store.toFrame_F]
   rw [hroot] at haF ⊢
   exact finalized_anc_head_at_cast_at hframe hrun hnc hz hy hf hclo hchi hilo hihi hc
     hY hvY haF

@@ -519,7 +519,7 @@ theorem toFG_candidate_of_viable_head_at {K : AC.CommitteeDict sp.n}
     (hext : ∀ x k e, x ∈ H (tr.time k) → AC.VoteAt tr.projAC x k e → e.msg.slot = r + 1 →
       tr.time k ≤ tr.time i → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     (hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame (tr.state y k)).tree ∧
-      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
+      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).F P ∧
       P ∈ (Node.frame (tr.state y k)).viableHeads)
     (hib : tr.time i ≤ b) (hslot : sp.slot (tr.time i) ≤ r + 2) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),

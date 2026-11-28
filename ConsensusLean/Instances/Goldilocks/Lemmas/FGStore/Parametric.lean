@@ -953,16 +953,11 @@ theorem cache_quorum_with :
 
 /-- The tree half of G0.4 (frame realization) for the stock frame `toFrame`. -/
 theorem frame_realization_with :
-    FrameOK st.toFrame ∧ (st.headHeightFloor = st.hmax ∨ st.headHeightFloor = st.hmax - 1) := by
+    FrameOK st.toFrame := by
   obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree_with hu hr
   obtain ⟨hF, -, -, -⟩ := cache_invariants_with hu hr
-  refine ⟨⟨hfin.subset fun _ h => h.1, hcoh.mono fun _ h => h.1,
-    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, ⟨hF, .refl⟩,
-    Anc.restrict .refl .refl, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict .refl h.2.1⟩,
-    ?_⟩
-  unfold headHeightFloor
-  split_ifs
-  exacts [Or.inl rfl, Or.inr rfl]
+  exact ⟨hfin.subset (fun _ h => h.1), hcoh.mono (fun _ h => h.1),
+    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, fun _ h => ⟨h.1, h.2.1⟩⟩
 
 omit hu in
 /-- One state per block across two stores reached with `u` (`σ_eq_of_mem`). -/

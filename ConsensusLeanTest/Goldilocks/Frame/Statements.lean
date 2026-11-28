@@ -9,8 +9,7 @@ public import Mathlib.Tactic.Tauto
 
 On `Spec/Common` and `Spec/Frame`, labelled by kind (CONTRIBUTING "Statements"):
 
-* (a) `frameOK_Φ₀`, `frameOK_Φ₁`: well-formed frames exist (the hypotheses of the G0.4 (frame)
-  statements), one with a single block and one with a fork choice root above `F`.
+* (a) `frameOK_Φ₀`: a well-formed genesis frame (the hypotheses of the G0.4 (frame) statements).
 * (a) `step_Φ₀_Φ₁`: a step that adds a block and keeps `F` (the hypothesis of
   `FrameStepAddsBlock`).
 * (a) `step_Φ₁_Φ₂`: a step that moves `F` to the parent of the new block, so that genesis
@@ -32,11 +31,11 @@ def b₁ : B1 := ⟨1, some 0, 1, 0, 0, (), ()⟩
 def b₂ : B1 := ⟨2, some 1, 2, 0, 0, (), ()⟩
 
 /-- The genesis frame. -/
-def Φ₀ : Frame 1 Unit Unit := ⟨{g}, g, g, {g}⟩
-/-- After accepting `b₁`: `F = g`, the fork choice root `b₁`. -/
-def Φ₁ : Frame 1 Unit Unit := ⟨{g, b₁}, g, b₁, {b₁}⟩
+def Φ₀ : Frame 1 Unit Unit := ⟨{g}, g, {g}⟩
+/-- After accepting `b₁`, with `F` still at genesis. -/
+def Φ₁ : Frame 1 Unit Unit := ⟨{g, b₁}, g, {b₁}⟩
 /-- After accepting `b₂` with `F` moved to `b₁`: genesis leaves the tree. -/
-def Φ₂ : Frame 1 Unit Unit := ⟨{b₁, b₂}, b₁, b₂, {b₂}⟩
+def Φ₂ : Frame 1 Unit Unit := ⟨{b₁, b₂}, b₁, {b₂}⟩
 
 /-- The sequence `Φ₀, Φ₁, Φ₂, Φ₂, …`. -/
 def seq : Nat → Frame 1 Unit Unit
@@ -74,25 +73,7 @@ theorem frameOK_Φ₀ : FrameOK Φ₀ where
   coherent := coherent_sub (by simp [Φ₀])
   finite := Set.finite_singleton g
   rooted := ⟨rfl, fun C hC => by rw [Set.mem_singleton_iff.mp hC]; exact Relation.ReflTransGen.refl⟩
-  fcRoot_mem := rfl
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := le_rfl
-  fcRoot_anc_viableHeads := fun W hW => by
-    rw [Set.mem_singleton_iff.mp hW]; exact Relation.ReflTransGen.refl
-
-/-- (a) A well-formed frame whose fork choice root is above `F`. -/
-theorem frameOK_Φ₁ : FrameOK Φ₁ where
-  finite := (Set.finite_singleton b₁).insert g
-  coherent := coherent_sub (by intro x; simp [Φ₁]; tauto)
-  rooted := ⟨by simp [Φ₁], fun C hC => by
-    rcases hC with rfl | hC
-    · exact Relation.ReflTransGen.refl
-    · rw [Set.mem_singleton_iff.mp hC]; exact edge (by simp [Φ₁]) (by simp [Φ₁]) rfl⟩
-  fcRoot_mem := by simp [Φ₁]
-  F_anc_fcRoot := edge (by simp [Φ₁]) (by simp [Φ₁]) rfl
-  viableHeads_subset := by simp [Φ₁]
-  fcRoot_anc_viableHeads := fun W hW => by
-    rw [Set.mem_singleton_iff.mp hW]; exact Relation.ReflTransGen.refl
 
 /-- (a) `Φ₀ ⊑_{b₁} Φ₁`: the step adds `b₁` and keeps `F = g`. -/
 theorem step_Φ₀_Φ₁ : FrameStep Φ₀ b₁ Φ₁ where

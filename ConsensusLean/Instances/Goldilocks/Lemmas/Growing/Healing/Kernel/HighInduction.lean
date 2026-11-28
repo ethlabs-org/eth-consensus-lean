@@ -46,7 +46,7 @@ theorem ResetRunCore.high_origin_votes_of_domain_before_at
       (∀ z d n O, d < i → HighOrigin tr H g z d n O →
         ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
           Compatible (tr.HonestBlocksAt H) O O') →
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) :
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → AC.CastAt tr.projAC y k ell e → j < e.msg.slot →
@@ -110,7 +110,7 @@ theorem KernelProof.high_origin_votes_of_domain_before_at
       (∀ z d n O, d < i → HighOrigin tr H g z d n O →
         ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
           Compatible (tr.HonestBlocksAt H) O O') →
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) :
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → AC.CastAt tr.projAC y k ell e → j < e.msg.slot →

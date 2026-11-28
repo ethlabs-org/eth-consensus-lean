@@ -44,7 +44,7 @@ private theorem proposal_lock_prefix_cases_window_at
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
     (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) X ell.frame.F ∨
       (∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = s →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
       ∃ a < i, ∃ D CV, z ∈ H (tr.time a) ∧ AC.OptimisticLockAt tr.projAC z a s D CV ∧
@@ -182,7 +182,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
       2 * sp.toParams.fg.q - sp.n :=
     sp.toParams.fg.faults_lt_quorum_margin (hf _
       (le_max_of_le_left (hrun.time_nonneg ip)) ((max_le hphi hhi).trans hmb))
-  have hroot (hSr : Anc (tr.HonestBlocksAt H) d.start ellp.frame.fcRoot) := by
+  have hroot (hSr : Anc (tr.HonestBlocksAt H) d.start ellp.frame.F) := by
     have hrootE := fcRoot_anc_head_at_cast_at hframe hrun hnc hz' hy hfmax
       hplo hphi hlo hhi hcp hc (hes ▸ hPv.1) hvP ((Anc.mono hPhi.2 haS).trans hSr)
     have hSE := hSr.trans hrootE
@@ -218,7 +218,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
         have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
         linarith) hmb hheads hy hc hes hSv haS hK
   · have hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D :=
-      (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
+      (Anc.mono hPhi.2 hSv.2.1).trans hSD
     exact KernelProof.Core.optimistic_prefix_before_at hrun.toCore hnc hsvc hawake hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)

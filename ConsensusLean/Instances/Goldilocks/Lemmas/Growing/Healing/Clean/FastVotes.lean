@@ -49,7 +49,7 @@ theorem fast_source_votes_of_domain_before_at {cm : Time → Finset (Fin sp.n)} 
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
         s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) :
     ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e, AC.CastAt tr.projAC y i ell e →
       s < e.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by

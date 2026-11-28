@@ -127,7 +127,7 @@ theorem reader_frame_by (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} {m : Na
     (ht0 : 0 ≤ t) (hm : ∀ k < m, tr.time k ≤ t) (hy : y ∈ H t)
     (hf : 2 * (H t)ᶜ.ncard < sp.n) (τ : Time) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBP : Anc (tr.HonestBlocksAt H) B D.P) :
-    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y m)).fcRoot B ∧
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y m)).F B ∧
       (B ∈ (Node.frame (tr.state y m)).tree →
         (Node.frame (tr.state y m)).Anc B
             (AC.getAnchor sp (tr.state y m).ac (Node.frame (tr.state y m)) τ) ∨

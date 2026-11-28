@@ -214,7 +214,7 @@ theorem proposal_walk_passes_from {ini} (hrun : Growing.GoldilocksRun proposer d
     {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (hOt : O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocksAt H) O ℓp.frame.F)
     (hviab : O ∈ ℓp.frame.tree →
-      ℓp.frame.Anc O ℓp.frame.fcRoot ∨ O ∈ ℓp.frame.viableTree ℓp.frame.tree)
+      ℓp.frame.Anc O ℓp.frame.F ∨ O ∈ ℓp.frame.viableTree ℓp.frame.tree)
     (hO : (∀ x j e, HVoteAt tr H x j e → e.msg.slot + 1 = s → tr.time j ≤ b →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg O) ∨
       ∃ x k CV, x ∈ H (tr.time k) ∧ AC.OptimisticLockAt tr.projAC x k (s - 1) O CV)

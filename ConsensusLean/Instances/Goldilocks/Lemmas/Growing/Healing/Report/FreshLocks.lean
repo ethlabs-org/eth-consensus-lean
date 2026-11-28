@@ -470,7 +470,7 @@ private theorem next_viable
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
     (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
       tr.time q ≤ sp.ts u + sp.Δ)
-    (hroot : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
+    (hroot : Anc (tr.HonestBlocksAt H) ell.frame.F P)
     (hv : P ∈ ell.frame.viableHeads) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
@@ -480,7 +480,7 @@ private theorem next_viable
     AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr.localRun hy hc'.1
   have hsub := Compose.Growing.upTo_subset hrun hd
-  have hFP := ((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hroot
+  have hFP := hroot
   have hti := (cast_bounds hrun hnc hy hcast).1
   have hΔ := sp.toParams.hΔ
   rw [hs] at hti
@@ -495,7 +495,7 @@ private theorem next_viable
     exact (AC.frameIn_of_callAt hr.localRun hy hca).2
       ((AC.accept_new sp hr.localRun hy ⟨ella, hca, hea⟩).1 ella hca)
   have hroot' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hPu hroot
-  have hFP' := (hPhi.F_anc_fcRoot.mono hPhiU).trans hroot'
+  have hFP' := hroot'
   have hPt := AC.mem_tree_of_acceptAtU sp hr.localRun.toU hy ha' hkj hc'.1 hFP'
   have hfreeze : AC.freeze sp e.msg.slot = sp.ts u + 3 * sp.Δ := by
     simp only [AC.freeze, hs, Nat.cast_add, Nat.cast_one, add_sub_cancel_right]
@@ -510,7 +510,7 @@ private theorem next_viable
       linarith) (by rw [hfreeze]; change _ ≤ tr.time j; linarith)
   have hPv : P ∈ AC.voterBlockTree sp e.readPoint ell.frame (u + 1) :=
     ⟨hPt, Or.inl (by simpa only [hs] using hstamp)⟩
-  have hanc := AC.anc_tree_of_anc_U hr.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hroot' hPt
+  have hanc := AC.anc_tree_of_anc_U hr.localRun.coherent hPhi hPhiU hPhi.rooted.1 hroot' hPt
   exact ⟨hFP, hPv, hanc, P, hPv, hv, .refl⟩
 
 private theorem next_votes
@@ -534,7 +534,7 @@ private theorem next_votes
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (geometry : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-      Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads) :
+      Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.viableHeads) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
@@ -601,7 +601,7 @@ theorem unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
       e.msg.slot = u → e.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b)
     (geometry : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-      Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads) :
+      Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.viableHeads) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ

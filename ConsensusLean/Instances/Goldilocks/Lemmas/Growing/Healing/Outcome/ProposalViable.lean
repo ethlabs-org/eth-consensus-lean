@@ -55,7 +55,7 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
   have hroot := hp.reset_vote_root_below_proposal_at hpH hactual hPs hR hci hcall hd hti hib hPQ
     hy hcy hes hjb
-  have hroot' := AC.anc_tree_of_anc_U hU hPsi hPsiU hPsi.fcRoot_mem hroot hPy
+  have hroot' := AC.anc_tree_of_anc_U hU hPsi hPsiU hPsi.rooted.1 hroot hPy
   have hPt : P ∈ AC.voterBlockTree sp e.readPoint elly.frame u :=
     ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
   have hfr := Outcome.frame_of_call hrun hy hcy.1

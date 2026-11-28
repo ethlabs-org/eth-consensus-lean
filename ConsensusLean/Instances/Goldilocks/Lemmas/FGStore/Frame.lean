@@ -46,12 +46,12 @@ private theorem onBlock_F {P : Params} {ACP : Type} {st st' : Store P ACP}
 /-- The frame step from the facts of an accepted block `B`: `T'` is the tree with `B`, which no
 block of `T` names as its parent, and `F ⪯ F' ⪯ B` in `T'`. -/
 private theorem frameStep_of {n : Nat} {FGP ACP : Type} {T T' : Set (Block n FGP ACP)}
-    {B F F' c c' : Block n FGP ACP} {v v' : Set (Block n FGP ACP)} (hT' : T' = insert B T)
+    {B F F' : Block n FGP ACP} {v v' : Set (Block n FGP ACP)} (hT' : T' = insert B T)
     (hB : B ∉ T) (hX : ∀ V ∈ T, V.parent ≠ some B.root) (hBB : B.parent ≠ some B.root)
     (hF : F ∈ T) (hFB : Goldilocks.Anc T' F B) (hFF' : Goldilocks.Anc T' F F')
     (hF'B : Goldilocks.Anc T' F' B) :
-    FrameStep ⟨{X | X ∈ T ∧ Goldilocks.Anc T F X}, F, c, v⟩ B
-      ⟨{X | X ∈ T' ∧ Goldilocks.Anc T' F' X}, F', c', v'⟩ := by
+    FrameStep ⟨{X | X ∈ T ∧ Goldilocks.Anc T F X}, F, v⟩ B
+      ⟨{X | X ∈ T' ∧ Goldilocks.Anc T' F' X}, F', v'⟩ := by
   subst hT'
   have hR : insert B {X | X ∈ T ∧ Goldilocks.Anc T F X} =
       {Y | Y ∈ insert B T ∧ Goldilocks.Anc (insert B T) F Y} := by
@@ -137,13 +137,8 @@ theorem frame_realization : FrameRealization P ACP := by
   intro acp₀ st hr
   obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree P ACP acp₀ st hr
   obtain ⟨hF, -, -, -⟩ := cache_invariants P ACP acp₀ st hr
-  refine ⟨⟨hfin.subset fun _ h => h.1, hcoh.mono fun _ h => h.1,
-    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, ⟨hF, .refl⟩,
-    Anc.restrict .refl .refl, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict .refl h.2.1⟩,
-    ?_⟩
-  unfold headHeightFloor
-  split_ifs
-  exacts [Or.inl rfl, Or.inr rfl]
+  exact ⟨hfin.subset (fun _ h => h.1), hcoh.mono (fun _ h => h.1),
+    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, fun _ h => ⟨h.1, h.2.1⟩⟩
 
 /-- A block at maximum state height is viable without a root condition. -/
 theorem isViable_of_hmax_le {P : Params} {ACP : Type} {st : Store P ACP}

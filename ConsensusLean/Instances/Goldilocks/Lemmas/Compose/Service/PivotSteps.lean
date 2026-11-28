@@ -126,8 +126,8 @@ theorem proposal_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hti : tr.time i = sp.ts s) {K : AC.CommitteeDict sp.n}
     (hP : AC.CommitteeP K tr.projAC H)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) :
-    ℓp.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O := by
+    ℓp.frame.F.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓp.frame.F O := by
   rw [frame_of_projAC hrun hp hc]
   exact fcRoot_of_rows_of hrun hnc hf hp
     (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
@@ -225,7 +225,7 @@ theorem vote_anchor_cases_of_old {ini} (hrun : GoldilocksRun proposer dg H tr in
     left
     rw [Set.mem_singleton_iff.1 haf]
     rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes K hPK hsize hfK hyK with hg | ⟨O, hO, hfO⟩
-    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
+    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.rooted.1) hg hDU
     · exact hfO.trans (hDold O hO)
   -- a live lock block: the viable ancestor of the block of a read-point lock
   obtain rfl : a = ℓy.frame.viableAncestor B :=
@@ -302,10 +302,10 @@ theorem proposal_suffix_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr i
   have hXt : X ∈ ℓp.frame.tree := mem_of_anc_left hDX hDt
   have hDXU : Anc (tr.HonestBlocks H) D X := Anc.mono hΦU hDX
   -- `fc_root` is genesis or below an old origin, below `D`
-  have hfX : ℓp.frame.Anc ℓp.frame.fcRoot X := by
-    refine AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem ?_ hXt
+  have hfX : ℓp.frame.Anc ℓp.frame.F X := by
+    refine AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 ?_ hXt
     rcases proposal_fcRoot_old_of hrun hnc hf hp hc hcall hd hti hP hfK with hg | ⟨O, hO, hfO⟩
-    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg (hΦU hXt)
+    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.rooted.1) hg (hΦU hXt)
     · exact (hfO.trans (hDold O hO)).trans hDXU
   -- the sources of the proposer's honest attestations are below old origins, below `D ⪯ X`
   have hsrc := proposal_rows_old_of hrun hnc hp hc hcall hd hti hP hfK

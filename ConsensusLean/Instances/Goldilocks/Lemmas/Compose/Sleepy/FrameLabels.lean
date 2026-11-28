@@ -38,7 +38,7 @@ private theorem held_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   exact FrameGeometry.held_viable_of hrun.toLocalRun (projFG_localRun hrun hnc)
     hf hy hsrc.toFrameGeometry hGG hGB hBt
@@ -52,7 +52,7 @@ private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H 
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hU := (projFG_localRun hrun hnc).coherent
   have hsrc : HonestRowsSourced tr H (fun D => ∃ C, (∃ l, OriginBefore tr H C l i) ∧
@@ -74,7 +74,7 @@ theorem held_origin_viable_before {b : Time} {ini} (hrun : GoldilocksRun propose
     (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   held_origin_viable_of hrun hnc hf hy i
     (fun C l C' l' hC hC' => originsBelowUpTo_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)

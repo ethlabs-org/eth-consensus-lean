@@ -209,7 +209,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     rw [hrun.toCore.frame_of_projAC_at hyj hu.1, Node.frame_eq, Store.toFrame_tree] at hPt
     exact hPt.1
   have hPk : ∀ k, j ≤ k → k ≤ i → P ∈ (Node.frame (tr.state y k)).tree ∧
-      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
+      (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).F P ∧
       P ∈ (Node.frame (tr.state y k)).viableHeads := by
     intro k hjk hki
     have hkt := hrun.time_mono hki
@@ -236,8 +236,8 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
       rw [Node.frame_eq, Store.toFrame_tree]
       exact fun B hB => ⟨y, k, tr.time k, hrun.time_nonneg k,
         (fun q hq => hrun.time_mono hq.le), hyk, hB.1⟩
-    apply AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ hsubtree hΦ.fcRoot_mem _ hPt
-    rw [Node.frame_eq, Store.toFrame_fcRoot]
+    apply AC.anc_tree_of_anc_U (hrun.toCore.coherent hnc) hΦ hsubtree hΦ.rooted.1 _ hPt
+    rw [Node.frame_eq, Store.toFrame_F]
     exact hFP
   exact toFG_candidate_of_viable_head_at hrun hnc hK
     (by have := hts (show u ≤ r + 1 by omega); linarith) hfu hPD hy hc hji

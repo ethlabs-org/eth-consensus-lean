@@ -34,7 +34,7 @@ theorem held_high_origin_viable_at
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) (_ht : sp.ts (j + 1 : Nat) ≤ tr.time c)
     (hBt : B ∈ ell.frame.tree) :
-    B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot := by
+    B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.F := by
   have ht := hp.run.time_nonneg c
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
   have hreach := fg_reachable_at hp.run ht hle hpH
@@ -104,10 +104,10 @@ theorem held_high_origin_viable_at
     · exact ⟨B, hBs, .refl, Or.inr ⟨hBm, Or.inr (hanc h hBs)⟩⟩
     · exact ⟨(tr.state p c).fg.J, hJm, hanc h hJm, Or.inr ⟨by omega, Or.inr .refl⟩⟩
   obtain ⟨W, hW, hBW, hvW⟩ := hdesc
-  have hfB : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+  have hfB : Anc (tr.HonestBlocksAt H) ell.frame.F B := by
     rw [hfr]
     exact hFB.mono hsub
-  have hfB' := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfB hBt
+  have hfB' := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.rooted.1 hfB hBt
   have hWf : W ∈ (Node.frame (tr.state p c)).tree := ⟨hW, hFB.trans hBW⟩
   have hWt : W ∈ ell.frame.tree := hfr ▸ hWf
   have hWv : W ∈ ell.frame.viableHeads := by

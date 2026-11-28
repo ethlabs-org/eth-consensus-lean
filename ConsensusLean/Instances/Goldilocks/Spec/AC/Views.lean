@@ -176,7 +176,7 @@ def voterBlockTree (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk s
     ∃ P ∈ Φ.tree, P.slot = s ∧ Φ.Anc B P)}
 
 /-- The head domain of an honest slot-`s` vote: the voter block tree, or the whole tree when the
-voter block tree has no viable block in the current frame `Φ` (`fc_root` and viable heads as of
+voter block tree has no viable block in the current frame `Φ` (`Φ.F` and viable heads as of
 now): goldilocks-spec.tex §"Votes and views" ("the vote domain") and the vote's pseudocode
 (`docs/decisions.md` §"Goldilocks model choices"). -/
 def voteDomain (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=

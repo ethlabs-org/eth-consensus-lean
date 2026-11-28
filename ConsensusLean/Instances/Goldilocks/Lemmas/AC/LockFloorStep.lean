@@ -33,7 +33,7 @@ theorem anc_viableAncestor_of_floor {n : Nat} {FGP : Type} {Φ : Frm n FGP} (hΦ
 /-- `anc_viableAncestor_of_floor` for a candidate `B₀`: viable or at or below `fc_root`. -/
 theorem anc_viableAncestor_of_candidate {n : Nat} {FGP : Type} {Φ : Frm n FGP}
     (hΦ : FrameOK Φ) {B₀ B : Blk n FGP}
-    (hc : B₀ ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B₀ Φ.fcRoot) (hB : B ∈ Φ.tree)
+    (hc : B₀ ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B₀ Φ.F) (hB : B ∈ Φ.tree)
     (h : Φ.Anc B₀ B) : Φ.Anc B₀ (Φ.viableAncestor B) :=
   (viableAncestor_spec hΦ hB).2.2 B₀ h hc.symm
 

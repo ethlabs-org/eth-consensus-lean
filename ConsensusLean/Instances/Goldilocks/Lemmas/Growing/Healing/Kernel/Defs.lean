@@ -21,18 +21,6 @@ open AC (ACParams Payload gbar)
 variable {sp : ACParams}
   {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
 
-/-- The frame data shared by the nodes honest at their individual cuts in an interval. -/
-structure FrameWindow (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
-    (lo hi : Time) (floor : Nat) (kindJ : Prop)
-    (J : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
-  floor_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    (tr.state y i).fg.headHeightFloor = floor
-  kind_iff : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    (((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-      ¬ (tr.state y i).fg.Contest) ↔ kindJ)
-  root_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi → kindJ →
-    (tr.state y i).fg.J = J
-
 /-- The bounded-gap proposal evidence includes honesty through the slot's vote deadline. -/
 def ProposalGap (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (G s₀ N : Nat) : Prop :=

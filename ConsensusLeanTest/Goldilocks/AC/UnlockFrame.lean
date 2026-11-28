@@ -61,10 +61,10 @@ def bX : Bk := ⟨3, some 2, 2, v0, 0, (), ([], [])⟩
 def bL : Bk := ⟨4, some 2, 2, v0, 0, (), ([], [])⟩
 
 /-- The proposer's frame: rooted at `F`, so `H` is not in it. -/
-def Φp : Frm sp7.n Unit := ⟨{bF, bX, bL}, bF, bF, {bX, bL}⟩
+def Φp : Frm sp7.n Unit := ⟨{bF, bX, bL}, bF, {bX, bL}⟩
 
 /-- The voter's frame: rooted at `G ≺ F`, with the same blocks and `H`. -/
-def Φy : Frm sp7.n Unit := ⟨{bG, bH, bF, bX, bL}, bG, bG, {bH, bX, bL}⟩
+def Φy : Frm sp7.n Unit := ⟨{bG, bH, bF, bX, bL}, bG, {bH, bX, bL}⟩
 
 /-- The head of validator `i`'s vote: `L` for `0, 1, 2`, `X` for `3, 4, 5`, `H` for `6`. -/
 def head (i : Fin sp7.n) : Nat := if i.val < 3 then 4 else if i.val < 6 then 3 else 1
@@ -129,16 +129,10 @@ theorem frameOK_Φp : FrameOK Φp where
     · exact Relation.ReflTransGen.refl
     · exact edge (Or.inl rfl) (Or.inr (Or.inl rfl)) rfl
     · exact edge (Or.inl rfl) (Or.inr (Or.inr rfl)) rfl⟩
-  fcRoot_mem := Or.inl rfl
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by
     intro W hW; rcases hW with rfl | rfl
     · exact Or.inr (Or.inl rfl)
     · exact Or.inr (Or.inr rfl)
-  fcRoot_anc_viableHeads := by
-    intro W hW; rcases hW with rfl | rfl
-    · exact edge (Or.inl rfl) (Or.inr (Or.inl rfl)) rfl
-    · exact edge (Or.inl rfl) (Or.inr (Or.inr rfl)) rfl
 
 /-- Every block of the voter's tree extends `G`. -/
 theorem Φy_rooted (C : Bk) (hC : C ∈ Φy.tree) : Φy.Anc bG C := by
@@ -164,16 +158,8 @@ theorem frameOK_Φy : FrameOK Φy where
       rcases hB with rfl | rfl | rfl | rfl | rfl <;> rcases hC with rfl | rfl | rfl | rfl | rfl <;>
         simp_all [bG, bH, bF, bX, bL]
   rooted := ⟨Or.inl rfl, Φy_rooted⟩
-  fcRoot_mem := Or.inl rfl
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by
     intro W hW; rcases hW with rfl | rfl | rfl
-    · exact Or.inr (Or.inl rfl)
-    · exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr rfl)))
-  fcRoot_anc_viableHeads := fun W hW => by
-    refine Φy_rooted W ?_
-    rcases hW with rfl | rfl | rfl
     · exact Or.inr (Or.inl rfl)
     · exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
     · exact Or.inr (Or.inr (Or.inr (Or.inr rfl)))

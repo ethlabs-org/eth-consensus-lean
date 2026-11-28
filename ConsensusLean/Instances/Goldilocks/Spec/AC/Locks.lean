@@ -14,7 +14,7 @@ locks of earlier slots) plus `c`, at least `j + 2` on lawful runs and at most `j
 reads the locks through `live_locks`, which moves each live lock back to its viable ancestor
 (`Frame.viableAncestor`, the frame-level definition of claims G0.4 (frame), which goldilocks-spec
 §"Locks" also gives). The highest live lock is the deepest live lock block. The anchor is the
-higher of it and `fc_root`. The highest live lock vetoes a block that conflicts with it;
+higher of it and `Φ.F`. The highest live lock vetoes a block that conflicts with it;
 there is no veto when no live lock exists. `add_locks` returns the
 live locks of the stored set and the new locks together, each with its expiry; `unlock` against
 the slot-`s` votes of a view
@@ -57,11 +57,11 @@ it. -/
 def conflictsWithLock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (C : Blk sp.n FGP) : Prop :=
   ∃ H, highestLiveLock sp L Φ t = some H ∧ ¬ Compatible Φ.tree C H
 
-/-- `get_anchor(𝒜, Φ, t)`: the higher of the highest live lock and `fc_root`. -/
+/-- `get_anchor(𝒜, Φ, t)`: the higher of the highest live lock and `Φ.F`. -/
 noncomputable def getAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
   match highestLiveLock sp A.locks Φ t with
-  | some H => if depth Φ Φ.fcRoot < depth Φ H then H else Φ.fcRoot
-  | none => Φ.fcRoot
+  | some H => if depth Φ Φ.F < depth Φ H then H else Φ.F
+  | none => Φ.F
 
 /-- `add_locks(locks, Φ, t, s, N)`: the live locks of the stored set with the new locks
 `(B, s, f, e)` for `(B, f, e) ∈ N` (blocks by root). -/
