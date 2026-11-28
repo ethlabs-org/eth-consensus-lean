@@ -4,7 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
@@ -53,7 +54,7 @@ theorem operational_update_recent_source_at {b : Time}
     ∃ x q s CV, x ∈ H (tr.time q) ∧ q ≤ j ∧ tr.time q ≤ tr.time j ∧ u ≤ s ∧
       (AC.ResultAt tr.projAC x q s R CV ∨ AC.OptimisticLockAt tr.projAC x q s R CV) := by
   obtain ⟨hPt, hconf, _, _, _, hrecord⟩ :=
-    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
+    operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
   have hrun := hp.run
   have hc' := Compose.projAC_callAt.mp hup.1
   have hlaw := hrun.cutLaw y j _ hc' hy
