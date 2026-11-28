@@ -30,14 +30,11 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Proposal report follow over the shadow run (interface)
+/-! # Proposal report follow over the shadow run
 
-The stock suppliers `proposal_report_follow_at` (`FollowEndpoint`) and
-`proposal_report_follow_delayed_at` (`FollowSigned`), restated over `Growing.GoldilocksRun'` and
-`Generic.FrameWindow … M isTop J`. Their proofs compose `CandidateReport` (`Deep`), the
-early-witness family (`WitnessFamily`) and the regular and optimistic later-head suppliers
-(`FollowHeads`, `FollowWrite`, `RegularLater`). The fresh report uses the adjacent update and
-signing calls, with the unanimous vote heads of the P-U window. -/
+`proposal_report_follow_delayed_at` gives report and later proposal heads over a growing run and
+a P-U frame window. The fresh report uses the adjacent update and signing calls, with the
+unanimous vote heads of the P-U window. -/
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
@@ -502,42 +499,6 @@ private theorem proposal_report_follow_of_sign_at
 private theorem warm_signing_public (u : Nat) :
     sp.toParams.IsPublic (sp.ts (u + 1 : Nat) + 2 * sp.Δ) :=
   ⟨4 * (u : Int) + 6, by rw [AC.ts_succ]; simp only [ACParams.ts]; ring⟩
-
-/-- The report and subsequent proposal heads when the calendar permits signing at the update. -/
-theorem proposal_report_follow_at
-    {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
-      sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
-      Anc (tr.HonestBlocksAt H) P R ∧
-      ∀ x, u + 3 ≤ x → x ≤ N → ∀ w c ellp, w ∈ H (tr.time c) →
-        tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
-        ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
-          some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
-  have hle : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ sp.ts N + 2 * sp.Δ :=
-    add_le_add ((AC.ts_le_iff sp).2 (by exact_mod_cast hN)) le_rfl
-  simpa only [Nat.cast_zero, zero_mul, add_zero, Nat.reduceDiv] using
-    proposal_report_follow_of_sign_at (G := 0)
-      (by simpa only [Nat.cast_zero, zero_mul, add_zero, max_eq_left hle] using hframe)
-      hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN
-      (by simpa only [Nat.cast_zero, zero_mul, add_zero, max_eq_left hle] using hmb)
-      hz hdes hP hPs hcal (by simpa using hy) le_rfl (by simp) (warm_signing_public u) hsign hK
 
 /-- The report and subsequent proposal heads under a bounded signing gap. -/
 theorem proposal_report_follow_delayed_at
