@@ -26,7 +26,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 
