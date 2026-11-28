@@ -6,9 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
 /-! # Goldilocks FG: validator client and slashing conditions
 
 The validator client of fg.tex §"Validator client" with loose BJ (the
-finality pair is read from the entry state of the source) and the weakened E1
-(the timeout record is a set of roots, `permits` needs
-`timeout[j] ⊆ {T}`, `height_pair` tests the lock first), and the slashing
+finality pair is read from the entry state of the source), and the slashing
 conditions of fg.tex §"Slashing conditions". The client's input is the entry state
 `σe = Σ.σ[T_c]` of its source (`fg_attest`): its height is the source's height `h_c`
 and its `Th` is `T_c` itself, so the height pair names `(σe.h, σe.Th)`.
@@ -24,9 +22,9 @@ abbrev Content : Type := Nat × Nat × Bool × Option (Nat × Nat)
 /-- The content of an attestation. -/
 def Att.content {n : Nat} (a : Att n) : Content := (a.h, a.T, a.timeout, a.fin)
 
-/-- The anti-slashing record `Λ = (target[·], timeout[·], lock[·], sent)`: the first
+/-- The anti-slashing record `Λ = (target[·], timeout[·], lock[·])`: the first
 target at each height, the roots that the timeouts at each height name, the target of
-the first finality pair at each height, and the contents sent. -/
+the first finality pair at each height. -/
 structure Record where
   /-- The first target sent at each height. -/
   target : Nat → Option Nat
@@ -34,22 +32,20 @@ structure Record where
   timeout : Nat → Finset Nat
   /-- The target of the first finality pair at each height. -/
   lock : Nat → Option Nat
-  /-- The contents sent. -/
-  sent : List Content
 
 namespace Record
 
 /-- The empty record. -/
-def empty : Record := ⟨fun _ => none, fun _ => ∅, fun _ => none, []⟩
+def empty : Record := ⟨fun _ => none, fun _ => ∅, fun _ => none⟩
 
 /-- `permits`: the record allows the finality pair `(j, T)`. -/
 def permits (Λ : Record) (j T : Nat) : Prop :=
-  (Λ.target j = none ∨ Λ.target j = some T) ∧ Λ.timeout j ⊆ {T} ∧
+  (Λ.target j = none ∨ Λ.target j = some T) ∧ Λ.timeout j = ∅ ∧
     (Λ.lock j = none ∨ Λ.lock j = some T)
 
 instance (Λ : Record) (j T : Nat) : Decidable (Λ.permits j T) :=
   inferInstanceAs (Decidable ((Λ.target j = none ∨ Λ.target j = some T) ∧
-    Λ.timeout j ⊆ {T} ∧ (Λ.lock j = none ∨ Λ.lock j = some T)))
+    Λ.timeout j = ∅ ∧ (Λ.lock j = none ∨ Λ.lock j = some T)))
 
 /-- `finality_pair`: at an entry whose previous height is justified the predecessor when permitted
 (also if a later state finalized it), else the newest permitted pending pair of the entry state. -/
@@ -62,12 +58,12 @@ def finalityPair {n : Nat} (Λ : Record) (σe : ChainState n) : Option (Nat × N
       | none => some p
       | some r => if r.1 < p.1 then some p else some r) none
 
-/-- `height_pair`: locked elsewhere gives none; a recorded timeout gives a timeout; a
-free or equal target gives a target; otherwise a timeout. `(h, T, τ)`. -/
+/-- `height_pair`: abstain when locked elsewhere or already signed for the entry.
+Otherwise sign a target at a fresh height, or a timeout when a target is recorded. -/
 def heightPair (Λ : Record) (hc Tc : Nat) : Option (Nat × Nat × Bool) :=
   if Λ.lock hc ≠ none ∧ Λ.lock hc ≠ some Tc then none
-  else if Λ.timeout hc ≠ ∅ then some (hc, Tc, true)
-  else if Λ.target hc = none ∨ Λ.target hc = some Tc then some (hc, Tc, false)
+  else if Λ.target hc = some Tc ∨ Tc ∈ Λ.timeout hc then none
+  else if Λ.target hc = none then some (hc, Tc, false)
   else some (hc, Tc, true)
 
 /-- `record_attestation`, the only writer of the record. -/
@@ -79,20 +75,16 @@ def recordAtt {n : Nat} (Λ : Record) (a : Att n) : Record where
   lock := match a.fin with
     | some p => Function.update Λ.lock p.1 (some p.2)
     | none => Λ.lock
-  sent := Λ.sent ++ [a.content]
 
 /-- `create_attestation` of validator `v` for a source with entry state `σe`: the
-attestation and the new record, or none (no height pair, or a target that is not the
-first vote at its height, or an entry named twice). -/
+attestation and the new record, or none when there is no height pair. -/
 def createAtt {n : Nat} (Λ : Record) (v : Fin n) (σe : ChainState n) :
     Option (Att n × Record) :=
   match Λ.heightPair σe.h σe.Th with
   | none => none
   | some (h, T, τ) =>
-      if Λ.sent.any (fun b => b.1 = h ∧ (!τ ∨ b.2.1 = T)) then none
-      else
-        let a : Att n := ⟨v, h, T, τ, Λ.finalityPair σe⟩
-        some (a, Λ.recordAtt a)
+      let a : Att n := ⟨v, h, T, τ, Λ.finalityPair σe⟩
+      some (a, Λ.recordAtt a)
 
 end Record
 

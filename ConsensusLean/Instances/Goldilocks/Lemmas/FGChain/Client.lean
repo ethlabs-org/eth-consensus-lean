@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 
 public section
@@ -49,16 +50,6 @@ private theorem finalityPair_spec {Λ : Record} {σe : ChainState n}
     · rw [List.mem_filter, decide_eq_true_iff] at h
       exact ⟨h.2, hσ.2 p h.1⟩
 
-/-- A height pair names the entry, its lock is free or equal, and a target finds its
-target free or equal. -/
-private theorem heightPair_spec {Λ : Record} {h T hc Tc : Nat} {τ : Bool}
-    (hp : Λ.heightPair h T = some (hc, Tc, τ)) :
-    hc = h ∧ Tc = T ∧ (Λ.lock h = none ∨ Λ.lock h = some T) ∧
-      (τ = false → Λ.target h = none ∨ Λ.target h = some T) := by
-  unfold heightPair at hp
-  split_ifs at hp with h1 h2 h3 <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
-    obtain ⟨rfl, rfl, rfl⟩ := hp <;> simp_all <;> tauto
-
 /-- Recording an attestation keeps the timeout roots. -/
 private theorem timeout_subset_recordAtt (Λ : Record) (a : Att n) (j : Nat) :
     Λ.timeout j ⊆ (Λ.recordAtt a).timeout j := by
@@ -90,7 +81,8 @@ private theorem lock_recordAtt {Λ : Record} {a : Att n} {j T : Nat} (h : Λ.loc
 
 /-- Recording an attestation keeps a permitted pair that it agrees with. -/
 private theorem permits_recordAtt {Λ : Record} {a : Att n} {j T : Nat} (hp : Λ.permits j T)
-    (hh : a.h = j → a.T = T) (hf : ∀ p ∈ a.fin.toList, p.1 = j → p.2 = T) :
+    (hh : a.h = j → a.T = T ∧ a.timeout = false)
+    (hf : ∀ p ∈ a.fin.toList, p.1 = j → p.2 = T) :
     (Λ.recordAtt a).permits j T := by
   obtain ⟨ht, hto, hl⟩ := hp
   refine ⟨?_, ?_, ?_⟩
@@ -98,16 +90,15 @@ private theorem permits_recordAtt {Λ : Record} {a : Att n} {j T : Nat} (hp : Λ
     split_ifs
     · rw [Function.update_apply]
       split_ifs with he
-      · exact Or.inr (by rw [hh he.symm])
+      · exact Or.inr (by rw [(hh he.symm).1])
       · exact ht
     · exact ht
   · simp only [recordAtt]
     split_ifs
     · rw [Function.update_apply]
       split_ifs with he
-      · subst he
-        rw [hh rfl]
-        exact Finset.insert_subset (by simp) hto
+      · have := (hh he.symm).2
+        simp_all
       · exact hto
     · exact hto
   · rcases hl with hl | hl
@@ -129,9 +120,8 @@ private theorem tracks_createAtt {Λ Λ' : Record} {atts : List (Att n)} {v : Fi
   split at h
   · cases h
   rename_i hc Tc τ hhp
-  split_ifs at h
   cases h
-  obtain ⟨rfl, rfl, hlock, htgt⟩ := heightPair_spec hhp
+  obtain ⟨rfl, rfl, hlock, hne, -, htgt⟩ := heightPair_some hhp
   have hfin := fun p (hp : p ∈ (Λ.finalityPair σe).toList) =>
     finalityPair_spec hσ (Option.mem_toList.1 hp)
   generalize Λ.finalityPair σe = fp at *
@@ -139,7 +129,7 @@ private theorem tracks_createAtt {Λ Λ' : Record} {atts : List (Att n)} {v : Fi
   rcases List.mem_cons.1 hx with rfl | hx
   · refine ⟨fun (ht : τ = true) => ?_, fun (ht : τ = false) => ?_, fun q hq => ?_⟩
     · simp [recordAtt, ht]
-    · rcases htgt ht with h0 | h0 <;> simp [recordAtt, ht, h0]
+    · simp [recordAtt, ht, htgt.mp ht]
     · obtain ⟨hp, hlt⟩ := hfin q hq
       obtain rfl : fp = some q := Option.mem_toList.1 hq
       refine ⟨by simp [recordAtt], permits_recordAtt hp (fun he => absurd he hlt.ne') ?_⟩
@@ -156,7 +146,11 @@ private theorem tracks_createAtt {Λ Λ' : Record} {atts : List (Att n)} {v : Fi
       simpa [eq_comm] using this
     refine ⟨lock_recordAtt hl hpc, permits_recordAtt hp (fun (he : σe.h = q.1) => ?_) hpc⟩
     rw [he, hl] at hlock
-    simpa [eq_comm] using hlock
+    have hT : σe.Th = q.2 := by simpa [eq_comm] using hlock
+    refine ⟨hT, htgt.mpr ?_⟩
+    rcases hp.1 with h | h
+    · simpa only [he] using h
+    · exact (hne (by rw [he, h, hT])).elim
 
 /-- A tracked set of attestations has no slashable pair. -/
 private theorem not_slashable_of_tracks {Λ : Record} {atts : List (Att n)} (hΛ : Tracks Λ atts)
@@ -170,7 +164,8 @@ private theorem not_slashable_of_tracks {Λ : Record} {atts : List (Att n)} (hΛ
       rcases ht with ht | ht <;> rw [ht] at this
       · cases this
       · exact hbT (Option.some.inj this).symm
-    · exact hbT (Finset.mem_singleton.1 (hto ((hΛ b hb).1 hτ)))
+    · have hm := (hΛ b hb).1 hτ
+      simp [hto] at hm
   rintro ⟨-, h | h | ⟨heq, hta, htb, hne⟩⟩
   · exact he1 a ha b hb h
   · exact he1 b hb a ha h
@@ -198,12 +193,11 @@ end Record
 
 /-- **G0.10.** -/
 theorem aggregation (gp : FGParams) : Aggregation gp := by
-  intro σe Λ v hb hlock hto htgt hsent
+  intro σe Λ v hb hlock hto htgt
   have hhp : Λ.heightPair σe.h σe.Th = some (σe.h, σe.Th, false) := by
     rcases hlock with h | h <;> simp [Record.heightPair, h, hto, htgt]
-  have hany : ¬ ∃ b ∈ Λ.sent, b.1 = σe.h := fun ⟨b, hb, he⟩ => hsent b hb he
   let a : Att gp.n := ⟨v, σe.h, σe.Th, false, Λ.finalityPair σe⟩
-  refine ⟨a, Λ.recordAtt a, by simp [Record.createAtt, hhp, hany, a], ?_⟩
+  refine ⟨a, Λ.recordAtt a, by simp [Record.createAtt, hhp, a], ?_⟩
   simp [a, Att.content, Record.finalityPair, hb]
 
 /-- **G0.5.** -/
@@ -220,18 +214,8 @@ namespace Consensus.Goldilocks.Compose
 /-- A signed attestation targets the entry of its entry state. -/
 theorem createAtt_T {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n} {a : FG.Att n}
     {Λ' : FG.Record} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  cases hp : Λ.heightPair σe.h σe.Th with
-  | none => rw [hp] at h; cases h
-  | some p =>
-    obtain ⟨h', T, τ⟩ := p
-    rw [hp] at h
-    dsimp only at h
-    split_ifs at h
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
-      exact hp.2.1.symm
+  obtain ⟨-, -, -, hT, -⟩ := FG.Record.createAtt_some h
+  exact hT
 
 end Consensus.Goldilocks.Compose
 

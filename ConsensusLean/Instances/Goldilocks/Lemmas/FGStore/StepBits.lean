@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
 
 public section
@@ -87,14 +88,8 @@ theorem heightPair_eq {Λ : FG.Record} {hc Tc h T : Nat} {τ : Bool}
 /-- The attestation that `create_attestation` makes has the height and entry of its input. -/
 theorem createAtt_eq {Λ Λ' : FG.Record} {v : Fin P.n} {σe : ChainState P.n} {a : Att P.n}
     (h : Λ.createAtt v σe = some (a, Λ')) : a.h = σe.h ∧ a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    exact heightPair_eq hp
+  obtain ⟨-, -, hh, hT, -⟩ := FG.Record.createAtt_some h
+  exact ⟨hh, hT⟩
 
 end Store
 

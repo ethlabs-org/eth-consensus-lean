@@ -5,6 +5,7 @@ import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
@@ -854,12 +855,7 @@ private theorem restore_att {sp : AC.ACParams}
 
 theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainState n}
     {a : FG.Att n} (h : Λ.createAtt v σ = some (a, Λ')) : a.val = v := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · split_ifs at h
-    cases h
-    rfl
+  exact (FG.Record.createAtt_some h).1
 
 /-- Every attestation body queued in `outbox`, and every attestation in `held`, is the node's
 own and satisfies `signed`. -/
