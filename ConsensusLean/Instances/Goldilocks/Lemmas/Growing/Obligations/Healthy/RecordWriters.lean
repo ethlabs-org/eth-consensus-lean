@@ -33,8 +33,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.OpponentsHonest
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.SeedCandidate
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -237,19 +236,13 @@ theorem retained_writer_slot_after_update_at
       (by omega : j + 1 ≤ n)
       ((Compose.Growing.frame_of_projAC_at hrun hyq hcall ▸ hRq).1)
       (AC.lookup_eq_some hlookup).1
+    obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
     have hlook : AC.lookup ell.frame (tr.projAC.post j).latestConfirmed = some R := by
       rw [hpost, hrest (j + 1) (by omega) (by omega)]
       rw [hframe] at hRj
-      cases he : AC.lookup ell.frame R.root with
-      | none => exact False.elim (AC.lookup_eq_none he ⟨R, hRj, rfl⟩)
-      | some B =>
-        obtain ⟨hB, hBr⟩ := AC.lookup_eq_some he
-        have heq : B = R :=
-          (Compose.Growing.frameIn_at hrun hnc hyj hup.1).1.coherent.1 hB hRj hBr
-        exact congrArg some heq
+      exact AC.lookup_of_mem hΦj hRj
     obtain ⟨hPt, -, -, -, -, hrecord⟩ :=
       operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
-    obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
     have hPR : Anc (tr.HonestBlocksAt H) P
         ((AC.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
       rw [hrecord]
@@ -280,104 +273,39 @@ private theorem optimistic_unlock_keeps_at
     (hslot : sp.slot (tr.time j) = s + 2)
     (hR : R ∈ (Node.frame ((tr.upTo t).state y j)).tree) :
     Compose.UnlockKeeps (tr.upTo t) y j R := by
-  intro ell hcall
   have hrun := hp.run
   have hnc := hp.noColl
   have hm := hrun.time_mono
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hrT := hrun.upTo ht0
   have hncT := hnc.upTo t
-  have hrunT := Compose.goldilocks_ac_projection_from hrT hncT
-  have hr := hrunT.localRun
-  have hcallA := Compose.projAC_callAt.2 hcall
-  obtain ⟨hfr, hst, _, _⟩ := hrT.cutLaw y hy j _ hcall
-  rw [hfr] at hst
-  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y ((tr.upTo t).state y j).ac
-      (Node.frame ((tr.upTo t).state y j)) ((tr.upTo t).time j) ell.call).1 =
-        ((tr.upTo t).state y (j + 1)).ac := by
-    rw [(tr.upTo t).state_succ_of_call hcall, hst]
-  have hpool : ∀ m τ, ∀ v ∈ ((tr.upTo t).state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
-    rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
-    exact (Compose.state_pool_cap hrT hy m τ).1 v hv
-  have hpay : ∀ C ∈ (Node.frame ((tr.upTo t).state y j)).tree, AC.validPayload C := by
-    rw [← hfr]
-    exact AC.frame_validPayloadU sp hr.toU hy hcallA
-  -- the held votes of slot `s + 1` are of slot-`s + 1` committee members, fewer than half of
-  -- whom are faulty at `t`
-  let K := Generic.dictOfTime sp cm
+  have hP : AC.CommitteeP (Generic.dictOfTime sp cm) (tr.upTo t).projAC (H t) := by
+    rw [RunTrace.upTo_projAC]
+    exact AC.CommitteePAt.upTo hm hrun.antitone hp.committeeFacts.hP t
+  have hprev : sp.slot (tr.time j) - 1 = s + 1 := by omega
   have hts : sp.ts (s + 1) ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) (s + 1)).2 (by omega)
-  have hf : 2 * (H t ∪ (K.committee (s + 1))ᶜ)ᶜ.ncard < sp.committeeSize := by
-    rw [Set.compl_union, compl_compl, Set.inter_comm]
-    exact hp.committee_cs2_at (hp.gbar_le_ts_of_clean_at (by omega))
-      (hts.trans (hjt.trans htb)) ht0 htb
-  have hPK := AC.CommitteePAt.upTo hm hrun.antitone hp.committeeFacts.hP t
-  have hmemK : ∀ v ∈ AC.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
-      (Node.frame ((tr.upTo t).state y j)), v.val ∈ K.committee v.slot := by
-    intro v hv
-    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, w, hw, -, -, -, hwv, -⟩
-    · rw [(hpool j τ v hv)]
-      rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hv
-      exact hPK.1 y hy j τ v hv
-    · rw [(hpool (j + 1) τ v hv)]
-      rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hv
-      exact hPK.1 y hy (j + 1) τ v hv
-    · -- a counted declaration: a pool vote of its validator and slot, P
-      rw [← hwv]
-      rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hw
-      exact hPK.1 y hy (j + 1) _ w hw
-  have hon : ∀ v ∈ AC.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
-      (Node.frame ((tr.upTo t).state y j)), v.val ∈ H t ∪ (K.committee (s + 1))ᶜ →
-      (v.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → v.val ∈ H t := by
-    intro v hv hvn hvs
-    refine hvn.resolve_right fun hn => hn ?_
-    have hv1 : v.slot = s + 1 := by omega
-    exact hv1 ▸ hmemK v hv
-  have hΦ := Compose.frameOK_state hrT.toLocalRun hy j
-  have hPhiU : (Node.frame ((tr.upTo t).state y j)).tree ⊆ tr.HonestBlocksAt H :=
-    fun B hB => RunTrace.honestBlocks_upTo_subset hm ht0 ⟨y, hy, j, hB.1⟩
-  apply AC.unlockTarget_unlockView_held_of_honest_slot y ell.call hA' hΦ _ hR (hpool j)
-    (hpool (j + 1)) hpay
-    (fun v hv w hw hvH hval hsl hsl' =>
-      Compose.heldVotes_honest_unique hrT hncT hy hv hw (hon v hv hvH hsl') hval hsl) ?_
-    hf
-  intro v hv hvH hvs Hd hHd hHdr
-  replace hvH := hon v hv hvH hvs
-  obtain ⟨k, e, ⟨ell', hcast⟩, hmsg⟩ :
-      ∃ k e, AC.VoteAt (tr.upTo t).projAC v.val k e ∧ e.msg = v := by
-    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩
-    · rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
-      obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.pool_vote y hy j τ v hv hvH
-      exact ⟨k, e, he, hm⟩
-    · rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
-      obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.pool_vote y hy (j + 1) τ v hv hvH
-      exact ⟨k, e, he, hm⟩
-    · -- a counted declaration: two distinct pool votes of an honest validator, a contradiction
-      have hxs := hpool (j + 1) _ x hx
-      have hx's := hpool (j + 1) _ x' hx'
-      rw [← Compose.projAC_state hrT.toLocalRun hy] at hx hx'
-      obtain ⟨k, _, e, he, rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
-      obtain ⟨k', _, e', he', rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
-      rw [hx'v, ← hxv] at he'
-      exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-        (AC.one_vote_per_slotU sp _ (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
-          (hxs.trans hx's.symm)).2) hne
-  have hkj : k < j :=
-    Compose.cast_lt_of_slot hrT hncT hvH hcast (by simpa [hmsg] using hvs)
-  have hcastR : AC.CastAt tr.projAC v.val k ell' e := by
-    rw [RunTrace.upTo_projAC] at hcast
-    exact (Compose.Growing.ac_castAt_upTo.mp hcast).2
-  have hkt : tr.time k ≤ t := (hm hkj.le).trans hjt
-  obtain ⟨Hd', hHd', hHd'r, hRHd⟩ := hp.fast_source_votes_before_at hx (Or.inr hop)
-    (by have := sp.two_le_k; omega) hqb k (hkt.trans htb) v.val (hrun.antitone hkt hvH) ell' e
-    hcastR (by
-      rw [hmsg]
-      change (v.slot : Int) = (sp.slot (tr.time j) : Int) - 1 at hvs
-      omega)
-  have heq : Hd' = Hd := hU.1 hHd' (hPhiU hHd)
-    (hHd'r.trans ((congrArg Vote.head hmsg).trans hHdr.symm))
-  subst Hd'
-  exact Or.inr (AC.anc_tree_of_anc_U hU hΦ hPhiU hR hRHd hHd)
+  refine Compose.unlockKeeps_of_voteCompat hrT hncT hP (W := ∅) hy ?_ hR ?_
+  · change 2 * ((Generic.dictOfTime sp cm).committee (sp.slot (tr.time j) - 1) ∩
+      ((H t)ᶜ ∪ ∅)).ncard < sp.committeeSize
+    simpa only [hprev, Set.union_empty, Set.inter_comm] using
+      hp.committee_cs2_at (hp.gbar_le_ts_of_clean_at (by omega :
+        Healing.cleanLabel sp a ≤ s + 1)) (hts.trans (hjt.trans htb)) ht0 htb
+  · intro v hv _ k hkj e hcast hvs
+    obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_headU
+      (Compose.goldilocks_ac_projection_from hrT hncT).toU hv hcast
+    obtain ⟨ell, hc⟩ := hcast
+    rw [RunTrace.upTo_projAC] at hc
+    have hkt := (hm hkj.le).trans hjt
+    obtain ⟨Hd', hHd', hHd'r, hRHd⟩ := hp.fast_source_votes_before_at hx (Or.inr hop)
+      (by have := sp.two_le_k; omega) hqb k (hkt.trans htb) v (hrun.antitone hkt hv) ell e
+      (Compose.Growing.ac_castAt_upTo.mp hc).2 (by
+        change (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 at hvs
+        omega)
+    have heq : Hd' = Hd := (Compose.Growing.honest_blocks_coherent hrun hnc).1 hHd'
+      (RunTrace.honestBlocks_upTo_subset hm ht0 hHd) (hHd'r.trans hHdr.symm)
+    rw [heq] at hRHd
+    exact Compose.voteCompat_iff.2 ⟨Hd, hHd, hHdr, Or.inr
+      (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hHd hRHd)⟩
 
 open Healing.Growing in
 /-- The actual slot-`s` fast lock, of expiry at least `s + 2`, survives at a reader honest at
