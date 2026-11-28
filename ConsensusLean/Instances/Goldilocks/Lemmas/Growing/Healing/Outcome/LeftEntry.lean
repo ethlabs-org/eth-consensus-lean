@@ -53,7 +53,7 @@ theorem left_entry_origin_at
     (Compose.Growing.reachable_at hrun ht hy hle) hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
+  rcases Compose.tree_cases (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨d, hdi, hs⟩ := hrun.att_unforgeable y i att
     (hrun.antitone (hle i hik) hy)
@@ -308,7 +308,7 @@ theorem left_entry_covered_before_at
     (Compose.Growing.reachable_at hrun ht hy hle) hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
+  rcases Compose.tree_cases (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨d, hdi, hs⟩ := hrun.att_unforgeable y i att
     (hrun.antitone (hle i hik) hy)

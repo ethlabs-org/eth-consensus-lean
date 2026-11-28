@@ -41,7 +41,7 @@ theorem frame_block_acceptance_at {ini}
     rw [RunTrace.upTo_state_of_le rc.time_mono le_rfl]
     rw [(rc.cutLaw x q _ (Compose.projAC_callAt.mp hc) hx).1] at hB
     exact hB.1
-  rcases Healing.tree_accepted (rc.upTo hd).toLocalRun hx ht with hg | ⟨k, hk, ha⟩
+  rcases Compose.tree_cases (rc.upTo hd).toLocalRun hx ht with hg | ⟨k, hk, ha⟩
   · exact Or.inl hg
   · exact Or.inr ⟨k, hk, rc.antitone (rc.time_mono hk.le) hx,
       ((RunTrace.upTo_acceptAt _).mp ha).2⟩

@@ -73,7 +73,7 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     · exact he ▸ hX
     · exact (Anc.mem hYX he).1
   have hY' : Y ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases Healing.tree_accepted (hp.run.upTo ht).toLocalRun hy hY' with rfl | ⟨i', hi', hA⟩
+  rcases Compose.tree_cases (hp.run.upTo ht).toLocalRun hy hY' with rfl | ⟨i', hi', hA⟩
   · cases hatt
   obtain ⟨d, hdi, hs⟩ := hp.run.toLocalRun.att_unforgeable y i' att
     (hp.run.antitone (hle i' hi') hy) (Or.inr ⟨Y, ⟨true, ((RunTrace.upTo_acceptAt tr).mp hA).2⟩,
@@ -130,7 +130,7 @@ theorem high_J_root_J_compatible_quarantine_at {cm : Time → Finset (Fin sp.n)}
     intro E hE hEh _ hncE W hW att ha haT haH
     have he := Trace.upTo_state tr y hle
     have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    rcases Compose.tree_cases (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
     · cases ha
     have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
     obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
@@ -195,7 +195,7 @@ theorem high_J_root_J_compatible_cover_at {cm : Time → Finset (Fin sp.n)} {βK
     intro E hE hEh _ hncE W hW att ha haT haH
     have he := Trace.upTo_state tr y hle
     have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    rcases Compose.tree_cases (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
     · cases ha
     have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
     obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
@@ -278,7 +278,7 @@ theorem high_J_root_of_held_cover_at {cm : Time → Finset (Fin sp.n)} {βK : �
     intro E hE hEh _ hncE W hW att ha haT haH
     have he := Trace.upTo_state tr y hle
     have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    rcases Compose.tree_cases (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
     · cases ha
     have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
     obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
