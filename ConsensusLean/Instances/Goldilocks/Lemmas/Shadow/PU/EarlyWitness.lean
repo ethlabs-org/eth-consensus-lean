@@ -1,6 +1,22 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
+public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
@@ -21,7 +37,8 @@ A viable head of a node's shadow frame inside a `Generic.FrameWindow … M isTop
 
 `viable'_witness` is the store form; `early_witness_viable'` reads it at an AC call of a node honest
 at it, with `J ⪯ Q` inside the blocks held while honest. Carrying the witness to later cuts of the
-window is `viableHead_persists'` (V-B4, Lane W), which the consumers use separately. -/
+window is the P-U viable-head persistence (V-B4, in `RegularClassification`), used separately.
+-/
 
 namespace Consensus.Goldilocks.Store
 
