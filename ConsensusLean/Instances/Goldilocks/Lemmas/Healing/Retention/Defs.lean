@@ -19,9 +19,8 @@ public section
 
 /-! # Goldilocks Healing, HR.4: the premises, the invariant and the run facts
 
-`ResetPremises`, the two parts of the invariant over the cut index (`VoteInv`, `CacheInv`; see
-`Lemmas/Healing/Retention`), and the facts of `Healthy(g)` the steps use (`syncRun_of_gst`,
-`restart_le`, `fault_bound_late`). -/
+The reset premises, the vote invariant over the cut index (`VoteInv`), and the service and
+restart bounds used by the retention proofs. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -168,15 +167,6 @@ def VoteInv (g : Time) (k : Nat) : Prop :=
       (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
 
-/-- (R2) after an honest call at cut `k` at a time `≥ a`, for every high origin `(B, j)` written
-at a cut `≤ k` or activated by then (`t_{j+1} ≤` the time of `k`; JointRet's activation): `Σ.F` is
-compatible with `B`, and so is `Σ.J` when `Σ.h_j ≥ H_z + 1`. -/
-def CacheInv (g a : Time) (k : Nat) : Prop :=
-  ∀ y ∈ H, tr.IsCall y k → a ≤ tr.time k →
-    ∀ x i j B, HighOrigin tr H g x i j B → (i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) →
-      Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-        (HZ tr H g + 1 ≤ (tr.post k).fg.hj → Compatible (tr.HonestBlocks H) (tr.post k).fg.J B)
-
 variable {tr H} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -186,14 +176,6 @@ theorem voteInv_iff {g : Time} {k : Nat} : VoteInv tr H g k ↔
         AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
         (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
           Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) := Iff.rfl
-
-theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
-    ∀ y ∈ H, tr.IsCall y k → a ≤ tr.time k →
-      ∀ x i j B, HighOrigin tr H g x i j B → (i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) →
-        Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-          (HZ tr H g + 1 ≤ (tr.post k).fg.hj →
-            Compatible (tr.HonestBlocks H) (tr.post k).fg.J B) := Iff.rfl
-
 
 /-- **No honest restart after `t_{slot(ḡ)+1}`** (`Healthy(g)`): a restart follows a time `u` at
 which the node was asleep with no call in `[u, restart)`; `u ≥ ḡ` contradicts `Healthy(g)`, and
@@ -229,41 +211,6 @@ theorem restart_le (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     (hk : tr.RestartAt y k) : tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) :=
   restart_le_before (hp.toUpTo tr H (le_max_left a (tr.time k))) hy hk (le_max_right _ _)
-
-/-- **`f < h_t` after the cut** (`Healthy(g)`): from `c_z` on every honest validator is awake
-and joined (its restarts are at or before `t_{slot(ḡ)+1} < t_{slot(t) − 1}`, `restart_le`), and
-`3f ≤ n − 1`. -/
-private theorem fault_bound_late_before {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : tr.FaultBound H t := by
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ t := (AC.gbar_nonneg g).trans hgt
-  have hs : sp.slot (gbar g) + 3 ≤ sp.slot t := by
-    have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
-      ((cutZ_eq sp g) ▸ ht)
-    exact_mod_cast h
-  have hsub : H ⊆ {y | y ∈ H ∧ tr.awake y t ∧ tr.JoinedAt y t} := by
-    refine fun y hy => ⟨hy, hp.awake y hy t hgt htb, fun k hk hkt => ?_⟩
-    change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
-    have he : sp.toParams.slotTime (sp.slot t - 1) = sp.ts ((sp.slot t - 1 : Nat) : Int) :=
-      sp.slotTime_eq _
-    refine ⟨by omega, (restart_le_before hp hy hk (hkt.trans htb)).trans ?_⟩
-    rw [he]
-    exact (AC.ts_le_iff sp).mpr (by omega)
-  have hle : H.ncard ≤ tr.honestAwakeJoined H t := Set.ncard_le_ncard hsub
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hp.faults
-  have hn' : sp.n = sp.toParams.n := rfl
-  have hpos := sp.toParams.hn
-  unfold RunTrace.FaultBound
-  omega
-
-/-- Whole-run specialization of the finite late fault bound. -/
-theorem fault_bound_late (hp : ResetPremises tr H K proposer dg g ΔF a) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t :=
-  fault_bound_late_before (hp.toUpTo tr H (le_max_left a t)) ht (le_max_right _ _)
 
 end Consensus.Goldilocks.Healing
 
