@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
@@ -88,7 +89,7 @@ theorem regular_later_heads_at
           ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩)).2⟩
   have hs₀s : s₀ ≤ s := by omega
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
+    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
       (hm.trans (hts hs₀s)) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
         exact hu.2.2.1.trans_le (h6.trans hmb)) hK
