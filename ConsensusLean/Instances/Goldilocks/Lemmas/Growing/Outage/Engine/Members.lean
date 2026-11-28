@@ -16,11 +16,7 @@ The gate `voteK_gate`, and, on a run record of the canonical growing trace, P
 `voteK` (`GS/CommitteeVotes`, with `voteK_bindsSel`). With the committee size `voteK_ncard` they
 are the committee facts `voteK_facts`. `voteK_bounds` gives the committee count shapes from
 committee sleepy participation of the run's selection, at the threshold of a contract with
-`θ ≥ 1/2`.
-
-`sleepy_committee_at` packages both for a sleepy run: the committee premises
-(`CommitteeFacts`, `CommitteeBoundsFrom`) of the run's committees through every `b ≤ horizon`,
-from the committee clause of `Sleepy`. -/
+`θ ≥ 1/2`. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -103,33 +99,6 @@ theorem voteK_bounds (hv : rho.ExecutionValid) {ini}
     (le_max_right _ _)
 
 end Run
-
-/-- **The committee premises of a sleepy run** through `b ≤ horizon`: the run's committees
-`voteK` carry the committee facts (`voteK_facts`) and the committee count shapes
-(`voteK_bounds`, from the committee clause of `Sleepy` with the contract's catch-up and
-committee look-ahead) at the contract's threshold, which is `1/2`. -/
-theorem sleepy_committee_at (S : Setup) (A : ContractAssumptions S) {V : Type}
-    [Fintype V] [DecidableEq V] (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
-    (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
-    (hs : (Sys (goldilocks S) V).Sleepy (shapeProgress (goldilocks S) V).toExternal
-      (K S A) r)
-    {b : Time} (hb : b ≤ r.2.horizon) :
-    ∃ K : AC.CommitteeDict (Fintype.card V),
-      Compose.Growing.CommitteeFacts (simTraceAt S r.2 hn) (honestKeysAt S r.2) K ∧
-      Compose.Growing.CommitteeBoundsFrom (simTraceAt S r.2 hn) (honestKeysAt S r.2) K 0 b := by
-  have h19 : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
-  have hcd : 8 * (S.params (pubOf r.1) hn).Δ ≤
-      (Sys (goldilocks S) V).cDur (K S A) r + 1 := by
-    simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 8 * r.1.ΔAC ≤ (contract_catchUp S A : Nat) * r.1.ΔAC + 1
-    linarith [mul_le_mul_of_nonneg_right h19 (zero_le_one.trans hd)]
-  have hrun := simTraceAt_goldilocksRun S r.2 hn hv
-  exact ⟨voteK S r.2, voteK_facts S r.2 hn hv (noCollRun_simTraceAt S r.2 hn hv hc) hrun,
-    voteK_bounds S r.2 hn hv hrun (K S A) le_rfl (η := 0) hcd
-      (by change 5 * r.1.ΔAC ≤ ((5 : Nat) : Int) * r.1.ΔAC; norm_num) hb
-      fun t h₁ h₂ => hs.2.2 t h₁ (h₂.trans hb)⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 
