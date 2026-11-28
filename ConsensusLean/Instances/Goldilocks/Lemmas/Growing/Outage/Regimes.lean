@@ -163,7 +163,7 @@ private theorem lookup_of_mem {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : Fra
 acceptance accepted by `t_q + Δ`, and that is above the receiver's `Σ.F`, is in the receiver's
 frame and stamped before `t_q + 2Δ`, at every call from `t_q + 2Δ` of a receiver honest then with
 no restart after `t_q`. -/
-theorem accepted_held_before_early_at
+private theorem accepted_held_before_early_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
@@ -206,7 +206,7 @@ theorem accepted_held_before_early_at
 /-- **D2** (message half). A slot-`q` vote by a node honest at its cast and still honest at the
 receiver call is in the receiver's pool, with a stamp before `t_q + 2Δ`, at every call from
 `t_q + 2Δ` of a receiver honest then with no restart after `t_q` (lifted at the call's time). -/
-theorem vote_pooled_before_early_at
+private theorem vote_pooled_before_early_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
