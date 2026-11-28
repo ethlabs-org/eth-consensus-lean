@@ -632,7 +632,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
