@@ -492,11 +492,12 @@ paper claims.
 
 ## Healing
 
-Milestones/Statements/Healing/Run retains HR.1 over GoldilocksRun and HR.2 over FGLocalRun. The run bundle,
+Milestones/Statements/Healing/Run retains HR.1 over GoldilocksRun. The run bundle,
 H.3 (including its bridge vocabulary), and H.4 are retired as milestone statements. The AC healing
 vocabulary over driven AC traces of the AC is in `Milestones/Statements/Healing/AC`. Standalone H.1/H.2 and
 H.2 (run) are not retained Lean Results; their vocabulary and support needed by retained results or
-downstream consumers remain. HR.1 and HR.2 remain; HR.3, HR.4 and HS.0–HS.5 are retired. `Settle(Δ)` and
+downstream consumers remain. The HR.2 phase count (static and growing), HR.3, HR.4 and HS.0–HS.5 are
+retired; the shared phase vocabulary remains. `Settle(Δ)` and
 `Producer(A)` were conclusions of HR.3.
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -506,7 +507,6 @@ downstream consumers remain. HR.1 and HR.2 remain; HR.3, HR.4 and HS.0–HS.5 ar
 | HR.2, HS | CLAIMS HR.2 (b), §"Healing: phase service" (phases, settled) | the effective phase over an FG trace at a cut: the frontier (greatest honest `Σ.h_max`), a justification at a height on an honest accepted chain, a contest against `J`, the three cases with their rank and top `J`, the phase `(m, c)`, a phase change; the evidence of a phase held by a store; **settled at `w`** (late enough, all joined, evidence held, pre-GST catch-up complete) | Healing | `Consensus.Goldilocks.Healing.FrontierAt`, `Consensus.Goldilocks.Healing.JustifiedAt`, `Consensus.Goldilocks.Healing.ContestAt`, `Consensus.Goldilocks.Healing.PhaseCase`, `Consensus.Goldilocks.Healing.PhaseCase.rank`, `Consensus.Goldilocks.Healing.PhaseCase.topJ`, `Consensus.Goldilocks.Healing.PhaseAt`, `Consensus.Goldilocks.Healing.PhaseChanged`, `Consensus.Goldilocks.Healing.HoldsEvidence`, `Consensus.Goldilocks.Healing.SettledAt` |
 | HR.4 | CLAIMS HR.4 | a high origin (a fast-lock write at an honest joined node, stored block of state height `≥ H_z + 1`) | Healing | `Consensus.Goldilocks.Healing.HighOrigin` |
 | HR.1 | CLAIMS HR.1 (uses A1.5, G1.10 (K1)) | **cut and reset**: `c_z ≤ ḡ + 12Δ`; (a) attestations up to `c_z` have height `≤ H_z`, sources from `c_z` on come from fast locks written after `ḡ`, or, with no fast-lock candidate, are deep candidates under the deep anchor: if the source's state height is at least `H_z + 1`, its stamp is strictly after `c_z`; otherwise there is no such lower bound; (b) a chain of height `≥ H_z + 2` carries an honest attestation of height `H_z + 1`; (c) at the reset `a`: `a > c_z`, no high attestation before `a`, frontier `≤ H_z + 1` at the FG update of the ticks at `a`, attestations at `a` of height `≤ H_z + 1`, K1's first clause at `T₀ = a − Δ` by `Store.namers` | Healing | `Consensus.Goldilocks.Healing.CutAndReset` |
-| HR.2 | CLAIMS HR.2 | **phase count**: over an `FGLocalRun` with `f < 2q − n`, (a) one justified entry per height, (b) the phase moves only forward with one `J` while `m` is fixed, at most two changes per `m` | Healing | `Consensus.Goldilocks.Healing.PhaseCount` |
 | HR.3 | CLAIMS HR.3 (with HS.0, HS.5) | **retired** as a milestone statement (reset existence: `Settle(Δ)` from `c_z`, `Producer(A)`, `a_z ≤ c_z + 6(Δ + A_HS)`), with its proof (`reset_existence`, with HS.0 `settle` and HS.5 `producer`) and witness (`tickRun_resetExistence`) | Healing | — |
 | HR.4 | CLAIMS HR.4 | **retired** as a milestone statement (height-scoped retention: (R1)–(R4) for every reset `a`, at a slot dictionary `K`), with its proof (`height_scoped_retention`) and witness (`tickRun_retention`), and its bundle `RetentionAt`; `HighOrigin` stays | Healing | — |
 | — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ` (`4(k + 1)Δ` with the optimistic confirmation on, `(4k − 2)Δ` off); `Healthy(g)` and `Catch(κ)` over an AC trace; an honest proposal of slot `p` (the block made from `ac_proposal`: parent the returned duty head); a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4, including Driven (b)'s "before any object received at `t_s`": `proposal_first`, every AC message or block call of the proposer at its `ac_proposal`'s time comes after it) | Healing | `Consensus.Goldilocks.AC.gbar`, `Consensus.Goldilocks.AC.Θ`, `Consensus.Goldilocks.AC.HealthyAC`, `Consensus.Goldilocks.AC.CatchAC`, `Consensus.Goldilocks.AC.HonestProposal`, `Consensus.Goldilocks.AC.Driven` |
@@ -527,16 +527,11 @@ downstream consumers remain. HR.1 and HR.2 remain; HR.3, HR.4 and HS.0–HS.5 ar
 
 Modelling choices:
 
-- **HR.2 is over FG traces, not runs.** The claims make it an FG store node over the FG component trace, and the
-  phase reads only the honest `Σ`, which an `FGTrace` carries with the records, unforgeability and serialized
-  clients of `FGLocalRun`; it sits with G1.4 (`Store.FinalizedSafety`), whose `f < 2q − n` it shares. Runs reach
-  it through `Compose.FGProjection`; the retired HR.3 read the same phase on `tr.projFG` (historical).
 - **The effective phase is global**: frontier, justifications and contests are read on the blocks that some honest
   node has accepted by the cut (`σ` read at the holder), not on one node's `Σ.F`, `Σ.J` or local allowedness. So
   HR.2's "an advance of an honest `Σ.F` below `m` changes no phase" holds by definition, and HR.3's "advances of
   `Σ.F` below the frontier do not count" too. "Justified at `m − 1`" is `σ.h_j = m − 1` at some honest accepted
-  block (every justification is the latest one of the block that makes it). "At most two changes per `m`" counts
-  consecutive cuts with frontier `m` whose phases differ (`encard`, so an infinite count is not `0`).
+  block (every justification is the latest one of the block that makes it).
 - **Times.** "At `t`" is the state before the first cut at a time `≥ t` (`FirstCutFrom`), "after all events at `t`"
   the state before the first cut at a time `> t` (`FirstCutAfter`). `H_z` reads the latter at `c_z`. HS.0's
   "phase at `u`" is after all events at `u` and "settled at `w`" at `w`; HR.3 (b)'s "by `w + A`" is after all events
@@ -573,8 +568,8 @@ Modelling choices:
   accepted tree, faulty proposals included, so it contains the voter's `Σ.F` and `B`'s chain.
 - **Genesis root**: `HSShared` takes `genesis.RootOk dg`, as C0.3 does (A1.7 does not). Without
   it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) over a run,
-  the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1, HR.2 and HR.4 conclude nothing about
-  the acceptance of honest proposals and do not take it.
+  the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1 concludes nothing about
+  the acceptance of honest proposals and does not take it.
 - **HS.1–HS.4** (retired with HR.3, owner decision; the notes record their transcription): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
   phase (for HS.2–HS.4 the first cut at `w`); "label `j ≥ a`" is `t_j ≥ w + 4Δ`. Stored blocks (after the move back)
   for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
@@ -597,8 +592,8 @@ Modelling choices:
   from `ḡ` under `Healthy`). HS.4's "by `v`" was at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` were HR.3
   (a), (b); the full HS.5 assembly was not transcribed as one statement. Its consumption and continuation step
   (`consume_continue`) was proved and is now retired.
-- **Witnesses** (`ConsensusLeanTest/Goldilocks/Healing/Statements`): kind (a) for HR.2's premises and the phase vocabulary, and
-  for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
+- **Witnesses** (`ConsensusLeanTest/Goldilocks/Healing/Statements`): kind (a) for `Catch` and `NoRestartAfter`
+  with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
   infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. The premises over a
   Goldilocks trace are witnessed on the one-validator infinite tick run (`n = 1`, `f = 0`: consistent, not met with
   faults): `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_catch`,
