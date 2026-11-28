@@ -34,8 +34,6 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
--- Keep the run-level leaves beside their independent-observation facts.
-set_option linter.style.longFile 1600
 
 /-! # Generic healing leaves
 
