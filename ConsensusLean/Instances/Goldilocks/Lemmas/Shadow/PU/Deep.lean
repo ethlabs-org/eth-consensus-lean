@@ -2,8 +2,11 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
@@ -47,7 +50,7 @@ theorem toFG_mem_tree (hrun : GoldilocksRun proposer dg H tr ini)
     {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
   have h := Healing.toFG_mem_frame hto.2.2
-  rw [Node.frame_of_projAC_at hrun.toLocalRun hy hto.1, Node.frame_eq,
+  rw [Compose.frame_of_projAC hrun hy hto.1, Node.frame_eq,
     Store.toFrame_tree] at h
   exact h.1
 
@@ -143,9 +146,9 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
     (hlate : ∀ k < i, tr.time k ≤ c → C ∉ (tr.state x (k + 1)).fg.tree) :
     AC.ETime.of c < (tr.state x i).ac.blockStamp C.root := by
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-  rcases Coherence.tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
+  rcases Compose.tree_cases hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
   · exact absurd rfl hg
-  obtain ⟨ℓ', hc', hcall', ht'⟩ := Coherence.accept_next hrun.toLocalRun hx hA
+  obtain ⟨ℓ', hc', hcall', ht'⟩ := Compose.accept_next hrun.toLocalRun hx hA
   have hk1 : k + 1 < i := by
     rcases (Nat.succ_le_of_lt hki).lt_or_eq with h | h
     · exact h
@@ -157,7 +160,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
       cases hcall
   have hkc : c < tr.time k := by
     by_contra hle
-    exact hlate k hki (not_lt.1 hle) (Coherence.accept_mem_from hrun.toLocalRun hx hA)
+    exact hlate k hki (not_lt.1 hle) (Healing.accept_mem_from hrun.toLocalRun hx hA)
   have hge := Compose.blockStamp_ge_of_accept hacr.localRun hx
     ⟨ℓ', Compose.projAC_callAt.2 hc', hcall'⟩ hg i hk1
   rw [Compose.projAC_state hrun.toLocalRun hx i] at hge
@@ -191,9 +194,7 @@ theorem frame_of_projAC_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : ℓ.frame = Node.frame (tr.state y i) := by
-  have h := Node.frame_of_projAC_at (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy
-    (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
-  rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
+  exact Compose.Growing.frame_of_projAC_at hrun hy hc
 
 /-- **The deep quarantine over the shadow run** (`high_toFG_fast_at`). Before `c_z + 4DΔ`, the
 source that `ac_to_fg` returns at a node honest at it and at `c_z`, of state height `≥ H_z + 1`, is
@@ -230,7 +231,7 @@ theorem high_toFG_fast_at
   have hinj :=
     (Compose.goldilocks_ac_projection_from hrun' hnc').localRun.coherent.1
   have hreach : ∀ m, (∀ k < m, tr.time k ≤ d) → (tr.state z m).fg.Reachable _ := fun m h => by
-    rw [← hst m h]; exact Node.fg_reachable_at hrun'.toLocalRun hzz m
+    rw [← hst m h]; exact Compose.fg_reachable hrun'.toLocalRun hzz m
   have hHZ : (tr.state z j).fg.hmax ≤ HZ tr H g := by
     refine le_csSup (((Set.finite_range fun y => (tr.state y j).fg.hmax).subset ?_).bddAbove)
       ⟨z, hzc, j, hj, rfl⟩
@@ -252,7 +253,7 @@ theorem high_toFG_fast_at
     have hk1d : ∀ q < k + 1, tr.time q ≤ d := fun q hq => hrd q (by omega)
     rw [hst _ hk1d] at hCk
     obtain ⟨-, -, -, -, hge, -, -⟩ := Store.cache_invariants _ _ _ _ (hreach _ hk1d)
-    have hmono := Coherence.hmax_mono hrun'.toLocalRun hzz hkj
+    have hmono := Healing.hmax_mono hrun'.toLocalRun hzz hkj
     simp only at hmono
     rw [hst _ hk1d, hst _ hjd] at hmono
     have hσ := Healing.Store.σ_eq_of_mem (hreach _ hk1d) (hreach r hrd) hinj

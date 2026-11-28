@@ -1,7 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 
 public section
 

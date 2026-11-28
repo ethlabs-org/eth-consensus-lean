@@ -32,7 +32,8 @@ Each node is honest at its own cut and the fault bound is per time:
 The reset is the healing supplier's real-time reset `Generic.exists_reset_within` at the
 canonical supplier `goldilocks_ac_healing`, on the honest sets truncated after the horizon; the
 snapshot is the static `snapshot_of_awake` on the prefix through the horizon. The ready scalar,
-the reset bound, the horizon of the gap and the placement are the static `final_reset_bounds`,
+the reset bound, the horizon of the gap and the placement are the static
+`final_reset_bounds_within`,
 the duties of the gap the static `final_query_duty`. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
@@ -160,15 +161,16 @@ theorem final_reset_premises_of_shared_within_at
       (16 * (healthyDrainLen S Q.index : Time) +
         24 * ((Q.params.toParams.δt + (Q.index : Nat) - 1 : Nat) : Time) + 52) * Q.params.Δ +
       4 * (d + (Gs : Time) * Q.params.Δ) ≤
-      resetBoundRounds ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) Q.params.Δ
-        (2 * Q.params.Δ) Q.params.toParams.fg.δt (Q.index : Nat) (healthyDrainLen S Q.index) +
+      (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run +
+        (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         5 * (d + (Gs : Time) * Q.params.Δ) := by
     have hX := Q.index.1.pos
     have hρ : ((Q.params.toParams.δt + (Q.index : Nat) - 1 : Nat) : Time) =
-        (Q.params.toParams.fg.δt : Time) + ((Q.index : Nat) : Time) - 1 := by
+        (S.δt : Time) + ((Q.index : Nat) : Time) - 1 := by
       rw [Nat.cast_sub (by change 1 ≤ S.δt + _; omega)]; push_cast; rfl
     have hL0 : (0 : Time) ≤ (healthyDrainLen S Q.index : Time) * Q.params.Δ := by positivity
-    rw [hρ, resetBoundRounds_eq]
+    rw [hρ, healthyResetCoeff_val]
+    push_cast
     nlinarith only [hL0, hD, hd0, hGD]
   obtain ⟨a, ha, hab⟩ := Generic.exists_reset_within O (Gp := (Q.index : Nat))
     (L := healthyDrainLen S Q.index) hβ hgrid hRun hPr hlat hd0
@@ -226,11 +228,9 @@ theorem final_reset_premises_of_shared_within_at
     have e2 := mul_le_mul_of_nonneg_right hδ6 hΔ0
     have e3 := mul_le_mul_of_nonneg_right hX1 hΔ0
     have e4 := mul_le_mul_of_nonneg_right hGs hΔ0
-    rw [resetBoundRounds_eq, healthyDrainLen_val] at hab
+    rw [healthyResetCoeff_val, healthyDrainLen_val] at hab
     rw [hdr]
     have hkk : (Q.params.k : Time) = S.k := by exact_mod_cast hk
-    have hδδ : (Q.params.toParams.fg.δt : Time) = S.δt := by exact_mod_cast hδeq
-    rw [hδδ] at hab
     have hmax : max Q.gst 0 = AC.gbar Q.gst := rfl
     rw [hready, hmax, ← hDe] at hab
     rw [hkk]

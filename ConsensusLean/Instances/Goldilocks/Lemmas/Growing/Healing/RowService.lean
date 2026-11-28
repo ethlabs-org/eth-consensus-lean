@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RowSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
@@ -42,91 +43,6 @@ open AC (ACParams Payload)
 variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
-
-/-! ## Pure helpers -/
-
-/-! ## The source of a signed row, on a static run -/
-
-/-- **The source of a signed row** on a static run, without a height bound: the row names the
-entry `E` of the chain of the stored block `O` of a fast-lock write of the signer at an earlier
-cut `r`, joined at the write. The entry's height is the row's, so `O` is at least that high.
-The row's source must be a fast-lock candidate (`hfast`, read at the source's own height, which is
-at least the row's); a deep source need not sit below a fast lock. -/
-private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp}
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini)
-    (hnc : Compose.NoCollRun dg tr₀) {v : Fin sp.n} (hv : v ∈ H₀)
-    {d : Nat} {att : FG.Att sp.n} (hs : tr₀.SignAt v d att)
-    (hfast : ∀ d' ℓ C, d' < d → AC.ToFGAt tr₀.projAC v d' ℓ C →
-      att.h ≤ ((tr₀.state v d').fg.σ C.root).h →
-      C ∈ AC.toFGCandidates sp (tr₀.projAC.state v d') ℓ.frame (tr₀.time d')) :
-    ∃ r < d, ∃ l O CV ℓw D, tr₀.projAC.CallAt v r ℓw ∧ AC.FastLockAt tr₀.projAC v r l D CV ∧
-      O = ℓw.frame.viableAncestor D ∧ tr₀.JoinedAt v (tr₀.time r) ∧
-      O ∈ (tr₀.state v r).fg.tree ∧ att.h ≤ ((tr₀.state v r).fg.σ O.root).h ∧
-      ∃ E ∈ (tr₀.state v r).fg.tree, (tr₀.state v r).fg.Anc E O ∧ E.root = att.T ∧
-        ((tr₀.state v r).fg.σ E.root).h = att.h ∧ ((tr₀.state v r).fg.σ E.root).Th = E.root := by
-  have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-  have hr := hacr.localRun
-  have hU := hr.coherent
-  obtain ⟨C, hcall⟩ := hs
-  obtain ⟨d', rfl, ℓ, hc', hto, -, hC, hfgeq⟩ :=
-    Compose.attest_source hrun.toLocalRun hv hcall
-  have hpc : tr₀.projAC.CallAt v d' ℓ := Compose.projAC_callAt.mpr hc'
-  have hC' : (AC.acToFG sp (tr₀.projAC.state v d') ℓ.frame (tr₀.time d')).2 = some C := by
-    rw [Compose.projAC_state hrun.toLocalRun hv]
-    exact hC
-  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hv hpc
-  have hCt : C ∈ ℓ.frame.tree := (AC.toFG_source hC').1.1
-  -- the signed entry, read at the source's state
-  set st := (tr₀.state v (d' + 1)).fg with hst
-  have hreach := Compose.fg_reachable hrun.toLocalRun hv (d' + 1)
-  have hCst : C ∈ st.tree := by
-    rw [hfgeq]
-    exact Healing.mem_tree_of_frame hrun hv hpc hCt
-  have hcut := (hrun.cutLaw v hv (d' + 1) _ hcall).1
-  obtain ⟨hah, haT⟩ := Healing.Store.createAtt_eq hcut
-  obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ :=
-    Store.entry_state_of_source sp.toParams (Payload sp.n) _ st hreach _ hCst
-  have hEh' : (st.σ E.root).h = att.h := by rw [hah, hEr]
-  have hETh' : (st.σ E.root).Th = E.root := by rw [hETh, hEr]
-  have hEr' : E.root = att.T := by
-    rw [haT]
-    change E.root = (st.σ (st.σ _).Th).Th
-    rw [← hEr, hETh']
-  -- the source is a fast-lock candidate: it is at least as high as the row
-  have hCh : att.h ≤ ((tr₀.state v d').fg.σ C.root).h := by
-    have := Healing.h_le_of_store_anc hreach hEC
-    rw [hEh'] at this
-    rwa [← hfgeq]
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := hfast d' ℓ C (by omega) ⟨hpc, hto, hC'⟩ hCh
-  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
-  obtain ⟨r, hrd, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    Healing.stored_fast_lock_provenance hr hacr.vstart hv d' l₀ hl₀ hlf
-  obtain ⟨hΦw, -⟩ := AC.frameIn_of_callAt hr hv hcw
-  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hΦ hB₀
-  obtain rfl : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
-  obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
-  set O := ℓw.frame.viableAncestor D with hO
-  have hCO : Anc (tr₀.HonestBlocks H₀) (ℓ.frame.viableAncestor L) O := (hva.mono hΦU).trans hLO
-  have hOt : O ∈ (tr₀.state v r).fg.tree :=
-    Healing.mem_tree_of_frame hrun hv hcw
-      (AC.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
-  have hOst : O ∈ st.tree := Compose.tree_mono hrun.toLocalRun hv (by omega) hOt
-  have hCOst := Healing.store_anc_of_honest_anc hrun hnc hv hCO hOst
-  have hσO := Healing.σ_eq_honest hrun hnc hv hv hOst hOt
-  have hOh : att.h ≤ ((tr₀.state v r).fg.σ O.root).h := by
-    rw [← hσO]
-    have := Healing.h_le_of_store_anc hreach hCOst
-    rw [← hEh] at this
-    omega
-  have hsub : st.tree ⊆ tr₀.HonestBlocks H₀ := fun X hX => ⟨v, hv, d' + 1, hX⟩
-  have hEO : Anc (tr₀.HonestBlocks H₀) E O := (hEC.mono hsub).trans hCO
-  have hEt := Healing.mem_of_honest_anc hrun hnc hv hEO hOt
-  have hσE := Healing.σ_eq_honest hrun hnc hv hv hEt hE
-  refine ⟨r, by omega, l₀.slot, O, CV, ℓw, D, hcw, hfl, rfl,
-    Healing.joinedAt_of_fastLockAt hrun hnc hv hfl, hOt, hOh, E, hEt,
-    Healing.store_anc_of_honest_anc hrun hnc hv hEO hOt, hEr', by rw [hσE, hEh'],
-    by rw [hσE, hETh']⟩
 
 /-! ## Prefix transports of the node-local record facts -/
 
@@ -217,64 +133,25 @@ theorem high_row_source_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hq : ∀ D, sp.deepDepth = some D → tr.time d ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
-      ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hrun := hp.run
-  have h0 := hrun.time_nonneg d
-  have hv := hrun.antitone (le_max_right _ _) hvz
-  have hs' : (tr.upTo (tr.time d)).SignAt v d att := (RunTrace.upTo_signAt _).mpr ⟨le_rfl, hs⟩
-  -- a source of the row before `d`, at least as high as the row, is a fast-lock candidate
-  have hfast : ∀ d' ℓ C, d' < d → AC.ToFGAt (tr.upTo (tr.time d)).projAC v d' ℓ C →
-      att.h ≤ (((tr.upTo (tr.time d)).state v d').fg.σ C.root).h →
-      C ∈ AC.toFGCandidates sp ((tr.upTo (tr.time d)).projAC.state v d') ℓ.frame
-        ((tr.upTo (tr.time d)).time d') := by
-    intro d' ℓ C hd' hto hCh
-    have hd't : tr.time d' ≤ tr.time d := hrun.time_mono hd'.le
-    have hto' := (toFGAt_upTo_iff hrun.time_mono hd't).mp hto
-    rw [RunTrace.upTo_state_of_le hrun.time_mono hd't] at hCh
-    have hv' : v ∈ H (max (cutZ sp.toParams g) (tr.time d')) :=
-      hrun.antitone (max_le_max le_rfl hd't) hvz
-    have hc := KernelProof.high_toFG_fast_at hrun hp.noColl
-      (hp.snapshot.imp fun _ h => h.1) hv' hto' (hh.trans hCh)
-      (fun D hD => hd't.trans (hq D hD))
-    rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC v
-      (fun _ hk => (hrun.time_mono hk.le).trans hd't),
-      Compose.Growing.projAC_state_at hrun (hrun.antitone (le_max_right _ _) hv'), Trace.upTo_time]
-    exact hc
-  obtain ⟨r, hrd, l, O, CV, ℓw, D, hcw, hfl, rfl, hj, hOt, hOh, E, hEt, hEO, hEr, hEh, hET⟩ :=
-    row_source_static (hrun.upTo h0) (hp.noColl.upTo _) hv hs' hfast
-  have hrt : tr.time r ≤ tr.time d := hrun.time_mono hrd.le
-  have hst : (tr.upTo (tr.time d)).state v r = tr.state v r :=
-    RunTrace.upTo_state_of_le hrun.time_mono hrt
-  rw [hst] at hOt hOh hEt hEO hEh hET
-  have hcw' : tr.projAC.CallAt v r ℓw := by
-    rw [RunTrace.upTo_projAC] at hcw
-    exact ((Trace.upTo_callAt _).mp hcw).2
-  have hfl' : AC.FastLockAt tr.projAC v r l D CV :=
-    (fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl
-  have hj' : tr.JoinedAt v (tr.time r) := (joinedAt_upTo_iff hrt).mp hj
-  refine ⟨r, hrd, l, _, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
-    ⟨CV, ℓw, D, hcw', hfl', rfl⟩, hh.trans hOh⟩, E, hEt, hEO, hEr, hEh, hET⟩
+      ((tr.state v r).fg.σ E.root).Th = E.root :=
+  Outcome.high_row_source_at hp.run hp.noColl hvz hs hh (hp.snapshot.imp fun _ h => h.1) hq
 
-/-- Entries at equal height below one held block agree, at a holder honest at an observation
-time after its cuts. -/
-private theorem entry_root_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+/-- Transport the earlier entry to the later one's store before comparing heights. -/
+private theorem entry_root_eq_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {z : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
-    (hz : z ∈ H t) {C Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hC : C ∈ (tr.state z m).fg.tree)
-    (h₁ : Anc (tr.HonestBlocksAt H) Z₁ C) (h₂ : Anc (tr.HonestBlocksAt H) Z₂ C)
-    (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
-    (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)
-    (hT₂ : ((tr.state z m).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
-  have hr := fg_reachable_at hp.run ht hle hz
-  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  rcases AC.anc_total hU h₁ h₂ with h | h
-  · have := Healing.Th_eq_of_anc hr (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hz h
-      (mem_of_honest_anc_at hp.run hp.noColl ht hle hz h₂ hC)) hh.symm
-    rw [← hT₁, ← hT₂, this]
-  · have := Healing.Th_eq_of_anc hr (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hz h
-      (mem_of_honest_anc_at hp.run hp.noColl ht hle hz h₁ hC)) hh
-    rw [← hT₁, ← hT₂, this]
+    {Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) Z₁ Z₂)
+    {y₁ y₂ : Fin sp.n} {m₁ m₂ : Nat} {t₁ t₂ : Time}
+    (ht₁ : 0 ≤ t₁) (hle₁ : ∀ q < m₁, tr.time q ≤ t₁) (hy₁ : y₁ ∈ H t₁)
+    (ht₂ : 0 ≤ t₂) (hle₂ : ∀ q < m₂, tr.time q ≤ t₂) (hy₂ : y₂ ∈ H t₂)
+    (hZ₁ : Z₁ ∈ (tr.state y₁ m₁).fg.tree) (hZ₂ : Z₂ ∈ (tr.state y₂ m₂).fg.tree)
+    (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
+    (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
+    (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
+  have he := σ_eq_honest_at hp.run hp.noColl ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁
+    (mem_of_honest_anc_at hp.run hp.noColl ht₂ hle₂ hy₂ h hZ₂)
+  have he' := Healing.Th_eq_of_anc (fg_reachable_at hp.run ht₂ hle₂ hy₂)
+    (store_anc_of_honest_anc_at hp.run hp.noColl ht₂ hle₂ hy₂ h hZ₂) (by rw [← he, hh])
+  rw [← hT₁, he, ← hT₂, he']
 
 /-- **Historical self-entries under bounded high origins agree at equal height**, each read at a
 holder honest at an observation time after its cuts. -/
@@ -291,23 +168,11 @@ theorem high_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
     (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
     (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
-  have key : ∀ {w : Fin sp.n} {k : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))},
-      w ∈ H (tr.time k) → D ∈ (tr.state w k).fg.tree → Anc (tr.HonestBlocksAt H) Z₁ D →
-      Anc (tr.HonestBlocksAt H) Z₂ D → Z₁.root = Z₂.root := by
-    intro w k D hw hD hZ₁D hZ₂D
-    have h0 := hp.run.time_nonneg k
-    have hlek : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hp.run.time_mono hq.le
-    have e₁ := σ_eq_honest_at hp.run hp.noColl ht₁ hle₁ hy₁ h0 hlek hw hZ₁
-      (mem_of_honest_anc_at hp.run hp.noColl h0 hlek hw hZ₁D hD)
-    have e₂ := σ_eq_honest_at hp.run hp.noColl ht₂ hle₂ hy₂ h0 hlek hw hZ₂
-      (mem_of_honest_anc_at hp.run hp.noColl h0 hlek hw hZ₂D hD)
-    exact entry_root_eq_at hp h0 hlek hw hD hZ₁D hZ₂D (by rw [← e₁, ← e₂, hh])
-      (by rw [← e₁, hT₁]) (by rw [← e₂, hT₂])
-  rcases hp.origins_compatible_at ho hib ho' hi'b with hBB' | hB'B
-  · exact key (hp.run.antitone (le_max_right _ _) ho'.1) (highOrigin_mem_at hp.run hp.noColl ho')
-      (h₁.trans hBB') h₂
-  · exact key (hp.run.antitone (le_max_right _ _) ho.1) (highOrigin_mem_at hp.run hp.noColl ho) h₁
-      (h₂.trans hB'B)
+  have hU := Compose.Growing.honestBlocksAt_coherent hp.run hp.noColl
+  have h := Compose.Growing.compatible_of_anc_left hU h₁ (hp.origins_compatible_at ho hib ho' hi'b)
+  rcases Compose.Growing.compatible_of_anc_left hU h₂ h.symm with h | h
+  · exact (entry_root_eq_of_anc_at hp h ht₂ hle₂ hy₂ ht₁ hle₁ hy₁ hZ₂ hZ₁ hh.symm hT₂ hT₁).symm
+  · exact entry_root_eq_of_anc_at hp h ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
 private theorem sourceChain_down {B C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBC : Anc (tr.HonestBlocksAt H) B C) (hC : HighOrCovered tr H g a b C) :
@@ -338,16 +203,6 @@ private theorem sourceChain_pair {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         hc.s1 hB hjb ho').symm).symm
   · exact Compose.Growing.healed_sources_compatible_at hp.run hp.noColl hc.s1 hB hC
 
-private theorem report_sourceChain_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
-    {C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hy : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    (hr : AC.ToFGAt tr.projAC y i ell C) (hib : tr.time i ≤ b)
-    (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ C.root).h) :
-    HighOrCovered tr H g a b C := by
-  exact hp.high_or_covered_at hy hr hib hh
-
 private theorem signed_sourceChain_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {att : FG.Att sp.n}
@@ -364,27 +219,19 @@ private theorem signed_sourceChain_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hC : C ∈ (tr.state y (i + 1)).fg.tree := by
     rw [hfg]
     exact toFG_mem_tree_at hp.run (htime ▸ hy) hrep
-  have hreach := fg_reachable_at hp.run (hp.run.time_nonneg (i + 1))
-    (fun _ hq => hp.run.time_mono hq.le) hy
+  have hi0 := hp.run.time_nonneg (i + 1)
+  have hle : ∀ q < i + 1, tr.time q ≤ tr.time (i + 1) := fun _ hq => hp.run.time_mono hq.le
   have hcut := (hp.run.cutLaw y (i + 1) _ hcall hy).1
-  obtain ⟨hah, haT⟩ := Healing.Store.createAtt_eq hcut
-  obtain ⟨⟨E, hE, hEr, hEC, hEh, hET⟩, -⟩ :=
-    Store.entry_state_of_source sp.toParams (Payload sp.n) _ _ hreach _ hC
-  have hEh' : ((tr.state y (i + 1)).fg.σ E.root).h = att.h := by rw [hah, hEr]
-  have hET' : ((tr.state y (i + 1)).fg.σ E.root).Th = E.root := by rw [hET, hEr]
-  have hEr' : E.root = att.T := by
-    rw [haT]
-    rw [← hEr, hET']
-  have hCh := Healing.h_le_of_store_anc hreach hEC
-  rw [hEh', hfg] at hCh
-  have hCy := report_sourceChain_at hp (htime ▸ hyz) hrep (htime ▸ hkb) (hh.trans hCh)
-  exact ⟨E, hE, sourceChain_down (honest_anc_of_store_anc_at (hp.run.time_nonneg (i + 1))
-    (fun _ hq => hp.run.time_mono hq.le) hy hEC) hCy, hEr', hEh', hET'⟩
+  obtain ⟨E, hE, hEr, hEC, -, hET, hEh, hCh⟩ :=
+    Healing.Store.entry_of_createAtt (fg_reachable_at hp.run hi0 hle hy) hC hcut
+  rw [hfg] at hCh
+  have hCy := hp.high_or_covered_at (htime ▸ hyz) hrep (htime ▸ hkb) (hCh ▸ hh)
+  exact ⟨E, hE, sourceChain_down (honest_anc_of_store_anc_at hi0 hle hy hEC) hCy, hEr,
+    hEh.trans (by rw [hfg]; exact hCh), hET⟩
 
 private theorem source_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {B B' E E' : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ tr.HonestBlocksAt H) (hB' : B' ∈ tr.HonestBlocksAt H)
     (hchain : HighOrCovered tr H g a b B) (hchain' : HighOrCovered tr H g a b B')
     (hEB : Anc (tr.HonestBlocksAt H) E B) (hEB' : Anc (tr.HonestBlocksAt H) E' B')
     {y z : Fin sp.n} {i j : Nat} {t u : Time}
@@ -394,19 +241,13 @@ private theorem source_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state z j).fg.σ E'.root).h)
     (hT : ((tr.state y i).fg.σ E.root).Th = E.root)
     (hT' : ((tr.state z j).fg.σ E'.root).Th = E'.root) : E.root = E'.root := by
-  have key : ∀ D ∈ tr.HonestBlocksAt H, Anc (tr.HonestBlocksAt H) E D →
-      Anc (tr.HonestBlocksAt H) E' D → E.root = E'.root := by
-    rintro D ⟨w, k, v, hv, hlev, hw, hD⟩ hED hE'D
-    have e₁ := σ_eq_honest_at hp.run hp.noColl ht hle hy hv hlev hw hE
-      (mem_of_honest_anc_at hp.run hp.noColl hv hlev hw hED hD)
-    have e₂ := σ_eq_honest_at hp.run hp.noColl hu hle' hz hv hlev hw hE'
-      (mem_of_honest_anc_at hp.run hp.noColl hv hlev hw hE'D hD)
-    exact entry_root_eq_at hp hv hlev hw hD hED hE'D (by rw [← e₁, ← e₂, hh])
-      (by rw [← e₁, hT]) (by rw [← e₂, hT'])
-  rcases sourceChain_pair hp B B' hchain hchain' with h | h
-  · exact key B' hB' (hEB.trans h) hEB'
-  · exact key B hB hEB (hEB'.trans h)
+  have hU := Compose.Growing.honestBlocksAt_coherent hp.run hp.noColl
+  have h := Compose.Growing.compatible_of_anc_left hU hEB (sourceChain_pair hp B B' hchain hchain')
+  rcases Compose.Growing.compatible_of_anc_left hU hEB' h.symm with h | h
+  · exact (entry_root_eq_of_anc_at hp h hu hle' hz ht hle hy hE' hE hh.symm hT' hT).symm
+  · exact entry_root_eq_of_anc_at hp h ht hle hy hu hle' hz hE hE' hh hT hT'
 
+set_option linter.unusedVariables false in
 /-- **A high record entry is the high-chain entry of its height**: a record of a node honest at
 `t ≤ b` after its cuts and at `c_z`, with a target, timeout or lock entry at `h ≥ H_z + 1`, names
 the root of every entry at `h` below a bounded high origin. -/
@@ -432,15 +273,12 @@ theorem record_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hyk := hrun.antitone hkt hy
     obtain ⟨X, hX, hchainX, hXr, hXh, hXT⟩ := signed_sourceChain_at hp
       (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (hkt.trans htb) (hah ▸ hh)
-    exact har.symm.trans (hXr.symm.trans (source_entry_eq_at hp
-      ⟨y, k, _, hrun.time_nonneg k, leC k, hyk, hX⟩ hB hchainX ho
+    exact har.symm.trans (hXr.symm.trans (source_entry_eq_at hp hchainX ho
       .refl hEB (hrun.time_nonneg k) (leC k) hyk hu hlez hz hX hE
       (hXh.trans (hah.trans hEh.symm)) hXT hET))
   have horig := client_record_origin_at hrun ht0 hle hy h r
-  rcases hr with ht | ht | hl
-  · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 (Or.inl ht)
-    exact target k hki att hs hah har
-  · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 (Or.inr ht)
+  rcases or_assoc.symm.mp hr with htarget | hl
+  · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 htarget
     exact target k hki att hs hah har
   · obtain ⟨k, hki, att, hs, hfin⟩ := horig.2 hl
     have hkt : tr.time k ≤ t := hle k hki
@@ -448,15 +286,15 @@ theorem record_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hk0 := hrun.time_nonneg k
     obtain ⟨J, hJ, X, hX, hXr, hJX, hJr, hJh, hJT⟩ := signed_fin_pair_entry_at hrun hyk hs hfin
     obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry_at hrun hyk hs
-    obtain rfl : X' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX'⟩ ⟨y, k, _, hk0, leC k, hyk, hX⟩
+    have hXX' : X' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX'⟩ ⟨y, k, _, hk0, leC k, hyk, hX⟩
       (hX'r.trans hXr.symm)
     have hle' := Healing.h_le_of_store_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
+    rw [← hXX', hX'h] at hle'
     obtain ⟨X'', hX'', hchainX, hX''r, _, _⟩ := signed_sourceChain_at hp
       (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (hkt.trans htb) (by omega)
-    obtain rfl : X'' = X' := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX''⟩
-      ⟨y, k, _, hk0, leC k, hyk, hX⟩ (hX''r.trans hX'r.symm)
-    exact hJr.symm.trans (source_entry_eq_at hp
-      ⟨y, k, _, hk0, leC k, hyk, hX⟩ hB hchainX ho
+    obtain rfl : X'' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX''⟩
+      ⟨y, k, _, hk0, leC k, hyk, hX⟩ (hX''r.trans hXr.symm)
+    exact hJr.symm.trans (source_entry_eq_at hp hchainX ho
       (honest_anc_of_store_anc_at hk0 (leC k) hyk hJX) hEB hk0 (leC k) hyk hu hlez hz hJ hE
       (hJh.trans hEh.symm) hJT hET)
 
@@ -513,6 +351,7 @@ private theorem timeout_empty_before_at {cm : Time → Finset (Fin sp.n)} {βK :
         · exact timeout_empty_before_at hp ht0 hyz htb i hle' h hh
       · exact timeout_empty_before_at hp ht0 hyz htb i hle' h hh
 
+set_option linter.unusedVariables false in
 /-- Finite normalization of a high signature's target and timeout fields, for a signer honest
 at its signing and at `c_z`. -/
 theorem row_target_of_sign_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -539,8 +378,8 @@ theorem row_target_of_sign_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   obtain ⟨E, hE, hchain, hEr, hEh, hET⟩ := signed_sourceChain_at hp hzz ⟨src, hc⟩ hjb hh
   have hj0 := hp.run.time_nonneg j
   have hz := hp.run.antitone (le_max_right _ _) hzz
-  have hTr : att.T = T.root := hEr.symm.trans (source_entry_eq_at hp
-    ⟨z, j, _, hj0, leC j, hz, hE⟩ hB hchain ho .refl hTB hj0 (leC j) hz ht hle hy hE hT
+  have hTr : att.T = T.root := hEr.symm.trans (source_entry_eq_at hp hchain ho
+    .refl hTB hj0 (leC j) hz ht hle hy hE hT
     (hEh.trans hatt) hET hTe)
   exact ⟨hv, hTr, sign_target_before_at hp hzz ⟨src, hc⟩ hjb hh
     (timeout_empty_before_at hp (hp.run.time_nonneg j) hzz hjb j (leC j) _ hh)⟩
@@ -731,278 +570,6 @@ theorem row_signers_of_reports_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         ((hrd.trans hde).trans heb) ht
         hle hy hT hσ hTe hhT hhj hTC hh
     exact ⟨hzH, att, j, hs, hv, hah, hroot, htimeout, htj.trans hrd, hfin⟩
-
-/-! ## Explicit post-drain source and compatibility premises
-
-These consumers sit below Continuation. Their source and compatibility premises are discharged
-above that layer, so they do not import the healed-frontier bridge or reconstruct a fast lock.
--/
-
-/-- Transport a report cover to the signed self-entry at the following cut. The cover only
-needs to be closed under ancestry; in particular it may include slow-lock healed members. -/
-private theorem signed_entry_of_report_cover_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {chain : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hdown : ∀ B C, Anc (tr.HonestBlocksAt H) B C → chain C → chain B)
-    (hcover : ∀ y i ell C, y ∈ H (max (cutZ sp.toParams g) (tr.time i)) →
-      AC.ToFGAt tr.projAC y i ell C → tr.time i ≤ b →
-      HZ tr H g + 1 ≤ ((tr.state y i).fg.σ C.root).h → chain C)
-    {y : Fin sp.n} {k : Nat} {att : FG.Att sp.n}
-    (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k))) (hs : tr.SignAt y k att)
-    (hkb : tr.time k ≤ b) (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ E ∈ (tr.state y k).fg.tree, chain E ∧ E.root = att.T ∧
-      ((tr.state y k).fg.σ E.root).h = att.h ∧ ((tr.state y k).fg.σ E.root).Th = E.root := by
-  have hy := hp.run.antitone (le_max_right _ _) hyz
-  obtain ⟨C, hcall⟩ := hs
-  obtain ⟨i, rfl, ell, hc, hto, htime, hret, hfg⟩ := Compose.Growing.attest_source hp.run hy hcall
-  have hrep : AC.ToFGAt tr.projAC y i ell C := by
-    refine ⟨Compose.projAC_callAt.mpr hc, hto, ?_⟩
-    rwa [Compose.Growing.projAC_state_at hp.run (htime ▸ hy)]
-  have hC : C ∈ (tr.state y (i + 1)).fg.tree := by
-    rw [hfg]
-    exact toFG_mem_tree_at hp.run (htime ▸ hy) hrep
-  have hreach := fg_reachable_at hp.run (hp.run.time_nonneg (i + 1))
-    (fun _ hq => hp.run.time_mono hq.le) hy
-  have hcut := (hp.run.cutLaw y (i + 1) _ hcall hy).1
-  obtain ⟨hah, haT⟩ := Healing.Store.createAtt_eq hcut
-  obtain ⟨⟨E, hE, hEr, hEC, hEh, hET⟩, -⟩ :=
-    Store.entry_state_of_source sp.toParams (Payload sp.n) _ _ hreach _ hC
-  have hEh' : ((tr.state y (i + 1)).fg.σ E.root).h = att.h := by rw [hah, hEr]
-  have hET' : ((tr.state y (i + 1)).fg.σ E.root).Th = E.root := by rw [hET, hEr]
-  have hEr' : E.root = att.T := by
-    rw [haT]
-    rw [← hEr, hET']
-  have hCh := Healing.h_le_of_store_anc hreach hEC
-  rw [hEh', hfg] at hCh
-  have hCy := hcover y i ell C (htime ▸ hyz) hrep (htime ▸ hkb) (hh.trans hCh)
-  exact ⟨E, hE, hdown E C (honest_anc_of_store_anc_at (hp.run.time_nonneg (i + 1))
-    (fun _ hq => hp.run.time_mono hq.le) hy hEC) hCy, hEr', hEh', hET'⟩
-
-/-- Equal-height self-entries below compatible held blocks agree. The covering blocks need
-not have fast-lock provenance. -/
-private theorem entry_eq_of_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {B B' E E' : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ tr.HonestBlocksAt H) (hB' : B' ∈ tr.HonestBlocksAt H)
-    (hcomp : Compatible (tr.HonestBlocksAt H) B B')
-    (hEB : Anc (tr.HonestBlocksAt H) E B) (hEB' : Anc (tr.HonestBlocksAt H) E' B')
-    {y z : Fin sp.n} {i j : Nat} {t u : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t) (hy : y ∈ H t)
-    (hu : 0 ≤ u) (hle' : ∀ q < j, tr.time q ≤ u) (hz : z ∈ H u)
-    (hE : E ∈ (tr.state y i).fg.tree) (hE' : E' ∈ (tr.state z j).fg.tree)
-    (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state z j).fg.σ E'.root).h)
-    (hT : ((tr.state y i).fg.σ E.root).Th = E.root)
-    (hT' : ((tr.state z j).fg.σ E'.root).Th = E'.root) : E.root = E'.root := by
-  have key : ∀ D ∈ tr.HonestBlocksAt H, Anc (tr.HonestBlocksAt H) E D →
-      Anc (tr.HonestBlocksAt H) E' D → E.root = E'.root := by
-    rintro D ⟨w, k, v, hv, hlev, hw, hD⟩ hED hE'D
-    have e₁ := σ_eq_honest_at hp.run hp.noColl ht hle hy hv hlev hw hE
-      (mem_of_honest_anc_at hp.run hp.noColl hv hlev hw hED hD)
-    have e₂ := σ_eq_honest_at hp.run hp.noColl hu hle' hz hv hlev hw hE'
-      (mem_of_honest_anc_at hp.run hp.noColl hv hlev hw hE'D hD)
-    exact entry_root_eq_at hp hv hlev hw hD hED hE'D (by rw [← e₁, ← e₂, hh])
-      (by rw [← e₁, hT]) (by rw [← e₂, hT'])
-  rcases hcomp with h | h
-  · exact key B' hB' (hEB.trans h) hEB'
-  · exact key B hB hEB (hEB'.trans h)
-
-/-- The record consumer with an explicit source cover and pairwise compatibility. In the
-healed application `chain` is `OnHealedChain`, source cover comes from the post-drain reports,
-and pairwise compatibility is S1. -/
-private theorem record_entry_eq_of_sources_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {chain : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hpair : ∀ B B', chain B → chain B' → Compatible (tr.HonestBlocksAt H) B B')
-    (hsource : ∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) →
-      tr.SignAt y k att → tr.time k ≤ b → HZ tr H g + 1 ≤ att.h →
-      ∃ E ∈ (tr.state y k).fg.tree, chain E ∧ E.root = att.T ∧
-        ((tr.state y k).fg.σ E.root).h = att.h ∧ ((tr.state y k).fg.σ E.root).Th = E.root)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hyz : y ∈ H (max (cutZ sp.toParams g) t)) (htb : t ≤ b)
-    {h r : Nat} (hh : HZ tr H g + 1 ≤ h)
-    (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
-      (tr.state y i).record.lock h = some r)
-    {B E : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) (hchain : chain B)
-    (hEB : Anc (tr.HonestBlocksAt H) E B) {z : Fin sp.n} {m : Nat} {u : Time}
-    (hu : 0 ≤ u) (hlez : ∀ q < m, tr.time q ≤ u) (hz : z ∈ H u)
-    (hE : E ∈ (tr.state z m).fg.tree) (hEh : ((tr.state z m).fg.σ E.root).h = h)
-    (hET : ((tr.state z m).fg.σ E.root).Th = E.root) : r = E.root := by
-  have hrun := hp.run
-  have hy := hrun.antitone (le_max_right _ _) hyz
-  have leC : ∀ k : Nat, ∀ q < k, tr.time q ≤ tr.time k := fun _ _ hq => hrun.time_mono hq.le
-  have target : ∀ k < i, ∀ att, tr.SignAt y k att → att.h = h → att.T = r → r = E.root := by
-    intro k hki att hs hah har
-    have hkt := hle k hki
-    have hyk := hrun.antitone hkt hy
-    obtain ⟨X, hX, hchainX, hXr, hXh, hXT⟩ := hsource y k att
-      (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (hkt.trans htb) (hah ▸ hh)
-    exact har.symm.trans (hXr.symm.trans (entry_eq_of_compatible_at hp
-      ⟨y, k, _, hrun.time_nonneg k, leC k, hyk, hX⟩ hB (hpair X B hchainX hchain)
-      .refl hEB (hrun.time_nonneg k) (leC k) hyk hu hlez hz hX hE
-      (hXh.trans (hah.trans hEh.symm)) hXT hET))
-  have horig := client_record_origin_at hrun ht0 hle hy h r
-  rcases hr with ht | ht | hl
-  · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 (Or.inl ht)
-    exact target k hki att hs hah har
-  · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 (Or.inr ht)
-    exact target k hki att hs hah har
-  · obtain ⟨k, hki, att, hs, hfin⟩ := horig.2 hl
-    have hkt := hle k hki
-    have hyk := hrun.antitone hkt hy
-    have hk0 := hrun.time_nonneg k
-    obtain ⟨J, hJ, X, hX, hXr, hJX, hJr, hJh, hJT⟩ := signed_fin_pair_entry_at hrun hyk hs hfin
-    obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry_at hrun hyk hs
-    have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
-    obtain rfl : X' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX'⟩
-      ⟨y, k, _, hk0, leC k, hyk, hX⟩ (hX'r.trans hXr.symm)
-    have hle' := Healing.h_le_of_store_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
-    obtain ⟨X'', hX'', hchainX, hX''r, _, _⟩ := hsource y k att
-      (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (hkt.trans htb) (by omega)
-    obtain rfl : X'' = X' := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX''⟩
-      ⟨y, k, _, hk0, leC k, hyk, hX⟩ (hX''r.trans hX'r.symm)
-    exact hJr.symm.trans (entry_eq_of_compatible_at hp
-      ⟨y, k, _, hk0, leC k, hyk, hX⟩ hB (hpair _ B hchainX hchain)
-      (honest_anc_of_store_anc_at hk0 (leC k) hyk hJX) hEB hk0 (leC k) hyk hu hlez hz hJ hE
-      (hJh.trans hEh.symm) hJT hET)
-
-section SourceConsumers
-
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-  (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-  {chain : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
-  (hpair : ∀ B B', chain B → chain B' → Compatible (tr.HonestBlocksAt H) B B')
-  (hsource : ∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) →
-    tr.SignAt y k att → tr.time k ≤ b → HZ tr H g + 1 ≤ att.h →
-    ∃ E ∈ (tr.state y k).fg.tree, chain E ∧ E.root = att.T ∧
-      ((tr.state y k).fg.σ E.root).h = att.h ∧ ((tr.state y k).fg.σ E.root).Th = E.root)
-
-include hp hpair hsource
-
-private theorem sign_target_of_sources_at
-    {y : Fin sp.n} {k : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
-    {att : FG.Att sp.n} (hs : tr.SignAt y k att) (hkb : tr.time k ≤ b)
-    (hh : HZ tr H g + 1 ≤ att.h) (he : (tr.state y k).record.timeout att.h = ∅) :
-    att.timeout = false := by
-  have hk0 := hp.run.time_nonneg k
-  have hy := hp.run.antitone (le_max_right _ _) hyz
-  have leC : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hp.run.time_mono hq.le
-  obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw y k _ hc hy).1
-  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨_, hah, haT, _, _, hτ⟩ := createAtt_fields hcl
-  rw [← Bool.not_eq_true]
-  intro hto
-  rw [← hah, ← haT] at hτ
-  rcases hτ hto with h' | ⟨T', hT', hne⟩
-  · exact h' he
-  · obtain ⟨E, hE, hchain, hEr, hEh, hET⟩ := hsource y k att hyz ⟨src, hc⟩ hkb hh
-    exact hne ((record_entry_eq_of_sources_at hp hpair hsource hk0 leC hyz hkb hh
-      (Or.inl hT') ⟨y, k, _, hk0, leC, hy, hE⟩ hchain .refl hk0 leC hy hE hEh hET).trans hEr)
-
-private theorem timeout_empty_of_sources_at
-    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (hyz : y ∈ H (max (cutZ sp.toParams g) t))
-    (htb : t ≤ b) :
-    ∀ i, (∀ q < i, tr.time q ≤ t) → ∀ h, HZ tr H g + 1 ≤ h →
-      (tr.state y i).record.timeout h = ∅
-  | 0, _, h, _ => by
-    rw [Trace.state, hp.run.init y (hp.run.antitone (ht0.trans (le_max_right _ _)) hyz)]; rfl
-  | i + 1, hle, h, hh => by
-    have hle' : ∀ q < i, tr.time q ≤ t := fun q hq => hle q (by omega)
-    have hit : tr.time i ≤ t := hle i (by omega)
-    have hyiz := hp.run.antitone (max_le_max le_rfl hit) hyz
-    have hyi := hp.run.antitone (le_max_right _ _) hyiz
-    rcases record_step_at hp.run hyi with he | ⟨att, hs, he⟩ <;> rw [he]
-    · exact timeout_empty_of_sources_at ht0 hyz htb i hle' h hh
-    · simp only [FG.Record.recordAtt]
-      split_ifs with hto
-      · rw [Function.update_apply]
-        split_ifs with hha
-        · subst hha
-          have := sign_target_of_sources_at hp hpair hsource hyiz hs (hit.trans htb) hh
-            (timeout_empty_of_sources_at ht0 hyz htb i hle' _ hh)
-          simp_all
-        · exact timeout_empty_of_sources_at ht0 hyz htb i hle' h hh
-      · exact timeout_empty_of_sources_at ht0 hyz htb i hle' h hh
-
-/-- Normalize a signature against a compatible source family, including the healed family. -/
-private theorem row_target_of_sources_at
-    {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
-    {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
-    {T B : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t)
-    (hT : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
-    (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hB : B ∈ tr.HonestBlocksAt H) (hchain : chain B)
-    (hTB : Anc (tr.HonestBlocksAt H) T B) (hatt : att.h = σT.h) :
-    att.val = z ∧ att.T = T.root ∧ att.timeout = false := by
-  subst hσ
-  have hj0 := hp.run.time_nonneg j
-  have hz := hp.run.antitone (le_max_right _ _) hzz
-  have leC : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
-  have hh : HZ tr H g + 1 ≤ att.h := hatt ▸ hhT
-  obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw z j _ hc hz).1
-  change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
-    ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨hv, _, _, _, _, _⟩ := createAtt_fields hcl
-  obtain ⟨E, hE, hchainE, hEr, hEh, hET⟩ := hsource z j att hzz ⟨src, hc⟩ hjb hh
-  have hTr : att.T = T.root := hEr.symm.trans (entry_eq_of_compatible_at hp
-    ⟨z, j, _, hj0, leC, hz, hE⟩ hB (hpair E B hchainE hchain) .refl hTB
-    hj0 leC hz ht hle hy hE hT (hEh.trans hatt) hET hTe)
-  exact ⟨hv, hTr, sign_target_of_sources_at hp hpair hsource hzz ⟨src, hc⟩ hjb hh
-    (timeout_empty_of_sources_at hp hpair hsource hj0 hzz hjb j leC _ hh)⟩
-
-/-- Exact finality permission from the compatible source family, including historical lock
-entries below the current signed entry. -/
-private theorem row_of_sources_at
-    {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
-    {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
-    {T B : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t)
-    (hT : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
-    (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
-    (hB : B ∈ tr.HonestBlocksAt H) (hchain : chain B)
-    (hTB : Anc (tr.HonestBlocksAt H) T B) (hatt : att.h = σT.h) :
-    att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
-      (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
-  subst hσ
-  have hz := hp.run.antitone (le_max_right _ _) hzz
-  have hj0 := hp.run.time_nonneg j
-  have leC : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
-  obtain ⟨hv, hTr, htimeout⟩ := row_target_of_sources_at hp hpair hsource hzz hs hjb ht hle hy
-    hT rfl hTe hhT hB hchain hTB hatt
-  obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw z j _ hc hz).1
-  change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
-    ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨_, _, haT, hfin, _, _⟩ := createAtt_fields hcl
-  refine ⟨hv, hTr, htimeout, fun hb => ?_⟩
-  obtain ⟨E', hE', hE'r, hE'T⟩ := source_entry (fg_reachable_at hp.run hj0 leC hz) src
-  have hR : ((tr.state z j).fg.σ src.root).Th = T.root := by
-    rw [← hTr, haT, ← hE'r, hE'T]
-  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have he : E' = T := hU.1 ⟨z, j, _, hj0, leC, hz, hE'⟩ ⟨y, m, t, ht, hle, hy, hT⟩
-    (hE'r.trans hR)
-  rw [he] at hE'
-  rw [hfin, hR, σ_eq_honest_at hp.run hp.noColl hj0 leC hz ht hle hy hE' hT]
-  obtain ⟨J₀, hJ₀, hJ₀T, hJ₀r, hJ₀h, hJ₀T'⟩ :=
-    (Healing.chain_pairs_entry (fg_reachable_at hp.run ht hle hy) hT).1 hb.1
-  have heq := fun r hr => (record_entry_eq_of_sources_at hp hpair hsource hj0 leC hzz hjb
-    (hhj hb) (i := j) (r := r) hr hB hchain
-    ((honest_anc_of_store_anc_at ht hle hy hJ₀T).trans hTB) ht hle hy hJ₀ hJ₀h hJ₀T').trans hJ₀r
-  have hperm : (tr.state z j).record.permits ((tr.state y m).fg.σ T.root).hj
-      ((tr.state y m).fg.σ T.root).J := by
-    refine ⟨?_, fun r hr => Finset.mem_singleton.2 (heq r (Or.inr (Or.inl hr))), ?_⟩
-    · rcases ht' : (tr.state z j).record.target _ with _ | r
-      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inl ht')])]
-    · rcases hl : (tr.state z j).record.lock _ with _ | r
-      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inr (Or.inr hl))])]
-  unfold FG.Record.finalityPair
-  simp only [hb, hperm, ↓reduceIte]
-
-end SourceConsumers
 
 end ResetPremisesUpTo
 

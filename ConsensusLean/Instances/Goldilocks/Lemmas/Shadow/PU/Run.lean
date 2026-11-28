@@ -12,7 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
