@@ -100,4 +100,67 @@ end Store
 
 end Consensus.Goldilocks.Healing
 
+namespace Consensus.Goldilocks.Store
+
+/-- A progress bit after counting is old or set by a counted attestation on the entry. -/
+theorem mem_foldl_prog {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
+    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).prog) :
+    v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.T = σ.Th := by
+  induction atts generalizing σ with
+  | nil => exact Or.inl h
+  | cons a as ih =>
+    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
+    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
+    rcases ih h with h | ⟨b, hb, hb'⟩
+    · have : v ∈ σ.prog ∨ (a.val = v ∧ a.T = σ.Th) := by
+        unfold FG.ChainState.processAtt at h
+        dsimp only at h
+        repeat' split at h
+        all_goals simp_all
+        all_goals exact h.elim (fun h => Or.inr h.symm) Or.inl
+      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
+    · exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'.1, hT ▸ hb'.2⟩
+
+/-- A block counts progress, then keeps its height and entry or crosses with a quorum. -/
+theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ') (ht : σ.target ⊆ σ.prog) :
+    σ'.target ⊆ σ'.prog ∧ ∃ p : Finset (Fin gp.n),
+      (∀ v ∈ p, v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.T = σ.Th) ∧
+      ((σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.prog = p) ∨ (gp.q ≤ p.card ∧ σ'.prog = ∅)) := by
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  have hsub := FG.ChainState.foldl_processAtt_target_subset { σ with s := B.slot } B.atts ht
+  have hP := fun v => @mem_foldl_prog _ { σ with s := B.slot } B.atts v
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he] at hsub hP ⊢
+  dsimp only at hsub hP ⊢
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  refine ⟨?_, p, hP, ?_⟩ <;>
+    rcases hcase with ⟨hj, he'⟩ | ⟨-, hto, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · exact Finset.Subset.refl _
+  · exact Finset.Subset.refl _
+  · exact hsub
+  · exact Or.inr ⟨hj.1.trans (Finset.card_le_card hsub), rfl⟩
+  · exact Or.inr ⟨hto.1, rfl⟩
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+
+/-- One accepted block keeps the height and entry or enters the next height by itself;
+it keeps the justification or justifies the parent's entry at the parent's height. -/
+theorem step_fields {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
+    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
+    ((σ'.h = σ.h ∧ σ'.Th = σ.Th) ∨ (σ'.h = σ.h + 1 ∧ σ'.Th = B.root)) ∧
+      ((σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h)) := by
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he]
+  dsimp only
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inr ⟨rfl, rfl⟩⟩
+  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
+  · exact ⟨Or.inl ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
+
+end Consensus.Goldilocks.Store
+
 end
