@@ -211,7 +211,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
       obtain ⟨-, hΦU⟩ := frameIn_at D.hrun D.hnc hyc hu.1
       have hBC : ℓ.frame.Anc B C := (AC.deepest_mem hD).1.1.2.2
       have hCU : C ∈ tr.HonestBlocksAt H := hΦU (AC.deepest_mem hC).1.1
-      exact compatible_of_head_anc hU (hBC.mono hΦU) (D.compatible_of_within
+      exact compatible_of_anc_left hU (hBC.mono hΦU) (D.compatible_of_within
         (OriginWithin.of_result hyc (by linarith) ⟨ℓ, hu, hC, rfl⟩) hCU)
     · obtain ⟨ℓ, A, hpt, hslot, hsel, -⟩ := id hO
       have hlt : tr.time c < sp.ts (s + 1 : Nat) := by
@@ -274,7 +274,7 @@ theorem OutageVoteInv.stored_fastLock_compatible_at {n : Nat} (hvi : OutageVoteI
   obtain ⟨c, hc, B, CV, hfl, hyc, L', hL'U, hL'r, hL'B⟩ :=
     fastLock_provenance_at D.hrun D.hnc ht0 ht hy hl hf
   obtain rfl : L' = L := hU.1 hL'U (tree_held_at ht0 hy ht hL) (hL'r.trans hLr.symm)
-  refine ⟨L', hL, hLr, compatible_of_head_anc hU hL'B (fastLock_compatible_at hvi hyc hfl
+  refine ⟨L', hL, hLr, compatible_of_anc_left hU hL'B (fastLock_compatible_at hvi hyc hfl
     (fun v hv hvH => ?_) fun hsK => ?_)⟩
   · obtain ⟨j, hj, e, hve, he⟩ := fastLock_honest_vote_at D.hrun D.hnc hyc hfl hv hvH
     exact ⟨j, by omega, e, hve, he⟩
@@ -305,7 +305,7 @@ theorem slow_lock_compatible_at
   obtain ⟨-, hC⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC
   obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
   obtain ⟨-, hΦU⟩ := AC.frameIn_of_callAt hr hx hu.1
-  refine ⟨L, hsub hL, hLr, compatible_of_head_anc hU (hLLb.mono hsub) ?_⟩
+  refine ⟨L, hsub hL, hLr, compatible_of_anc_left hU (hLLb.mono hsub) ?_⟩
   rcases hms.lt_or_eq with hms | hms
   · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
     have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
@@ -315,10 +315,10 @@ theorem slow_lock_compatible_at
     have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1
     have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
     obtain ⟨-, hC'⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC'
-    exact compatible_of_head_anc hU ((Anc.mono hΦU hLbS).mono hsub)
+    exact compatible_of_anc_left hU ((Anc.mono hΦU hLbS).mono hsub)
       (heq ▸ hgood k C' CV' (hkc.trans hci) hC')
   · have hmn : m.toNat = l.slot := by omega
-    exact compatible_of_head_anc hU ((Anc.mono hΦU hLbC).mono hsub)
+    exact compatible_of_anc_left hU ((Anc.mono hΦU hLbC).mono hsub)
       (hgood c C CV hci (hmn ▸ hC))
 
 /-- **(i) at a cut, read at a time**: with (H)/S5V at the cuts before `n` and (R) at the cuts before
