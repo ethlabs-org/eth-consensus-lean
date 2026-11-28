@@ -41,14 +41,8 @@ theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P A
 private theorem createAtt_fin {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
     {σe : FG.ChainState n} {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
     a.fin = Λ.finalityPair σe := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    rfl
+  obtain ⟨-, -, -, -, hf, -⟩ := FG.Record.createAtt_some h
+  exact hf
 
 /-- The newest-pair fold returns its start or a member of the list. -/
 private theorem foldl_newest_mem {l : List (Nat × Nat)} {acc : Option (Nat × Nat)}

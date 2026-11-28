@@ -192,7 +192,6 @@ theorem createAtt_wellFormed {Λ Λ' : FG.Record} {v : Fin P.n} {σe : FG.ChainS
   have hh' : hh = σe.h := by
     unfold FG.Record.heightPair at hhp
     split_ifs at hhp <;> cases hhp <;> rfl
-  split_ifs at h
   cases h
   subst hh'
   refine ⟨h1, fun p hp => ?_⟩

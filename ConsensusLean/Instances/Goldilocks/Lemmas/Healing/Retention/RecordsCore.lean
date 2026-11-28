@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientEquivalence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
@@ -26,14 +27,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 private theorem createAtt_record {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
     {σe : FG.ChainState n} {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
     Λ' = Λ.recordAtt a := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, rfl⟩ := h
-    rfl
+  exact (FG.Record.createAtt_some h).2.1
 
 /-- An honest record changes only by recording an attestation signed at that cut. -/
 theorem record_step_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) (i : Nat) :
@@ -54,6 +48,23 @@ theorem record_step_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H
       · exact Or.inl (by rw [hsucc, hlaw.2])
       · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ createAtt_record hlaw.1⟩
   · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+
+/-- The compact client record at every honest cut is the projection of a reachable old record. -/
+theorem client_record_legacy_reachable (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) :
+    ∀ i, ∃ sent, FG.LegacyClient.Reachable (tr.state y i).record sent
+  | 0 => by
+    rw [Trace.state, hrun.init y hy]
+    exact ⟨[], FG.LegacyClient.Reachable.empty⟩
+  | i + 1 => by
+    obtain ⟨sent, hr⟩ := client_record_legacy_reachable hrun hy i
+    rcases record_step_from hrun hy i with he | ⟨a, ⟨src, hc⟩, _⟩
+    · exact ⟨sent, he ▸ hr⟩
+    · have hs := (hrun.cutLaw y hy i _ hc).1
+      rw [← tr.state_succ_of_call hc] at hs
+      change (tr.state y i).record.createAtt y ((tr.state y i).fg.σ
+        ((tr.state y i).fg.σ src.root).Th) = some (a, (tr.state y (i + 1)).record) at hs
+      exact ⟨sent ++ [a.content], hr.sign ((FG.LegacyClient.createAtt_some_iff hr y _ a).2
+        ⟨hs, rfl⟩)⟩
 
 /-- Target, timeout and lock records have their actual earlier signing witnesses. -/
 theorem client_record_origin_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)
@@ -111,22 +122,6 @@ theorem client_record_origin_from (hrun : LocalRun proposer dg H sg tr ini) (hy 
             exact ⟨i, by omega, a', hs, by rw [hf, hh]⟩
           · obtain ⟨k, hk, att, h'⟩ := ih₂ hx
             exact ⟨k, by omega, att, h'⟩
-
-/-- Every sent content has an actual earlier signing witness. -/
-theorem sent_origin_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)
-    {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
-  | 0, hb => by
-    rw [Trace.state, hrun.init y hy] at hb
-    simp [Node.initWith, FG.Record.empty] at hb
-  | i + 1, hb => by
-    rcases record_step_from hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
-    · obtain ⟨k, hk, h⟩ := sent_origin_from hrun hy i hb
-      exact ⟨k, by omega, h⟩
-    · rcases List.mem_append.1 hb with hb | hb
-      · obtain ⟨k, hk, h⟩ := sent_origin_from hrun hy i hb
-        exact ⟨k, by omega, h⟩
-      · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
 
 /-- An honest signature is well formed at its signing cut. -/
 theorem signAt_wellFormed_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat}
