@@ -18,6 +18,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public section
 
 /-! # A counted high-origin supporter reaches a later voter without catch-up
@@ -100,7 +101,7 @@ theorem high_origin_held_at_vote_at
       ((AC.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
   have hgc : g ≤ tr.time c := by
     have := cutZ_lt_of_anc_at hp ho hzc hWc hBW
-    linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
+    linarith [lt_cutZ sp g, AC.le_gbar g, sp.toParams.hΔ]
   have hΔ := sp.toParams.hΔ
   have hys := (AC.castAt_specU hr.toU hy hc').2.1
   change e.msg.slot = sp.slot (tr.time k) at hys
