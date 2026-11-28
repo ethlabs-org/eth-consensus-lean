@@ -51,7 +51,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
   have hgc : g ≤ tr.time c := by
     have := (hp.cutZ_lt_of_anc ho hz (hp.acceptAt_mem hz hacc) hOB).1
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     linarith
   have hsi : sp.slot (tr.time i) = u := by
     rw [hti]; simpa using (AC.slot_arithmetic sp u).1 0 (by clear * -; omega)

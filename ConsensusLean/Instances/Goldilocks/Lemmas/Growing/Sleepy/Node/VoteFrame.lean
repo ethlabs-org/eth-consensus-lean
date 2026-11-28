@@ -53,7 +53,7 @@ theorem honest_vote_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg 
     (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hs
   refine ⟨fun c hci hr => h1 c hci ?_, h2⟩
   rw [RunTrace.upTo_projAC]
-  exact (ac_restartAt_upTo _).mpr ⟨hrun.time_mono hci, hr⟩
+  exact (ACTrace.upTo_restartAt (tr := _)).mpr ⟨hrun.time_mono hci, hr⟩
 
 /-- **A head of a slot at most `s`, of a vote of a node honest at it, is accepted before the
 freeze** by a slot-`(s+1)` voter honest at its cut whose `Σ.F` it extends: its voter accepted it
@@ -152,7 +152,7 @@ theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
       rwa [honestAt_eq_genesis hrun hU hHd hg]
     · have hk'd : tr.time k' ≤ tr.time i := hk't.le.trans hT
       have hk'' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k' Hd :=
-        (ac_acceptAt_upTo _).mpr ⟨hk'd, hk'⟩
+        (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hk'd, hk'⟩
       obtain ⟨ℓk, hck, -⟩ := hk'
       exact mem_upTo_of_frame hrun hy hk'd hck
         ((AC.accept_new sp (acRun_upTo hrun hnc hd).localRun hy hk'').1 ℓk
@@ -162,7 +162,7 @@ theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     (by
       rw [RunTrace.upTo_projAC]
       exact hacc.imp_right fun ⟨k', hk', hk't⟩ =>
-        ⟨k', (ac_acceptAt_upTo _).mpr ⟨hk't.le.trans hT, hk'⟩, hk't⟩)
+        ⟨k', (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hk't.le.trans hT, hk'⟩, hk't⟩)
     (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hFHd)
   exact ⟨Hd, h, hZHd⟩
 

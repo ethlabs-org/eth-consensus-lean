@@ -1,8 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesViews
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
@@ -147,7 +147,7 @@ private theorem anc_upTo_of_right
 Only the healthy AC base on the receiver's read prefix is used. -/
 theorem honest_prefix_of_finality_before_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -171,8 +171,8 @@ theorem honest_prefix_of_finality_before_at
   have hd := hrun.time_nonneg i
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hac := hrun.acRun hnc
-  have hri := (hrun.acRun_upTo hnc hd).localRun
+  have hac := hrun.toCore.acRun hnc
+  have hri := (hrun.toCore.acRun_upTo hnc hd).localRun
   have hcast : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   have hslot := (AC.castAt_specU hri.toU hy hcast).2.1.symm.trans hes
   change sp.slot (tr.time i) = s + 1 at hslot
@@ -182,7 +182,7 @@ theorem honest_prefix_of_finality_before_at
   have hstart : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp hd _).2 (by rw [hslot])
   have hstep : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := AC.ts_succ s
-  have hS := hK.healthy_base_before_at_core hrun hnc hsvc hawake hf hcatch hd (ht.trans hmb)
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch hd (ht.trans hmb)
   have hPhi := AC.frameIn_of_callAt hS.run.localRun hy hci
   have hheads' : ∀ x ∈ H (tr.time i), ∀ j ev,
       AC.VoteAt (tr.projAC.upTo (tr.time i)) x j ev → ev.msg.slot = s →
@@ -193,8 +193,8 @@ theorem honest_prefix_of_finality_before_at
     obtain ⟨R, hR, hRr, _⟩ := AC.honest_headU hS.run.toU hx ⟨ellx, hcx, hex⟩
     obtain ⟨R', hR', hR'r, hBR⟩ := hheads x j ev (hrun.antitone hjd hx) ⟨ellx, hcx', hex⟩ hs
     have he : R' = R := hac.localRun.coherent.1 hR'
-      (hrun.upTo_subset hd hR) (hR'r.trans hRr.symm)
-    exact ⟨R, hR, hRr, anc_upTo_of_right hrun hnc hd hR (he ▸ hBR)⟩
+      (hrun.toCore.upTo_subset hd hR) (hR'r.trans hRr.symm)
+    exact ⟨R, hR, hRr, anc_upTo_of_right hrun.toCore hnc hd hR (he ▸ hBR)⟩
   have hnr' : Healing.NoRestartAfter (tr.upTo (tr.time i)) (H (tr.time i)) (gbar g) := by
     intro x hx q hq
     obtain ⟨hqd, hq⟩ := (RunTrace.upTo_restartAt _).mp hq
@@ -262,7 +262,7 @@ theorem honest_prefix_of_finality_before_at
     ell.frame.Anc B (AC.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  exact Core.honest_prefix_of_finality_before_at hrun.toCore hnc hsvc hawake hf hcatch hnr
+  exact Core.honest_prefix_of_finality_before_at hrun hnc hsvc hawake hf hcatch hnr
     hm hmb hheads hy hc hes hB haB hK
 
 end Consensus.Goldilocks.Healing.Growing
