@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LockLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentLock
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -56,13 +56,12 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs
 /-- Older lock passage assembled from regular propagation and the writer's viable witness. -/
 private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
     Anc (tr.HonestBlocksAt H) B P := by
-  have rc := hrun.toCore
   have hΔ := sp.toParams.hΔ
   have hlabel : s₀ + sp.k ≤ l.slot := by omega
   have hd := hrun.time_nonneg i
-  have hr := (rc.acRun_upTo hnc hd).localRun
+  have hr := (Compose.Growing.acRun_upTo hrun hnc hd).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hPhi := rc.frameIn_at hnc hy hc.1
+  have hPhi := Compose.Growing.frameIn_at hrun hnc hy hc.1
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   have hslot : sp.slot (tr.time i) = p := ((AC.castAt_specU hr.toU hy hc').2.1).symm.trans hes
   obtain ⟨l₀, hl₀, hs, B₀, hB₀, hBr₀, C, hC, hCr, hCB⟩ :=
@@ -105,7 +104,7 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
   let A := ellw.frame.viableAncestor D
   have hBA : Anc (tr.HonestBlocksAt H) B A :=
     (hCB.mono hPhi.2).trans (hMA.mono hsub)
-  have hW := rc.frameIn_at hnc hya ha₀
+  have hW := Compose.Growing.frameIn_at hrun hnc hya ha₀
   have hAD : Anc (tr.HonestBlocksAt H) A D :=
     (AC.viableAncestor_anc hW.1 hD).2.mono hW.2
   have hhigh : tr.time i ≤ sp.ts p + sp.Δ := by
@@ -138,9 +137,9 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
   have hHP : Anc (tr.HonestBlocksAt H) d.head P := by
     have hH : d.head ∈ ellp.frame.tree := by
       rw [(AC.acProposal_head hpay₀).2]
-      exact AC.getHead_mem (rc.frameIn_at hnc hzip hcp₀).1
+      exact AC.getHead_mem (Compose.Growing.frameIn_at hrun hnc hzip hcp₀).1
         (fun X (hX : X ∈ ellp.frame.viableTree ellp.frame.tree) => hX.1) _ _ _ _
-    exact .single ⟨(rc.frameIn_at hnc hzip hcp₀).2 hH, hPhi.2 hdomP.1.1, hparent⟩
+    exact .single ⟨(Compose.Growing.frameIn_at hrun hnc hzip hcp₀).2 hH, hPhi.2 hdomP.1.1, hparent⟩
   rcases ho₀ with horigin | ⟨CV, hop⟩
   · obtain ⟨ell', hu⟩ : ∃ ell', AC.UpdateAt tr.projAC y a l.slot ell' := by
       rcases horigin with ⟨CV, ell', C, hu, _⟩ | ⟨ell', C, hu, _⟩ <;> exact ⟨ell', hu⟩
@@ -166,9 +165,9 @@ private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
   rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
   · have hAw := hbelow.mono hW.2
     change Anc (tr.HonestBlocksAt H) A ellw.frame.fcRoot at hAw
-    rw [rc.frame_of_projAC_at hya ha₀] at hAw
+    rw [Compose.Growing.frame_of_projAC_at hrun hya ha₀] at hAw
     have hrootP := hdomP.2.1.mono hPhi.2
-    rw [rc.frame_of_projAC_at hy hc.1] at hrootP
+    rw [Compose.Growing.frame_of_projAC_at hrun hy hc.1] at hrootP
     have hroot := hrun.toLocalRun.finalized_mono_on_prefix (hrun.time_nonneg i) hy hai.le
       (fun k hk => hrun.time_mono hk.le)
     rw [Node.frame_eq, Store.toFrame_fcRoot] at hAw hrootP
@@ -200,10 +199,10 @@ theorem current_lock_passage_of_regular_base_primed_at' :
   refine ⟨hvP, hdomP, ?_⟩
   by_cases hcurrent : p ≤ l.slot
   · obtain ⟨hs, a, hai, D, CV, hya, hop, ht, C, hC, hCr, hCD⟩ :=
-      Core.current_lock_write_readPoint_at hrun.toCore hnc hy hc (hes ▸ hp0) hl
+      current_lock_write_readPoint_at hrun hnc hy hc (hes ▸ hp0) hl
         (hes ▸ hcurrent)
-    have hPhi := hrun.toCore.frameIn_at hnc hy hc.1
-    have hcoh := hrun.toCore.coherent hnc
+    have hPhi := Compose.Growing.frameIn_at hrun hnc hy hc.1
+    have hcoh := Compose.Growing.honestBlocksAt_coherent hrun hnc
     obtain rfl : C = B := hcoh.1 hC (hPhi.2 hB) (hCr.trans hBr.symm)
     rw [hes] at hs hop ht
     exact Or.inr ⟨hs, a, hai, D, CV, hya, hop, ht, hCD⟩

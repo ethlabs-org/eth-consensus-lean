@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -77,7 +77,7 @@ theorem unanimous_next_votes_primed_at' :
     hmargin hjoin hTb hz hdes hP hPs hun hK ?_
   intro y j ell e hy hc hs hjb
   have hΔ := sp.toParams.hΔ
-  have hr := hrun.toCore.acRun_upTo hnc (hrun.time_nonneg j)
+  have hr := Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg j)
   have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hsl := (AC.castAt_specU hr.localRun.toU hy hc').2.1
   change e.msg.slot = sp.slot (tr.time j) at hsl
@@ -89,7 +89,7 @@ theorem unanimous_next_votes_primed_at' :
   obtain ⟨hvi, _, hv⟩ := proposal_viable_after_votes_primed_at' hframe hrun hnc hsvc hf hnr
     hmargin hTb hz hdes hP hPs hy hc.1
     (by simp only [ACParams.ts] at hlo ⊢; push_cast at hlo; linarith) (by linarith)
-  exact ⟨hvi.2.1.mono (fun Q hQ => hrun.toCore.upTo_subset (hrun.time_nonneg j)
+  exact ⟨hvi.2.1.mono (fun Q hQ => Compose.Growing.upTo_subset hrun (hrun.time_nonneg j)
     ((AC.frameIn_of_callAt hr.localRun hy hc'.1).2 hQ)), hv⟩
 
 include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK in
