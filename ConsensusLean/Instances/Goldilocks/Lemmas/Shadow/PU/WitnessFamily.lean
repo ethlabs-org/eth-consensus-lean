@@ -9,9 +9,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -116,7 +113,7 @@ theorem frame_relay_before_at
       exact RunTrace.honestBlocks_upTo_subset hrun.time_mono hq0
         ((AC.frameIn_of_callAt (Compose.goldilocks_ac_projection_from (hrun.upTo hq0)
           (hnc.upTo _)).localRun hx hcx').2 hB)
-    have hcoh := Coherence.honestBlocksAt_coherent hrun hnc
+    have hcoh := Compose.Growing.honestBlocksAt_coherent hrun hnc
     have he : B = G := hcoh.1 hBU
       (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd hG)
       ((congrArg Block.root hgB).trans hGr.symm)
@@ -254,7 +251,7 @@ theorem finalized_below_of_hj_lt_at
   have hbm : ∀ q < m, tr.time q ≤ tr.time m := fun q hq => hrun.time_mono hq.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
   have hrz := Compose.Growing.reachable_at hrun htm hz hbm
-  have hU := Coherence.honest_blocks_coherent_at hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hsub := Compose.Growing.tree_held_at ht hy hb
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ :=
@@ -354,7 +351,7 @@ theorem witness_frame_of_held
         ell.frame.Anc X Q) := by
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   rw [Compose.Growing.frame_of_projAC_at hrun hy hc]
   rcases AC.anc_total hU hFQ hXQ with hFX | hXF
   swap
@@ -512,7 +509,7 @@ private theorem narrow_vote
     (hext : AC.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
     AC.VoteExtends ((tr.upTo d).HonestBlocks (H d)) e.msg B := by
   have hr := (acRun_prefix hrun hnc hd).localRun
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hd
   obtain ⟨ell, hc⟩ := hv
   obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hrun.vstart hx hc
@@ -710,7 +707,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hib : tr.time i ≤ b := by linarith
   have hlo : sp.ts m ≤ tr.time i := by linarith
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   have hS := hK.healthy_base_before_at' hrun hnc hsvc hawake hf hcatch ht0 hib
   have hr := hS.run.localRun
@@ -996,7 +993,7 @@ theorem witness_voterBlockTree_at
   have ht0 := hrun.time_nonneg i
   have hr := (acRun_prefix hrun hnc ht0).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
   obtain ⟨hPhi, hPhiU⟩ := frameIn_at hrun hnc hy hc.1
   have hQU := (frameIn_at hrun hnc hw hcw).2 hQw
@@ -1110,7 +1107,7 @@ theorem next_votes_of_windowWitness_at
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at hQw
     exact hQw.1
