@@ -114,11 +114,8 @@ private theorem vote_viable_at
   have hfr := frame_of_projAC_at hrun hy hc.1
   have hcomp : Compatible (tr.HonestBlocksAt H) ℓ.frame.fcRoot B := by
     rw [hfr]
-    change Compatible _ (tr.state y k).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hcache.2
-    · exact hcache.1
+    change Compatible _ (tr.state y k).fg.F B
+    exact hcache.1
   rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ℓ.frame.tree := hD.1
@@ -128,9 +125,8 @@ private theorem vote_viable_at
       have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
       refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcT D hD B
           hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
-      have hfD := hΦfB.trans hΦBD
-      rw [hfr] at hDt hfD ⊢
-      exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
+      rw [hfr] at hDt ⊢
+      exact ⟨hDt.1, hDt.2, hvD⟩
     · exact Or.inr hBf
   · exact Or.inr h
 
@@ -243,7 +239,7 @@ variable (D : OutageLockPremises tr H proposer dg ini)
 /-- **G4**: at a Lo vote of slot `q + 1 ≥ r + 1` above `Σ.F`, by a node honest at its cut `i`,
 with receiver service from `b₁`, a protected block `P` that a slot-`q` vote (of a node honest at
 its cast) extends is viable at the vote. The witness head is frozen; below the floor
-(`h_max − 1`, no contest under Lo, counted at `t_i`), the `h_max` carrier's floor entry is above
+(`h_max − 1`, viable above `P` since `Σ.J ⪯ P` under Lo), the `h_max` carrier's floor entry is above
 `P` and the head of a vote extending its source (`rows_supported_at`) is frozen and viable. The
 store of `y` is read on the prefix through `t_i`. -/
 theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
@@ -297,15 +293,26 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
       Anc (tr.HonestBlocksAt H) D.P W ∧ (tr.state y i).fg.IsViable W := by
     rw [hs]
     have hR := reachable_at hrun hd hy ht
-    have hfl : (tr.state y i).fg.headHeightFloor = (tr.state y i).fg.hmax - 1 := by
-      unfold Store.headHeightFloor
-      simp only [not_contest_of_lo_at D hinv le_rfl hd ht hy hf hLo, ↓reduceIte]
+    have hjm : (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
+      have h := Healing.hj_lt_hmax (hrun.upTo hd) hy i
+      rwa [Trace.upTo_state tr y ht] at h
+    have hJP := J_anc_of_lo_at D hinv le_rfl hd ht hy hLo
+    -- under Lo (`Σ.J ⪯ P`), a held block above `P` is viable once it is at height `h_max − 1`
+    have viab : ∀ {W}, W ∈ (tr.state y i).fg.tree → Anc (tr.HonestBlocksAt H) D.P W →
+        (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ W.root).h →
+        (tr.state y i).fg.IsViable W := by
+      intro W hWt hPW hh
+      by_cases h1 : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ W.root).h
+      · exact Or.inl h1
+      by_cases h2 : (tr.state y i).fg.hj + 1 < (tr.state y i).fg.hmax
+      · exact Or.inr ⟨by omega, Or.inl h2⟩
+      · exact Or.inr ⟨by omega, Or.inr (held_anc_at hrun D.hnc hd hy ht (hJP.trans hPW) hWt)⟩
     obtain ⟨x, k, e', hv, hs', hext⟩ := hw
     obtain ⟨Hx, hHx, hPHx⟩ := frozen x k e' hv hs'.le D.P hext hFP
     have hHxt := hvt Hx hHx
-    by_cases hle : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ Hx.root).h
-    · exact ⟨Hx, hHx, hPHx, hle⟩
-    -- below the floor: the floor entry of an `h_max` carrier is above `P`
+    by_cases hle : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ Hx.root).h
+    · exact ⟨Hx, hHx, hPHx, viab hHxt hPHx hle⟩
+    -- below `h_max − 1`: the floor entry of an `h_max` carrier is above `P`
     obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
     have hHx1 : 1 ≤ ((tr.state y i).fg.σ Hx.root).h := by
       have h := (honest_held_chain hr hy (i := i) (by rw [hst]; exact hHxt)).1
@@ -340,9 +347,8 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
       (by rw [hst]; exact hWt)
     have hWh := (honest_held_height hr hnc' hy hEW).1
     rw [hst] at hWh
-    refine ⟨W, hW, (Anc.mono hsub hPDs).trans hDsW, ?_⟩
-    change (tr.state y i).fg.headHeightFloor ≤ _
-    omega
+    have hPW := (Anc.mono hsub hPDs).trans hDsW
+    exact ⟨W, hW, hPW, viab hWt hPW (by omega)⟩
   rcases vote_viable_at hrun D.hnc hy hc (B := D.P) (hinv.caches_at_cut le_rfl hy)
       (Or.inl hK2) with h | h
   · rw [hs] at h

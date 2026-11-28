@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -21,9 +22,34 @@ variable {sp : ACParams}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
+namespace Core
+
+variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
+    Store sp.toParams (Payload sp.n)}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+
+/-- A frame block has an earlier honest acceptance, or is genesis. -/
+theorem frame_block_acceptance_at
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    {x : Fin sp.n} {q : Nat} (hx : x ∈ H (tr.time q))
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt x q ell)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree) :
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
+      ∃ k < q, x ∈ H (tr.time k) ∧ tr.AcceptAt x k B := by
+  have hframe := (cutStepWith_ac ell).mp
+    (hrun.cutLaw x q _ (Compose.projAC_callAt.mp hc) hx) |>.1
+  rw [hframe] at hB
+  have ht := (hrun.frameOf_tree _ B).mp hB |>.1
+  have ht' : B ∈ ((tr.upTo (tr.time q)).state x q).fg.tree := by
+    rwa [Trace.upTo_state tr x (fun _ hk => hrun.time_mono hk.le)]
+  rcases (hrun.upTo (hrun.time_nonneg q)).tree_accepted x hx ht' with hg | ⟨k, hk, ha⟩
+  · exact Or.inl hg
+  · exact Or.inr ⟨k, hk, hrun.antitone (hrun.time_mono hk.le) hx,
+      ((RunTrace.upTo_acceptAt _).mp ha).2⟩
+
 /-- Joinedness of this cast, rather than a no-restart premise, bounds its relay deadlines. -/
 theorem witness_voterBlockTree_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {w y : Fin sp.n} {a i : Nat} (hw : w ∈ H (tr.time a)) (hy : y ∈ H (tr.time i))
@@ -34,13 +60,16 @@ theorem witness_voterBlockTree_at
     (hs : e.msg.slot = s + 1) (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
     Q ∈ AC.voterBlockTree sp e.readPoint ell.frame (s + 1) := by
   have ht0 := hrun.time_nonneg i
-  have hr := (acRun_upTo hrun hnc ht0).localRun
+  have hac := hrun.acRun hnc
+  have hr := (hac.upTo ht0).localRun
   have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  have hU := honestBlocksAt_coherent hrun hnc
-  have subU := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
-  obtain ⟨hPhi, hPhiU⟩ := frameIn_at hrun hnc hy hc.1
-  have hQU := (frameIn_at hrun hnc hw hcw).2 hQw
-  have hslot : sp.slot (tr.time i) = s + 1 := (castAt_spec_at hrun hnc hy hc).2.1.symm.trans hs
+  have hU := hrun.coherent hnc
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
+  have hQU := (AC.frameIn_of_callAt
+    ((hac.upTo (hrun.time_nonneg a)).localRun) hw
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hcw)).2 hQw
+  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
+  change sp.slot (tr.time i) = s + 1 at hslot
   have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
   have hts := AC.ts_succ s (sp := sp)
@@ -69,7 +98,7 @@ theorem witness_voterBlockTree_at
   have ha : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (AC.freeze sp (s + 1)) := by
     rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
-    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after (hrun.upTo (hrun.time_nonneg a)).toLocalRun hw
+    obtain ⟨hk', htk, -⟩ := (hrun.upTo (hrun.time_nonneg a)).ac_block_after w hw
       ((RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono hka.le, hk⟩)
     rw [RunTrace.upTo_projAC] at hk'
     have hacc := (ACTrace.upTo_acceptAt.mp hk').2
@@ -97,7 +126,7 @@ theorem witness_voterBlockTree_at
   have hQt : Q ∈ ell.frame.tree := by
     rcases ha with hg | ⟨k, hk, hkt⟩
     · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ell hc'.1
-      obtain rfl : Q = G := hU.1 hQU (subU hGU) (hg.trans hGr.symm)
+      obtain rfl : Q = G := hU.1 hQU hGU (hg.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFQ with heq | ⟨P, -, hP⟩
       · exact heq ▸ hPhi.rooted.1
       · exact False.elim (Option.some_ne_none _ (hP.2.2.symm.trans hGp))
@@ -109,9 +138,8 @@ theorem witness_voterBlockTree_at
         linarith only [ht, hkt, hti, hts, hΔ]
       obtain ⟨ella, hca, hba⟩ := hk
       have hk : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k Q := ⟨ella, hca, hba⟩
-      have hQp := (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy hk).1 _ hca)
       exact AC.mem_tree_of_acceptAtU sp hr.toU hy hk hki hc'.1
-        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
+        hFQ
   have hstamp := AC.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
     (by simpa only [hs] using ha)
     (fun k hk hrk => by
@@ -122,6 +150,22 @@ theorem witness_voterBlockTree_at
     (by change AC.freeze sp e.msg.slot ≤ tr.time i; rw [hs, hfz];
         linarith only [hti, hts, hΔ])
   exact ⟨hQt, Or.inl (by simpa only [hs] using hstamp)⟩
+
+end Core
+
+/-- Joinedness of this cast bounds its relay deadlines. -/
+theorem witness_voterBlockTree_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {w y : Fin sp.n} {a i : Nat} (hw : w ∈ H (tr.time a)) (hy : y ∈ H (tr.time i))
+    {ellw ell : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt w a ellw)
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQw : Q ∈ ellw.frame.tree)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
+    (hs : e.msg.slot = s + 1) (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
+    Q ∈ AC.voterBlockTree sp e.readPoint ell.frame (s + 1) :=
+  Core.witness_voterBlockTree_at hrun.toCore hnc hsvc hcatch hm hw hy hcw hat hQw hc hs hFQ
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

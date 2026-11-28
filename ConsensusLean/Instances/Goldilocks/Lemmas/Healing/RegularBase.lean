@@ -155,7 +155,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
 /-- The full current frame has a viable head above its fork-choice root.
 Kind J uses the justification cache; the other cases use the hmax cache.
 Unlike a frozen voter domain, the proposal domain cannot lose this witness. -/
-private theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr ini)
+theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :

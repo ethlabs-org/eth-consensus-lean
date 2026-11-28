@@ -392,7 +392,7 @@ theorem onBlock₃ (c : Bool) : (s₂ c).onBlock (blk c 3) = some (s₃ c) := by
     have hle : max (u₃ c).hmax (σ₃ c).h ≤ ((u₃ c).σ (blk c 3).root).h := by
       have hhm : (u₃ c).hmax = (s₂ c).hmax := by unfold u₃; rfl
       rw [hσ₃, hhm, s₂_hmax]; exact hh
-    exact ⟨blk c 3, h₃, hanc, (headHeightFloor_le _).trans hle⟩
+    exact ⟨blk c 3, h₃, hanc, Or.inl hle⟩
   have hu : (u₃ c).updateFinality (σ₃ c) =
       { u₃ c with hmax := max (u₃ c).hmax (σ₃ c).h, J := blk c 2, hj := (σ₃ c).hj,
                   F := blk c 1 } := by

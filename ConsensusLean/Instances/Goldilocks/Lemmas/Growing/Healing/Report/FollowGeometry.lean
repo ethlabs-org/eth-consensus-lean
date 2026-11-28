@@ -61,7 +61,7 @@ theorem floor_ancestor_mem_frame_at
   have hXt' : X ∈ ((tr.upTo (tr.time j)).state y j).fg.tree := by rwa [hs]
   have hh'' : ((tr.upTo (tr.time j)).state y j).fg.headHeightFloor ≤
       (((tr.upTo (tr.time j)).state y j).fg.σ X.root).h := by rwa [hs]
-  obtain ⟨-, htree, hroot, -, hv⟩ := Healing.viable_head_of_floor (hrun.upTo ht)
+  obtain ⟨hroot, htree, -, -, hv⟩ := Healing.viable_head_of_floor (hrun.upTo ht)
     (hnc.upTo _) hf hy hXt' hh'' (fun hm hc => by
       rw [hs] at hm hc ⊢
       exact store_anc_of_honest_anc_at hrun hnc ht hb hy (hJ hm hc) hXt)

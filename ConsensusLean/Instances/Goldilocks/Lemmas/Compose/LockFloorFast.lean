@@ -137,7 +137,7 @@ private theorem fastFloor_acProposal {A : ACState sp.n}
   split_ifs <;> exact h
 
 /-- **The fast floor lemma of an AC call**: `exists_step_locks_floor` with the fast bit kept. -/
-private theorem exists_step_locks_fastFloor (self : Fin sp.n)
+theorem exists_step_locks_fastFloor (self : Fin sp.n)
     {A : ACState sp.n} (c : (goldilocksAC sp FGP).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨

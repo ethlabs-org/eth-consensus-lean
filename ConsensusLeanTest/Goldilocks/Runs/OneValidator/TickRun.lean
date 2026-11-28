@@ -1155,10 +1155,10 @@ theorem tickMid_one (t : Nat) :
     change CutStep v0 (t : Int) (tickState A dg t) (tickCuts A dg t)[0] (tickMid A dg t 1) at this
     rwa [h0] at this
   generalize tickMid A dg t 1 = st' at hs ⊢
-  obtain ⟨fg', ac', r'⟩ := st'
+  obtain ⟨fg', ac, r'⟩ := st'
   obtain ⟨-, hstep, hfg, hr⟩ := hs
   simp only [acCall] at hstep hfg hr ⊢
-  rw [hfg, hr, (congrArg Prod.fst hstep : _ = ac')]
+  rw [hfg, hr, (congrArg Prod.fst hstep : _ = ac)]
 
 /-- An FG cut keeps the AC state; an AC cut writes the AC's step. -/
 theorem cutStep_ac {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut A}

@@ -19,6 +19,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -533,12 +534,18 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     rw [Compose.frame_of_projAC (hrun.upTo hd) hy hc',
       RunTrace.upTo_state_of_le hm le_rfl]
     rfl
-  -- the fork-choice root is compatible with `P`
-  have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+  have hreach := fg_reachable_at hp.run hd (fun _ hq => hm hq.le) hy
+  have hcache := Store.cache_invariants _ _ _ _ hreach
+  have hrootMem : (tr.state y j).fg.fcRoot ∈ (tr.state y j).fg.tree := by
+    unfold Store.fcRoot
+    split_ifs <;> first | exact hcache.2.1 | exact hcache.1
+  have hrootU : (tr.state y j).fg.fcRoot ∈ tr.HonestBlocksAt H :=
+    ⟨y, j, tr.time j, hd, fun _ hq => hm hq.le, hy, hrootMem⟩
+  -- The analysis root supplies the top-clean viability comparison.
+  have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
     rcases hp.reset_vote_root_source_or_covered_at hRm hy hc hs hjb with
       hg | ⟨v, r, l, O, ho, hrt, -, hO⟩ | ⟨hcover, C, s, hC, hsm, hRC⟩
-    · exact Or.inl (ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem)
-        hg hP)
+    · exact Or.inl (ProposalImpl.genesis_root_anc_at hp.run hp.noColl hrootU hg hP)
     · rcases hbefore v r l O ho (by linarith) (Or.inr hrt) with h | h
       · exact Or.inl (hO.trans h)
       · exact AC.anc_total hU hO h
@@ -548,8 +555,9 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
       rcases hCP with h | h
       · exact Or.inl (hRC.trans h)
       · exact AC.anc_total hU hRC h
-  by_cases hrootP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P
+  by_cases hrootAnalysis : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P
   · -- `P` is accepted before the freeze, so it is in the voter block tree
+    have hrootP := (hp.cast_root_anc_analysis_root_at hy hc).trans hrootAnalysis
     have hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g := fun r hrj hrs =>
       hp.noRestart y r (hrun.antitone (hm hrj) hy) hrs ((hm hrj).trans hjb)
     obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hp.run hp.noColl hp.sync
@@ -586,7 +594,34 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
       refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
       have hmem := hPt.1
       rw [hfr, hst] at hmem hroot' ⊢
-      exact ⟨hmem.1, hmem.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
+      refine ⟨hmem.1, hmem.2, ?_⟩
+      have hrootStore := Store.anc_of_anc_universe hreach hU
+        (fun X hX => ⟨y, j, tr.time j, hd, fun _ hq => hm hq.le, hy, hX⟩)
+        hrootAnalysis hstore
+      by_cases hh : (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ P.root).h
+      · exact Or.inl hh
+      have hpred : ((tr.state y j).fg.σ P.root).h + 1 = (tr.state y j).fg.hmax := by
+        have hb : (tr.state y j).fg.hmax - 1 ≤ (tr.state y j).fg.headHeightFloor := by
+          unfold Store.headHeightFloor
+          split_ifs <;> omega
+        omega
+      refine Or.inr ⟨hpred, ?_⟩
+      by_cases hgap : (tr.state y j).fg.hj + 1 < (tr.state y j).fg.hmax
+      · exact Or.inl hgap
+      right
+      have htop : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 := by
+        obtain ⟨C, hC, -, hCh⟩ := hcache.2.2.2.1
+        have := Store.hj_lt_h hreach hC
+        have := hcache.2.2.2.2.1 C hC
+        omega
+      have hncontest : ¬ (tr.state y j).fg.Contest := by
+        intro hc
+        have hf : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax := by
+          simp only [Store.headHeightFloor, ite_eq_left hc]
+        omega
+      simpa only [Store.fcRoot, ite_eq_left (show
+        (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest from
+          ⟨htop, hncontest⟩)] using hrootStore
     · -- the floor passed `P`: a strictly higher report
       obtain ⟨v, q, l, S, hseed, hqb, -, hqt⟩ := hp.reset_seed_before_slot_at hR
       have hSP := high_origins_before_next_slot_below_at hp hP hun hgu hR hub hseed hqt hqb
@@ -609,15 +644,36 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
           (lt_of_not_ge hfloor)
       exact Or.inl ⟨x, r, ell', C, hx, hto, hm hrj.le, hPC, hlt⟩
   · -- `P` is below the root; the finality is below `P` or a higher report finalized above it
-    have hPR := hroot.resolve_left hrootP
-    have hFc : Compatible (tr.HonestBlocksAt H) (tr.state y j).fg.F P :=
-      hFeq ▸ AC.anc_total hU hFr hPR
+    have hPR := hroot.resolve_left hrootAnalysis
+    have hne : P ≠ (tr.state y j).fg.fcRoot := fun he => hrootAnalysis (he ▸ .refl)
+    have hFc : Compatible (tr.HonestBlocksAt H) (tr.state y j).fg.F P := by
+      have hf := hFr.trans (hp.cast_root_anc_analysis_root_at hy hc)
+      exact hFeq ▸ AC.anc_total hU hf hPR
     rcases hp.finality_below_or_higher_report_at hy hjb hFc with
       hFP | ⟨z, r, l, C, hz, hrj, hto, hPC, hlt⟩
-    · refine Or.inr ⟨hFeq ▸ hFP, Or.inr ?_⟩
-      have hPt := unanimous_head_held_at_call_at hp hP hun hgu hR hy hc.1
+    · have hPt := unanimous_head_held_at_call_at hp hP hun hgu hR hy hc.1
         (by have := @hstep u; linarith) hjb hFP
-      exact AC.anc_tree_of_anc_U hU hPhi hPhiU hPt hPR hPhi.fcRoot_mem
+      have hJ : (tr.state y j).fg.fcRoot = (tr.state y j).fg.J := by
+        unfold Store.fcRoot at hrootAnalysis ⊢
+        split_ifs at hrootAnalysis ⊢ with hactive
+        · rfl
+        · exact False.elim (hrootAnalysis hFP)
+      have hf : (H (tr.time j))ᶜ.ncard < sp.toParams.fg.q := by
+        have hf := hp.faults _ hd hjb
+        have hn : 0 < sp.n := sp.toParams.hn
+        change (H (tr.time j))ᶜ.ncard < (2 * sp.n + 2) / 3
+        omega
+      obtain ⟨x, hx, r, hrj, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
+        cache_ahead_report_at hp.run hp.noColl hy hf (Or.inr hJ) (hPhiS hPt) hPR hne
+      have hxle : ∀ k < r, tr.time k ≤ tr.time j := fun k hk => hm (by omega)
+      have hPx := mem_of_honest_anc_at hp.run hp.noColl hd hxle hx hPR hJx
+      have hσ := σ_eq_honest_at hp.run hp.noColl hd (fun _ hq => hm hq.le) hy
+        hd hxle hx (hPhiS hPt) hPx
+      have hcz : cutZ sp.toParams g ≤ tr.time j :=
+        hp.cutZ_lt_reset_at.le.trans
+          ((reset_le_ts_of_drain hp hR).trans ((hts (by omega : u ≤ m + 1)).trans hjlo))
+      exact Or.inl ⟨x, r, ell', C, hp.run.antitone (max_le hcz (hm hrj.le)) hx,
+        hto, hm hrj.le, hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
     · exact Or.inl ⟨z, r, l, C, hz, hto, hm hrj.le, hPC, hlt⟩
 
 /-- The reset service through `b` holds through any earlier horizon. -/

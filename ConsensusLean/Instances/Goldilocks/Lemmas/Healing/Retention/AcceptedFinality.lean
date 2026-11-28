@@ -31,8 +31,7 @@ theorem accepted_finality_cached {P : Params} {ACP : Type} {acp₀ : ACP}
   have hcompat := Goldilocks.Store.replay_finalized_safety hr hf hy hy hB hX hXr (j := k)
   have hout : Anc U X (tr.store y (k + 1)).F := by
     rcases hcompat with hXF | hFX
-    · have hm := (Goldilocks.Store.finalized_monotone _ _ _ _
-        (Goldilocks.Store.store_reachable hr hy k)).1 _ _
+    · have hm := (Goldilocks.Store.finalized_monotone _ _ _).1 _ _
         (Goldilocks.Store.accept_onBlock hr hy ha)
       exact hXF.trans (hm.mono (hr.tree_subset y hy (k + 1)))
     · exact accepted_replay_finalized_cached hr hf hy ha hX hXr hFX

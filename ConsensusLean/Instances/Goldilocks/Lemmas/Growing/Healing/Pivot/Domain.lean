@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Ro
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.HighFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -71,10 +73,65 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
     · exact h
     · have he := h.antisymm hac.localRun.coherent (hFB.trans hBO)
       exact he ▸ hPhi.rooted.1
-  have hdesc : ∃ C ∈ ell.frame.tree, Anc (tr.HonestBlocksAt H) B C ∧
-      (tr.state p i).fg.IsViable C := by
+  have hjm : (tr.state p i).fg.hj < (tr.state p i).fg.hmax := by
+    have h := Healing.hj_lt_hmax (hp.run.upTo ht) hpH i
+    rwa [Trace.upTo_state tr p hle] at h
+  -- the analysis root `Store.fcRoot` is `Σ.J` at a top frame without contest: it is compatible
+  -- with the target (a high `h_j` from the justified block, a low one from the seed)
+  have hJB : (tr.state p i).fg.hmax = (tr.state p i).fg.hj + 1 →
+      ¬(tr.state p i).fg.Contest → Compatible (tr.HonestBlocksAt H) (tr.state p i).fg.J B := by
+    intro hm hc
+    by_cases hlow : (tr.state p i).fg.hj ≤ HZ tr H g
+    · obtain ⟨v, q, m, S, hS, hqt, hBS⟩ := hseed
+      have hqb : tr.time q ≤ b := hqt.le.trans (hti ▸ hib)
+      have hFS := hp.low_finalized_below_origin_at ht hle hpH hib hlow hS hqb
+      have hSt : S ∈ (tr.state p i).fg.tree := by
+        rcases proposal_holds_old_at hp hpH hci hcall hd hti hib hS hqt with h | h
+        · exact (frame_tree_subset_at hp.run hp.noColl hpH hci).2 h
+        · have hFS' : Anc (tr.HonestBlocksAt H) ell.frame.F S := by
+            rw [hfr]
+            exact hFS
+          have he := h.antisymm hac.localRun.coherent hFS'
+          exact (frame_tree_subset_at hp.run hp.noColl hpH hci).2 (he ▸ hPhi.rooted.1)
+      have hheld' : Anc (tr.HonestBlocksAt H) (tr.state p i).fg.F B →
+          B ∈ (Node.frame (tr.state p i)).tree := by
+        rw [hfr] at hheld
+        exact hheld
+      have h := hp.low_analysis_root_of_held_seed_at hpH hib hS hqb hSt hlow hBS hheld'
+      have he : (tr.state p i).fg.fcRoot = (tr.state p i).fg.J := by
+        unfold Store.fcRoot
+        exact ite_eq_left ⟨hm, hc⟩
+      rwa [he] at h
+    · exact hp.high_J_root_J_compatible_covered_at ht hle hpH hib hBy (by omega) hcompare
+  -- a block above the target is viable once it reaches the floor, given `Σ.J ⪯ B` when the floor
+  -- is `h_max − 1` below a top frame
+  have viab : ((tr.state p i).fg.hmax = (tr.state p i).fg.hj + 1 →
+      ¬(tr.state p i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state p i).fg.J B) →
+      ∀ {C : AC.Blk sp.n (List (FG.Att sp.n))}, C ∈ (tr.state p i).fg.tree →
+        Anc (tr.HonestBlocksAt H) B C →
+        (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ C.root).h →
+        (tr.state p i).fg.IsViable C := by
+    intro hJQ C hCt hBC hfl
+    change _ ∨ (_ ∧ _)
+    by_cases hmC : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ C.root).h
+    · exact Or.inl hmC
+    have hcon : ¬(tr.state p i).fg.Contest := fun hcon => by
+      unfold Store.headHeightFloor at hfl
+      simp only [hcon, ↓reduceIte] at hfl
+      exact hmC hfl
+    unfold Store.headHeightFloor at hfl
+    simp only [hcon, ↓reduceIte] at hfl
+    refine Or.inr ⟨by omega, ?_⟩
+    by_cases hgap : (tr.state p i).fg.hj + 1 < (tr.state p i).fg.hmax
+    · exact Or.inl hgap
+    exact Or.inr (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH
+      ((hJQ (by omega) hcon).trans hBC) hCt)
+  have main : ((tr.state p i).fg.hmax = (tr.state p i).fg.hj + 1 →
+      ¬(tr.state p i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state p i).fg.J B) →
+      ∃ C ∈ ell.frame.tree, Anc (tr.HonestBlocksAt H) B C ∧ (tr.state p i).fg.IsViable C := by
+    intro hJQ
     by_cases hfloor : (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h
-    · exact ⟨B, hBt, .refl, hfloor⟩
+    · exact ⟨B, hBt, .refl, viab hJQ hBy .refl hfloor⟩
     obtain ⟨v, q, m, S, hS, hqt, hBS⟩ := hseed
     have hSsrc := highOrigin_mem_at hp.run hp.noColl hS
     have hv := hp.run.antitone (le_max_right _ _) hS.1
@@ -89,8 +146,8 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
             (fun _ hq => hp.run.time_mono hq.le) hv ht hle hpH hSsrc hSy] at hh
           omega
       have hSt := held hS hqt hBS'
-      refine ⟨S, hSt, hBS', ?_⟩
-      change (tr.state p i).fg.headHeightFloor ≤ _
+      refine ⟨S, hSt, hBS',
+        viab hJQ ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hSt) hBS' ?_⟩
       rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
         (fun _ hq => hp.run.time_mono hq.le) hv ht hle hpH hSsrc
         ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hSt)]
@@ -113,7 +170,7 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
           rw [hfr] at hBt
           exact ⟨hE, hBt.2.trans
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH hBE hE)⟩
-        exact ⟨E, hEt, hBE, hEf⟩
+        exact ⟨E, hEt, hBE, viab hJQ hE hBE hEf⟩
       have hBO : Anc (tr.HonestBlocksAt H) B O := by
         rcases (ResetPremisesUpTo.compatibleWithOrigins_iff.1 hcompare).1 z q' n O hqi ho with h | h
         · exact h
@@ -142,15 +199,37 @@ theorem held_target_proposal_domain_before_of_sources_covered_at
       have hh := h_le_of_store_anc hreach
         (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH hEO
           ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hOt))
-      exact ⟨O, hOt, hBO, hEf.trans hh⟩
+      exact ⟨O, hOt, hBO, viab hJQ ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hOt) hBO
+        (hEf.trans hh)⟩
+  have hdesc : ∃ C ∈ ell.frame.tree, Anc (tr.HonestBlocksAt H) B C ∧
+      (tr.state p i).fg.IsViable C := by
+    by_cases hQ : (tr.state p i).fg.hmax = (tr.state p i).fg.hj + 1 ∧
+        ¬(tr.state p i).fg.Contest
+    · rcases hJB hQ.1 hQ.2 with hJB' | hBJ
+      · exact main fun _ _ => hJB'
+      -- `B ⪯ Σ.J`: the justified block is a viable descendant, unless it is genesis, below `B`
+      obtain ⟨-, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ :=
+        Store.cache_invariants _ _ _ _ hreach
+      obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hreach hBj
+      obtain rfl : E = (tr.state p i).fg.J :=
+        (Store.accepted_tree _ _ _ _ hreach).2.1.1 hE hJm (hEr.trans hBjJ)
+      rcases hcase with hg | ⟨hJh, -⟩
+      · have hgB : (tr.state p i).fg.Anc (tr.state p i).fg.J B := by
+          rw [hg]
+          exact (Store.accepted_tree _ _ _ _ hreach).2.2.2 B hBy
+        exact main fun _ _ => hgB.mono fun _ h => ⟨p, i, tr.time i, ht, hle, hpH, h⟩
+      · have hJt : (tr.state p i).fg.J ∈ ell.frame.tree := by
+          rw [hfr]
+          exact ⟨hJm, hFJ⟩
+        exact ⟨(tr.state p i).fg.J, hJt, hBJ, Or.inr ⟨by omega, Or.inr .refl⟩⟩
+    · exact main fun hm hc => absurd ⟨hm, hc⟩ hQ
   obtain ⟨C, hCt, hBC, hCv⟩ := hdesc
   have hrootB' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hrootB hBt
   have hBC' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBt hBC hCt
   refine Or.inr ⟨hBt, hrootB', C, hCt, ?_, hBC'⟩
   have hCf : C ∈ (Node.frame (tr.state p i)).tree := hfr ▸ hCt
-  have hrootC := hrootB'.trans hBC'
-  rw [hfr] at hrootC ⊢
-  exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
+  rw [hfr]
+  exact ⟨hCf.1, hCf.2, hCv⟩
 
 /-- The held-target proposal domain, with the high-source cover (`CompatibleWithOrigins`
 for the target). -/

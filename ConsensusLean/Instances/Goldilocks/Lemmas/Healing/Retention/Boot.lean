@@ -167,45 +167,6 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     hkwt le_rfl hy hc hj (hF.trans hBHv)
   exact hp.mem_tree_of_anc hy hBHv (hp.frame_tree_subset hy hc.1 hHvT.1)
 
-/-- A high origin above the raw target supplies a frozen viable witness when a held
-ancestor of the origin already meets the receiver's height floor. No retention invariant
-or stored-origin assumption on the target or held ancestor is required. -/
-theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {x y : Fin sp.n} {r l k : Nat} {B O E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
-    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B)
-    (hBO : Anc (tr.HonestBlocks H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
-    (hEO : Anc (tr.HonestBlocks H) E O)
-    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
-    ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := hp.highOrigin_mem ho
-  obtain ⟨u, hu⟩ := fastLock_counted_nonempty hp.committee_pos hflw
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    hp.run.vstart ho.1 hflw u hu
-  have hOHv : Anc (tr.HonestBlocks H) O Hv :=
-    (Anc.mono (AC.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
-  rcases hacc with hg | ⟨kw, hkw, hkwt⟩
-  · exact absurd hg (hp.cutZ_lt_of_anc ho hz hHvz hOHv).2
-  have hkwg : g ≤ tr.projAC.time kw := by
-    have := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hkw) hOHv).1
-    have := lt_cutZ sp g
-    have := le_gbar g
-    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-    change g ≤ tr.time kw
-    linarith
-  have hHvT := relay_mem_voterBlockTree hr hp.run.vstart
-      (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
-    hkwt le_rfl hy hc hl (hFB.trans (hBO.trans hOHv))
-  have hHvy : Hv ∈ (tr.state y k).fg.tree := hp.frame_tree_subset hy hc.1 hHvT.1
-  have hh := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
-    (hp.anc_tree_of_anc hy (hEO.trans hOHv) hHvy)
-  exact ⟨Hv, hHvT, hBO.trans hOHv, hfloor.trans hh⟩
-
 /-- **A low `Σ.J` does not veto a high origin** (an old conflicting `J` merely causes a contest).
 When the voter's root is a low `Σ.J` (`h_max = h_j + 1 ≤ H_z + 1`, no contest) and its voter block
 tree holds a descendant `D` of the origin's block `B`, then `D` has state height `h_max`
@@ -275,18 +236,21 @@ theorem ResetPremisesUpTo.low_root_of_held_seed_at_state {b : Time}
 theorem ResetPremisesUpTo.low_root_of_held_seed_at_call {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
+    (_hx : x ∈ H) (_hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
     (hS : HighOrigin tr H g v q m S)
     {ell : ACLabel (goldilocksNode sp)}
-    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
+    (hc : tr.projAC.CallAt y i ell) (_hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocks H) B S)
-    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree) :
+    (_hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree) :
     Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
   have hfr := Compose.frame_of_projAC hp.run hy hc
-  rw [hfr] at hheld ⊢
-  exact hp.low_root_of_held_seed_at_state hx hBx hy hS hSy hlow hBS
-    (fun h => (hheld h).1)
+  rw [hfr]
+  change Compatible _ (tr.state y i).fg.F B
+  have hFS := hp.low_finalized_below_origin hy i hlow hS
+  rcases hBS with hBS | hSB
+  · exact AC.anc_total hp.honest_coherent hFS hBS
+  · exact Or.inl (hFS.trans hSB)
 
 /-- Vote specialization supplying the seed by counted-head relay. -/
 theorem ResetPremisesUpTo.low_root_of_seed_before {b : Time}

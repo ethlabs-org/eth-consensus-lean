@@ -4,6 +4,38 @@ This file gives the reasons behind the design choices of the model and of the re
 rules that hold now. The per-statement detail is in the mapping (`docs/goldilocks-mapping.md`) and the per-check
 detail in `TRUST.md`.
 
+## Finite healing windows pin maximum height and top status
+
+The generic healing milestone's `FrameWindow` pins `hmax = M`, the equivalence
+`hmax = hj + 1 ↔ isTop`, and `J` whenever `isTop` holds. It does not pin the
+head-height floor or exclude contests from the top case. The frame key is
+`frameKey'' = 2 * hmax + [hmax = hj + 1]`.
+
+This is a milestone restatement, not an equivalence of the old and new premises.
+It excludes mixed contest(h)/gap(h+1) windows and top contest windows with varying
+`J`, while admitting same-maximum, common-`J` clean/contest toggles. Leaf 8's
+remaining-round bound is weaker in the two contest rows: 1 becomes 2 at the
+snapshot height, and 0 becomes 1 one height above it. Four keys suffice for the
+new arithmetic; the existing five-key `resetSlots` budget and `healMargin` stay
+unchanged.
+
+The reason is that constant floor and clean-root kind alone do not keep a
+proposal's viable branch fixed across a contest-to-gap transition. The replacement
+window records the maximum height and the justification-root information needed
+by the report-follow proof. Each replacement supplier must be proved or explicitly
+listed as open; a changed premise is not evidence for its supplier. This restatement
+is adopted together with the P-U run and frame rules, not independently on the
+stock run. The trusted review statement is unchanged.
+
+The proposal-height obligation requires the pre-proposal maximum minus one to
+bound the returned proposal height, and the pre-proposal justification height
+to be strictly smaller than that height. Report membership keeps its tree
+condition and uses ancestry from the accepted finalization `F`, not the
+analysis-only `fcRoot`. The protocol reference is
+`specs/goldilocks/tex/shared/fg.tex`: lines 71–77 give the finalized-root frame
+and viability rule, lines 136–144 give viability and its descendant guard, and
+lines 147–152 give the frame returned to the available chain.
+
 ## Correctness and the review statements
 
 - **A correct protocol is a fixed property table.** The generic layers define a correct protocol

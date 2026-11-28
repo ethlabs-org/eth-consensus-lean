@@ -3,6 +3,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 
 public section
 
@@ -33,13 +37,31 @@ private theorem fastLock_frame_mem {x : Fin sp.n} {i s : Nat}
     split_ifs at hsel
     exact (AC.deepest_mem hsel).1.1
 
+private theorem store_anc_core {ini u frameOf}
+    (rc : StaticRunCore u frameOf proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hBC : Anc (tr.HonestBlocks H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
+    (tr.state y k).fg.Anc B C := by
+  have hr := rc.reachable y hy k
+  have hU := rc.coherent hnc
+  induction hBC with
+  | refl => exact .refl
+  | tail _ hYC ih =>
+    rcases ((Store.accepted_tree_with rc.finalitySpec hr).2.2.2 _ hC).cases_tail with
+      hg | ⟨Z, -, hZ⟩
+    · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
+    obtain rfl : Z = _ := hU.1 ⟨y, hy, k, hZ.1⟩ hYC.1
+      (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
+    exact (ih hZ.1).tail hZ
+
 /-- The signed entry comes from a prior stored fast lock of the signer, when the source call is a
 fast-lock candidate (`hfast`, needed only at sources at least as high as the row): a deep source
 need not sit below a fast lock. This local extraction does not mention a reset or a snapshot
 height. -/
-theorem signed_entry_source
+theorem signed_entry_source_core
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {u frameOf} (hrun : StaticRunCore u frameOf proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att)
     (hfast : ∀ d' ell C, d' < d → AC.ToFGAt tr.projAC v d' ell C →
@@ -51,27 +73,29 @@ theorem signed_entry_source
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
+  have hr := (hrun.acRun hnc).localRun
   have hU := hr.coherent
   obtain ⟨C, hcall⟩ := hs
   obtain ⟨d', rfl, ell, hc', hto, -, hC, hfgeq⟩ :=
-    Compose.attest_source hrun.toLocalRun hv hcall
+    hrun.attest_source v hv hcall
   have hpc : tr.projAC.CallAt v d' ell := Compose.projAC_callAt.mpr hc'
   have hC' : (AC.acToFG sp (tr.projAC.state v d') ell.frame (tr.time d')).2 = some C := by
-    rw [Compose.projAC_state hrun.toLocalRun hv]
+    rw [hrun.projAC_state v hv d']
     exact hC
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hv hpc
   have hCt : C ∈ ell.frame.tree := (AC.toFG_source hC').1.1
   let st := (tr.state v (d' + 1)).fg
-  have hreach := Compose.fg_reachable hrun.toLocalRun hv (d' + 1)
+  have hreach := hrun.reachable v hv (d' + 1)
   have hCst : C ∈ st.tree := by
     change C ∈ (tr.state v (d' + 1)).fg.tree
     rw [hfgeq]
-    exact Healing.mem_tree_of_frame hrun hv hpc hCt
-  have hcut := (hrun.cutLaw v hv (d' + 1) _ hcall).1
+    exact hrun.frame_tree_subset hv hpc hCt
+  have hcut := ((cutStepWith_attest_some C att).mp
+    (hrun.cutLaw v hv (d' + 1) _ hcall)).1
+  unfold Store.attest at hcut
   obtain ⟨hah, haT⟩ := Store.createAtt_eq hcut
   obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ :=
-    Store.entry_state_of_source sp.toParams (Payload sp.n) _ st hreach _ hCst
+    Store.entry_state_of_source_with hrun.finalitySpec hreach C hCst
   have hEh' : (st.σ E.root).h = att.h := by rw [hah, hEr]
   have hETh' : (st.σ E.root).Th = E.root := by rw [hETh, hEr]
   have hEr' : E.root = att.T := by
@@ -80,7 +104,7 @@ theorem signed_entry_source
     rw [← hEr, hETh']
   -- the source is a fast-lock candidate: it is at least as high as the row
   have hCh : att.h ≤ ((tr.state v d').fg.σ C.root).h := by
-    have := Healing.h_le_of_store_anc hreach hEC
+    have := Store.h_le_of_store_anc_with hrun.finalitySpec hreach hEC
     rw [hEh'] at this
     change _ ≤ ((tr.state v (d' + 1)).fg.σ C.root).h at this
     rwa [← hfgeq]
@@ -96,23 +120,27 @@ theorem signed_entry_source
   have hCO : Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) O :=
     (hva.mono hPhiU).trans hLO
   have hOt : O ∈ (tr.state v r).fg.tree :=
-    Healing.mem_tree_of_frame hrun hv hcw
+    hrun.frame_tree_subset hv hcw
       (AC.viableAncestor_anc hPhiw (fastLock_frame_mem hfl hcw)).1
-  have hOst : O ∈ st.tree := Compose.tree_mono hrun.toLocalRun hv (by omega) hOt
-  have hCOst := Healing.store_anc_of_honest_anc hrun hnc hv hCO hOst
-  have hσO := Healing.σ_eq_honest hrun hnc hv hv hOst hOt
+  have hOst : O ∈ st.tree := hrun.tree_mono v hv (by omega) hOt
+  have hCOst := store_anc_core hrun hnc hv hCO hOst
+  have hσO := Store.σ_eq_of_mem_with hreach hrun.finalitySpec (hrun.reachable v hv r) hU.1
+    (fun _ hX => ⟨v, hv, d' + 1, hX⟩) (fun _ hX => ⟨v, hv, r, hX⟩) hOst hOt
   have hOh : att.h ≤ ((tr.state v r).fg.σ O.root).h := by
-    rw [← hσO]
-    have := Healing.h_le_of_store_anc hreach hCOst
-    rw [← hEh] at this
-    omega
+    rw [← hσO, ← hEh']
+    exact Store.h_le_of_store_anc_with hrun.finalitySpec hreach (hEC.trans hCOst)
   have hsub : st.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨v, hv, d' + 1, hX⟩
   have hEO : Anc (tr.HonestBlocks H) E O := (hEC.mono hsub).trans hCO
-  have hEt := Healing.mem_of_honest_anc hrun hnc hv hEO hOt
-  have hσE := Healing.σ_eq_honest hrun hnc hv hv hEt hE
-  refine ⟨r, by omega, l₀.slot, O, Healing.joinedAt_of_fastLockAt hrun hnc hv hfl,
+  have hEOst := store_anc_core hrun hnc hv hEO hOt
+  have hEt : E ∈ (tr.state v r).fg.tree := by
+    by_cases he : E = O
+    · exact he ▸ hOt
+    · exact (Anc.mem hEOst he).1
+  have hσE := Store.σ_eq_of_mem_with (hrun.reachable v hv r) hrun.finalitySpec hreach hU.1
+    (fun _ hX => ⟨v, hv, r, hX⟩) hsub hEt hE
+  refine ⟨r, by omega, l₀.slot, O, hrun.joinedAt_of_fastLockAt hnc hv hfl,
     ⟨CV, ellw, D, hcw, hfl, rfl⟩, hOh, E, hEt,
-    Healing.store_anc_of_honest_anc hrun hnc hv hEO hOt,
+    hEOst,
     hEr', ?_, ?_⟩
   · rw [hσE, hEh']
   · rw [hσE, hETh']
@@ -121,10 +149,10 @@ theorem signed_entry_source
 its own write and at `c_z`. The snapshot height is used only as a numerical lower bound. The row
 is signed before the deep quarantine ends (`hq`), so its high source is a fast-lock candidate
 (`KernelProof.high_toFG_fast_at`). -/
-theorem high_row_source_at
+theorem high_row_source_at_core
     {H : Time → Set (Fin sp.n)}
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {u frameOf} (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -138,17 +166,17 @@ theorem high_row_source_at
   have hv := hrun.antitone (le_max_right _ _) hvz
   have hs' := (RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩
   obtain ⟨r, hrd, l, O, hj, hstored, hOh, E, hE, hEO, hEr, hEh, hETh⟩ :=
-    signed_entry_source (hrun.upTo ht) (hnc.upTo _) hv hs' fun d' ell C hd' hto hCh => by
+    signed_entry_source_core (hrun.upTo ht) (hnc.upTo _) hv hs' fun d' ell C hd' hto hCh => by
       have hd't : tr.time d' ≤ tr.time d := hrun.time_mono hd'.le
       have hto' := (toFGAt_upTo_iff hrun.time_mono hd't).mp hto
       rw [RunTrace.upTo_state_of_le hrun.time_mono hd't] at hCh
       have hv' : v ∈ H (max (cutZ sp.toParams g) (tr.time d')) :=
         hrun.antitone (max_le_max le_rfl hd't) hvz
-      have hc := KernelProof.high_toFG_fast_at hrun hnc hsnap hv' hto' (hh.trans hCh)
+      have hc := KernelProof.high_toFG_fast_at_core hrun hnc hsnap hv' hto' (hh.trans hCh)
         (fun D hD => hd't.trans (hq D hD))
       rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC v
         (fun _ hk => (hrun.time_mono hk.le).trans hd't),
-        Compose.Growing.projAC_state_at hrun (hrun.antitone (le_max_right _ _) hv'),
+        hrun.projAC_state_at (hrun.antitone (le_max_right _ _) hv'),
         Trace.upTo_time]
       exact hc
   have hrt : tr.time r ≤ tr.time d := hrun.time_mono hrd.le
@@ -177,6 +205,37 @@ theorem high_row_source_at
         hA, hsel, hCV⟩
   exact ⟨r, hrd, l, O, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
     ⟨CV, ell, D, hc', hfl', hO⟩, hh.trans hOh⟩, E, hE, hEO, hEr, hEh, hETh⟩
+
+/-- Stock specialization of signed-entry extraction. -/
+theorem signed_entry_source {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
+    (hs : tr.SignAt v d att)
+    (hfast : ∀ d' ell C, d' < d → AC.ToFGAt tr.projAC v d' ell C →
+      att.h ≤ ((tr.state v d').fg.σ C.root).h →
+      C ∈ AC.toFGCandidates sp (tr.projAC.state v d') ell.frame (tr.time d')) :
+    ∃ r < d, ∃ l O, tr.JoinedAt v (tr.time r) ∧
+      (∃ CV, Compose.StoredFastLockAt tr v r l O CV) ∧
+      att.h ≤ ((tr.state v r).fg.σ O.root).h ∧
+      ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
+        E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
+        ((tr.state v r).fg.σ E.root).Th = E.root :=
+  signed_entry_source_core hrun.toStaticCore hnc hv hs hfast
+
+/-- Stock specialization of high-row provenance. -/
+theorem high_row_source_at {H : Time → Set (Fin sp.n)}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g : Time}
+    {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
+    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
+    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
+    (hq : ∀ D, sp.deepDepth = some D → tr.time d ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
+    ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
+      ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
+        E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
+        ((tr.state v r).fg.σ E.root).Th = E.root :=
+  high_row_source_at_core hrun.toCore hnc hvz hs hh hsnap hq
 
 end Consensus.Goldilocks.Healing.Growing.Outcome
 

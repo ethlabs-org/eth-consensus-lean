@@ -22,6 +22,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 
 public section
 
@@ -284,7 +286,7 @@ theorem unanimous_next_vote_viable_core_at
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g)
     (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
       tr.time q ≤ sp.ts u + sp.Δ)
-    (hroot : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
+    (hroot : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
     (hfloor : P ∈ (tr.state y j).fg.tree →
       (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P ∧
@@ -297,6 +299,20 @@ theorem unanimous_next_vote_viable_core_at
   have hr := (acRun_upTo_time hrun hnc j).localRun
   have hc' := castAt_upTo_of_le le_rfl hcast
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
+  have hj : ∀ k < j, tr.time k ≤ tr.time j := fun _ h => hm h.le
+  have hreach := fg_reachable_at hrun hd hj hy
+  have hcache := Store.cache_invariants _ _ _ _ hreach
+  have hFroot : (tr.state y j).fg.Anc (tr.state y j).fg.F (tr.state y j).fg.fcRoot := by
+    unfold Store.fcRoot
+    split_ifs
+    · exact hcache.2.2.1
+    · exact .refl
+  have hFrootU := hFroot.mono fun X hX =>
+    (⟨y, j, tr.time j, hd, hj, hy, hX⟩ : X ∈ tr.HonestBlocksAt H)
+  have hFPu := hFrootU.trans hroot
+  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+    rw [Outcome.frame_of_call hrun hy hcast.1]
+    exact hFPu
   -- the cast is at `t_{u+1}` or later
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time j := by
     have h := (AC.castAt_specU hr.toU hy hc').2.1
@@ -305,7 +321,7 @@ theorem unanimous_next_vote_viable_core_at
   have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
-    (((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hroot)
+    (((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hrootFrame)
   -- the caster accepts `P` before the freeze
   obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hrun hnc hsvc hc hP hslot hu
     hun hg hy hcast.1 (by linarith) hjb hnr hvote hanc
@@ -316,7 +332,7 @@ theorem unanimous_next_vote_viable_core_at
     obtain ⟨ella, hca, hba⟩ := ha''
     exact (AC.frameIn_of_callAt hr hy hca).2
       ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
-  have hrootp := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hroot
+  have hrootp := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hrootFrame
   have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootp
   have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y P (sp.ts u + 3 * sp.Δ) :=
     Or.inr ⟨k', ha'', hk't⟩
@@ -332,7 +348,33 @@ theorem unanimous_next_vote_viable_core_at
   refine ⟨Anc.mono hsub hFP, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
   rw [hfr, hst] at hmem hroot' ⊢
-  exact ⟨hmem.1, hmem.2, hroot'.mono (fun X hX => hX.1), hfl⟩
+  refine ⟨hmem.1, hmem.2, ?_⟩
+  have hrootStore := Store.anc_of_anc_universe hreach hU
+    (fun X hX => ⟨y, j, tr.time j, hd, hj, hy, hX⟩) hroot hstore
+  by_cases hh : (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ P.root).h
+  · exact Or.inl hh
+  have hpred : ((tr.state y j).fg.σ P.root).h + 1 = (tr.state y j).fg.hmax := by
+    have hb : (tr.state y j).fg.hmax - 1 ≤ (tr.state y j).fg.headHeightFloor := by
+      unfold Store.headHeightFloor
+      split_ifs <;> omega
+    omega
+  refine Or.inr ⟨hpred, ?_⟩
+  by_cases hgap : (tr.state y j).fg.hj + 1 < (tr.state y j).fg.hmax
+  · exact Or.inl hgap
+  right
+  have htop : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 := by
+    obtain ⟨C, hC, -, hCh⟩ := hcache.2.2.2.1
+    have := Store.hj_lt_h hreach hC
+    have := hcache.2.2.2.2.1 C hC
+    omega
+  have hnc : ¬ (tr.state y j).fg.Contest := by
+    intro hc
+    have hf : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax := by
+      simp only [Store.headHeightFloor, ite_eq_left hc]
+    omega
+  simpa only [Store.fcRoot, ite_eq_left (show
+    (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest from
+      ⟨htop, hnc⟩)] using hrootStore
 
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/
@@ -380,7 +422,8 @@ theorem unanimous_next_votes_extend_core_at
     (hcs2 : ∀ i, sp.ts (u + 1 : Nat) ≤ tr.time i → tr.time i ≤ b →
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hroot : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
-      e.msg.slot = u + 1 → tr.time j ≤ b → Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
+      e.msg.slot = u + 1 → tr.time j ≤ b →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
     (hfloor : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b → P ∈ (tr.state y j).fg.tree →
       (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h) :
@@ -502,7 +545,8 @@ theorem unanimous_next_optimistic_compatible_core_at
     (hcs2 : ∀ i, sp.ts (u + 1 : Nat) ≤ tr.time i → tr.time i ≤ b →
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hroot : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
-      e.msg.slot = u + 1 → tr.time j ≤ b → Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
+      e.msg.slot = u + 1 → tr.time j ≤ b →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
     (hfloor : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b → P ∈ (tr.state y j).fg.tree →
       (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h)

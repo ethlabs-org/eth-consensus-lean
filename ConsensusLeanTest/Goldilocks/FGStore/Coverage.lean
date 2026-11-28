@@ -118,7 +118,7 @@ theorem updateFinality_stY₀ : stY₀.updateFinality σBy = stY := by
   rw [h2, show stY₁.blocks σBy.F = some Bc from rfl]
   dsimp only
   rw [ite_eq_left ⟨hgc, fun h => absurd (congrArg Block.root h) (by decide), hcx, By, rfl, hcy,
-    (headHeightFloor_bounds stY₁).2⟩]
+    Or.inl le_rfl⟩]
   rfl
 
 /-- `stXa` accepts `By`, with post-state `stY` (`aX` is pooled already). -/

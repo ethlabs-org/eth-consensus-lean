@@ -62,17 +62,17 @@ theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
   FrameGeometry.justified_genesis hrun.toLocalRun h0 hy
 
 include hrun hnc hf hy in
-/-- **The floor, or a crossing source above the block**: with no contest the floor is
-`h_max − 1`; when it is above a held block `B`, a carrier of height `h_max` crossed it with an
-honest source `D`, whose entry `E` of height `h_max − 1` extends `B`. -/
+/-- **`h_max − 1`, or a crossing source above the block**: when `h_max − 1` is above a held block
+`B`, a carrier of height `h_max` crossed it with an honest source `D`, whose entry `E` of height
+`h_max − 1` extends `B`. -/
 theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
+    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
       ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
         (tr.state y i).fg.Anc B E ∧
-        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
         X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X := by
   obtain h | ⟨D, E, X, hD, hDs, hrest⟩ :=
     FrameGeometry.floor_or_crossing_of hrun.toLocalRun (projFG_localRun hrun hnc)
@@ -96,10 +96,10 @@ theorem floor_or_crossing_scoped {ini} (hrun : GoldilocksRun proposer dg H tr in
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hB : B ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
+    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
       ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
         (tr.state y i).fg.Anc B E ∧
-        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
         X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧
         (tr.state y i).fg.IsViable X :=
   floor_or_crossing_of hrun hnc hf hy

@@ -136,11 +136,8 @@ theorem reader_frame_by (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} {m : Na
   have hΦ := frameOK_at D.hrun ht0 hy hm
   have hcaches := (hinv m).caches y m t le_rfl ht0 hm hy
   refine ⟨?_, fun hBt => ?_⟩
-  · change Compatible _ (tr.state y m).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact compatible_of_anc_right hU hBP hcaches.2
-    · exact compatible_of_anc_right hU hBP hcaches.1
+  · change Compatible _ (tr.state y m).fg.F B
+    exact compatible_of_anc_right hU hBP hcaches.1
   have hsrc := rows_sourced_by D.hrun D.hnc (B := D.P)
     (fun x k hk hx => (hinv m).sources x k hk hx) ht0 hm hy
   rcases held_candidate_of_rows_by D.hrun D.hnc ht0 hm hy hf hsrc

@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Committee
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -61,17 +63,29 @@ theorem entry_at_height {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P A
         rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> (clear * - hlt hh; omega))
       exact ⟨Z, hZ, hZY.tail hYW, hZh, hZT⟩
 
+/-- A chain that left an entry carries an honest attestation, for any finality update
+satisfying the store contract. -/
+theorem honest_att_of_left_with {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Goldilocks.Store.FinalitySpec u) (hr : Goldilocks.Store.ReachableWith u acp₀ st)
+    {H : Set (Fin P.n)} (hq : Hᶜ.ncard < P.fg.q)
+    {E C : NodeBlock P ACP} (hET : (st.σ E.root).Th = E.root) (hEC : st.Anc E C)
+    (hlt : (st.σ E.root).h < (st.σ C.root).h) :
+    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ H := by
+  by_contra hn
+  push Not at hn
+  have := (Goldilocks.Store.entry_kept_with hu hr hq hn hEC hET).1
+  omega
+
 /-- **A chain that left an entry carries an honest attestation naming it** (the contrapositive of
 `Store.entry_kept`, G0.2 (f)): fewer than `q` faulty validators cannot leave a height. -/
 theorem honest_att_of_left {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {H : Set (Fin P.n)} (hq : Hᶜ.ncard < P.fg.q)
     {E C : NodeBlock P ACP} (hET : (st.σ E.root).Th = E.root) (hEC : st.Anc E C)
     (hlt : (st.σ E.root).h < (st.σ C.root).h) :
-    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ H := by
-  by_contra hn
-  push Not at hn
-  have := (Store.entry_kept hr hq hn hEC hET).1
-  omega
+    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ H :=
+  honest_att_of_left_with Goldilocks.Store.finalitySpec_updateFinality hr.reachableWith
+    hq hET hEC hlt
 
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}

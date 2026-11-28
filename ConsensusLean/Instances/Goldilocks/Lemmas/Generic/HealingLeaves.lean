@@ -1,8 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -31,6 +34,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
+
+-- Keep the shared run-core proofs beside their stock wrappers and independent-observation facts.
+set_option linter.style.longFile 2000
 
 /-! # Generic healing leaves
 
@@ -213,36 +219,89 @@ theorem hmax_le_of_noAdvance_at_from {P : Params} {A : NodeAC P}
 
 /-! ## Leaf 1 -/
 
-/-- A high signing honest at its cut and at the snapshot gives a reset no later. -/
-theorem reset_of_height_advance_at_from {P : Params} {A : NodeAC P}
+private theorem exists_honest_att_of_lt_with {P : Params} {ACP : Type} {acp₀ : ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP} {st : Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st) {H : Set (Fin P.n)}
+    (hq : Hᶜ.ncard < P.fg.q) {X : NodeBlock P ACP} (hX : X ∈ st.tree) :
+    ∀ h, 1 ≤ h → h < (st.σ X.root).h →
+      ∃ Y, st.Anc Y X ∧ ∃ a ∈ Y.fgPayload, a.val ∈ H ∧ a.h = h := by
+  suffices key : (∀ v ∈ (st.σ X.root).prog ∪ (st.σ X.root).target,
+      ∃ Y, st.Anc Y X ∧ ∃ a ∈ Y.fgPayload, a.val = v ∧ a.h = (st.σ X.root).h) ∧
+      ∀ h, 1 ≤ h → h < (st.σ X.root).h →
+        ∃ Y, st.Anc Y X ∧ ∃ a ∈ Y.fgPayload, a.val ∈ H ∧ a.h = h from key.2
+  have hg := (Store.accepted_tree_with hu hr).2.2.2 X hX
+  clear hX
+  induction hg with
+  | refl =>
+    change (∀ v ∈ (st.σ P.genesisRoot).prog ∪ (st.σ P.genesisRoot).target, _) ∧
+      ∀ h, 1 ≤ h → h < (st.σ P.genesisRoot).h → _
+    rw [Store.σ_genesis_with hu hr]
+    refine ⟨fun v hv => ?_, fun h h1 h2 => ?_⟩
+    · rcases Finset.mem_union.1 hv with hv | hv <;>
+        exact absurd hv (Finset.notMem_empty _)
+    simp only [FG.ChainState.init] at h2
+    omega
+  | @tail W' W _ hpar ih =>
+    obtain ⟨hW', hW, hp⟩ := hpar
+    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr hW hp
+    have hanc : st.Anc W' W := .single ⟨hW', hW, hp⟩
+    have old : ∀ v, v ∈ (st.σ W'.root).prog ∪ (st.σ W'.root).target ∨
+        (∃ a ∈ W.fgView.atts, a.val = v ∧ a.h = (st.σ W'.root).h) →
+        ∃ Y, st.Anc Y W ∧ ∃ a ∈ Y.fgPayload, a.val = v ∧ a.h = (st.σ W'.root).h := by
+      rintro v (hv | ⟨a, ha, hav, hah⟩)
+      · obtain ⟨Y, hY, hYa⟩ := ih.1 v hv
+        exact ⟨Y, hY.trans hanc, hYa⟩
+      · exact ⟨W, .refl, a, ha, hav, hah⟩
+    rcases Healing.stateTransition_bits ht with ⟨he, hbits⟩ | ⟨he, hnil, S, hS, hSv⟩
+    · refine ⟨fun v hv => he ▸ old v (hbits v hv), fun h h1 h2 => ?_⟩
+      obtain ⟨Y, hY, hYa⟩ := ih.2 h h1 (he ▸ h2)
+      exact ⟨Y, hY.trans hanc, hYa⟩
+    · obtain ⟨S, hS, hSv⟩ : ∃ S : Finset (Fin P.n), P.fg.q ≤ S.card ∧ ∀ v ∈ S,
+          v ∈ (st.σ W'.root).prog ∪ (st.σ W'.root).target ∨
+            ∃ a ∈ W.fgView.atts, a.val = v ∧ a.h = (st.σ W'.root).h := ⟨S, hS, hSv⟩
+      refine ⟨fun v hv => absurd hv (Finset.eq_empty_iff_forall_notMem.1 hnil v),
+        fun h h1 h2 => ?_⟩
+      rcases Nat.lt_succ_iff_lt_or_eq.1 (he ▸ h2) with h2 | rfl
+      · obtain ⟨Y, hY, hYa⟩ := ih.2 h h1 h2
+        exact ⟨Y, hY.trans hanc, hYa⟩
+      · obtain ⟨v, hvS, hvH⟩ : ∃ v ∈ S, v ∈ H := by
+          by_contra hc
+          have hsub : (↑S : Set (Fin P.n)) ⊆ Hᶜ := fun v hv h => hc ⟨v, hv, h⟩
+          have hc' := Set.ncard_le_ncard hsub (Set.toFinite _)
+          rw [Set.ncard_coe_finset] at hc'
+          omega
+        obtain ⟨Y, hY, a, ha, rfl, hah⟩ := old v (hSv v hvS)
+        exact ⟨Y, hY, a, ha, hvH, hah⟩
+
+/-- A high signing gives a reset using only the finality-parametric run facts. -/
+theorem reset_of_height_advance_at_core {P : Params} {A : NodeAC P}
     {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n}
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {H : Time → Set (Fin P.n)} {tr : RunTrace A} {ini : Fin P.n → A.State}
+    {u : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore u proposer dg H tr ini)
+    {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n}
     (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
     (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
     (hs : tr.SignAt y k att) (hh : Healing.Growing.HZ tr H g + 1 ≤ att.h) :
     ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k := by
   classical
-  have hr := hrun.upTo (hrun.time_nonneg k)
   have hy := hrun.antitone (le_max_right _ _) hyz
+  have hle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
+  have hr := hrun.reachable_at (hrun.time_nonneg k) hle hy
   have hex₀ : ∃ j z a, z ∈ H (max (Healing.cutZ P g) (tr.time j)) ∧ tr.SignAt z j a ∧
       a.h = Healing.Growing.HZ tr H g + 1 ∧ tr.time j ≤ tr.time k := by
     rcases hh.lt_or_eq with hlt | heq
-    · have hs' := (RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩
-      obtain ⟨E, hE, _, hEh⟩ := Healing.signAt_entry_from hr hy hs'
-      obtain ⟨Y, hYE, a, ha, haH, hah⟩ := Healing.Store.exists_honest_att_of_lt
-        (Compose.fg_reachable hr hy k) hq hE (Healing.Growing.HZ tr H g + 1)
-        (by omega) (by omega)
-      have hY : Y ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by
+    · obtain ⟨E, hE, _, hEh⟩ := hrun.signAt_entry hy hs
+      obtain ⟨Y, hYE, a, ha, haH, hah⟩ := exists_honest_att_of_lt_with
+        hrun.finalitySpec hr hq hE (Healing.Growing.HZ tr H g + 1) (by omega) (by omega)
+      have hY : Y ∈ (tr.state y k).fg.tree := by
         by_cases he : Y = E
         · exact he ▸ hE
         · exact (Anc.mem hYE he).1
-      obtain ⟨src, hc⟩ := hs'
-      obtain ⟨j, hj, hjk⟩ := Healing.signed_before_attest hr hy hc hY ha
+      obtain ⟨src, hc⟩ := hs
+      obtain ⟨j, hj, hjk⟩ := hrun.signed_before_attest hy hc hY ha
         (hrun.antitone (le_max_right _ _) haH)
-      obtain ⟨hjt, hsign⟩ := (RunTrace.upTo_signAt tr).mp hj
-      exact ⟨j, a.val, a, hrun.antitone (max_le_max le_rfl hjt) haH, hsign, hah, hjt⟩
+      exact ⟨j, a.val, a, hrun.antitone (max_le_max le_rfl hjk.le) haH, hj, hah, hjk.le⟩
     · exact ⟨k, y, att, hyz, hs, heq.symm, le_rfl⟩
   obtain ⟨j, z, att, hz, hs, hh, hjk⟩ := hex₀
   have hex : ∃ j z att, z ∈ H (max (Healing.cutZ P g) (tr.time j)) ∧ tr.SignAt z j att ∧
@@ -254,15 +313,27 @@ theorem reset_of_height_advance_at_from {P : Params} {A : NodeAC P}
       exact hrun.time_mono (Nat.find_min' hex ⟨v, c, hv, hc, hch⟩)⟩
   exact ⟨_, hR, (hR.2 z j att hz hs hh).trans hjk⟩
 
-/-! ## Leaf 6c -/
-
-/-- A high FG source forces a reset, including when its client suppresses signing. -/
-theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
+/-- A high signing honest at its cut and at the snapshot gives a reset no later. -/
+theorem reset_of_height_advance_at_from {P : Params} {A : NodeAC P}
     {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
     {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
-    {s : Option (FG.Att P.n)}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n}
     (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
+    (hs : tr.SignAt y k att) (hh : Healing.Growing.HZ tr H g + 1 ≤ att.h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k :=
+  reset_of_height_advance_at_core hrun.toLocalRunCore hq hyz hs hh
+
+/-! ## Leaf 6c -/
+
+/-- A high source forces a reset using only finality-parametric run facts. -/
+theorem reset_of_high_source_at_core {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {tr : RunTrace A} {ini : Fin P.n → A.State}
+    {u : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore u proposer dg H tr ini)
+    {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
     (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
     (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
     (hc : tr.CallAt y k (.fg (.attest C s)))
@@ -270,20 +341,19 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k := by
   classical
   have hy := hrun.antitone (le_max_right _ _) hyz
-  have hl := hrun.upTo (hrun.time_nonneg k)
-  have hst := Trace.upTo_state tr y (i := k) (fun q hq => hrun.time_mono hq.le)
-  have hr := Compose.fg_reachable hl hy k
-  rw [hst] at hr
+  have hle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
+  have hr := hrun.reachable_at (hrun.time_nonneg k) hle hy
+  let hu := hrun.finalitySpec
   have he : ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).h =
       ((tr.state y k).fg.σ C.root).h := by
     rcases hC : (tr.state y k).fg.blocks C.root with _ | X
-    · rw [Healing.Store.σ_of_blocks_none hr hC]
-      exact congrArg FG.ChainState.h (Healing.Store.σ_genesis hr)
-    · have hXr := Store.Reachable.blocks_root hr hC
+    · rw [Store.σ_of_blocks_none_with hu hr hC]
+      exact congrArg FG.ChainState.h (Store.σ_genesis_with hu hr)
+    · have hXr := Store.blocks_root_with hu hr hC
       have hX : X ∈ (tr.state y k).fg.tree := by
         change (tr.state y k).fg.blocks X.root = some X
         rw [hXr]; exact hC
-      obtain ⟨⟨E, _, hEr, _, hEh, _⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
+      obtain ⟨⟨E, _, hEr, _, hEh, _⟩, _⟩ := Store.entry_state_of_source_with hu hr X hX
       rw [← hXr, ← hEr]
       exact hEh
   by_cases hprev : ∃ j < k, ∃ att, tr.SignAt y j att ∧
@@ -291,26 +361,26 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
   · obtain ⟨j, hj, att, hs, hh⟩ := hprev
     have hjt := hrun.time_mono hj.le
     have hjz := max_le_max (le_refl (Healing.cutZ P g)) hjt
-    have hqj : (H (max (Healing.cutZ P g) (tr.time j)))ᶜ.ncard < P.fg.q := by
-      exact lt_of_le_of_lt (Set.ncard_le_ncard (Set.compl_subset_compl.mpr
+    have hqj : (H (max (Healing.cutZ P g) (tr.time j)))ᶜ.ncard < P.fg.q :=
+      lt_of_le_of_lt (Set.ncard_le_ncard (Set.compl_subset_compl.mpr
         (hrun.antitone hjz)) (Set.toFinite _)) hq
-    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at_from hrun hqj
+    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at_core hrun hqj
       (hrun.antitone hjz hyz) hs hh
     exact ⟨a, ha, haj.trans hjt⟩
   have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ C.root).h = none := by
     by_contra hn
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hn
     obtain ⟨j, hj, att, hs, hfin⟩ :=
-      (Healing.client_record_origin_from hl hy _ r k).2 (by rwa [hst])
-    have hw := (Healing.signAt_wellFormed_from hl hy hs).2
+      (hrun.client_record_origin (hrun.time_nonneg k) hle hy _ r).2 hr
+    have hw := (hrun.signAt_wellFormed (hrun.antitone (hrun.time_mono hj.le) hy) hs).2
       (((tr.state y k).fg.σ C.root).h, r) (by simp [hfin])
-    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
+    exact hprev ⟨j, hj, att, hs, by omega⟩
   have hsent : ∀ b ∈ (tr.state y k).record.sent,
       b.1 ≠ ((tr.state y k).fg.σ C.root).h := by
     intro b hb hbh
-    obtain ⟨j, hj, att, hs, heq⟩ := Healing.sent_origin_from hl hy k (by rwa [hst])
+    obtain ⟨j, hj, att, hs, heq⟩ := hrun.sent_origin (hrun.time_nonneg k) hle hy hb
     have hah : att.h = b.1 := congrArg Prod.fst heq
-    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
+    exact hprev ⟨j, hj, att, hs, by omega⟩
   have hany (τ : Bool) : (tr.state y k).record.sent.any (fun b =>
       b.1 = ((tr.state y k).fg.σ C.root).h ∧ (!τ ∨ b.2.1 =
         ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)) = false := by
@@ -319,12 +389,12 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     simp [hsent b hb]
   cases s with
   | some att =>
-    have hcl := (hrun.cutLaw y k _ hc hy).1
-    apply reset_of_height_advance_at_from hrun hq hyz ⟨C, hc⟩
+    have hcl := (hrun.attest_some hc hy).1
+    apply reset_of_height_advance_at_core hrun hq hyz ⟨C, hc⟩
     rw [(Healing.Store.createAtt_eq hcl).1, he]
     exact hh
   | none =>
-    have hcl := (hrun.cutLaw y k _ hc hy).1
+    have hcl := (hrun.attest_none hc hy).1
     exfalso
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = none at hcl
@@ -341,6 +411,20 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     dsimp only at hcl
     rw [hany τ] at hcl
     simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
+
+/-- A high FG source forces a reset, including when its client suppresses signing. -/
+theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
+    {s : Option (FG.Att P.n)}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
+    (hc : tr.CallAt y k (.fg (.attest C s)))
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k :=
+  reset_of_high_source_at_core hrun.toLocalRunCore hyz hq hc hh
 
 /-! ## Leaf 6 -/
 
@@ -381,11 +465,12 @@ theorem voteLatency_zero_from {P : Params} {A : NodeAC P} {proposer : Nat → Fi
 /-- **Leaf 6 under vote latency `D`**: a report of height at least `HZ + 1`, by a reporter honest
 at `D` after it and at `c_z`, with fewer than `q` faulty at that time, gives a reset no later than
 `D` after the report. -/
-theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+theorem reset_of_high_report_within_core {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-    {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State} {g D : Time}
+    {tr : RunTrace A} {ini : Fin P.n → A.State} {g D : Time}
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
     {y : Fin P.n} {i : Nat} {R : A.Blk}
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hlat : VoteLatencyAt tr H D)
     (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i + D)))
     (hq : (H (max (Healing.cutZ P g) (tr.time i + D)))ᶜ.ncard < P.fg.q)
@@ -400,8 +485,22 @@ theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer :
     lt_of_le_of_lt (Set.ncard_le_ncard
       (Set.compl_subset_compl.2 fun x hx => hrun.antitone hmono hx) (Set.toFinite _)) hq
   obtain ⟨a, ha, hat⟩ :=
-    reset_of_high_source_at_from hrun (hrun.antitone hmono hyz) hqk hc (hh.trans hCh)
+    reset_of_high_source_at_core hrun (hrun.antitone hmono hyz) hqk hc (hh.trans hCh)
   exact ⟨a, ha, hat.trans hk⟩
+
+/-- The stock instance of the high-report reset bound under vote latency. -/
+theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State} {g D : Time}
+    {y : Fin P.n} {i : Nat} {R : A.Blk}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hlat : VoteLatencyAt tr H D)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i + D)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time i + D)))ᶜ.ncard < P.fg.q)
+    (hR : ReportAt tr y i R)
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i + D :=
+  reset_of_high_report_within_core hrun.toLocalRunCore hlat hyz hq hR hh
 
 /-- A high report gives a high FG source in the same tick, hence a reset no later
 (`reset_of_high_report_within_from` at latency `0`). -/
@@ -536,6 +635,20 @@ theorem honest_anc_of_store_anc_at_from {y : Fin P.n} {k : Nat} {t : Time}
     Anc (tr.HonestBlocksAt H) B C :=
   h.mono fun _ hB => ⟨y, k, t, ht, hle, hy, hB⟩
 
+/-- Replay agreement at independent honest observations, for any finality update. -/
+theorem σ_eq_honest_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (h : LocalRunCore update proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y z : Fin P.n} {i j : Nat} {t u : Time}
+    (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t) (hy : y ∈ H t)
+    (hu : 0 ≤ u) (hle' : ∀ q < j, tr.time q ≤ u) (hz : z ∈ H u)
+    {B : A.Blk} (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
+    (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
+  Store.σ_eq_of_mem_with (h.reachable_at ht hle hy) h.finalitySpec
+    (h.reachable_at hu hle' hz) (h.coherent hnc).1
+    (fun _ hX => ⟨y, i, t, ht, hle, hy, hX⟩)
+    (fun _ hX => ⟨z, j, u, hu, hle', hz, hX⟩) hBy hBz
+
 /-- A held block's replay state is identical at two independently honest observations. -/
 theorem σ_eq_honest_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin P.n} {i j : Nat} {t u : Time}
@@ -543,10 +656,7 @@ theorem σ_eq_honest_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer
     (hu : 0 ≤ u) (hle' : ∀ q < j, tr.time q ≤ u) (hz : z ∈ H u)
     {B : A.Blk} (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
     (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
-  Healing.Store.σ_eq_of_mem (fg_reachable_at_from h ht hle hy) (fg_reachable_at_from h hu hle' hz)
-    (Compose.Growing.honest_blocks_coherent_local h hnc).1
-    (fun _ hX => ⟨y, i, t, ht, hle, hy, hX⟩)
-    (fun _ hX => ⟨z, j, u, hu, hle', hz, hX⟩) hBy hBz
+  σ_eq_honest_at_core h.toLocalRunCore hnc ht hle hy hu hle' hz hBy hBz
 
 /-- Strict-height finalized ancestry for two independently honest held-state observations. -/
 theorem F_anc_of_hmax_le_at_from
@@ -699,32 +809,13 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
 open AC (gbar)
 open Healing.Growing (CatchRun)
 
-/-- The merged frame key of the generic statements is the merged frame key of the stores. -/
-theorem frameKey'_eq (st : Store P A.Payload) : frameKey' A st = Healing.frameKey' st := by
-  rw [Healing.frameKey'_def, Healing.keyMerge_eq, Healing.frameKey_def]
-  rfl
-
-/-- `Σ.J` of two stores observed while honest with equal `h_j` agree. -/
-private theorem J_eq_of_hj_eq_obs_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y x : Fin P.n} {m i : Nat} {u t : Time}
-    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
-    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
-    (hf : (H (max u t))ᶜ.ncard < 2 * P.fg.q - P.n)
-    (he : (tr.state y m).fg.hj = (tr.state x i).fg.hj) :
-    (tr.state y m).fg.J = (tr.state x i).fg.J :=
-  Healing.Store.J_eq_of_cache_hj_eq_of_safe (fg_reachable_at_from h hu hytime hy)
-    (fg_reachable_at_from h ht hxtime hx) (Compose.Growing.honest_blocks_coherent_local h hnc)
-    (fun _ hX => ⟨y, m, u, hu, hytime, hy, hX⟩) (fun _ hX => ⟨x, i, t, ht, hxtime, hx, hX⟩) hf
-    (held_atts_safe_at_from h hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
-    he
-
-/-- `h_j < h_max` at a store observed while honest. -/
-private theorem hj_lt_hmax_obs_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
-    (hy : y ∈ H t) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
-  Healing.Store.hj_lt_hmax_of_reachable (fg_reachable_at_from h ht hle hy)
+/-- Four-key arithmetic bounds the deficit below the maximum height minus one. -/
+theorem pred_add_riseRounds_of_key {HZ M j v : Nat}
+    (hkey : v = 2 * M + if M = j + 1 then 1 else 0) (hv : 2 * HZ ≤ v) :
+    HZ + 1 ≤ M - 1 + riseRounds HZ v := by
+  classical
+  rw [riseRounds]
+  split_ifs at hkey <;> omega
 
 /-- **The frame-key lag** with the source `x` honest at its cut `i` and the receiver `z` honest at
 its cut `m`, after a call of `z` at or after the relay deadline of `i`. -/
@@ -770,73 +861,6 @@ theorem frameKey'_lag_obs_from
   (Healing.frameKey'_def _).symm ▸ (Healing.frameKey'_def _).symm ▸ Healing.keyMerge_mono
     (frameKey_lag_obs_from h hnc hf hsvc hcatch hx hz him hmb hcall hcm)
 
-/-- A merged key that is constant over the cuts of `[lo, hi]` of nodes honest at them gives a
-`FrameWindow`, when `hi ≤ b`. -/
-theorem frameWindow_of_frameKey'_eq_obs_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hnc : Compose.NoCollRun dg tr) {b : Time}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
-    {lo hi : Time} (hhi : hi ≤ b)
-    (hK : ∀ y z i m, y ∈ H (tr.time i) → z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i ≤ hi → lo ≤ tr.time m → tr.time m ≤ hi →
-      Healing.frameKey' (tr.state y i).fg = Healing.frameKey' (tr.state z m).fg) :
-    ∃ floor kindJ J, FrameWindow tr H lo hi floor kindJ J := by
-  have hle : ∀ i k, k < i → tr.time k ≤ tr.time i := fun _ _ hk => h.time_mono hk.le
-  obtain ⟨floor, kindJ, J, h1, h2, h3⟩ := Healing.frameData_of_frameKey'_eq
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
-    (P.genesisBlock A.genesisPayload)
-    (fun y i hy => hj_lt_hmax_obs_from h (h.time_nonneg i) (hle i) hy) hK
-    (fun y z i m hy hz _ hi _ hm he => J_eq_of_hj_eq_obs_from h hnc (h.time_nonneg i) (hle i) hy
-      (h.time_nonneg m) (hle m) hz
-      (hf _ ((h.time_nonneg i).trans (le_max_left _ _)) (max_le (hi.trans hhi) (hm.trans hhi)))
-      he)
-  exact ⟨floor, kindJ, J, ⟨h1, h2, h3⟩⟩
-
-/-- **Leaf 3.** Per-cut height range and relay calls produce a frame window, by the sequential
-pigeonhole over the cuts of nodes honest at them with the merged-key lag between independently
-honest observations, for any node run under growing faults from any starts `ini`. -/
-theorem exists_frameWindow_seq_of_service_at_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
-    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
-    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i + lam ≤ tr.time m → tr.time m < T →
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
-    (hT : lo + ∑ j ∈ Finset.range 5, (len (2 * hz + j) + lam) < T) :
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey' A (tr.state y i).fg = v) ∧
-      ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J := by
-  obtain ⟨v, hv1, hv2, a, h1, h2, hK⟩ := Healing.Growing.exists_const_window_seq
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => Healing.frameKey' (tr.state y i).fg)
-    (2 * hz) 4 len hlen hlam
-    (fun y i hy h1 h2 => by
-      have := hrange y i hy h1 h2
-      exact Healing.frameKey'_bounds this.1 this.2)
-    (fun x z i m hx hz' hi _ him hmT => frameKey'_lag_obs_from h hnc hf hsvc hcatch hx hz'
-      ((le_add_of_nonneg_right hlam).trans him) (hmT.le.trans hTb)
-      (hcall z i m hz' hi him hmT) (hlo.trans (hi.trans ((le_add_of_nonneg_right hlam).trans him))))
-    hT
-  -- the window ends before `T`
-  have hS : ∀ j, j ≤ 4 → ∑ i ∈ Finset.range (j + 1), (len (2 * hz + i) + lam) ≤
-      ∑ i ∈ Finset.range 5, (len (2 * hz + i) + lam) := fun j hj =>
-    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
-      fun i _ _ => add_nonneg (hlen _) hlam
-  have hend : a + len v < T := by
-    have := hS (v - 2 * hz) (by omega)
-    linarith
-  refine ⟨v, hv1, hv2, a, h1, h2,
-    fun y i hy hi1 hi2 => by rw [frameKey'_eq]; exact hK y i hy hi1 hi2,
-    frameWindow_of_frameKey'_eq_obs_from h hnc hf (hend.le.trans hTb) ?_⟩
-  intro y z i m hy hz' hi1 hi2 hm1 hm2
-  rw [hK y i hy hi1 hi2, hK z m hz' hm1 hm2]
-
 end FrameWindowLeaf
 
 /-! ## Proposal membership and leaf 5, the round crossing -/
@@ -853,7 +877,9 @@ open Healing.Growing (NoRestartAfter)
 /-- An honestly signed row is processed strictly before a sufficiently late honest proposal,
 even if the signer has been compromised by then, under the signed-row service clause
 (`Service.signedRow`, `Healing.Growing.ResetService.signedRow`) at a hold within `ΔF`. -/
-theorem rows_delivered_service_at_from {g ΔF b v hold : Time}
+theorem rows_delivered_service_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    {g ΔF b v hold : Time}
     (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
       (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
         x ∈ H (max (tr.time i) g + hold)) →
@@ -862,7 +888,7 @@ theorem rows_delivered_service_at_from {g ΔF b v hold : Time}
         ∃ k ≤ j, tr.ProcessAttAt y k att ∧
           tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
     (hhold : hold ≤ ΔF) (hnr : NoRestartAfter tr H (gbar g))
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hv : gbar g ≤ v) {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {X : A.Blk} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin P.n} {k : Nat}
@@ -886,6 +912,25 @@ theorem rows_delivered_service_at_from {g ΔF b v hold : Time}
   subst h
   linarith only [hdl k' le_rfl, hlt, hvx]
 
+/-- The stock instance of signed-row delivery before a proposal. -/
+theorem rows_delivered_service_at_from {g ΔF b v hold : Time}
+    (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
+        x ∈ H (max (tr.time i) g + hold)) →
+      ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
+        tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+        ∃ k ≤ j, tr.ProcessAttAt y k att ∧
+          tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
+    (hhold : hold ≤ ΔF) (hnr : NoRestartAfter tr H (gbar g))
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hv : gbar g ≤ v) {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
+    {X : A.Blk} (hX : tr.ProposesAt p kX X)
+    (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin P.n} {k : Nat}
+    (hy : y ∈ H (tr.time k)) {att : FG.Att P.n} (hsig : tr.SignAt y k att)
+    (hk : tr.time k ≤ v) (hyX : y ∈ H (tr.time kX)) : ∃ k' < kX, tr.ProcessAttAt p k' att :=
+  rows_delivered_service_at_core hrows hhold hnr hrun.toLocalRunCore hv hp hX hvx hkb
+    hy hsig hk hyX
+
 /-- A proposal's immediate acceptance is held while its proposer is honest, for a run from starts
 `ini` at which the AC meets the requirements, with the genesis root: the middle component of
 `Healing.accept_of_proposesAt_from` on the proposer's prefix. -/
@@ -902,10 +947,148 @@ theorem proposal_mem_at_from
   have hm := (Healing.accept_of_proposesAt_from hr hroot (hnc.upTo _) hp (hq p) hB').2.1
   rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
 
-/-- Leaf 5: delivered historical rows cross one height; honesty is read separately at every cut,
-from starts `ini` meeting the requirements, the genesis root, `Service.signedRow` and kept rows. -/
-theorem round_cross_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+private theorem ThSlot_eq_of_anc_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {B W : NodeBlock P ACP} (h : st.Anc B W)
+    (hh : (st.σ W.root).h = (st.σ B.root).h) :
+    (st.σ W.root).ThSlot = (st.σ B.root).ThSlot := by
+  induction h with
+  | refl => rfl
+  | @tail Y Y' hBY hYY' ih =>
+    obtain ⟨-, hY', hp⟩ := hYY'
+    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr hY' hp
+    have h₁ := Store.h_le_of_store_anc_with hu hr hBY
+    rcases P.fg.stateTransition_ThSlot ht with ⟨e, e', -⟩ | ⟨e, -, -⟩
+    · rw [e']; exact ih (by rw [← e]; exact hh)
+    · omega
+
+private theorem ThSlot_le_slot_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree) : (st.σ Z.root).ThSlot ≤ Z.slot := by
+  obtain ⟨hcoh, -, hg⟩ := (Store.accepted_tree_with hu hr).2
+  induction hg Z hZ with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl,
+      Store.σ_genesis_with hu hr]
+    exact Nat.zero_le _
+  | @tail Y Y' hGY hYY' ih =>
+    obtain ⟨hY, hY', hp⟩ := hYY'
+    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr hY' hp
+    have hsl : Y.slot < Y'.slot := hcoh.2 Y hY Y' hY' hp
+    have := ih hY
+    rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
+    · rw [e]; omega
+    · rw [e]; rfl
+
+private theorem processAtt_prog {n : Nat} (σ : FG.ChainState n) (a : FG.Att n) :
+    σ.prog ⊆ (σ.processAtt a).prog ∧
+      (a.h = σ.h → a.T = σ.Th → a.val ∈ (σ.processAtt a).prog) := by
+  unfold FG.ChainState.processAtt
+  rcases a.fin with _ | pr
+  · dsimp only
+    split_ifs <;> simp_all
+  · dsimp only
+    split_ifs <;> simp_all
+
+private theorem foldl_prog {n : Nat} (σ : FG.ChainState n) (atts : List (FG.Att n)) :
+    σ.prog ⊆ (atts.foldl FG.ChainState.processAtt σ).prog ∧
+      ∀ a ∈ atts, a.h = σ.h → a.T = σ.Th →
+        a.val ∈ (atts.foldl FG.ChainState.processAtt σ).prog := by
+  induction atts generalizing σ with
+  | nil => exact ⟨subset_rfl, by simp⟩
+  | cons b l ih =>
+    obtain ⟨p1, r1⟩ := processAtt_prog σ b
+    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [b]
+    have hh : (σ.processAtt b).h = σ.h := by simpa using congrArg FG.ChainState.h he
+    have hT : (σ.processAtt b).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
+    obtain ⟨p2, r2⟩ := ih (σ.processAtt b)
+    refine ⟨p1.trans p2, fun a ha hah haT => ?_⟩
+    rcases List.mem_cons.1 ha with rfl | ha
+    · exact p2 (r1 hah haT)
+    · exact r2 a ha (hah.trans hh.symm) (haT.trans hT.symm)
+
+private theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
+    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
+    (∀ a ∈ B.atts, a.h ≤ σ.h) ∧
+      ((σ'.h = σ.h ∧ σ'.Th = σ.Th ∧
+        σ'.prog = (B.atts.foldl FG.ChainState.processAtt { σ with s := B.slot }).prog) ∨
+      σ'.h = σ.h + 1) := by
+  obtain ⟨⟨-, hv⟩, he⟩ := gp.stateTransition_eq_some.1 h
+  refine ⟨fun a ha => ?_, ?_⟩
+  · rcases (hv a ha).2 with ⟨h1, -⟩ | ⟨pr, -, -, -, h2⟩
+    · exact h1.le
+    · exact h2.le
+  obtain ⟨f, p, t, hf⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he ⊢
+  subst he
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases _
+  rcases hcase with ⟨-, he⟩ | ⟨-, -, he⟩ | ⟨-, -, he⟩ <;> rw [he]
+  · exact Or.inr rfl
+  · exact Or.inr rfl
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+
+private theorem rows_prog_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
+    ∀ X, st.Anc X W → ∀ r ∈ X.fgPayload, r.h ≤ (st.σ W.root).h ∧
+      (r.h = (st.σ W.root).h → r.T = (st.σ W.root).Th →
+        r.val ∈ (st.σ W.root).prog) := by
+  have hg := (Store.accepted_tree_with hu hr).2.2.2 W hW
+  clear hW
+  induction hg with
+  | refl =>
+    intro X hX r hrX
+    rcases Relation.ReflTransGen.cases_tail hX with rfl | ⟨Z, -, -, -, hZ⟩
+    · cases hrX
+    · cases hZ
+  | @tail W' W _ hpar ih =>
+    obtain ⟨h1, h2, hp⟩ := hpar
+    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr h2 hp
+    obtain ⟨hle, hcase⟩ := step_prog ht
+    intro X hX r hrX
+    have hX' := Store.anc_parent h1 hp hX
+    have hrh : r.h ≤ (st.σ W'.root).h := by
+      rcases hX' with rfl | hX'
+      · exact hle r hrX
+      · exact (ih X hX' r hrX).1
+    rcases hcase with ⟨hh, hT, hpg⟩ | hh
+    · refine ⟨hh ▸ hrh, fun hrh' hrT => ?_⟩
+      rw [hh] at hrh'
+      rw [hT] at hrT
+      obtain ⟨bp, brow⟩ := foldl_prog { st.σ W'.root with s := W.slot } W.fgView.atts
+      rw [hpg]
+      rcases hX' with rfl | hX'
+      · exact brow r hrX hrh' hrT
+      · exact bp ((ih X hX' r hrX).2 hrh' hrT)
+    · exact ⟨by omega, fun h' => by omega⟩
+
+private theorem cross_height_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {X Pr : NodeBlock P ACP} (hX : X ∈ st.tree) (hPr : Pr ∈ st.tree)
+    (hpar : X.parent = some Pr.root) (S : Finset (Fin P.n)) (hS : P.fg.q ≤ S.card)
+    (hrow : ∀ v ∈ S, ∃ a : FG.Att P.n, a.val = v ∧ a.h = (st.σ Pr.root).h ∧
+      a.T = (st.σ Pr.root).Th ∧ (a ∈ X.fgPayload ∨ st.OnChain Pr a))
+    (hage : (st.σ Pr.root).ThSlot + P.fg.δt ≤ X.slot) :
+    (st.σ X.root).h = (st.σ Pr.root).h + 1 := by
+  classical
+  obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr hX hpar
+  obtain ⟨bp, brow⟩ := foldl_prog { st.σ Pr.root with s := X.slot } X.fgPayload
+  have hq : P.fg.q ≤
+      (X.fgView.atts.foldl FG.ChainState.processAtt { st.σ Pr.root with s := X.slot }).prog.card :=
+    hS.trans (Finset.card_le_card fun v hv => by
+      obtain ⟨a, rfl, hah, haT, hin | ⟨Z, -, hZ, haZ⟩⟩ := hrow v hv
+      · exact brow a hin hah haT
+      · exact bp ((rows_prog_with hu hr hPr Z hZ a haZ).2 hah haT))
+  exact P.fg.cross_of_progress ht hq hage
+
+/-- Delivered historical rows cross one height for any finality update satisfying its spec. -/
+theorem round_cross_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b v hold : Time}
@@ -940,49 +1123,40 @@ theorem round_cross_at_from
   have hle : ∀ q < kX, tr.time q ≤ tr.time kX := fun q hq => hrun.time_mono hq.le
   have hle1 : ∀ q < kX + 1, tr.time q ≤ tr.time kX := fun q hq =>
     hrun.time_mono (by omega)
-  have hs := Trace.upTo_state tr p hle
-  have hs1 := Trace.upTo_state tr p hle1
-  -- Restrict only the proposer's local execution; historical witnesses remain in the full trace.
-  have hr := hrun.upTo hd
-  have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2.1, hX.2.2⟩
-  have hcoh := Compose.Growing.honest_blocks_coherent_local hrun hnc
-  obtain ⟨Pr, hpar', hPr⟩ :=
-    Healing.proposal_parent_held_from hr hroot (hnc.upTo _) hp (hq p) hX'
-  rw [hs] at hPr
-  obtain ⟨-, hXm, he⟩ := Healing.accept_of_proposesAt_from hr hroot (hnc.upTo _) hp (hq p) hX'
-  rw [hs1] at hXm he
+  have hu := hrun.finalitySpec
+  have hcoh := hrun.coherent hnc
+  obtain ⟨Pr, hpar', hPr⟩ := hrun.proposal_parent_held hnc hroot hq hp hX
+  obtain ⟨-, hXm, he⟩ := hrun.accept_of_proposesAt hnc hroot hq hp hX
   have hPrH : Pr ∈ tr.HonestBlocksAt H := ⟨p, kX, _, hd, hle, hp, hPr⟩
   have hDH : D ∈ tr.HonestBlocksAt H := by
     rcases Relation.ReflTransGen.cases_tail hBD with rfl | ⟨Z, -, hZ⟩
     · exact hBH
     · exact hZ.2.1
   obtain rfl : D = Pr := hcoh.1 hDH hPrH (Option.some_injective _ (hpar.symm.trans hpar'))
-  have hR := fg_reachable_at_from hrun hd hle hp
-  have hR1 := fg_reachable_at_from hrun hd hle1 hp
-  have hBDs := store_anc_of_honest_anc_at_from hrun hnc hd hle hp hBD hPr
+  have hR := hrun.reachable_at hd hle hp
+  have hR1 := hrun.reachable_at hd hle1 hp
+  have hBDs := hrun.held_anc_at hnc hd hle hp hBD hPr
   have hBst : B ∈ (tr.state p kX).fg.tree := by
     by_cases he : B = D
     · exact he ▸ hPr
     · exact (Anc.mem hBDs he).1
-  have hBDh := Healing.h_le_of_store_anc hR hBDs
-  have hmono : (tr.state p kX).fg.tree ⊆ (tr.state p (kX + 1)).fg.tree := by
-    simpa only [hs, hs1] using Compose.tree_mono hr hp (Nat.le_succ kX)
+  have hBDh := Store.h_le_of_store_anc_with hu hR hBDs
+  have hmono := hrun.tree_mono_at hd hle1 hp (Nat.le_succ kX)
   have hDm := hmono hPr
   have hBm := hmono hBst
-  have hσB := σ_eq_honest_at_from hrun hnc hd hle hp hd hle1 hp hBst hBm
-  have hσD := σ_eq_honest_at_from hrun hnc hd hle hp hd hle1 hp hPr hDm
-  have hle' := Healing.h_le_of_store_anc hR1 (.single ⟨hDm, hXm, hpar⟩)
+  have hσB := σ_eq_honest_at_core hrun hnc hd hle hp hd hle1 hp hBst hBm
+  have hσD := σ_eq_honest_at_core hrun hnc hd hle hp hd hle1 hp hPr hDm
+  have hle' := Store.h_le_of_store_anc_with hu hR1 (.single ⟨hDm, hXm, hpar⟩)
   refine ⟨hBm, hXm, ?_⟩
   rw [← hσB]
   rw [← hσD] at hle'
   by_cases hlt : ((tr.state p kX).fg.σ B.root).h < ((tr.state p kX).fg.σ D.root).h
   · omega
   have hDh : ((tr.state p kX).fg.σ D.root).h = ((tr.state p kX).fg.σ B.root).h := by omega
-  have hDTh := Healing.Th_eq_of_anc hR hBDs hDh
+  have hDTh := Store.Th_eq_of_anc_with hu hR hBDs hDh
   have hThS : ((tr.state p kX).fg.σ D.root).ThSlot ≤ B.slot := by
-    rw [Healing.ThSlot_eq_of_anc hR hBDs hDh]
-    exact Healing.ThSlot_le_slot hR hBst
+    rw [ThSlot_eq_of_anc_with hu hR hBDs hDh]
+    exact ThSlot_le_slot_with hu hR hBst
   let S := Finset.univ.filter (· ∈ H (tr.time kX))
   have hScard : P.fg.q ≤ S.card := by
     have hcard : S.card = (H (tr.time kX)).ncard := by
@@ -995,45 +1169,82 @@ theorem round_cross_at_from
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     change (2 * P.n + 2) / 3 ≤ _
     omega
-  obtain ⟨hfg, hXt, hDt, hσX, hσD', hplace⟩ :=
-    Healing.proposal_rows_placed_from hr (fun y _ => hq y) hroot (hnc.upTo _) hp hX' hpar
-      (by rwa [hs])
-  have hcross := Healing.cross_step hfg hp hXt hDt hpar S hScard ?_ ?_
-  · have h1 := hcross.1
-    rw [← hσX, he, ← hσD', hs] at h1
+  obtain ⟨hXt, hDt, -, hσD', hplace⟩ :=
+    hrun.proposal_rows_placed hnc hroot hq hp hX hpar hPr
+  have hcross := cross_height_with hu hR1 hXt hDt hpar S hScard ?_ ?_
+  · have h1 := hcross
+    rw [← hσD'] at h1
     omega
   · intro y hyS
     have hy : y ∈ H (tr.time kX) := (Finset.mem_filter.1 hyS).2
     rcases hrow y hy with ⟨w, c, hw, hBw, k, att, hyk, hsig, hk, hah, haT⟩ |
       ⟨R, hRD, w, c, hw, hBw, hRw, hhR⟩
-    · have hσ := σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+    · have hσ := σ_eq_honest_at_core hrun hnc (hrun.time_nonneg c)
         (fun q hq => hrun.time_mono hq.le) hw hd hle hp hBw hBst
       rw [hσ] at hah haT
       have hproc :=
-        rows_delivered_service_at_from hrows hhold hnr hrun hv hp hX hvx hkb hyk hsig hk hy
-      have hval := Healing.signAt_val (hrun.upTo (hrun.time_nonneg k)) hyk
-        ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hsig⟩)
-      rw [← hσD', hs]
+        rows_delivered_service_at_core hrows hhold hnr hrun hv hp hX hvx hkb hyk hsig hk hy
+      have hval : att.val = y := by
+        obtain ⟨src, hc⟩ := hsig
+        have hc' := (hrun.attest_some hc hyk).1
+        unfold Store.attest FG.Record.createAtt at hc'
+        split at hc'
+        · cases hc'
+        · split_ifs at hc'
+          simp only [Option.some.injEq, Prod.mk.injEq] at hc'
+          obtain ⟨rfl, -⟩ := hc'
+          rfl
+      rw [← hσD']
       refine ⟨att, hval, hah.trans hDh.symm, haT.trans hDTh.symm, ?_⟩
-      exact hplace att (by
-        obtain ⟨j, hj, hproc⟩ := hproc
-        exact ⟨j, hj, (RunTrace.upTo_processAttAt _).mpr ⟨hrun.time_mono hj.le, hproc⟩⟩)
-        (by rw [hs]; exact hah.trans hDh.symm)
-        (by rw [hs]; exact haT.trans hDTh.symm)
+      exact hplace att hproc (hah.trans hDh.symm) (haT.trans hDTh.symm)
     · exfalso
-      have hRDs := store_anc_of_honest_anc_at_from hrun hnc hd hle hp hRD hPr
+      have hRDs := hrun.held_anc_at hnc hd hle hp hRD hPr
       have hRst : R ∈ (tr.state p kX).fg.tree := by
         by_cases he : R = D
         · exact he ▸ hPr
         · exact (Anc.mem hRDs he).1
-      have hRDh := Healing.h_le_of_store_anc hR hRDs
-      rw [σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+      have hRDh := Store.h_le_of_store_anc_with hu hR hRDs
+      rw [σ_eq_honest_at_core hrun hnc (hrun.time_nonneg c)
           (fun q hq => hrun.time_mono hq.le) hw hd hle hp hBw hBst,
-        σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+        σ_eq_honest_at_core hrun hnc (hrun.time_nonneg c)
           (fun q hq => hrun.time_mono hq.le) hw hd hle hp hRw hRst] at hhR
       omega
-  · rw [← hσD', hs]
+  · rw [← hσD']
     omega
+
+/-- Leaf 5: delivered historical rows cross one height, at independently honest observations. -/
+theorem round_cross_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b v hold : Time}
+    (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
+        x ∈ H (max (tr.time i) g + hold)) →
+      ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
+        tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+        ∃ k ≤ j, tr.ProcessAttAt y k att ∧
+          tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
+    (hhold : hold ≤ ΔF) (hnr : NoRestartAfter tr H (gbar g))
+    {B D X : A.Blk} (hBH : B ∈ tr.HonestBlocksAt H)
+    (hBD : Anc (tr.HonestBlocksAt H) B D) (hpar : X.parent = some D.root)
+    {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
+    (hX : tr.ProposesAt p kX X) (hf : 3 * (H (tr.time kX))ᶜ.ncard ≤ P.n - 1)
+    (hv : gbar g ≤ v) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
+    (hage : B.slot + P.δt ≤ X.slot)
+    (hrow : ∀ y ∈ H (tr.time kX),
+      (∃ w c, w ∈ H (tr.time c) ∧ B ∈ (tr.state w c).fg.tree ∧
+        ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧
+          tr.time k ≤ v ∧ att.h = ((tr.state w c).fg.σ B.root).h ∧
+          att.T = ((tr.state w c).fg.σ B.root).Th) ∨
+      ∃ R, Anc (tr.HonestBlocksAt H) R D ∧ ∃ w c, w ∈ H (tr.time c) ∧
+        B ∈ (tr.state w c).fg.tree ∧ R ∈ (tr.state w c).fg.tree ∧
+          ((tr.state w c).fg.σ B.root).h < ((tr.state w c).fg.σ R.root).h) :
+    B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
+      ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤
+        ((tr.state p (kX + 1)).fg.σ X.root).h :=
+  round_cross_at_core hrun.toLocalRunCore hq hroot hnc hrows hhold hnr hBH hBD hpar hp
+    hX hf hv hvx hkb hage hrow
 
 end RoundCross
 
@@ -1127,127 +1338,192 @@ theorem mem_of_honest_anc_at_from
   · exact he ▸ hC
   · exact (Anc.mem (store_anc_of_honest_anc_at_from hrun hnc ht hle hy h hC) he).1
 
-/-- The durable client record only holds signatures made before an honest read. -/
-private theorem record_facts_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
-    Healing.Client.SentOK (tr.state y i).record ∧
-    (∀ b ∈ (tr.state y i).record.sent,
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
-    ∀ h r, (tr.state y i).record.lock h = some r →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r) := by
-  have hs := Trace.upTo_state tr y hle
-  obtain ⟨hok, hsent, hlock⟩ := Healing.record_facts (hrun.upTo ht) hy i
-  rw [hs] at hok hsent hlock
-  exact ⟨hok, fun b hb => let ⟨k, hk, a, ha, he⟩ := hsent b hb
-    ⟨k, hk, a, ((RunTrace.upTo_signAt tr).mp ha).2, he⟩,
-    fun h r hl => let ⟨k, hk, a, ha, he⟩ := hlock h r hl
-      ⟨k, hk, a, ((RunTrace.upTo_signAt tr).mp ha).2, he⟩⟩
+private theorem step_pending_just {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
+    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
+    ∀ p ∈ σ'.pending, p ∈ σ.pending ∨ p = (σ'.hj, σ'.J) := by
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, pr, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he]
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := pr, target := t }
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he'] <;> intro q hq
+  · simp only [FG.ChainState.advance] at hq ⊢
+    rcases List.mem_append.1 (List.mem_of_mem_drop hq) with hq | hq
+    · exact Or.inl (List.mem_filter.1 hq).1
+    · exact Or.inr (List.mem_singleton.1 hq)
+  · simp only [FG.ChainState.advance] at hq
+    exact Or.inl (List.mem_filter.1 hq).1
+  · exact Or.inl (List.mem_filter.1 hq).1
 
-/-- A store's finalized cache lies below a held block above its justified height. -/
-private theorem F_anc_of_hj_lt_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+private theorem pending_justified_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
+    ∀ p ∈ (st.σ W.root).pending, ∃ B ∈ st.tree, (st.σ B.root).hj = p.1 ∧
+      (st.σ B.root).J = p.2 := by
+  have hA := (Store.accepted_tree_with hu hr).2.2.2 W hW
+  clear hW
+  induction hA with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl,
+      Store.σ_genesis_with hu hr]
+    intro p hp
+    simp [FG.ChainState.init] at hp
+  | @tail Y W' _ hYW ih =>
+    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with hu hr hYW.2.1 hYW.2.2
+    intro p hp
+    rcases step_pending_just ht p hp with hp | rfl
+    · exact ih p hp
+    · exact ⟨W', hYW.2.1, rfl, rfl⟩
+
+private theorem finalityPair_justified_with {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    (hu : Store.FinalitySpec u) (hr : Store.ReachableWith u acp₀ st)
+    {W : NodeBlock P ACP} (hW : W ∈ st.tree) {Λ : FG.Record} {p : Nat × Nat}
+    (hp : Λ.finalityPair (st.σ W.root) = some p) :
+    ∃ B ∈ st.tree, (st.σ B.root).hj = p.1 ∧ (st.σ B.root).J = p.2 := by
+  unfold FG.Record.finalityPair at hp
+  split_ifs at hp
+  · cases hp
+    exact ⟨W, hW, rfl, rfl⟩
+  · rcases FG.Record.foldl_newest_mem_or_initial hp with h' | h'
+    · cases h'
+    · exact pending_justified_with hu hr hW p (List.mem_filter.1 h').1
+
+private theorem signed_fin_justified_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
+    {y : Fin P.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att P.n}
+    (hs : tr.SignAt y k att) {h X : Nat} (hfin : att.fin = some (h, X)) :
+    ∃ B ∈ (tr.state y k).fg.tree, ((tr.state y k).fg.σ B.root).hj = h ∧
+      ((tr.state y k).fg.σ B.root).J = X := by
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hrun.attest_some hc hy).1
+  have hr := hrun.reachable_at (hrun.time_nonneg k)
+    (fun q hq => hrun.time_mono hq.le) hy
+  have hu := hrun.finalitySpec
+  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨-, -, -, hfp, -⟩ := Healing.Client.createAtt_some hcl
+  have hentry : ∃ W ∈ (tr.state y k).fg.tree,
+      (tr.state y k).fg.σ ((tr.state y k).fg.σ src.root).Th =
+        (tr.state y k).fg.σ W.root := by
+    rcases hs : (tr.state y k).fg.blocks src.root with _ | B
+    · have hg : ((tr.state y k).fg.σ src.root).Th = P.genesisRoot := by
+        rw [Store.σ_of_blocks_none_with hu hr hs]
+        rfl
+      exact ⟨_, Store.genesis_mem_with hu hr, by rw [hg]; rfl⟩
+    · have hBr := Store.blocks_root_with hu hr hs
+      have hB : B ∈ (tr.state y k).fg.tree := by
+        change (tr.state y k).fg.blocks B.root = some B
+        rwa [hBr]
+      obtain ⟨⟨E, hE, hEr, -⟩, -⟩ := Store.entry_state_of_source_with hu hr B hB
+      exact ⟨E, hE, by rw [hEr, hBr]⟩
+  obtain ⟨W, hW, hWσ⟩ := hentry
+  rw [hWσ, hfin] at hfp
+  exact finalityPair_justified_with hu hr hW hfp.symm
+
+/-- Finalized-cache ancestry under the parametric update and held-attestation safety. -/
+private theorem F_anc_of_hj_lt_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     {y : Fin P.n} {i : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
     {B : A.Blk} (hB : B ∈ (tr.state y i).fg.tree)
     (hlt : (tr.state y i).fg.hj < ((tr.state y i).fg.σ B.root).h) :
     (tr.state y i).fg.Anc (tr.state y i).fg.F B :=
-  have hR := fg_reachable_at_from hrun ht hle hy
-  Healing.Store.F_anc_of_hj_lt_of_safe hR hR (Store.accepted_tree _ _ _ _ hR).2.1 subset_rfl
-    subset_rfl hf (held_atts_safe_at_from hrun ht hle hy ht hle hy le_rfl le_rfl) hB hlt
+  have hR := hrun.reachable_at ht hle hy
+  Store.F_anc_of_hj_lt_of_safe_with hrun.finalitySpec hR hR
+    (Store.accepted_tree_with hrun.finalitySpec hR).2.1 subset_rfl subset_rfl hf
+    (hrun.held_atts_safe_at ht hle hy ht hle hy le_rfl le_rfl) hB hlt
 
-/-- A finality lock cannot be above the node's own justification cache. -/
-private theorem hj_ge_of_lock_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+/-- A finality lock is below the justified cache when that cache is maximal. -/
+private theorem hj_ge_of_lock_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     {y : Fin P.n} {i : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n) {h r : Nat}
     (hl : (tr.state y i).record.lock h = some r) : h ≤ (tr.state y i).fg.hj := by
-  have hr := hrun.upTo ht
-  have hs := Trace.upTo_state tr y hle
-  obtain ⟨k, hk, att, hsa, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
-  have hsa' := (RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hsa⟩
-  obtain ⟨B, hB, hBj, -⟩ := Healing.signed_fin_justified hr hy hsa' hfin
-  have hsk := Trace.upTo_state tr y (fun q hq => hle q (hq.trans hk))
-  rw [hsk] at hB hBj
-  have hmono : (tr.state y k).fg.hj ≤ (tr.state y i).fg.hj := by
-    simpa only [hs, hsk] using Healing.hj_mono hr hy hk.le
-  refine le_trans ?_ hmono
-  have hR := fg_reachable_at_from hrun ht (fun q hq => hle q (hq.trans hk)) hy
+  obtain ⟨k, hk, att, hsa, hfin⟩ := (hrun.client_record_origin ht hle hy h r).2 hl
+  have hlek : ∀ q < k, tr.time q ≤ t := fun q hq => hle q (hq.trans hk)
+  obtain ⟨B, hB, hBj, -⟩ := signed_fin_justified_at_core hrun
+    (hrun.antitone (hle k hk) hy) hsa hfin
+  refine le_trans ?_ (hrun.hj_mono_at ht hle hy hk.le)
+  have hu := hrun.finalitySpec
+  have hR := hrun.reachable_at ht hlek hy
   by_contra hlt
   have hlt' : (tr.state y k).fg.hj < ((tr.state y k).fg.σ B.root).h := by
-    have := Healing.Store.hj_lt_h hR hB
+    have := Store.hj_lt_h_with hu hR hB
     omega
-  have hFB := F_anc_of_hj_lt_at_from hrun ht (fun q hq => hle q (hq.trans hk)) hy hf hB hlt'
-  obtain ⟨E, hE, hEr, hEB, -⟩ := Healing.Store.J_entry_of_reachable hR hB
-  have hEh := Healing.Store.J_height_le hR hB hE hEr
-  have hjmax := (Healing.jMax_iff _).1 (Healing.jMax_of_reachable hR) B hB E hE hEr
-  obtain ⟨-, hcoh, -, hgen⟩ := Store.accepted_tree _ _ _ _ hR
+  have hFB := F_anc_of_hj_lt_at_core hrun ht hlek hy hf hB hlt'
+  obtain ⟨E, hE, hEr, hEB, -⟩ := Store.J_entry_with hu hR hB
+  have hEh := Store.J_height_le_with hu hR hB hE hEr
+  have hjm := hrun.jmax_at ht hlek hy B hB E hE hEr
+  obtain ⟨-, hcoh, -, hgen⟩ := Store.accepted_tree_with hu hR
   rcases Anc.total hcoh hFB hEB with hFE | hEF
-  · have := hjmax hFE
+  · have := hjm hFE
     omega
-  · obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj', hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
-    obtain ⟨E', hE', hEr', -, hEg⟩ := Healing.Store.J_entry_of_reachable hR hBj'
+  · obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj', hBjJ, hBjhj⟩, -⟩ :=
+      Store.cache_invariants_with hu hR
+    obtain ⟨E', hE', hEr', -, hEg⟩ := Store.J_entry_with hu hR hBj'
     have hEJ : E'.root = (tr.state y k).fg.J.root := hEr'.trans hBjJ
-    have hFh := Healing.h_le_of_store_anc hR hFJ
+    have hFh := Store.h_le_of_store_anc_with hu hR hFJ
     rcases hEg with rfl | ⟨hEh', -⟩
     · have he := hcoh.1 hE' hJm hEJ
       rw [← he] at hFJ
       have hFg := Anc.antisymm hcoh hFJ (hgen _ hFm)
-      have := hjmax (hFg ▸ hgen E hE)
+      have := hjm (hFg ▸ hgen E hE)
       omega
     · rw [← hEJ, hEh', hBjhj] at hFh
-      have := Healing.h_le_of_store_anc hR hEF
+      have := Store.h_le_of_store_anc_with hu hR hEF
       omega
 
 /-- A lock at the cache's justified height names the cache's justified root. -/
-private theorem lock_root_eq_J_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+private theorem lock_root_eq_J_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {i : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n) {h r : Nat}
     (hl : (tr.state y i).record.lock h = some r) (hj : (tr.state y i).fg.hj = h) :
     r = (tr.state y i).fg.J.root := by
-  have hr := hrun.upTo ht
-  have hs := Trace.upTo_state tr y hle
-  obtain ⟨k, hk, att, hsa, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
-  obtain ⟨B, hB, hBj, hBJ⟩ := Healing.signed_fin_justified hr hy
-    ((RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hsa⟩) hfin
-  have hB' := Compose.tree_mono hr hy hk.le hB
+  obtain ⟨k, hk, att, hsa, hfin⟩ := (hrun.client_record_origin ht hle hy h r).2 hl
+  obtain ⟨B, hB, hBj, hBJ⟩ := signed_fin_justified_at_core hrun
+    (hrun.antitone (hle k hk) hy) hsa hfin
+  have hB' := hrun.tree_mono_at ht hle hy hk.le hB
   have hlek : ∀ q < k, tr.time q ≤ t := fun q hq => hle q (hq.trans hk)
-  have hsk := Trace.upTo_state tr y hlek
-  rw [hsk] at hB hBj hBJ
-  rw [hs] at hB'
-  have hσ := σ_eq_honest_at_from hrun hnc ht hlek hy ht hle hy hB hB'
+  have hσ := σ_eq_honest_at_core hrun hnc ht hlek hy ht hle hy hB hB'
   rw [hσ] at hBj hBJ
-  have hR := fg_reachable_at_from hrun ht hle hy
-  obtain ⟨-, -, -, ⟨Bj, hBjt, hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
-  have he := Store.J_eq_of_hj_eq_of_safe hR hR hf
-    (held_atts_safe_at_from hrun ht hle hy ht hle hy le_rfl le_rfl) hB' hBjt (by omega)
+  have hR := hrun.reachable_at ht hle hy
+  obtain ⟨-, -, -, ⟨Bj, hBjt, hBjJ, hBjhj⟩, -⟩ :=
+    Store.cache_invariants_with hrun.finalitySpec hR
+  have he := Store.J_eq_of_hj_eq_of_safe_with hrun.finalitySpec hR hR hf
+    (hrun.held_atts_safe_at ht hle hy ht hle hy le_rfl le_rfl) hB' hBjt (by omega)
   exact hBJ.symm.trans (he.trans hBjJ)
 
 /-- No honest advance implies no finality lock at the frontier before the deadline. -/
-private theorem lock_none_of_noAdvance_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) {c T t : Time} {h : Nat}
+private theorem lock_none_of_noAdvance_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini) {c T t : Time} {h : Nat}
     (hna : ∀ v k att, v ∈ H (max c (tr.time k)) → tr.SignAt v k att → tr.time k < T → att.h ≤ h)
     {y : Fin P.n} {i : Nat} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
     (hyc : y ∈ H (max c t)) (htT : t < T) : (tr.state y i).record.lock h = none := by
   have hy := hrun.antitone (le_max_right _ _) hyc
   rcases hl : (tr.state y i).record.lock h with _ | r
   · rfl
-  obtain ⟨k, hk, att, hs, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
-  have hwf := Healing.signAt_wellFormed_from (hrun.upTo ht) hy
-    ((RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hs⟩)
+  obtain ⟨k, hk, att, hs, hfin⟩ := (hrun.client_record_origin ht hle hy h r).2 hl
+  have hwf := hrun.signAt_wellFormed (hrun.antitone (hle k hk) hy) hs
   have hbound := hna y k att (hrun.antitone (max_le_max le_rfl (hle k hk)) hyc) hs
     ((hle k hk).trans_lt htT)
   have := hwf.2 (h, r) (by simp [hfin])
   omega
 
 /-- In kind F the source-height lock is free; in kind J it is free or the entry. -/
-private theorem lock_free_or_entry_of_frame_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+private theorem lock_free_or_entry_of_frame_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ i < k, tr.time i ≤ t) (hy : y ∈ H t)
     (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
@@ -1260,18 +1536,19 @@ private theorem lock_free_or_entry_of_frame_at_from
   · left
     rcases hl : (tr.state y k).record.lock h with _ | r
     · rfl
-    · have := hj_ge_of_lock_at_from hrun ht hle hy hf hl
+    · have := hj_ge_of_lock_at_core hrun ht hle hy hf hl
       omega
   rcases hl : (tr.state y k).record.lock h with _ | r
   · exact Or.inl rfl
   refine Or.inr (congrArg some ?_)
-  rw [lock_root_eq_J_at_from hrun hnc ht hle hy hf hl hj]
-  have hr := fg_reachable_at_from hrun ht hle hy
+  rw [lock_root_eq_J_at_core hrun hnc ht hle hy hf hl hj]
+  have hr := hrun.reachable_at ht hle hy
+  have hu := hrun.finalitySpec
   obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
-  obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hr
-  have hJh := Healing.Store.J_height_le hr hBj hJm hBjJ.symm
-  have hJCh := Healing.h_le_of_store_anc hr hJC
-  obtain ⟨E', hE', hE'r, -, hE'g⟩ := Healing.Store.J_entry_of_reachable hr hBj
+  obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants_with hu hr
+  have hJh := Store.J_height_le_with hu hr hBj hJm hBjJ.symm
+  have hJCh := Store.h_le_of_store_anc_with hu hr hJC
+  obtain ⟨E', hE', hE'r, -, hE'g⟩ := Store.J_entry_with hu hr hBj
   have hE'J : E' = (tr.state y k).fg.J := by
     have h1 : (tr.state y k).fg.blocks E'.root = some E' := hE'
     have h2 : (tr.state y k).fg.blocks (tr.state y k).fg.J.root = some (tr.state y k).fg.J := hJm
@@ -1281,20 +1558,21 @@ private theorem lock_free_or_entry_of_frame_at_from
   have hJTh : ((tr.state y k).fg.σ (tr.state y k).fg.J.root).Th = (tr.state y k).fg.J.root := by
     rcases hE'g with he | ⟨-, hTh⟩
     · have hg : (P.genesisBlock A.genesisPayload).root = P.genesisRoot := rfl
-      rw [he, hg, Healing.Store.σ_genesis hr]
+      rw [he, hg, Store.σ_genesis_with hu hr]
       rfl
     · exact hTh
   have hJeq : ((tr.state y k).fg.σ C.root).h =
       ((tr.state y k).fg.σ (tr.state y k).fg.J.root).h := by omega
-  have h1 := Healing.Th_eq_of_anc hr hJC hJeq
-  have h2 := Healing.Th_eq_of_anc hr hEC (hCh.trans hEh.symm)
+  have h1 := Store.Th_eq_of_anc_with hu hr hJC hJeq
+  have h2 := Store.Th_eq_of_anc_with hu hr hEC (hCh.trans hEh.symm)
   rw [hJTh] at h1
   rw [hETh] at h2
   exact h1.symm.trans h2
 
 /-- Client progress uses only its own prefix, with no global origin invariant. -/
-private theorem client_progress_of_lock_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+private theorem client_progress_of_lock_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     {y : Fin P.n} {k : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ i < k, tr.time i ≤ t) (hkt : tr.time k ≤ t) (hy : y ∈ H t)
     {C : A.Blk} {signed : Option (FG.Att P.n)}
@@ -1304,22 +1582,55 @@ private theorem client_progress_of_lock_at_from
     (hlock : (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root) :
     (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
       ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root := by
-  have hs := Trace.upTo_state tr y hle
-  have hE' : EntryOf ((tr.upTo t).state y k).fg C E h := by rwa [hs]
-  have hCh' : (((tr.upTo t).state y k).fg.σ C.root).h = h := by rwa [hs]
-  have hl' : ((tr.upTo t).state y k).record.lock h = none ∨
-      ((tr.upTo t).state y k).record.lock h = some E.root := by rwa [hs]
-  rcases Healing.client_progress_of_lock (hrun.upTo ht) hy
-      ((Trace.upTo_callAt tr).mpr ⟨hkt, hc⟩) hE' hCh' hl' with hnow | ⟨j, hj, a, ha, hh, hT⟩
-  · exact Or.inl hnow
-  · exact Or.inr ⟨j, hj, a, ((RunTrace.upTo_signAt tr).mp ha).2, hh, hT⟩
+  have hr := hrun.reachable_at ht hle hy
+  have hyk := hrun.antitone hkt hy
+  obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
+  have hCTh : ((tr.state y k).fg.σ C.root).Th = E.root := by
+    rw [Store.Th_eq_of_anc_with hrun.finalitySpec hr hEC (hCh.trans hEh.symm), hETh]
+  have hσe : (tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th =
+      (tr.state y k).fg.σ E.root := by rw [hCTh]
+  cases signed with
+  | some a =>
+    have hcl := (hrun.attest_some hc hyk).1
+    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+      ((tr.state y k).fg.σ C.root).Th) = some (a, _) at hcl
+    rw [hσe] at hcl
+    obtain ⟨-, hah, haT, -⟩ := Healing.Client.createAtt_some hcl
+    exact Or.inl ⟨a, rfl, hah.trans hEh, haT.trans hETh⟩
+  | none =>
+    have hcl := (hrun.attest_none hc hyk).1
+    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+      ((tr.state y k).fg.σ C.root).Th) = none at hcl
+    rw [hσe] at hcl
+    rcases Healing.Client.createAtt_none hcl with ⟨h1, h2⟩ | ⟨b, hb, hbh, hbT⟩
+    · simp only [hEh, hETh] at h1 h2
+      rcases hlock with hl | hl
+      · exact absurd hl h1
+      · exact absurd hl h2
+    simp only [hEh, hETh] at hbh hbT
+    have hbT' : b.2.1 = E.root := by
+      rcases hbT with hbT | ⟨hto, htg⟩
+      · exact hbT
+      obtain ⟨h1, h2⟩ := hrun.record_sentOK ht hle hy b hb
+      cases hτ : b.2.2.1
+      · have := h2 hτ
+        rw [hbh] at this
+        rcases htg with htg | htg <;> rw [htg] at this
+        · cases this
+        · exact (Option.some.inj this).symm
+      · have := h1 hτ
+        rw [hbh, hto] at this
+        simp at this
+    obtain ⟨k', hk', att, hsa, rfl⟩ := hrun.sent_origin ht hle hy hb
+    exact Or.inr ⟨k', hk', att, hsa, hbh, hbT'⟩
 
 /-- **Row or high, at an `fg_attest` call**: an attest call at cut `k` on a held source `C`
 above `B`, by a caller honest at it and at `c_z` before any height advance, with `B`'s kind at
 `k`, has signed a row for `B`'s height and entry by `k`, or `C` is higher than `B`. The call need
 not follow a report in the same tick, so a delayed vote uses this directly. -/
-theorem row_or_high_of_attest_at_from
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+theorem row_or_high_of_attest_at_core
+    {update : Store P A.Payload → FG.ChainState P.n → Store P A.Payload}
+    (hrun : LocalRunCore update proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g T : Time}
     (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hna : NoAdvance tr H g T)
     {y : Fin P.n} {k : Nat} {C B : A.Blk} {s : Option (FG.Att P.n)}
@@ -1339,10 +1650,14 @@ theorem row_or_high_of_attest_at_from
   have hy := hrun.antitone (le_max_right _ _) hyz
   have ht0 := hrun.time_nonneg k
   have hle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
-  have hBm := mem_of_honest_anc_at_from hrun hnc ht0 hle hy hBC hCm
-  have hreach := fg_reachable_at_from hrun ht0 hle hy
-  have hBCs := store_anc_of_honest_anc_at_from hrun hnc ht0 hle hy hBC hCm
-  have hheight := Healing.h_le_of_store_anc hreach hBCs
+  have hreach := hrun.reachable_at ht0 hle hy
+  have hBCs := hrun.held_anc_at hnc ht0 hle hy hBC hCm
+  have hBm : B ∈ (tr.state y k).fg.tree := by
+    by_cases he : B = C
+    · exact he ▸ hCm
+    · exact (Anc.mem hBCs he).1
+  have hu := hrun.finalitySpec
+  have hheight := Store.h_le_of_store_anc_with hu hreach hBCs
   refine ⟨hBm, hCm, ?_⟩
   rcases hheight.lt_or_eq with hlt | heq
   · exact Or.inr hlt
@@ -1353,22 +1668,45 @@ theorem row_or_high_of_attest_at_from
     change (H (tr.time k))ᶜ.ncard < 2 * ((2 * P.n + 2) / 3) - P.n
     omega
   obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ :=
-    Store.entry_state_of_source _ _ _ _ hreach C hCm
+    Store.entry_state_of_source_with hu hreach C hCm
   have hEnt : EntryOf (tr.state y k).fg C E ((tr.state y k).fg.σ B.root).h :=
     ⟨⟨hE, hETh.trans hEr.symm⟩, hEh.trans heq.symm, hEC⟩
   have hTh : E.root = ((tr.state y k).fg.σ B.root).Th :=
-    hEr.trans (Healing.Th_eq_of_anc hreach hBCs heq.symm)
+    hEr.trans (Store.Th_eq_of_anc_with hu hreach hBCs heq.symm)
   have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ B.root).h = none ∨
       (tr.state y k).record.lock ((tr.state y k).fg.σ B.root).h = some E.root := by
     rcases hkind heq.symm with hHZ | hk
     · rw [hHZ]
-      exact Or.inl (lock_none_of_noAdvance_at_from hrun hna ht0 hle hyz hkT)
-    · exact lock_free_or_entry_of_frame_at_from hrun hnc ht0 hle hy hf' hEnt heq.symm hk
-  rcases client_progress_of_lock_at_from hrun ht0 hle le_rfl hy hc hEnt heq.symm hlock with
+      exact Or.inl (lock_none_of_noAdvance_at_core hrun hna ht0 hle hyz hkT)
+    · exact lock_free_or_entry_of_frame_at_core hrun hnc ht0 hle hy hf'
+        hEnt heq.symm hk
+  rcases client_progress_of_lock_at_core hrun ht0 hle le_rfl hy hc hEnt
+      heq.symm hlock with
     ⟨att, rfl, hah, haT⟩ | ⟨j, hj, att, hsign, hah, haT⟩
   · exact ⟨k, att, hy, ⟨C, hc⟩, le_rfl, hah, haT.trans hTh⟩
   · have hjt := hle j hj
     exact ⟨j, att, hrun.antitone hjt hy, hsign, hjt, hah, haT.trans hTh⟩
+
+/-- Row or high for the stock run, via the shared run core. -/
+theorem row_or_high_of_attest_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g T : Time}
+    (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hna : NoAdvance tr H g T)
+    {y : Fin P.n} {k : Nat} {C B : A.Blk} {s : Option (FG.Att P.n)}
+    (hyz : y ∈ H (max (cutZ P g) (tr.time k)))
+    (hc : tr.CallAt y k (.fg (.attest C s))) (hkT : tr.time k < T)
+    (hCm : C ∈ (tr.state y k).fg.tree) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hkind : ((tr.state y k).fg.σ C.root).h = ((tr.state y k).fg.σ B.root).h →
+      ((tr.state y k).fg.σ B.root).h = HZ tr H g ∨
+      (tr.state y k).fg.hj < ((tr.state y k).fg.σ B.root).h ∨
+      ((tr.state y k).fg.hj = ((tr.state y k).fg.σ B.root).h ∧
+        (tr.state y k).fg.Anc (tr.state y k).fg.J C)) :
+    B ∈ (tr.state y k).fg.tree ∧ C ∈ (tr.state y k).fg.tree ∧
+      ((∃ j att, y ∈ H (tr.time j) ∧ tr.SignAt y j att ∧ tr.time j ≤ tr.time k ∧
+        att.h = ((tr.state y k).fg.σ B.root).h ∧
+        att.T = ((tr.state y k).fg.σ B.root).Th) ∨
+        ((tr.state y k).fg.σ B.root).h < ((tr.state y k).fg.σ C.root).h) :=
+  row_or_high_of_attest_at_core hrun.toLocalRunCore hnc hf hna hyz hc hkT hCm hBC hkind
 
 /-- Leaf 4: a held report by a reporter honest at it and at `c_z`, before any height advance and
 under the fault bound, either supplies a row of the lower block signed while honest, or is strictly

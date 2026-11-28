@@ -25,7 +25,7 @@ variable {P : Params} {A : NodeAC P}
 theorem cutPost_of_cutStep {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut A}
     (h : CutStep self t st c st') : cutPost self t st c = st' := by
   rw [cutPost_eq]
-  obtain ⟨fg', ac', r'⟩ := st'
+  obtain ⟨fg', ac, r'⟩ := st'
   cases c with
   | ac ℓ =>
     obtain ⟨-, e, hfg, hr⟩ := h

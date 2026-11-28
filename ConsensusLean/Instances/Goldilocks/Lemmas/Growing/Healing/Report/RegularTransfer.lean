@@ -1,11 +1,13 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -22,11 +24,17 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
+namespace Core
+
+variable {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
+    Store sp.toParams (Payload sp.n)}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+
 /-- A fast lock's votes and heads have honest historical writer events, from any
 vote-permitted start. -/
 theorem fastLock_writer_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c s : Nat}
     (hx : x ∈ H (tr.time c)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x c s D CV) :
@@ -37,14 +45,15 @@ theorem fastLock_writer_at
         (Hv.root = sp.genesisRoot ∨ ∃ k, x ∈ H (tr.time k) ∧ tr.projAC.AcceptAt x k Hv ∧
           tr.time k < sp.ts s + 2 * sp.Δ) := by
   have hd := hrun.time_nonneg c
-  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
+  have hac := hrun.acRun hnc
+  have hr := hac.upTo hd
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, hHv, hroot, hDHv, hacc⟩ :=
-    Healing.fastLock_writer (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hx
+    Healing.fastLock_writer hr.localRun hr.vstart hx
       ((AC.upTo_fastLockAt hrun.time_mono).mpr ⟨le_rfl, hfl⟩) v hv
   obtain ⟨hkt, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
-  refine ⟨hvs, ⟨k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hsub hHv, hroot,
-    hDHv.mono hsub, hacc.imp_right fun ⟨k', hk', ht⟩ => ?_⟩
+  refine ⟨hvs, ⟨k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hHv, hroot,
+    hDHv, hacc.imp_right fun ⟨k', hk', ht⟩ => ?_⟩
   obtain ⟨hkt', hk'⟩ := (ac_acceptAt_upTo _).mp hk'
   exact ⟨k', hrun.antitone hkt' hx, hk', ht⟩
 
@@ -52,7 +61,7 @@ theorem fastLock_writer_at
 vote-permitted start. -/
 theorem fastLock_carry_service_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -73,7 +82,7 @@ theorem fastLock_carry_service_at
 slot committees `K` of a run from `K`'s committee start. -/
 theorem first_transfer_service_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -89,10 +98,12 @@ theorem first_transfer_service_at
     (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
     (hK : CommitteeHalfUpTo tr H K g b) :
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
-  have hslot := (castAt_spec_at hrun hnc hy hc).2.1.symm.trans hs
+  have hac := hrun.acRun hnc
+  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
+  change sp.slot (tr.time i) = s + 1 at hslot
   have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
-    change sp.slot (tr.time i) = s + 1 at hslot
     rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
     exact hm
   have hnext : sp.ts (s + 1 : Nat) ≤ tr.time i :=
@@ -100,7 +111,7 @@ theorem first_transfer_service_at
   have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
   exact AC.Growing.first_transfer_stored hac K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
-    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
+    (AC.CommitteeTAt.upTo hrun.antitone (hrun.committeeTAt hK.facts hnc)) hK.facts.hsize
     hx hfl hBD hy hc hs
     (service_syncACAt hrun hsvc ((AC.le_gbar g).trans hm))
     (fastLock_carry_service_at hrun hnc hsvc hcatch hm hx hy hfl hc hs (hFB.trans hBD))
@@ -112,7 +123,7 @@ theorem first_transfer_service_at
 from any vote-permitted start. -/
 theorem writer_merged_service_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -123,8 +134,77 @@ theorem writer_merged_service_at
       v ∈ (tr.projAC.state x c).pool s ∨
         v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
   exact AC.Growing.writer_merged
-    (Compose.Growing.goldilocks_ac_projection_from hrun hnc)
+    (hrun.acRun hnc)
     hx hu hy hc hs (service_syncACAt hrun hsvc ((AC.le_gbar g).trans hm))
+
+end Core
+
+/-- A fast lock's counted votes have honest historical writer events. -/
+theorem fastLock_writer_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c s : Nat}
+    (hx : x ∈ H (tr.time c)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x c s D CV) :
+    ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, x ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit x k v ∧ sp.ts s ≤ tr.time k ∧
+        tr.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ tr.HonestBlocksAt H, Hv.root = v.head ∧ Anc (tr.HonestBlocksAt H) D Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, x ∈ H (tr.time k) ∧ tr.projAC.AcceptAt x k Hv ∧
+          tr.time k < sp.ts s + 2 * sp.Δ) :=
+  Core.fastLock_writer_at hrun.toCore hnc hx hfl
+
+/-- Fast-lock carry does not require the writer to remain honest at the next cast. -/
+theorem fastLock_carry_service_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : AC.FastLockAt tr.projAC x c s D CV)
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
+    (hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D) :
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
+  Core.fastLock_carry_service_at hrun.toCore hnc hsvc hcatch hm hx hy hfl hc hs hFD
+
+/-- The regular fast transfer step with service and committee fault margins. -/
+theorem first_transfer_service_at
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
+    {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
+    (hviab : AC.ViableAtVote ell e (s + 1) B)
+    (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B :=
+  Core.first_transfer_service_at hrun.toCore hnc hsvc hawake hcatch hnr hm hx hy
+    hfl hBD hc hs hib hFB hviab hearlier hK
+
+/-- Finite service compares the receiver's merged votes with an independently honest writer. -/
+theorem writer_merged_service_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
+    {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
+    {ellx ell : ACLabel (goldilocksNode sp)}
+    (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.projAC.state x c).pool s ∨
+        v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x c).pool s} :=
+  Core.writer_merged_service_at hrun.toCore hnc hsvc hm hx hy hu hc hs
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

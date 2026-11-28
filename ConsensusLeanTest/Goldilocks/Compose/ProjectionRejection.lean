@@ -161,7 +161,7 @@ theorem tickCuts_one :
   have hprop : ∀ s Φ t, payloadAC.proposal s Φ t = (s, some (⟨Φ.fcRoot, Φ.fcRoot, ∅⟩, ())) :=
     fun _ _ _ => rfl
   have hfr : (frame (acCall v0 (Node.init payloadAC) 1 .tick).1).fcRoot = P₁.genesisBlock () :=
-    init_fcRoot
+    rfl
   have hfg : (acCall v0 (Node.init payloadAC) 1 .tick).1.fg = Store.init () := rfl
   have hsl : ¬ P₁.slotOf (1 : Time) < ownBlock.slot := lt_irrefl _
   obtain ⟨fg', hon⟩ := init_onBlock

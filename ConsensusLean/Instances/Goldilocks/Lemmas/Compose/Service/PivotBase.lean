@@ -376,6 +376,24 @@ theorem proposal_locks_slot_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     exact absurd (hls ▸ hOp)
       (proposal_no_optimistic_of hrun hnc hP hfK hp hc hcall hti x hx k' hki O CV)
 
+/-- The justification is genesis or belongs to a downward-closed family containing the
+row sources. -/
+theorem justified_of_rows_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {R : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
+    (hsrc : HonestRowsSourced tr H R y j) :
+    (tr.state y j).fg.J.root = sp.genesisRoot ∨ R (tr.state y j).fg.J := by
+  by_cases h0 : (tr.state y j).fg.hj = 0
+  · left
+    rw [justified_genesis hrun h0 hy]
+    rfl
+  have hJt := (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).2.1
+  obtain ⟨_, _, D, hD, hDs⟩ := justified_honest_source_before hrun hnc hf hy hsrc (by omega)
+  obtain ⟨x, hx, k, _, _, hJD, _, _⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hJt⟩ rfl
+  exact Or.inr (hRc _ _ (hJD.mono (fun Z hZ => ⟨x, hx, k, hZ⟩)) hD)
+
 /-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
 attestations all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or
 the entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F`
@@ -392,18 +410,8 @@ theorem fcRoot_of_rows_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
   have hR := fg_reachable hrun.toLocalRun hy j
   obtain ⟨hFt, hJt, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hsU : (tr.state y j).fg.tree ⊆ tr.HonestBlocks H := fun Z hZ => ⟨y, hy, j, hZ⟩
-  have hJ : (tr.state y j).fg.J.root = sp.genesisRoot ∨ R (tr.state y j).fg.J := by
-    by_cases h0 : (tr.state y j).fg.hj = 0
-    · left
-      rw [justified_genesis hrun h0 hy]
-      rfl
-    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_before hrun hnc hf hy hsrc (by omega)
-    obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hJt⟩ rfl
-    exact Or.inr (hRc _ _ (Anc.mono (T := tr.HonestBlocks H) (fun Z hZ => ⟨x, hx, k, hZ⟩) hJD) hD)
-  change (tr.state y j).fg.fcRoot.root = _ ∨ R (tr.state y j).fg.fcRoot
-  unfold Store.fcRoot
-  split_ifs
-  · exact hJ
+  have hJ := justified_of_rows_of hrun hnc hf hy hRc hsrc
+  change (tr.state y j).fg.F.root = _ ∨ R (tr.state y j).fg.F
   rcases hJ with hg | hJR
   · left
     have h2 := (honest_genesis_anc hrun (hsU hFt)).2

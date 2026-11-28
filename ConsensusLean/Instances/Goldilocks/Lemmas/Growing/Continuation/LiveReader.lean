@@ -77,7 +77,7 @@ theorem seeded_reader_old
         Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot O) ∧
       ∀ B ∈ (tr.state y i).fg.tree, (∀ O, SeededOld tr H g r b s O →
           Anc (tr.HonestBlocksAt H) O B) →
-        (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h := by
+        (tr.state y i).fg.IsViable B := by
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
   have hrσ := hS.seed.timing.2.1
@@ -150,8 +150,43 @@ theorem seeded_reader_old
     · exact hFJ'.trans hJO
   · -- the floor
     have hGB := hbelow hB hOB
+    have finish : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h →
+        (tr.state y i).fg.IsViable B := by
+      intro hpred
+      change _ ∨ (_ ∧ _)
+      by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h
+      · exact Or.inl hh
+      refine Or.inr ⟨by omega, ?_⟩
+      by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
+      · left
+        obtain ⟨x, q, l, S, hS', hqT, hl, _, hSy, _⟩ :=
+          low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
+        have hSB := hOB S (hseedOld hS' hqT hl)
+        have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
+          rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
+            (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS'.1) hSy
+            (HighOrigin.mem_tree hrun hnc hS')]
+          exact hS'.2.2.2
+        have := Healing.h_le_of_store_anc hreach (held_anc_at hrun hnc ht0 hy hi hSB hB)
+        omega
+      · right
+        have hsrc' := rowsAbove_height_mono hsrc
+          (show Healing.Growing.HZ tr H g + 1 ≤ ((tr.upTo t).state y i).fg.hj by rw [hst]; omega)
+        obtain ⟨_, _, D, hD, hDs⟩ := Compose.justified_honest_source_of hrun' hnc' hf hy hsrc'
+          (by rw [hst]; omega)
+        have hJm := (Goldilocks.Store.cache_invariants _ _ _ _ hreach).2.1
+        obtain ⟨x', hx', k', _, _, hJD, _, _⟩ := Compose.honest_source_entry hrun' hnc' hDs
+          ⟨y, hy, i, by rw [hst]; exact hJm⟩ rfl
+        have hJB := (hJD.mono (Compose.fg_tree_subset_honest hx' k')).trans (hGB D hD)
+        have hheld := Compose.honest_held_anc hrun' hnc' hy hJB (by rw [hst]; exact hB)
+        rwa [hst] at hheld
+    apply finish
     by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
-    · obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
+    · suffices hfloor : (tr.state y i).fg.headHeightFloor ≤
+          ((tr.state y i).fg.σ B.root).h by
+        unfold Goldilocks.Store.headHeightFloor at hfloor
+        split_ifs at hfloor <;> omega
+      obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
         low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
       have hSB : Anc (tr.HonestBlocksAt H) S B := hOB S (hseedOld hS' hqT hl)
       have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by

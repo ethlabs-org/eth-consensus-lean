@@ -68,7 +68,7 @@ theorem proposal_payload (k : Nat) : ∃ d, (AC.acProposal sp1
     rfl
   subst hp
   refine ⟨d, ?_⟩
-  rw [projAC_state', state_eq, time_eq, show (8 * (4 * (k + 1)) + 1) / 8 = 4 * (k + 1) by omega,
+  rw [projAC_state, state_eq, time_eq, show (8 * (4 * (k + 1)) + 1) / 8 = 4 * (k + 1) by omega,
     show (8 * (4 * (k + 1)) + 1) % 8 = 1 by omega, tickMid_one]
   exact hr
 

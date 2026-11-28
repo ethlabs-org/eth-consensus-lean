@@ -220,8 +220,10 @@ noncomputable def afterJustification (st : Store P ACP) (σ : FG.ChainState P.n)
 `B` whose state `σ = σ[B]` has `h_j < h` and finalizes an ancestor `X` of `B`, as in
 `fg_on_block`) with `Σ.F ≺ X`, `X ⪯ Σ.J` after the call's justification step, and
 `has_viable_descendant(Σ, X)` after its `h_max` step, then `X ⪯ Σ.F` afterwards. (The
-finalization step reads viability after the justification step too; for such a `σ` that step
-does not raise the head height floor.) -/
+finalization step reads viability after the justification step too: if `σ.h ≥ Σ.h_max`,
+`B` itself is a viable descendant at the updated maximum; otherwise the maximum is unchanged,
+and the existing witness stays viable, either with unchanged justification or through the gap
+`σ.h_j + 1 < h_max`; witnesses at or above the maximum remain viable.) -/
 def CacheAcceptance : Prop :=
   ∀ (st : Store P ACP) (B : NodeBlock P ACP) (X : NodeBlock P ACP),
     B ∈ st.tree → (st.σ B.root).hj < (st.σ B.root).h → st.blocks (st.σ B.root).F = some X →

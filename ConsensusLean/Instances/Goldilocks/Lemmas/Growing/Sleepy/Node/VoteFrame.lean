@@ -257,11 +257,8 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     · exact Anc.total hU (hFJ.mono hsub) h
   have hfc : Compatible (tr.HonestBlocksAt H) ℓ.frame.fcRoot B := by
     rw [hfr]
-    change Compatible _ (tr.state y i).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hJ
-    · exact hF
+    change Compatible _ (tr.state y i).fg.F B
+    exact hF
   rcases hfc with hfB | hBf
   swap
   · exact Or.inr hBf

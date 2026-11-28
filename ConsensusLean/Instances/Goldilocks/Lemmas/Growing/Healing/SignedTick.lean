@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTickCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
@@ -51,35 +53,8 @@ theorem joined_of_restart_le_at
     (ht : sp.ts u + 4 * sp.Δ ≤ t)
     (hres : ∀ r, tr.time r ≤ t → y ∈ H (tr.time r) → tr.RestartAt y r → tr.time r ≤ sp.ts u)
     {i : Nat} (htime : tr.time i = t) :
-    AC.joined sp (tr.projAC.state y i) (tr.time i) := by
-  have hΔ := sp.toParams.hΔ
-  have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
-  have ht0 : 0 ≤ t := by linarith
-  have hac := (Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo t)).localRun
-  have hst : (tr.upTo t).projAC.state y i = tr.projAC.state y i := by
-    rw [RunTrace.upTo_projAC]
-    exact Trace.upTo_state tr.projAC y (fun q hq => (hrun.time_mono hq.le).trans htime.le)
-  rw [← hst]
-  unfold AC.joined
-  rcases AC.restartTime_stateU hac.toU hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
-  · rw [h]; exact bot_le
-  · rw [h]
-    apply WithBot.coe_le_coe.mpr
-    have hrs' : (tr.upTo t).RestartAt y r := Compose.projAC_restartAt.mp hrs
-    obtain ⟨hrt, hrs⟩ := (RunTrace.upTo_restartAt tr).mp hrs'
-    have hrestart := hres r hrt (hrun.antitone hrt hy) hrs
-    have hs : u + 1 ≤ sp.slot t := by
-      apply Int.ofNat_le.mp
-      apply (AC.ts_le_iff_le_slot sp ht0 _).1
-      have heq : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
-        simp only [ACParams.ts]; push_cast; ring
-      rw [heq]
-      exact ht
-    have hts : sp.ts u ≤ sp.ts ((sp.slot t : Int) - 1) :=
-      (AC.ts_le_iff sp).2 (by omega)
-    change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-    rw [htime]
-    exact hrestart.trans hts
+    AC.joined sp (tr.projAC.state y i) (tr.time i) :=
+  Core.joined_of_restart_le_at hrun.toCore hnc hy ht hres htime
 
 /-- A signing tick at the update deadline has adjacent update and report cuts. Only this
 tick's signing evidence is required; other ticks need not sign. -/

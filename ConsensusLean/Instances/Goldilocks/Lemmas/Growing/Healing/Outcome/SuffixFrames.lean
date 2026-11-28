@@ -132,8 +132,16 @@ theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   rw [Outcome.frame_of_call hrun hpi hci] at hXv hBt ⊢
   have hXBs := store_anc_of_honest_anc_at hrun hnc hi0 hle hpi hXB hBt.1
-  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (Healing.h_le_of_store_anc (fg_reachable_at hrun hi0 hle hpi) hXBs)⟩
+  refine ⟨hBt.1, hBt.2, ?_⟩
+  have hh := Healing.h_le_of_store_anc (fg_reachable_at hrun hi0 hle hpi) hXBs
+  rcases hXv.2.2 with hm | ⟨hX, hgap | hJX⟩
+  · exact Or.inl (hm.trans hh)
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inl hgap⟩
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inr (hJX.trans hXBs)⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

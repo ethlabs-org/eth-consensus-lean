@@ -18,6 +18,26 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
+/-- An honest cast's actual frame root is below its store's analysis root. -/
+theorem cast_root_anc_analysis_root_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) :
+    Anc (tr.HonestBlocksAt H) ell.frame.fcRoot (tr.state y j).fg.fcRoot := by
+  rw [Outcome.frame_of_call hp.run hy hc.1]
+  have hr := fg_reachable_at hp.run (hp.run.time_nonneg j)
+    (fun _ hq => hp.run.time_mono hq.le) hy
+  have hFJ := (Store.cache_invariants _ _ _ _ hr).2.2.1.mono
+    (fun X hX => (⟨y, j, tr.time j, hp.run.time_nonneg j,
+      fun _ hq => hp.run.time_mono hq.le, hy, hX⟩ : X ∈ tr.HonestBlocksAt H))
+  change Anc _ (tr.state y j).fg.F _
+  unfold Store.fcRoot
+  split_ifs
+  · exact hFJ
+  · exact .refl
+
 /-- The post-drain cast root is genesis, below a pre-slot origin, or below a healed member
 whose label is strictly below the cast slot. -/
 theorem reset_vote_root_source_or_covered_at
@@ -27,12 +47,12 @@ theorem reset_vote_root_source_or_covered_at
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    ell.frame.fcRoot.root = sp.genesisRoot ∨
+    (tr.state y j).fg.fcRoot.root = sp.genesisRoot ∨
       (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot O) ∨
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot O) ∨
       (HighSourceCover tr H g a b ∧ ∃ C s,
         HealedMemberBefore tr H g a b C s j ∧ s < u ∧
-          Anc (tr.HonestBlocksAt H) ell.frame.fcRoot C) := by
+          Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot C) := by
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
@@ -57,7 +77,6 @@ theorem reset_vote_root_source_or_covered_at
     split_ifs <;> simp
   rcases hcase with hg | ⟨hJh, hJT⟩
   · left
-    rw [hfr]
     rcases hroot with h | h
     · exact congrArg (·.root) (h.trans hg)
     · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
@@ -70,9 +89,7 @@ theorem reset_vote_root_source_or_covered_at
       hp.left_entry_origin_or_covered_at ht hj hy hjb hJm hJT (by omega) hEC
         (by have := Store.hj_lt_h hr hCm; omega)
     have below {B} (hJB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.J B) :
-        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-      rw [hfr]
-      change Anc _ (tr.state y j).fg.fcRoot B
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot B := by
       rcases hroot with h | h
       · rw [h]; exact hJB
       · rw [h]; exact (hFJ.mono hsub).trans hJB
@@ -96,8 +113,6 @@ theorem reset_vote_root_source_or_covered_at
   have hOt := (frame_tree_subset_at hp.run hp.noColl hy hc.1).2 hOf
   have hOh := Outcome.high_of_anc_at hp.run hp.noColl ho ht hj hy hOt .refl
   have hOm := hmax O hOt
-  rw [hfr]
-  change Anc _ (tr.state y j).fg.fcRoot O
   unfold Store.fcRoot
   split_ifs with hchoose
   · have hJO : (tr.state y j).fg.Anc (tr.state y j).fg.J O := by
@@ -107,7 +122,7 @@ theorem reset_vote_root_source_or_covered_at
     exact hJO.mono hsub
   · exact hFO
 
-/-- Every bounded pre-slot high origin below a target bounds the actual cast root. -/
+/-- Every bounded pre-slot high origin below a target bounds the analysis cast root. -/
 theorem reset_vote_root_below_bound_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
@@ -120,13 +135,17 @@ theorem reset_vote_root_below_bound_at
     {y : Fin sp.n} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+    Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
   rcases hp.reset_vote_root_source_or_covered_at hR hy hc hs hjb with
     hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩ | ⟨hcover, C, s, hC, hsu, hroot⟩
-  · have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
-    have hc' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hc.1)
-    obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg j)) hy hc'
-    exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg hP
+  · have hr := fg_reachable_at hp.run (hp.run.time_nonneg j)
+      (fun _ h => hp.run.time_mono h.le) hy
+    have hcache := Store.cache_invariants _ _ _ _ hr
+    have hmem : (tr.state y j).fg.fcRoot ∈ (tr.state y j).fg.tree := by
+      unfold Store.fcRoot
+      split_ifs <;> first | exact hcache.2.1 | exact hcache.1
+    exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl
+      ⟨y, j, tr.time j, hp.run.time_nonneg j, fun _ h => hp.run.time_mono h.le, hy, hmem⟩ hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
   · exact hroot.trans (hcovered hcover C s hC hsu)
 
@@ -143,7 +162,7 @@ theorem reset_vote_root_below_bound_or_covered_at
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
-    Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+    Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
@@ -160,16 +179,17 @@ theorem reset_vote_root_below_bound_or_covered_at
     unfold Store.fcRoot
     split_ifs <;> simp
   rcases hcase with hg | ⟨hJh, hJT⟩
-  · have hgen : ell.frame.fcRoot.root = sp.genesisRoot := by
-      rw [hfr]
+  · have hgen : (tr.state y j).fg.fcRoot.root = sp.genesisRoot := by
       rcases hroot with h | h
       · exact congrArg (·.root) (h.trans hg)
       · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
         rw [← hg] at hJF
         have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
         exact congrArg (·.root) (h.trans (he.trans hg))
-    have hΦ := (Compose.Growing.frameIn_at hp.run hp.noColl hy hc.1).1
-    have hmem := (frame_tree_subset_at hp.run hp.noColl hy hc.1).2 hΦ.fcRoot_mem
+    have hmem : (tr.state y j).fg.fcRoot ∈ (tr.state y j).fg.tree := by
+      rcases hroot with h | h <;> rw [h]
+      · exact hJm
+      · exact hFm
     exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hsub hmem) hgen hP
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
   · obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
@@ -188,8 +208,6 @@ theorem reset_vote_root_below_bound_or_covered_at
         obtain ⟨C', s, hC', hsu, hJC'⟩ := Outcome.row_entry_member_before_cast_at hp hy hjb hc
           hW ha hvz hs hdj hJm hT (by omega) hcov
         exact hJC'.trans (hcovered C' s hC'.healedOrigin (hes ▸ hsu))
-    rw [hfr]
-    change Anc _ (tr.state y j).fg.fcRoot P
     rcases hroot with h | h
     · rw [h]; exact hJP
     · rw [h]; exact (hFJ.mono hsub).trans hJP
@@ -201,8 +219,6 @@ theorem reset_vote_root_below_bound_or_covered_at
   have hOh := Outcome.high_of_anc_at hp.run hp.noColl ho ht hj hy hOt .refl
   have hOm := hmax O hOt
   have hOP := hbound v r l O ho hrt hrb
-  rw [hfr]
-  change Anc _ (tr.state y j).fg.fcRoot P
   unfold Store.fcRoot
   split_ifs with hchoose
   · have hJO : (tr.state y j).fg.Anc (tr.state y j).fg.J O := by

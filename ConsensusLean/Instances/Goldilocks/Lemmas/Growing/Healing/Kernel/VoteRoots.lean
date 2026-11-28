@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 
@@ -35,29 +34,6 @@ theorem high_origin_held_at_vote_at
   exact mem_of_honest_anc_at hp.run hp.noColl (hp.run.time_nonneg k)
     (fun _ hq => hp.run.time_mono hq.le) hy hOW hWy
 
-/-- The low-root comparison specializes the shared held-seed supplier at a vote. -/
-theorem low_root_of_seed_before_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time r)) (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
-    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
-    (hBS : Compatible (tr.HonestBlocksAt H) B S)
-    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
-      B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-  have hFS := hp.low_finalized_below_origin_at (hp.run.time_nonneg i)
-    (fun _ hq => hp.run.time_mono hq.le) hy hib hlow hS hqb
-  have hFF : ell.frame.F = (tr.state y i).fg.F := by
-    rw [Outcome.frame_of_call hp.run hy hc.1]; rfl
-  have hSy := high_origin_held_at_vote_at hp hS hqb hy hc hm (by rw [hFF]; exact hFS)
-  exact hp.low_root_of_held_seed_at_call_at hx hBx hrb hy hib hS hqb hc.1 hSy hlow hBS
-    (fun hFB => (hheld hFB).1)
-
 /-- A viable frozen descendant yields the target's viable vote-domain membership. -/
 theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -87,7 +63,7 @@ theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp).State}
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD
       rw [hfr] at hDt hfD ⊢
-      exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
+      exact ⟨hDt.1, hDt.2, hvD⟩
     · exact Or.inr hBf
   · exact Or.inr h
 

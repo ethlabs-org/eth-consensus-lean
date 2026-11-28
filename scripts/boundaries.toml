@@ -165,6 +165,7 @@ complete type and proof closure with the existing negative and proof-body contro
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCoreStock",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges"]
@@ -193,7 +194,7 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix"]
-reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
+reason = """the generic healing leaves over any NodeAC (and LocalRunCoreStock, the stock instance of their run-facts bundle LocalRunCore) use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold AC lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
 RunTrace definitions live in Milestones.Spec.Run, which no Common or FG lemma layer may import, so the two RunTrace
@@ -752,7 +753,9 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy",
-            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace"]
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace",
+            # the P-U proof tree of the adoption, at its shadow paths until relocated
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Shadow"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
@@ -772,9 +775,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Statements.Generic",
          "Instances.Goldilocks.Lemmas.Generic"]
-about = """growing-fault siblings of the Goldilocks lemmas: they may use every static lemma layer, and no
-static layer, trusted layer, Main or Solution may import them, so the static proofs do not depend on
-them"""
+about = """growing-fault siblings of the Goldilocks lemmas, and the P-U proof tree of the adoption at its
+shadow paths (Lemmas/Shadow, one layer with Lemmas/Growing until it is relocated): they may use every
+static lemma layer, and no static layer, trusted layer, Main or Solution may import them, so the static
+proofs do not depend on them"""
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Growing.Continuation"

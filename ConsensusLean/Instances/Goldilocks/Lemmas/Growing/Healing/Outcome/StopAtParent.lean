@@ -47,8 +47,8 @@ theorem reset_parent_viable_of_children_at
   obtain ⟨hQt, hfQ'⟩ := parent_mem_frame_of_children hU hPhi hPhiU hQU hPQ hBQ hBP
     hPv.1.1 hPv.2.1 hBv.1.1 hBv.2.1
   rw [Outcome.frame_of_call hp.run hy hc.1] at hQt hfQ' ⊢
-  exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
-    hp.reset_vote_floor_above_old_or_covered_at hy hR hc hes hjb hQt.1 hQold hQcovered⟩
+  exact ⟨hQt.1, hQt.2,
+    hp.reset_vote_viable_above_old_or_covered_at hy hR hc hes hjb hQt.1 hQold hQcovered⟩
 
 open Regimes.Growing (hold)
 

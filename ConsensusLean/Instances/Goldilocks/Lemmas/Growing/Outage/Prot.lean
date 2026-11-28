@@ -1,5 +1,6 @@
 module
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -31,6 +32,428 @@ at `k` and `k + 1` are the run's.
   honest at `k` carries to `k + 1` through the lock's life (`m ≤ j₀ + k`), and a cast under it
   extends `P`. -/
 
+namespace Consensus.Goldilocks.Compose.Growing
+
+open AC (ACParams Payload Vote)
+
+variable {sp : ACParams}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+  {Hs : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {d : Time} {R : Prop}
+  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {toCore : R → GoldilocksRunCore u frameOf proposer dg H tr ini}
+
+/-! ## Static run facts -/
+
+/-- An honest cast of a vote of slot `slot(t_j) − 1` is at a cut before `j`. -/
+theorem cast_lt_of_slot_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini) (hnc
+    : NoCollRun dg tr)
+    {x : Fin sp.n} (hx : x ∈ Hs) {k j : Nat}
+    {ℓ' : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} {e}
+    (hc : AC.CastAt tr.projAC x k ℓ' e)
+    (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) : k < j := by
+  have hr := (hrun.acRun hnc).localRun
+  have hsk : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_specU hr.toU hx hc).2.1
+  by_contra hkj
+  have := AC.slot_mono sp (hrun.time_nonneg j) (hrun.time_mono (Nat.le_of_not_lt hkj))
+  omega
+
+/-- **Honest held votes do not equivocate per slot.** At an AC cut `j` of an honest node `y`, two
+votes of the same honest validator and the same slot among the votes held across the cut are
+equal (`heldVotes_honest_unique`). -/
+theorem heldVotes_honest_unique_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ Hs) {j : Nat} {x x' : Vote sp.n}
+    (hx : x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (frameOf (tr.state y j)))
+    (hx' : x' ∈
+      AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (frameOf (tr.state y j)))
+    (hxH : x.val ∈ Hs) (hval : x'.val = x.val) (hs : x.slot = x'.slot) : x = x' := by
+  have hrun' := hrun.acRun hnc
+  have hr := hrun'.localRun
+  have hem : ∀ v ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+      (frameOf (tr.state y j)), v.val ∈ Hs →
+      ∃ k e, AC.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
+    intro v hv hvH
+    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, hv⟩
+    · rw [← hrun.projAC_state _ hy _] at hv
+      obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy j τ v hv hvH
+      exact ⟨k, e, he, hm⟩
+    · rw [← hrun.projAC_state _ hy _] at hv
+      obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy (j + 1) τ v hv hvH
+      exact ⟨k, e, he, hm⟩
+    · -- a declaration counts only when its validator equivocates in the post-cut pool
+      exfalso
+      obtain ⟨w₁, hw₁, w₂, hw₂, hne, hw₁v, hw₂v⟩ := hv
+      simp only [Set.mem_ofPred_eq] at hw₁ hw₂
+      rw [← hrun.projAC_state _ hy _] at hw₁ hw₂
+      have hs₁ := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) v.slot w₁ hw₁
+      have hs₂ := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) v.slot w₂ hw₂
+      obtain ⟨k₁, -, e₁, he₁, hm₁⟩ := hrun'.honest.pool_vote y hy (j + 1) _ w₁ hw₁ (hw₁v ▸ hvH)
+      obtain ⟨k₂, -, e₂, he₂, hm₂⟩ := hrun'.honest.pool_vote y hy (j + 1) _ w₂ hw₂ (hw₂v ▸ hvH)
+      rw [hw₁v] at he₁
+      rw [hw₂v] at he₂
+      have := (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
+        (by rw [hm₁, hm₂, hs₁, hs₂])).2
+      exact hne (hm₁.symm.trans
+        ((congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg) this).trans hm₂))
+  obtain ⟨k, e, he, rfl⟩ := hem x hx hxH
+  obtain ⟨k', e', he', rfl⟩ := hem x' hx' (hval ▸ hxH)
+  rw [hval] at he'
+  exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
+    (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ hxH k k' e e' he he' hs).2
+
+/-- A held honest vote across an AC cut was cast by its validator. -/
+private theorem held_vote_cast_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ Hs) {j : Nat} {v : Vote sp.n}
+    (hv : v ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (frameOf (tr.state y j)))
+    (hvH : v.val ∈ Hs) :
+    ∃ k e, AC.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
+  have hrun' := hrun.acRun hnc
+  have hr := hrun'.localRun
+  rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
+  · rw [← hrun.projAC_state _ hy _] at hv
+    obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy j τ v hv hvH
+    exact ⟨k, e, he, hm⟩
+  · rw [← hrun.projAC_state _ hy _] at hv
+    obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy (j + 1) τ v hv hvH
+    exact ⟨k, e, he, hm⟩
+  · -- a counted declaration: two distinct pool votes of the honest validator, a contradiction
+    obtain ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩ := hv
+    rw [← hrun.projAC_state _ hy _] at hx hx'
+    have hxs := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x hx
+    have hx's := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x' hx'
+    obtain ⟨k, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
+    obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
+    rw [hx'v, ← hxv] at he'
+    exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
+      (AC.one_vote_per_slotU sp _ Hs _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
+        (hxs.trans hx's.symm)).2) hne
+
+/-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
+`y`, with `B` in the frame's tree, P for the committees `K`, and
+`2·|K σ ∩ (Hᶜ ∪ W)| < committeeSize` at `σ = slot(t_j) − 1`, if every honest vote of slot `σ`
+cast before `j` by a validator outside `W` has a head compatible with `B`, the unlock target of
+`B` at the call's view is `B` (`unlockKeeps_of_voteCompat`). -/
+theorem unlockKeeps_of_voteCompat_core (hrun : StaticRunCore u frameOf proposer dg Hs tr ini)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hP : AC.CommitteeP K tr.projAC Hs)
+    {W : Set (Fin sp.n)} {y : Fin sp.n} (hy : y ∈ Hs) {j : Nat}
+    (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ (Hsᶜ ∪ W)).ncard < sp.committeeSize)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (frameOf (tr.state y j)).tree)
+    (hcompat : ∀ x ∈ Hs, x ∉ W → ∀ k < j, ∀ e, AC.VoteAt tr.projAC x k e →
+      (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
+      VoteCompat (tr.HonestBlocks Hs) e.msg B) :
+    UnlockKeepsWith frameOf tr y j B := by
+  intro ℓ hcall
+  have hr := (hrun.acRun hnc).localRun
+  have hU := hr.coherent
+  obtain ⟨hfr, hst, -, -⟩ := (cutStepWith_ac _).1 (hrun.cutLaw y hy j _ hcall)
+  rw [hfr] at hst
+  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y (tr.state y j).ac
+      (frameOf (tr.state y j)) (tr.time j) ℓ.call).1 = (tr.state y (j + 1)).ac := by
+    rw [tr.state_succ_of_call hcall, hst]
+  have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
+    rw [← hrun.projAC_state _ hy _] at hv
+    exact AC.state_pool_slotU sp hr.toU hrun.vstart hy m τ v hv
+  have hpay : ∀ C ∈ (frameOf (tr.state y j)).tree, AC.validPayload C := by
+    rw [← hfr]
+    exact AC.frame_validPayloadU sp hr.toU hy (projAC_callAt.2 hcall)
+  have hΦ := hrun.frameOK y hy j
+  have hΦU : (frameOf (tr.state y j)).tree ⊆ tr.HonestBlocks Hs :=
+    fun X hX => ⟨y, hy, j, ((hrun.frameOf_tree _ _).1 hX).1⟩
+  have hmem : ∀ x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+      (frameOf (tr.state y j)), x.val ∈ K.committee x.slot := fun x hx => by
+    rcases AC.mem_heldVotes.1 hx with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
+    · rw [hpool j τ x hv]
+      rw [← hrun.projAC_state _ hy _] at hv
+      exact hP.1 y hy j τ x hv
+    · rw [hpool (j + 1) τ x hv]
+      rw [← hrun.projAC_state _ hy _] at hv
+      exact hP.1 y hy (j + 1) τ x hv
+    · obtain ⟨-, w, hw, -, -, -, hwv, -⟩ := hv
+      rw [← hwv]
+      rw [← hrun.projAC_state _ hy _] at hw
+      exact hP.1 y hy (j + 1) _ w hw
+  have hHnH : ∀ x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+      (frameOf (tr.state y j)),
+      x.val ∈ Hs \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)} →
+      (x.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → x.val ∈ Hs \ W :=
+    fun x hx hxH hs => hxH.resolve_right fun hn =>
+      hn (by rw [← show x.slot = sp.slot (tr.time j) - 1 by omega]; exact hmem x hx)
+  have hHn : (Hs \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)})ᶜ =
+      K.committee (sp.slot (tr.time j) - 1) ∩ (Hsᶜ ∪ W) := by
+    ext x
+    simp only [Set.mem_compl_iff, Set.mem_union, Set.mem_sdiff, Set.mem_ofPred_eq,
+      Set.mem_inter_iff, not_or, not_and, not_not]
+    tauto
+  refine AC.unlockTarget_unlockView_held_of_honest_slot
+    (Hn := Hs \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)}) y ℓ.call hA' hΦ _ hB
+    (hpool j) (hpool (j + 1)) hpay
+    (fun x hx x' hx' hxH hval hs hσ =>
+      heldVotes_honest_unique_core hrun hnc hy hx hx' (hHnH x hx hxH hσ).1 hval hs)
+    (fun x hx hxH hs Hd hHd hHdr => ?_)
+    (by rw [hHn]; exact hf)
+  have hxH := hHnH x hx hxH hs
+  obtain ⟨k, e, hve, rfl⟩ := held_vote_cast_core hrun hnc hy hx hxH.1
+  obtain ⟨ℓ', hc', he'⟩ := hve
+  have hkj : k < j := cast_lt_of_slot_core hrun hnc hxH.1 ⟨hc', he'⟩ hs
+  obtain ⟨Hd', hHd', hHd'r, hcomp⟩ :=
+    voteCompat_iff.1 (hcompat _ hxH.1 hxH.2 k hkj e ⟨ℓ', hc', he'⟩ hs)
+  obtain rfl : Hd = Hd' := hU.1 (hΦU hHd) hHd' (hHdr.trans hHd'r.symm)
+  rcases hcomp with h | h
+  · exact Or.inl (AC.anc_tree_of_anc_U hU hΦ hΦU hHd h hB)
+  · exact Or.inr (AC.anc_tree_of_anc_U hU hΦ hΦU hB h hHd)
+
+/-! ## Growing run facts -/
+
+/-- A vote compatibility of a vote cast in the prefix by a node honest at `d`, with a block of the
+prefix's honest blocks, comes down into the prefix. -/
+private theorem voteCompat_upTo'
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k : Nat}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.VoteAt (tr.upTo d).projAC x k e)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.upTo d).HonestBlocks (H d))
+    (h : VoteCompat (tr.HonestBlocksAt H) e.msg B) :
+    VoteCompat ((tr.upTo d).HonestBlocks (H d)) e.msg B := by
+  obtain ⟨Hd, hHd, hHdr, hcomp⟩ := voteCompat_iff.1 h
+  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU
+    ((hrun.upTo hd).acRun (hnc.upTo d)).toU
+    hx hv
+  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
+  obtain rfl : Hd = Hd₂ := (hrun.coherent hnc).1 hHd (hsub hHd₂)
+    (hHdr.trans hHd₂r.symm)
+  exact voteCompat_iff.2 ⟨Hd, hHd₂, hHdr,
+    hcomp.imp (hrun.anc_upTo_of_right hnc hd hB)
+      (hrun.anc_upTo_of_right hnc hd hHd₂)⟩
+
+/-- **`unlock` keeps `B` against the votes of a set `G` honest at the cut**
+(`unlockKeeps_of_voteCompat_at`). -/
+theorem unlockKeeps_of_voteCompat_at_core
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {G : Set (Fin sp.n)} {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    (hG : G ⊆ H (tr.time j))
+    (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ Gᶜ).ncard < sp.committeeSize)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (frameOf (tr.state y j)).tree)
+    (hcompat : ∀ x ∈ G, ∀ k < j, ∀ e, HVoteAt tr H x k e →
+      (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
+      VoteCompat (tr.HonestBlocksAt H) e.msg B) :
+    UnlockKeepsWith frameOf tr y j B := by
+  have hd := hrun.time_nonneg j
+  have hst : (tr.upTo (tr.time j)).state y j = tr.state y j :=
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
+  have hf' : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ ((H (tr.time j))ᶜ ∪ Gᶜ)).ncard <
+      sp.committeeSize := by
+    rwa [Set.union_eq_right.mpr (Set.compl_subset_compl.mpr hG)]
+  have hP : AC.CommitteeP K (tr.upTo (tr.time j)).projAC (H (tr.time j)) := by
+    rw [RunTrace.upTo_projAC]
+    exact AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP _
+  have h := unlockKeeps_of_voteCompat_core (hrun.upTo hd) (hnc.upTo _) hP hy hf'
+    (by rw [hst]; exact hB) fun x hx hxG k hk e hv hs => by
+      have hv' := hv
+      rw [RunTrace.upTo_projAC] at hv'
+      obtain ⟨hkd, hv'⟩ := ac_voteAt_upTo.mp hv'
+      exact voteCompat_upTo' hrun hnc hd hx hv
+        ⟨y, hy, j, by rw [hst]; exact ((hrun.frameOf_tree _ _).1 hB).1⟩
+        (hcompat x (not_not.1 hxG) k hk e (hVoteAt_iff.2 ⟨hrun.antitone hkd hx, hv'⟩) hs)
+  intro ℓ hc
+  have := h ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+  rwa [hst] at this
+
+namespace OutageVoteInvOver
+
+variable {D : OutageLockPremisesOver tr H proposer dg ini toCore}
+
+/-- A cut of a node at a slot at most `j₀ + k`, with an honest call there, is at a time `≤ z`. -/
+private theorem time_le_z (D : OutageLockPremisesOver tr H proposer dg ini toCore) {x : Fin sp.n}
+    {k : Nat}
+    (hx : x ∈ H (tr.time k)) (hc : tr.IsCall x k) (hs : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
+    tr.time k ≤ D.z := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hlt : tr.time k < sp.ts (D.j₀ + sp.k + 1 : Nat) := by
+    by_contra h
+    have := (AC.ts_le_iff_le_slot sp (D.core.time_nonneg k) ((D.j₀ + sp.k + 1 : Nat) : Int)).1
+      (not_lt.1 h)
+    omega
+  have hts : sp.ts (D.j₀ + sp.k + 1 : Nat) = sp.ts (D.j₀ + sp.k : Nat) + 4 * sp.Δ := by
+    simp only [ACParams.ts]; push_cast; ring
+  exact D.hzc _ (by linarith) ⟨x, k, hx, hc, le_rfl⟩
+
+/-- `unlock` at an AC cut `k` of a node honest and calling then, at a slot in `[j₀ + 1, j₀ + k]`,
+keeps `P` (in the frame): OL-W at the cuts before `k`, the opponents in `K σ ∩ ((H z)ᶜ ∪ W)`. -/
+theorem unlockKeeps_at {k : Nat} (hvi : OutageVoteInvOver D k) {y : Fin sp.n}
+    (hy : y ∈ H (tr.time k)) (hc : tr.IsCall y k) (hP : D.P ∈ (frameOf (tr.state y k)).tree)
+    (hs : (D.j₀ : Int) + 1 ≤ sp.slot (tr.time k)) (hsK : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
+    UnlockKeepsWith frameOf tr y k D.P := by
+  have hkz := time_le_z D hy hc hsK
+  have hG : H D.z \ D.W ⊆ H (tr.time k) := fun x hx => D.core.antitone hkz hx.1
+  have hc' : (H D.z \ D.W)ᶜ = (H D.z)ᶜ ∪ D.W := by
+    ext x; simp only [Set.mem_compl_iff, Set.mem_sdiff, Set.mem_union, not_and, not_not]; tauto
+  have hts : sp.ts (sp.slot (tr.time k) - 1 : Nat) ≤ tr.time k :=
+    (AC.ts_le_iff_le_slot sp (D.core.time_nonneg k) _).2 (by omega)
+  refine unlockKeeps_of_voteCompat_at_core D.core D.hnc D.facts hy hG
+    (by rw [hc']; exact D.two_mul_lt_K (by omega) (by omega) ⟨y, k, hy, hc, hts⟩) hP
+    fun x hx k' hk' e hv hes => hvi.voteCompat_of_not_opponent_at hk' hv (by omega)
+      fun _ => ⟨hx.1, hx.2⟩
+
+/-- **One step of the protection**: at a cut `k` of a node honest then, `Prot x k j m` with
+`j₀ − 1 ≤ j`, within the lock's life (`slot(t_k) ≤ m ≤ j₀ + k`), (VA) at `k` and the caches at
+`k + 1` give `Prot x (k + 1) j m` (`prot_step_at`). -/
+theorem prot_step_at {k : Nat} (hvi : OutageVoteInvOver D k) {x : Fin sp.n}
+    (hx : x ∈ H (tr.time k)) {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
+    (hmK : m ≤ D.j₀ + sp.k)
+    (hva : D.P ∈ (frameOf (tr.state x k)).tree →
+      (frameOf (tr.state x k)).AncestorCandidate D.P)
+    (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P)
+    (hp : ProtOver D x k j m) : ProtOver D x (k + 1) j m := by
+  have hrun := D.core
+  have hd := hrun.time_nonneg k
+  have hm := hrun.time_mono
+  have hst : (tr.upTo (tr.time k)).state x k = tr.state x k :=
+    RunTrace.upTo_state_of_le hm le_rfl
+  have hst1 : (tr.upTo (tr.time k)).state x (k + 1) = tr.state x (k + 1) :=
+    Trace.upTo_state tr x fun _ hk' => hm (Nat.lt_succ_iff.1 hk')
+  have hr := hrun.upTo hd
+  rcases protOver_iff.1 hp with hfl | hroot
+  swap
+  · exact protOver_iff.2 (Or.inr (hroot.trans (hrun.F_mono_at hd hx
+      (fun _ hk' => hm (Nat.lt_succ_iff.1 hk')) (Nat.le_succ k))))
+  by_cases hroot' : Anc (tr.HonestBlocksAt H) D.P (tr.state x (k + 1)).fg.F
+  · exact protOver_iff.2 (Or.inr hroot')
+  have hFP : Anc (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P := hF.resolve_right hroot'
+  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
+  have hP : D.P ∈ (frameOf (tr.state x k)).tree := AC.mem_of_anc hPB hB
+  have hPt : D.P ∈ (tr.state x (k + 1)).fg.tree :=
+    hrun.tree_mono_at hd hx (fun _ hk' => hm (Nat.lt_succ_iff.1 hk')) (Nat.le_succ k)
+      ((hrun.frameOf_tree _ _).1 hP).1
+  have hanc : (tr.state x (k + 1)).fg.Anc (tr.state x (k + 1)).fg.F D.P :=
+    hrun.held_anc_at D.hnc hd hx (fun _ hk' => hm (Nat.lt_succ_iff.1 hk')) hFP hPt
+  have hP' : D.P ∈ (frameOf (tr.state x (k + 1))).tree := (hrun.frameOf_tree _ _).2 ⟨hPt, hanc⟩
+  have hva0 : (frameOf (tr.state x k)).viableAncestor D.P = D.P :=
+    AC.viableAncestor_self (by
+      have h := hr.frameOK x hx k
+      rw [hst] at h
+      exact h) hP (hva hP).symm
+  have h := Compose.floor_run_view_core hr hx k (B₀ := D.P) (j := j) (m := m)
+    (by simp only [FloorAtWith, hst]; exact ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩) hk
+    (by rw [hst]; exact hP)
+    (by rw [hst1]; exact hP') (by rw [hst]; exact hva0) fun ℓ hc => by
+      rw [hst]
+      have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mp hc
+      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
+      · exact Or.inl hs
+      · exact Or.inr (hvi.unlockKeeps_at hx ⟨_, hc'⟩ hP (by omega) (hk.trans hmK) ℓ hc')
+  simp only [FloorAtWith, hst1] at h
+  exact protOver_iff.2 (Or.inl h)
+
+/-- **A cast under the protection extends `P`**: at a cast at cut `k` of a node honest then,
+within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m ≤ j₀ + k`), with (VA) at `k`, the
+vote extends `P` (`vote_extends_of_prot_at`). -/
+theorem vote_extends_of_prot_at {k : Nat} (hvi : OutageVoteInvOver D k) {x : Fin sp.n}
+    {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m) (hmK : m ≤ D.j₀ + sp.k)
+    (hva : D.P ∈ (frameOf (tr.state x k)).tree →
+      (frameOf (tr.state x k)).AncestorCandidate D.P)
+    (hp : ProtOver D x k j m) {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) :
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
+  have hrun := D.core
+  have hd := hrun.time_nonneg k
+  obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
+  have hr := (hrun.acRun_upTo D.hnc hd).localRun
+  have hcast : AC.CastAt (tr.projAC.upTo (tr.time k)) x k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc, he⟩
+  have hfr : ℓ.frame = frameOf (tr.state x k) := hrun.frame_of_projAC_at hx hc
+  obtain ⟨hΦ, hΦU⟩ := hrun.frameIn_at D.hnc hx hc
+  rcases protOver_iff.1 hp with hfl | hroot
+  swap
+  · obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_head_frameU hr.toU hx hcast
+    have hFHd : ℓ.frame.Anc ℓ.frame.F Hd := hΦ.rooted.2 Hd hHd
+    rw [hfr, hrun.frameOf_F] at hFHd
+    exact ⟨Hd, hΦU hHd, hHdr,
+      hroot.trans (hFHd.mono fun X hX =>
+        hrun.mem_honestBlocksAt hx ((hrun.frameOf_tree _ _).1 hX).1)⟩
+  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
+  have hP : D.P ∈ (frameOf (tr.state x k)).tree := AC.mem_of_anc hPB hB
+  have hva0 : (frameOf (tr.state x k)).viableAncestor D.P = D.P :=
+    AC.viableAncestor_self
+      (by
+        have h := (hrun.upTo hd).frameOK x hx k
+        rw [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
+        exact h) hP (hva hP).symm
+  rw [← hfr] at hP hva0 hB hPB
+  have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state x k).locks := by
+    rw [hrun.projAC_upTo_state le_rfl, hrun.projAC_state_at hx]; exact hl
+  obtain ⟨C, hC, hPC⟩ := AC.exists_readPoint_liveLockBlocks_floor hr hx hcast hP hva0 hk
+    (by
+      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
+      · exact Or.inl hs
+      · refine Or.inr ?_
+        have := hvi.unlockKeeps_at hx ⟨_, projAC_callAt.1 hc⟩
+          (by rw [← hfr]; exact hP) (by omega) (hk.trans hmK)
+          ℓ (projAC_callAt.1 hc)
+        rw [hrun.projAC_upTo_state le_rfl, hrun.projAC_state_at hx, hfr]
+        exact this)
+    ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
+  obtain ⟨Hd, hHd, hHdr, hPHd⟩ := AC.castAt_head_anc hr hx hcast (Or.inl hC)
+    (AC.castAt_compatible_of_live hr hrun.vstart hx hcast (Or.inl hC)) hPC
+  exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
+
+end OutageVoteInvOver
+
+/-- The stock form of `unlockKeeps_of_voteCompat_at_core`. -/
+theorem unlockKeeps_of_voteCompat_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {G : Set (Fin sp.n)} {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    (hG : G ⊆ H (tr.time j))
+    (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ Gᶜ).ncard < sp.committeeSize)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.toFrame.tree)
+    (hcompat : ∀ x ∈ G, ∀ k < j, ∀ e, HVoteAt tr H x k e →
+      (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
+      VoteCompat (tr.HonestBlocksAt H) e.msg B) :
+    UnlockKeeps tr y j B :=
+  unlockKeeps_of_voteCompat_at_core hrun.toCore hnc hKB hy hG hf
+    ((hrun.toCore.frameOf_tree _ B).2 hB) hcompat
+
+/-- `unlock` at an AC cut `k` of a node honest and calling then, at a slot in `[j₀ + 1, j₀ + k]`,
+keeps `P` (in the frame): OL-W at the cuts before `k`, the opponents in `K σ ∩ ((H z)ᶜ ∪ W)`. -/
+theorem OutageVoteInv.unlockKeeps_at {D : OutageLockPremises tr H proposer dg ini} {k : Nat} (hvi
+    : OutageVoteInv D k) {y : Fin sp.n}
+    (hy : y ∈ H (tr.time k)) (hc : tr.IsCall y k) (hP : D.P ∈ (tr.state y k).fg.toFrame.tree)
+    (hs : (D.j₀ : Int) + 1 ≤ sp.slot (tr.time k)) (hsK : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
+    UnlockKeeps tr y k D.P :=
+  OutageVoteInvOver.unlockKeeps_at hvi.toOver hy hc hP hs hsK
+
+/-- **One step of the protection**: at a cut `k` of a node honest then, `Prot x k j m` with
+`j₀ − 1 ≤ j`, within the lock's life (`slot(t_k) ≤ m ≤ j₀ + k`), (VA) at `k` and the caches at
+`k + 1` give `Prot x (k + 1) j m`. -/
+theorem OutageVoteInv.prot_step_at {D : OutageLockPremises tr H proposer dg ini} {k : Nat} (hvi
+    : OutageVoteInv D k) {x : Fin sp.n}
+    (hx : x ∈ H (tr.time k)) {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
+    (hmK : m ≤ D.j₀ + sp.k)
+    (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
+      (Node.frame (tr.state x k)).AncestorCandidate D.P)
+    (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P)
+    (hp : Prot D x k j m) : Prot D x (k + 1) j m :=
+  prot_iff_toOver.2
+    (OutageVoteInvOver.prot_step_at hvi.toOver hx hj hk hmK hva hF (prot_iff_toOver.1 hp))
+
+/-- **A cast under the protection extends `P`**: at a cast at cut `k` of a node honest then,
+within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m ≤ j₀ + k`), with (VA) at `k`, the
+vote extends `P`. -/
+theorem OutageVoteInv.vote_extends_of_prot_at {D : OutageLockPremises tr H proposer dg ini} {k
+    : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n}
+    {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m) (hmK : m ≤ D.j₀ + sp.k)
+    (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
+      (Node.frame (tr.state x k)).AncestorCandidate D.P)
+    (hp : Prot D x k j m) {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) :
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P :=
+  OutageVoteInvOver.vote_extends_of_prot_at hvi.toOver hj hk hmK hva (prot_iff_toOver.1 hp) hv
+
+end Consensus.Goldilocks.Compose.Growing
+
 namespace Consensus.Goldilocks.Compose
 
 open AC (ACParams Payload Vote)
@@ -38,34 +461,6 @@ open AC (ACParams Payload Vote)
 variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
-
-/-- A held honest vote across an AC cut was cast by its validator. -/
-private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n}
-    (hv : v ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
-    (hvH : v.val ∈ H) :
-    ∃ k e, AC.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
-  have hrun' := goldilocks_ac_projection_from hrun hnc
-  have hr := hrun'.localRun
-  rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
-  · rw [← projAC_state hrun.toLocalRun hy] at hv
-    obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy j τ v hv hvH
-    exact ⟨k, e, he, hm⟩
-  · rw [← projAC_state hrun.toLocalRun hy] at hv
-    obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy (j + 1) τ v hv hvH
-    exact ⟨k, e, he, hm⟩
-  · -- a counted declaration: two distinct pool votes of the honest validator, a contradiction
-    obtain ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩ := hv
-    rw [← projAC_state hrun.toLocalRun hy] at hx hx'
-    have hxs := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x hx
-    have hx's := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x' hx'
-    obtain ⟨k, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
-    obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
-    rw [hx'v, ← hxv] at he'
-    exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-      (AC.one_vote_per_slotU sp _ H _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
-        (hxs.trans hx's.symm)).2) hne
 
 /-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
 `y`, with `B` in the frame's tree, P for the committees `K`, and
@@ -81,267 +476,9 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
     (hcompat : ∀ x ∈ H, x ∉ W → ∀ k < j, ∀ e, AC.VoteAt tr.projAC x k e →
       (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
       VoteCompat (tr.HonestBlocks H) e.msg B) :
-    UnlockKeeps tr y j B := by
-  intro ℓ hcall
-  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  have hU := hr.coherent
-  obtain ⟨hfr, hst, -, -⟩ := hrun.cutLaw y hy j _ hcall
-  rw [hfr] at hst
-  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y (tr.state y j).ac
-      (Node.frame (tr.state y j)) (tr.time j) ℓ.call).1 = (tr.state y (j + 1)).ac := by
-    rw [tr.state_succ_of_call hcall, hst]
-  have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
-    rw [← projAC_state hrun.toLocalRun hy] at hv
-    exact AC.state_pool_slotU sp hr.toU hrun.vstart hy m τ v hv
-  have hpay : ∀ C ∈ (Node.frame (tr.state y j)).tree, AC.validPayload C := by
-    rw [← hfr]
-    exact AC.frame_validPayloadU sp hr.toU hy (projAC_callAt.2 hcall)
-  have hΦ := frameOK_state hrun.toLocalRun hy j
-  have hΦU : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX.1⟩
-  have hmem : ∀ x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
-      (Node.frame (tr.state y j)), x.val ∈ K.committee x.slot := fun x hx => by
-    rcases AC.mem_heldVotes.1 hx with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
-    · rw [hpool j τ x hv]
-      rw [← projAC_state hrun.toLocalRun hy] at hv
-      exact hP.1 y hy j τ x hv
-    · rw [hpool (j + 1) τ x hv]
-      rw [← projAC_state hrun.toLocalRun hy] at hv
-      exact hP.1 y hy (j + 1) τ x hv
-    · obtain ⟨-, w, hw, -, -, -, hwv, -⟩ := hv
-      rw [← hwv]
-      rw [← projAC_state hrun.toLocalRun hy] at hw
-      exact hP.1 y hy (j + 1) _ w hw
-  have hHnH : ∀ x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
-      (Node.frame (tr.state y j)),
-      x.val ∈ H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)} →
-      (x.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → x.val ∈ H \ W :=
-    fun x hx hxH hs => hxH.resolve_right fun hn =>
-      hn (by rw [← show x.slot = sp.slot (tr.time j) - 1 by omega]; exact hmem x hx)
-  have hHn : (H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)})ᶜ =
-      K.committee (sp.slot (tr.time j) - 1) ∩ (Hᶜ ∪ W) := by
-    ext x
-    simp only [Set.mem_compl_iff, Set.mem_union, Set.mem_sdiff, Set.mem_ofPred_eq,
-      Set.mem_inter_iff, not_or, not_and, not_not]
-    tauto
-  refine AC.unlockTarget_unlockView_held_of_honest_slot
-    (Hn := H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)}) y ℓ.call hA' hΦ _ hB
-    (hpool j) (hpool (j + 1)) hpay
-    (fun x hx x' hx' hxH hval hs hσ =>
-      heldVotes_honest_unique hrun hnc hy hx hx' (hHnH x hx hxH hσ).1 hval hs)
-    (fun x hx hxH hs Hd hHd hHdr => ?_)
-    (by rw [hHn]; exact hf)
-  have hxH := hHnH x hx hxH hs
-  obtain ⟨k, e, hve, rfl⟩ := held_vote_cast hrun hnc hy hx hxH.1
-  obtain ⟨ℓ', hc', he'⟩ := hve
-  have hkj : k < j := cast_lt_of_slot hrun hnc hxH.1 ⟨hc', he'⟩ hs
-  obtain ⟨Hd', hHd', hHd'r, hcomp⟩ :=
-    voteCompat_iff.1 (hcompat _ hxH.1 hxH.2 k hkj e ⟨ℓ', hc', he'⟩ hs)
-  obtain rfl : Hd = Hd' := hU.1 (hΦU hHd) hHd' (hHdr.trans hHd'r.symm)
-  rcases hcomp with h | h
-  · exact Or.inl (AC.anc_tree_of_anc_U hU hΦ hΦU hHd h hB)
-  · exact Or.inr (AC.anc_tree_of_anc_U hU hΦ hΦU hB h hHd)
+    UnlockKeeps tr y j B :=
+  Growing.unlockKeeps_of_voteCompat_core hrun.toStaticCore hnc hP hy hf hB hcompat
 
 end Consensus.Goldilocks.Compose
-
-namespace Consensus.Goldilocks.Compose.Growing
-
-open AC (ACParams Payload Vote)
-
-variable {sp : ACParams}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {d : Time}
-  {ini : Fin sp.n → (goldilocksNode sp).State}
-
-/-- A vote compatibility of a vote cast in the prefix by a node honest at `d`, with a block of the
-prefix's honest blocks, comes down into the prefix. -/
-private theorem voteCompat_upTo
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k : Nat}
-    {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.VoteAt (tr.upTo d).projAC x k e)
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.upTo d).HonestBlocks (H d))
-    (h : VoteCompat (tr.HonestBlocksAt H) e.msg B) :
-    VoteCompat ((tr.upTo d).HonestBlocks (H d)) e.msg B := by
-  obtain ⟨Hd, hHd, hHdr, hcomp⟩ := voteCompat_iff.1 h
-  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU
-    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)).toU
-    hx hv
-  obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
-    (hHdr.trans hHd₂r.symm)
-  exact voteCompat_iff.2 ⟨Hd, hHd₂, hHdr, compatible_upTo hrun hnc hd hHd₂ hB hcomp⟩
-
-/-- **`unlock` keeps `B` against the votes of a set `G` honest at the cut**: at an AC cut `j` of a
-node honest then, with `B` in the frame's tree, `G ⊆ H (t_j)`, the committee facts of `K` and
-`2·|K σ ∩ Gᶜ| < committeeSize` at `σ = slot(t_j) − 1`, if every vote of slot `σ` cast before
-`j` by a member of `G` has a head compatible with `B`, the unlock target of `B` at the call's view
-is `B`. -/
-theorem unlockKeeps_of_voteCompat_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    {G : Set (Fin sp.n)} {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    (hG : G ⊆ H (tr.time j))
-    (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ Gᶜ).ncard < sp.committeeSize)
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.toFrame.tree)
-    (hcompat : ∀ x ∈ G, ∀ k < j, ∀ e, HVoteAt tr H x k e →
-      (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
-      VoteCompat (tr.HonestBlocksAt H) e.msg B) :
-    UnlockKeeps tr y j B := by
-  have hd := hrun.time_nonneg j
-  have hst : (tr.upTo (tr.time j)).state y j = tr.state y j :=
-    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
-  have hf' : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ ((H (tr.time j))ᶜ ∪ Gᶜ)).ncard <
-      sp.committeeSize := by
-    rwa [Set.union_eq_right.mpr (Set.compl_subset_compl.mpr hG)]
-  have hP : AC.CommitteeP K (tr.upTo (tr.time j)).projAC (H (tr.time j)) := by
-    rw [RunTrace.upTo_projAC]
-    exact AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP _
-  have h := Compose.unlockKeeps_of_voteCompat (hrun.upTo hd) (hnc.upTo _) hP hy hf'
-    (by rw [hst]; exact hB) fun x hx hxG k hk e hv hs => by
-      have hv' := hv
-      rw [RunTrace.upTo_projAC] at hv'
-      obtain ⟨hkd, hv'⟩ := ac_voteAt_upTo.mp hv'
-      exact voteCompat_upTo hrun hnc hd hx hv ⟨y, hy, j, by rw [hst]; exact hB.1⟩
-        (hcompat x (not_not.1 hxG) k hk e (hVoteAt_iff.2 ⟨hrun.antitone hkd hx, hv'⟩) hs)
-  intro ℓ hc
-  have := h ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
-  rwa [hst] at this
-
-variable {D : OutageLockPremises tr H proposer dg ini}
-
-namespace OutageVoteInv
-
-/-- A cut of a node at a slot at most `j₀ + k`, with an honest call there, is at a time `≤ z`. -/
-private theorem time_le_z (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
-    (hx : x ∈ H (tr.time k)) (hc : tr.IsCall x k) (hs : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
-    tr.time k ≤ D.z := by
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hlt : tr.time k < sp.ts (D.j₀ + sp.k + 1 : Nat) := by
-    by_contra h
-    have := (AC.ts_le_iff_le_slot sp (D.hrun.time_nonneg k) ((D.j₀ + sp.k + 1 : Nat) : Int)).1
-      (not_lt.1 h)
-    omega
-  have hts : sp.ts (D.j₀ + sp.k + 1 : Nat) = sp.ts (D.j₀ + sp.k : Nat) + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
-  exact D.hzc _ (by linarith) ⟨x, k, hx, hc, le_rfl⟩
-
-/-- `unlock` at an AC cut `k` of a node honest and calling then, at a slot in `[j₀ + 1, j₀ + k]`,
-keeps `P` (in the frame): OL-W at the cuts before `k`, the opponents in `K σ ∩ ((H z)ᶜ ∪ W)`. -/
-theorem unlockKeeps_at {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n}
-    (hy : y ∈ H (tr.time k)) (hc : tr.IsCall y k) (hP : D.P ∈ (tr.state y k).fg.toFrame.tree)
-    (hs : (D.j₀ : Int) + 1 ≤ sp.slot (tr.time k)) (hsK : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
-    UnlockKeeps tr y k D.P := by
-  have hkz := time_le_z D hy hc hsK
-  have hG : H D.z \ D.W ⊆ H (tr.time k) := fun x hx => D.hrun.antitone hkz hx.1
-  have hc' : (H D.z \ D.W)ᶜ = (H D.z)ᶜ ∪ D.W := by
-    ext x; simp only [Set.mem_compl_iff, Set.mem_sdiff, Set.mem_union, not_and, not_not]; tauto
-  have hts : sp.ts (sp.slot (tr.time k) - 1 : Nat) ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (D.hrun.time_nonneg k) _).2 (by omega)
-  refine unlockKeeps_of_voteCompat_at D.hrun D.hnc D.facts hy hG
-    (by rw [hc']; exact D.two_mul_lt_K (by omega) (by omega) ⟨y, k, hy, hc, hts⟩) hP
-    fun x hx k' hk' e hv hes => hvi.voteCompat_of_not_opponent_at hk' hv (by omega)
-      fun _ => ⟨hx.1, hx.2⟩
-
-/-- **One step of the protection**: at a cut `k` of a node honest then, `Prot x k j m` with
-`j₀ − 1 ≤ j`, within the lock's life (`slot(t_k) ≤ m ≤ j₀ + k`), (VA) at `k` and the caches at
-`k + 1` give `Prot x (k + 1) j m`. -/
-theorem prot_step_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n}
-    (hx : x ∈ H (tr.time k)) {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
-    (hmK : m ≤ D.j₀ + sp.k)
-    (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
-      (Node.frame (tr.state x k)).AncestorCandidate D.P)
-    (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P)
-    (hp : Prot D x k j m) : Prot D x (k + 1) j m := by
-  have hrun := D.hrun
-  have hd := hrun.time_nonneg k
-  have hm := hrun.time_mono
-  have hst : (tr.upTo (tr.time k)).state x k = tr.state x k :=
-    RunTrace.upTo_state_of_le hm le_rfl
-  have hst1 : (tr.upTo (tr.time k)).state x (k + 1) = tr.state x (k + 1) :=
-    Trace.upTo_state tr x fun _ hk' => hm (Nat.lt_succ_iff.1 hk')
-  have hr := hrun.upTo hd
-  rcases prot_iff.1 hp with hfl | hroot
-  swap
-  · exact prot_iff.2 (Or.inr (hroot.trans (hrun.toLocalRun.finalized_mono_on_prefix hd hx
-      (Nat.le_succ k) (fun _ hk' => hm (Nat.lt_succ_iff.1 hk')))))
-  by_cases hroot' : Anc (tr.HonestBlocksAt H) D.P (tr.state x (k + 1)).fg.F
-  · exact prot_iff.2 (Or.inr hroot')
-  have hFP : Anc (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P := hF.resolve_right hroot'
-  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
-  have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := AC.mem_of_anc hPB hB
-  have hPt : D.P ∈ (tr.state x (k + 1)).fg.tree := by
-    have h := tree_mono hr.toLocalRun hx (Nat.le_succ k) (by rw [hst]; exact hP.1)
-    rwa [hst1] at h
-  have hPU : D.P ∈ (tr.upTo (tr.time k)).HonestBlocks (H (tr.time k)) :=
-    ⟨x, hx, k + 1, by rw [hst1]; exact hPt⟩
-  have hanc : (tr.state x (k + 1)).fg.Anc (tr.state x (k + 1)).fg.F D.P := by
-    have h := honest_held_anc hr (D.hnc.upTo _) hx (i := k + 1)
-      (RunTrace.anc_upTo_of_right hrun.toLocalRun D.hnc hd hPU hFP) (by rw [hst1]; exact hPt)
-    rwa [hst1] at h
-  have hP' : D.P ∈ (tr.state x (k + 1)).fg.toFrame.tree := ⟨hPt, hanc⟩
-  have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
-    AC.viableAncestor_self (by have h := frameOK_state hr.toLocalRun hx k; rw [hst] at h; exact h)
-      hP (hva hP).symm
-  have h := floor_run_view hr hx k (B₀ := D.P) (j := j) (m := m)
-    (by simp only [FloorAt, hst]; exact ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩) hk
-    (by rw [hst]; exact hP)
-    (by rw [hst1]; exact hP') (by rw [hst]; exact hva0) fun ℓ hc => by
-      rw [hst]
-      have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mp hc
-      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
-      · exact Or.inl hs
-      · exact Or.inr (hvi.unlockKeeps_at hx ⟨_, hc'⟩ hP (by omega) (hk.trans hmK) ℓ hc')
-  simp only [FloorAt, hst1] at h
-  exact prot_iff.2 (Or.inl h)
-
-/-- **A cast under the protection extends `P`**: at a cast at cut `k` of a node honest then,
-within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m ≤ j₀ + k`), with (VA) at `k`, the
-vote extends `P`. -/
-theorem vote_extends_of_prot_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n}
-    {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m) (hmK : m ≤ D.j₀ + sp.k)
-    (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
-      (Node.frame (tr.state x k)).AncestorCandidate D.P)
-    (hp : Prot D x k j m) {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) :
-    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
-  have hrun := D.hrun
-  have hd := hrun.time_nonneg k
-  obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
-  have hr := (acRun_upTo hrun D.hnc hd).localRun
-  have hcast : AC.CastAt (tr.projAC.upTo (tr.time k)) x k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc, he⟩
-  have hfr : ℓ.frame = Node.frame (tr.state x k) := frame_of_projAC_at hrun hx hc
-  obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun D.hnc hx hc
-  rcases prot_iff.1 hp with hfl | hroot
-  swap
-  · obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_head_frameU hr.toU hx hcast
-    have hFHd : ℓ.frame.Anc ℓ.frame.F Hd := hΦ.rooted.2 Hd hHd
-    rw [hfr] at hFHd
-    exact ⟨Hd, hΦU hHd, hHdr,
-      hroot.trans (hFHd.mono fun X hX => mem_honestBlocksAt hrun hx hX.1)⟩
-  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
-  have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := AC.mem_of_anc hPB hB
-  have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
-    AC.viableAncestor_self
-      (by
-        have h := frameOK_state (hrun.upTo hd).toLocalRun hx k
-        rw [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
-        exact h) hP (hva hP).symm
-  rw [← Node.frame, ← hfr] at hP hva0 hB hPB
-  have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state x k).locks := by
-    rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hx]; exact hl
-  obtain ⟨C, hC, hPC⟩ := AC.exists_readPoint_liveLockBlocks_floor hr hx hcast hP hva0 hk
-    (by
-      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
-      · exact Or.inl hs
-      · refine Or.inr ?_
-        have := hvi.unlockKeeps_at hx ⟨_, projAC_callAt.1 hc⟩
-          (by rw [← Node.frame, ← hfr]; exact hP) (by omega) (hk.trans hmK) ℓ (projAC_callAt.1 hc)
-        rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hx, hfr]
-        exact this)
-    ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
-  obtain ⟨Hd, hHd, hHdr, hPHd⟩ := AC.castAt_head_anc hr hx hcast (Or.inl hC)
-    (AC.castAt_compatible_of_live hr hrun.vstart hx hcast (Or.inl hC)) hPC
-  exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
-
-end OutageVoteInv
-
-end Consensus.Goldilocks.Compose.Growing
 
 end

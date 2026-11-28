@@ -37,7 +37,7 @@ namespace ChainFrame
 variable {Φ : N1.Frm} {f j τ : Nat}
 
 theorem fcRoot_mem' (h : ChainFrame Φ f j τ) : Φ.fcRoot ∈ Φ.tree := by
-  rw [h.fcRoot]; exact h.mem h.fj h.jτ
+  rw [h.fcRoot]; exact h.mem le_rfl (h.fj.trans h.jτ)
 
 theorem eq_of_mem (h : ChainFrame Φ f j τ) {B : N1.Blk} (hB : B ∈ Φ.tree) :
     ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m := (h.tree B).1 hB
@@ -90,9 +90,9 @@ theorem deepest_eq (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : S ⊆ Φ.tr
 theorem viableAncestor_eq (h : ChainFrame Φ f j τ) {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) :
     Φ.viableAncestor (blk m) = blk m := by
   have hcand : Φ.AncestorCandidate (blk m) := by
-    rcases Nat.lt_or_ge m j with hm | hm
-    · left; rw [h.fcRoot]; exact h.anc h1 hm.le h.jτ
-    · right; exact h.mem_viableTree (h.mem (le_trans h.fj h.jτ) le_rfl) hm h2 (h.mem h1 h2)
+    right
+    refine ⟨h.mem h1 h2, by rw [h.fcRoot]; exact h.anc le_rfl h1 h2, blk τ,
+      h.mem (h.fj.trans h.jτ) le_rfl, h.head_mem h.jτ le_rfl, h.anc h1 h2 le_rfl⟩
   have hv : Φ.IsViableAncestor (blk m) (blk m) :=
     ⟨Relation.ReflTransGen.refl, hcand, fun _ hA' _ => hA'⟩
   unfold Frame.viableAncestor
@@ -127,32 +127,33 @@ theorem liveLockBlocks_le (h : ChainFrame Φ f j τ) {L : Set Lock} {b : Nat} (h
   obtain ⟨⟨m, hm, hr'⟩, -⟩ := hL l hlL
   exact ⟨m, hm, (h.eq_of_root hBt (hr.symm.trans hr')).1⟩
 
-/-- The anchor is the latest live lock block (or `fc_root`): the highest live lock when it is not
-below `fc_root`. -/
+/-- The anchor is the latest live lock block (or `fc_root = Σ.F`). -/
 theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp1.n} {t : Time} {b : Nat}
-    (hL : LocksLe A.locks b) (hjb : j ≤ b) (hb : blk b ∈ liveLockBlocks sp1 A.locks Φ t ∨ b = j) :
+    (hL : LocksLe A.locks b) (hjb : f ≤ b) (hb : blk b ∈ liveLockBlocks sp1 A.locks Φ t ∨ b = f) :
     getAnchor sp1 A Φ t = blk b := by
   have hS : liveLockBlocks sp1 A.locks Φ t ⊆ Φ.tree := fun B hB => hB.1
   unfold getAnchor highestLiveLock
-  rcases hb with hb | hbj
+  rcases hb with hb | hbf
   · have hbt := h.mem_iff.1 (hS hb)
     rw [h.deepest_eq hS hb (fun B hB => h.liveLockBlocks_le hL hB)]
     change (if depth Φ Φ.fcRoot < depth Φ (blk b) then blk b else Φ.fcRoot) = blk b
-    split_ifs with hlt
-    · rfl
-    · rw [h.fcRoot, h.depth_eq h.fj h.jτ, h.depth_eq hbt.1 hbt.2] at hlt
-      rw [h.fcRoot, show b = j by omega]
-  · rw [hbj]
-    have hL' : LocksLe A.locks j := hbj ▸ hL
-    cases hd : deepest Φ (liveLockBlocks sp1 A.locks Φ t) with
+    by_cases hfb : f < b
+    · rw [ite_eq_left]
+      rw [h.fcRoot, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hbt.1 hbt.2]
+      omega
+    · have hbf : b = f := by omega
+      subst b
+      simp [h.fcRoot]
+  · subst b
+    cases hH : deepest Φ (liveLockBlocks sp1 A.locks Φ t) with
     | none => exact h.fcRoot
     | some H =>
-      have hHS := (deepest_mem hd).1
-      obtain ⟨m, hm, rfl⟩ := h.liveLockBlocks_le hL' hHS
+      have hHS := (deepest_mem hH).1
+      obtain ⟨m, hmf, rfl⟩ := h.liveLockBlocks_le hL hHS
       have hmt := h.mem_iff.1 (hS hHS)
-      change (if depth Φ Φ.fcRoot < depth Φ (blk m) then blk m else Φ.fcRoot) = blk j
+      change (if depth Φ Φ.fcRoot < depth Φ (blk m) then blk m else Φ.fcRoot) = blk f
       rw [ite_eq_right, h.fcRoot]
-      rw [h.fcRoot, h.depth_eq h.fj h.jτ, h.depth_eq hmt.1 hmt.2]
+      rw [h.fcRoot, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hmt.1 hmt.2]
       omega
 
 end ChainFrame
@@ -514,7 +515,7 @@ theorem jexp_succ_le (k : Nat) : jexp (k + 1) ≤ k := by unfold jexp; split_ifs
 theorem tryVote_blk {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
-    (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hcv : cv k ∈ A.pool k)
+    (hvs : A.votedSlot = (k : Int)) (_hpool : A.pool (k + 1) = []) (hcv : cv k ∈ A.pool k)
     (hL : LocksLe A.locks k)
     (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ L₁ d, tryVote sp1 v0 A Φ ((4 * (k + 1) : Nat) : Int) =
@@ -539,10 +540,9 @@ theorem tryVote_blk {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     mem_unlock h (htip hk) hf (by omega) rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (by push_cast; omega) V
   have hanc : getAnchor sp1 { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
-    refine h.getAnchor_eq hL₁ (jexp_succ_le k) ?_
+    refine h.getAnchor_eq hL₁ hf ?_
     rcases Nat.lt_or_ge k 1 with hk | hk
-    · right; obtain rfl : k = 0 := by omega
-      rfl
+    · right; omega
     · left
       exact ⟨h.mem hf (by omega), _, h.mem_liveLocks (htip₁ hk) hf (by omega) rfl
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩
@@ -599,10 +599,9 @@ theorem acProposal_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     mem_unlock h (htip hk1) hf le_rfl rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (lt_irrefl _) _
   have hanc : getAnchor sp1 { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
-    refine h.getAnchor_eq hL₁ (jexp_le k) ?_
+    refine h.getAnchor_eq hL₁ hf ?_
     rcases Nat.lt_or_ge k 1 with hk1 | hk1
-    · right; obtain rfl : k = 0 := by omega
-      rfl
+    · right; omega
     · left
       exact ⟨h.mem hf le_rfl, _, h.mem_liveLocks (htip₁ hk1) hf le_rfl rfl
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩

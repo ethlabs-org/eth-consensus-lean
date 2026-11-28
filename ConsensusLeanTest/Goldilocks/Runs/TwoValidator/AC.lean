@@ -221,10 +221,9 @@ theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     mem_unlock h (htip hk) hf (by omega) rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (by push_cast; omega) V
   have hanc : getAnchor sp { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
-    refine h.getAnchor_eq hL₁ (jx_succ_le k) ?_
+    refine h.getAnchor_eq hL₁ hf ?_
     rcases Nat.lt_or_ge k 1 with hk | hk
-    · right; obtain rfl : k = 0 := by omega
-      rfl
+    · right; omega
     · left
       exact ⟨h.mem hf (by omega), _, h.mem_liveLocks (htip₁ hk) hf (by omega) rfl
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩
@@ -300,10 +299,9 @@ theorem acProposal_tick {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     mem_unlock h (htip hk1) hf le_rfl rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (lt_irrefl _) _
   have hanc : getAnchor sp { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
-    refine h.getAnchor_eq hL₁ (jx_le k) ?_
+    refine h.getAnchor_eq hL₁ hf ?_
     rcases Nat.lt_or_ge k 1 with hk1 | hk1
-    · right; obtain rfl : k = 0 := by omega
-      rfl
+    · right; omega
     · left
       exact ⟨h.mem hf le_rfl, _, h.mem_liveLocks (htip₁ hk1) hf le_rfl rfl
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩

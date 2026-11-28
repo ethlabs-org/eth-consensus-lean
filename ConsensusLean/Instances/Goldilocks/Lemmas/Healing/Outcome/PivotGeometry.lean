@@ -16,7 +16,7 @@ the constant-honesty and growing-fault pivots instantiate the same proofs: their
 honest at different cuts and their old sources need not have honest writers any more.
 
 * `proposal_suffix_viable_of_floor`: the proposal walk above a block `D` consists of viable
-  heads once every held block above `D` reaches the reader's height floor.
+  heads once every held block above `D` is viable.
 * `proposal_pivot_of_supports`: the deepest of the walk's start and the old sources on the walk
   is a viable pivot that every eligible cast's anchor-to-head walk meets, either at `P` or on the
   walk below `P`. -/
@@ -27,29 +27,24 @@ open AC (ACParams Payload)
 
 variable {sp : ACParams}
 
-/-- **Viable proposal suffix from the height floor.** On a realized proposal frame, the walk from
-a block `D` above the walk's start to the duty head consists of viable heads, provided every held
-block above `D` reaches the reader's height floor. -/
+/-- **Viable proposal suffix.** On a realized proposal frame, the walk from a block `D` above the
+walk's start to the duty head consists of viable heads, provided every held block above `D` is
+viable (`Σ.F` is the frame's root, so frame membership and viability suffice). -/
 theorem proposal_suffix_viable_of_floor {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     {st : NodeState (goldilocksNode sp)} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
-    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (hfr : Φ = Node.frame st)
+    (_hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (hfr : Φ = Node.frame st)
     {A : AC.ACState sp.n} {t : Time} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hd : (AC.acProposal sp A Φ t).2 = some (d, pay))
-    {D : AC.Blk sp.n (List (FG.Att sp.n))} (hDt : D ∈ Φ.tree) (hsD : Φ.Anc d.start D)
-    -- The floor supplier: a held block above `D` reaches the reader's height floor.
-    (hfloor : ∀ X ∈ st.fg.tree, Anc U D X →
-      st.fg.headHeightFloor ≤ (st.fg.σ X.root).h) :
+    {pay : Payload sp.n} (_hd : (AC.acProposal sp A Φ t).2 = some (d, pay))
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} (hDt : D ∈ Φ.tree) (_hsD : Φ.Anc d.start D)
+    -- The viability supplier: a held block above `D` is viable.
+    (hviab : ∀ X ∈ st.fg.tree, Anc U D X → st.fg.IsViable X) :
     ∀ X, Φ.Anc D X → Φ.Anc X d.head → X ∈ Φ.viableHeads := by
   intro X hDX _
   have hXt : X ∈ Φ.tree := Compose.mem_of_anc_left hDX hDt
-  obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
-  have hfX : Φ.Anc Φ.fcRoot X := by
-    rw [hstart] at hsD
-    exact ((AC.fcRoot_anc_getAnchor hΦ A t).trans hsD).trans hDX
   have hDXU := hDX.mono hΦU
   subst hfr
   obtain ⟨hXs, hFX⟩ := hXt
-  exact ⟨hXs, hFX, hfX.mono (fun _ h => h.1), hfloor X hXs hDXU⟩
+  exact ⟨hXs, hFX, hviab X hXs hDXU⟩
 
 /-- **The proposal pivot from its suppliers.** On a realized proposal frame `Φ` inside a
 coherent `U`, with `P` the child of the duty head, let `D` be the deepest of the walk's start and

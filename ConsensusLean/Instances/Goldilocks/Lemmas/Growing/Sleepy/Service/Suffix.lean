@@ -51,7 +51,7 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
     (hs : a + κ ≤ sp.ts ((s : Int) - 1))
     (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+      (tr.state y j).fg.IsViable B) :
     0 ≤ tr.time j ∧ tr.time i ≤ tr.time j ∧ p ∈ H (tr.time j) ∧
       (tr.upTo (tr.time j)).ProposesAt p k P ∧
       (tr.upTo (tr.time j)).projAC.CallAt p i ℓp ∧
@@ -62,8 +62,7 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
       Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) ℓy.frame.fcRoot d.head ∧
       ∀ B ∈ ((tr.upTo (tr.time j)).state y j).fg.tree,
         Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) d.head B →
-        ((tr.upTo (tr.time j)).state y j).fg.headHeightFloor ≤
-          (((tr.upTo (tr.time j)).state y j).fg.σ B.root).h := by
+        ((tr.upTo (tr.time j)).state y j).fg.IsViable B := by
   have hΔ := sp.toParams.hΔ
   have hm := hrun.time_mono
   have h0 := hrun.time_nonneg j
@@ -101,10 +100,10 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
   · rw [hst] at hB ⊢
     exact hflQ B hB (hQB.mono hsub)
 
-/-- The voter's `fc_root` and head height floor are bounded by `Q`, and `0 < s`, from the old
-origins (the genesis case): every old origin of the prefix through the vote is below `Q`
-(`proposal_walk_passes_old_at`), so `fc_root` is genesis or below `Q` (`vote_fcRoot_old_of`) and
-the floor is at most the height of every block above `Q` (`vote_floor_le_of`). -/
+/-- The voter's `fc_root` is below `Q`, every held descendant of `Q` is viable, and `0 < s`,
+from the old origins (the genesis case): every old origin of the prefix through the vote is
+below `Q` (`proposal_walk_passes_old_at`), giving the root bound (`vote_fcRoot_old_of`) and
+descendant viability (`vote_viable_of`). -/
 private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
@@ -122,7 +121,7 @@ private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     0 < s ∧ Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
-        (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+        (tr.state y j).fg.IsViable B := by
   have hΔ := sp.toParams.hΔ
   have hm := hrun.time_mono
   have h0 := hrun.time_nonneg j
@@ -182,7 +181,7 @@ private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer
     · exact Anc.mono hsub (hfO.trans (hold' O hO))
   · have hBP : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
       ⟨y, hy, j, by rw [hst]; exact hB⟩
-    have h := Compose.vote_floor_le_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
+    have h := Compose.vote_viable_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
       (by rw [hst]; exact hB) (fun O hO =>
         (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB))
       K hPK hKB.hsize hfK hyK
@@ -218,7 +217,7 @@ theorem suffix_agree_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
     (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+      (tr.state y j).fg.IsViable B) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
@@ -303,7 +302,7 @@ theorem old_child_ineligible_from {ini} (hrun : Growing.GoldilocksRun proposer d
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
     (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
+      (tr.state y j).fg.IsViable B)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBv : B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
@@ -363,7 +362,7 @@ theorem proposal_at_voter_from {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (hs : a + κ ≤ sp.ts ((s : Int) - 1))
     (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+      (tr.state y j).fg.IsViable B) :
     P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) := by
   obtain ⟨h0, -, hpj, hP', hc', hd', hcy', hsv, hfcQ', hflQ'⟩ :=
     suffix_lift_from hrun hnc hsync hp hP hPs hc hd hti hy hcy hes hs hfcQ hflQ

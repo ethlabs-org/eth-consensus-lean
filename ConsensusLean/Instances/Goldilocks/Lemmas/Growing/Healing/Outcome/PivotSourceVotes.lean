@@ -60,6 +60,16 @@ theorem reset_proposal_root_source_or_healed_at
   have hfr := Outcome.frame_of_call hp.run hpH hci
   rw [hfr]
   have hreach := fg_reachable_at hp.run ht hi hpH
+  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
+  -- the frame root `Σ.F` is below the analysis root `Store.fcRoot`
+  obtain ⟨hFt, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
+  have hFroot : Anc (tr.HonestBlocksAt H) (tr.state p i).fg.F (tr.state p i).fg.fcRoot := by
+    have hFJ' := hFJ.mono (fun X hX => (⟨p, i, tr.time i, ht, hi, hpH, hX⟩ :
+      X ∈ tr.HonestBlocksAt H))
+    unfold Store.fcRoot
+    split_ifs
+    · exact hFJ'
+    · exact .refl
   rcases fcRoot_genesis_or_below_source hreach
     (Compose.Growing.honest_blocks_coherent hp.run hp.noColl)
     (fun _ hX => ⟨p, i, tr.time i, ht, hi, hpH, hX⟩)
@@ -85,10 +95,13 @@ theorem reset_proposal_root_source_or_healed_at
       exact ⟨O, Or.inl ⟨v, r, l, ho, hrt, hrb⟩,
         hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb, hheld⟩) with
     hg | ⟨O, hO, hfO⟩
-  · exact Or.inl (congrArg Block.root hg)
+  · have hgF := ((Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFt).mono
+      (fun X hX => (⟨p, i, tr.time i, ht, hi, hpH, hX⟩ : X ∈ tr.HonestBlocksAt H))
+    rw [← hg] at hgF
+    exact Or.inl (congrArg Block.root ((Anc.antisymm hU hFroot hgF).trans hg))
   · rcases hO with ⟨v, r, l, ho, hrt, hrb⟩ | ⟨hc, s, hM, hsu, -⟩
-    · exact Or.inr (Or.inl ⟨v, r, l, O, ho, hrt, hrb, hfO⟩)
-    · exact Or.inr (Or.inr ⟨hc, O, s, hM, hsu, hfO⟩)
+    · exact Or.inr (Or.inl ⟨v, r, l, O, ho, hrt, hrb, hFroot.trans hfO⟩)
+    · exact Or.inr (Or.inr ⟨hc, O, s, hM, hsu, hFroot.trans hfO⟩)
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem proposal_start_supported_at

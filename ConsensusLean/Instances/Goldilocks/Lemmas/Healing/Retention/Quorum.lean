@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 
 public section
 
@@ -78,52 +79,9 @@ theorem entry_kept (hr : st.Reachable acp₀) {H : Set (Fin P.n)} (hq : Hᶜ.nca
     {E : NodeBlock P ACP}
     (hE : ∀ W ∈ st.tree, ∀ a ∈ W.fgPayload, a.T = E.root → a.val ∉ H)
     {A X : NodeBlock P ACP} (hAX : st.Anc A X) (hATh : (st.σ A.root).Th = E.root) :
-    (st.σ X.root).h = (st.σ A.root).h ∧ (st.σ X.root).Th = E.root := by
-  have hcard : ∀ p : Finset (Fin P.n), (∀ v ∈ p, v ∉ H) → p.card < P.fg.q := fun p hp => by
-    have := Set.ncard_le_ncard (s := (p : Set (Fin P.n))) (t := Hᶜ) hp (Set.toFinite _)
-    rw [Set.ncard_coe_finset] at this
-    omega
-  -- the progress set of a state holds the signers of attestations on its chain on its entry
-  have hU : ∀ W, st.Anc (P.genesisBlock acp₀) W →
-      (st.σ W.root).target ⊆ (st.σ W.root).prog ∧ ∀ v ∈ (st.σ W.root).prog,
-        ∃ W' ∈ st.tree, st.Anc W' W ∧ ∃ a ∈ W'.fgPayload, a.val = v ∧
-          a.T = (st.σ W.root).Th := by
-    intro W hW
-    induction hW with
-    | refl =>
-      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr]
-      exact ⟨fun _ h => h, fun v hv => (Finset.notMem_empty v hv).elim⟩
-    | tail _ hpar ih =>
-      obtain ⟨-, h2, hp⟩ := id hpar
-      obtain ⟨-, -, -, ht⟩ := step_σ hr h2 hp
-      obtain ⟨htp, p, hpv, hcase⟩ := Goldilocks.Store.step_prog ht ih.1
-      refine ⟨htp, ?_⟩
-      rcases hcase with ⟨-, hTh, hpe⟩ | ⟨-, hpe⟩
-      · rw [hpe, hTh]
-        intro v hv
-        rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
-        · obtain ⟨W', hW't, hW', a, ha, h'⟩ := ih.2 v hv
-          exact ⟨W', hW't, hW'.tail hpar, a, ha, h'⟩
-        · exact ⟨_, h2, .refl, a, ha, hav, haT⟩
-      · rw [hpe]
-        exact fun v hv => (Finset.notMem_empty v hv).elim
-  have hg := (Goldilocks.Store.accepted_tree P ACP acp₀ st hr).2.2.2
-  induction hAX with
-  | refl => exact ⟨rfl, hATh⟩
-  | tail _ hpar ih =>
-    obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨-, -, -, ht⟩ := step_σ hr h2 hp
-    obtain ⟨ihh, ihT⟩ := ih
-    obtain ⟨-, p, hpv, hcase⟩ := Goldilocks.Store.step_prog ht (hU _ (hg _ h1)).1
-    have hpn : ∀ v ∈ p, v ∉ H := by
-      intro v hv
-      rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
-      · obtain ⟨W', hW't, -, a, ha, hav, haT⟩ := (hU _ (hg _ h1)).2 v hv
-        exact hav ▸ hE W' hW't a ha (haT.trans ihT)
-      · exact hav ▸ hE _ h2 a ha (haT.trans ihT)
-    rcases hcase with ⟨hh, hTh, -⟩ | ⟨hq', -⟩
-    · exact ⟨hh.trans ihh, hTh.trans ihT⟩
-    · exact absurd hq' (not_le.2 (hcard p hpn))
+    (st.σ X.root).h = (st.σ A.root).h ∧ (st.σ X.root).Th = E.root :=
+  Goldilocks.Store.entry_kept_with Goldilocks.Store.finalitySpec_updateFinality
+    hr.reachableWith hq hE hAX hATh
 
 /-- **A high `Σ.J` is compatible with `B`** when, for every high entry of
 the store that conflicts with `B`, no honest signer has an attestation naming it on a block of

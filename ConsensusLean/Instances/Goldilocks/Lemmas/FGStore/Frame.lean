@@ -94,10 +94,9 @@ theorem finalizedMonotone_iff : FinalizedMonotone P ACP ↔
         ∀ a, (st.onAttestation a).F = st.F := Iff.rfl
 
 /-- **C0.2, the `Σ` half** (`FinalizedMonotone`, unfolded). -/
-theorem finalized_monotone : ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
+theorem finalized_monotone (st : Store P ACP) :
     (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
       ∀ a, (st.onAttestation a).F = st.F := by
-  intro acp₀ st _
   refine ⟨fun B st' h => ?_, fun a => ?_⟩
   · rcases onBlock_F h with he | ⟨-, hFF'⟩
     · rw [he]
@@ -125,7 +124,7 @@ theorem accept_is_frame_step : AcceptIsFrameStep P ACP := by
         exact hXB
     refine frameStep_of hT' (fun hB => by cases hnew.symm.trans hB) (parent_ne_of_none hr hnew)
       (fun he => ?_) (cache_invariants P ACP acp₀ st hr).1 (hT' ▸ hFB)
-      ((finalized_monotone P ACP acp₀ st hr).1 B st' h) hF'B
+      ((finalized_monotone P ACP st).1 B st' h) hF'B
     rw [hpr, Option.some.injEq] at he
     rw [he, hnew] at hpr'
     cases hpr'
@@ -137,14 +136,10 @@ theorem accept_is_frame_step : AcceptIsFrameStep P ACP := by
 theorem frame_realization : FrameRealization P ACP := by
   intro acp₀ st hr
   obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree P ACP acp₀ st hr
-  obtain ⟨hF, hJ, hFJ, -⟩ := cache_invariants P ACP acp₀ st hr
-  have hfc : st.fcRoot ∈ st.tree ∧ st.Anc st.F st.fcRoot := by
-    unfold fcRoot
-    split_ifs
-    exacts [⟨hJ, hFJ⟩, ⟨hF, .refl⟩]
+  obtain ⟨hF, -, -, -⟩ := cache_invariants P ACP acp₀ st hr
   refine ⟨⟨hfin.subset fun _ h => h.1, hcoh.mono fun _ h => h.1,
-    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, hfc,
-    Anc.restrict .refl hfc.2, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict hfc.2 h.2.2.1⟩,
+    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, ⟨hF, .refl⟩,
+    Anc.restrict .refl .refl, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict .refl h.2.1⟩,
     ?_⟩
   unfold headHeightFloor
   split_ifs
