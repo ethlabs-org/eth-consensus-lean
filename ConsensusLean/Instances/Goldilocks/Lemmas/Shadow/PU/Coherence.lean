@@ -14,7 +14,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 
 public section
@@ -416,10 +416,9 @@ theorem tree_mono (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y �
     refine ih.trans ?_
     rcases fg_step h hy i with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
     · rw [he]
-    · rw [Store.onBlock_eq_onBlockWith] at hB
-      rw [(Store.tree_grows_with Store.finalitySpec_updateFinality).1 B _ hB]
+    · rw [(Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy i)).1 B _ hB]
       exact Set.subset_insert _ _
-    · rw [he, (Store.tree_grows_with Store.finalitySpec_updateFinality).2 a]
+    · rw [he, (Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy i)).2 a]
 
 theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {m : Nat} {B : A.Blk} (hB : B ∈ (tr.state y m).fg.tree) :
@@ -439,12 +438,11 @@ theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n}
       (ih hB).imp_right fun ⟨k, hk, hA⟩ => ⟨k, by omega, hA⟩
     rcases fg_step h hy m with he | ⟨B', hA, hB'⟩ | ⟨a, -, he⟩
     · exact lift (he ▸ hB)
-    · rw [Store.onBlock_eq_onBlockWith] at hB'
-      rw [(Store.tree_grows_with Store.finalitySpec_updateFinality).1 B' _ hB'] at hB
+    · rw [(Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy m)).1 B' _ hB'] at hB
       rcases hB with rfl | hB
       · exact Or.inr ⟨m, by omega, hA⟩
       · exact lift hB
-    · rw [he, (Store.tree_grows_with Store.finalitySpec_updateFinality).2 a] at hB
+    · rw [he, (Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy m)).2 a] at hB
       exact lift hB
 
 /-- Stock tree-cases interface: every non-genesis held block was accepted earlier. -/
@@ -457,9 +455,8 @@ theorem accept_mem_from (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {k : Nat} {B : A.Blk} (hA : tr.AcceptAt y k B) :
     B ∈ (tr.state y (k + 1)).fg.tree := by
   have hb := ((cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy k _ hA)).2.1
-  rw [Store.onBlock_eq_onBlockWith] at hb
   rw [tr.state_succ_of_call hA,
-    (Store.tree_grows_with Store.finalitySpec_updateFinality).1 B _ hb]
+    (Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy k)).1 B _ hb]
   exact Set.mem_insert _ _
 
 theorem hmax_mono (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) :
@@ -467,12 +464,11 @@ theorem hmax_mono (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y �
   refine monotone_nat_of_le_succ fun m => ?_
   rcases fg_step h hy m with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
   · rw [he]
-  · rw [Store.onBlock_eq_onBlockWith] at hB
-    obtain ⟨pr, σ', -, -, -, -, -, he⟩ := Store.onBlockWith_eq_some hB
+  · obtain ⟨pr, σ', -, -, -, -, -, he⟩ := Store.onBlock_eq_some hB
     obtain ⟨atts, ha⟩ := Store.addAtts_eq (Store.updateFinality { (tr.state y m).fg with
       blocks := Function.update (tr.state y m).fg.blocks B.root (some B),
       σ := Function.update (tr.state y m).fg.σ B.root σ' } σ') B.fgPayload
-    rw [he, ha, Store.finalitySpec_updateFinality.hmax]
+    rw [he, ha, (Store.updateFinality_spec _ _).2.2.2.1]
     exact le_max_left _ _
   · obtain ⟨atts, ha⟩ := (tr.state y m).fg.onAttestation_eq a
     rw [he, ha]
@@ -487,8 +483,7 @@ theorem accept_facts (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : 
     X.RootOk dg ∧ X.proposer = proposer X.slot ∧ (tr.state y k).fg.blocks X.root = none ∧
       X.root ≠ P.genesisRoot := by
   have hb := ((cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy k _ hk)).2.1
-  rw [Store.onBlock_eq_onBlockWith] at hb
-  obtain ⟨pr, σ', -, hnew, -, -, hσ, -⟩ := Store.onBlockWith_eq_some hb
+  obtain ⟨pr, σ', -, hnew, -, -, hσ, -⟩ := Store.onBlock_eq_some hb
   refine ⟨?_, ?_, hnew, fun hg => ?_⟩
   · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, -, d, p, -, rfl, -⟩
     · exact (h.wire y hy k _ _ hg).1
@@ -496,8 +491,7 @@ theorem accept_facts (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : 
   · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, hp, d, p, -, rfl, -⟩
     · exact h.proposerCredential y hy k _ _ hg
     · exact hp.2.2.symm
-  · have hG := (Store.accepted_tree_with Store.finalitySpec_updateFinality
-      (Node.fg_reachable_at h hy k).reachableWith).2.2.1
+  · have hG := (Store.accepted_tree P A.Payload _ _ (Node.fg_reachable_at h hy k)).2.2.1
     change (tr.state y k).fg.blocks P.genesisRoot = some _ at hG
     rw [← hg, hnew] at hG
     cases hG
@@ -530,30 +524,29 @@ theorem honest_blocks_coherent (h : LocalRun proposer dg H sg tr ini)
   rcases tree_accepted h hy hX with rfl | ⟨k, hki, hk⟩
   · cases hp
   have hb := ((cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy k _ hk)).2.1
-  rw [Store.onBlock_eq_onBlockWith] at hb
-  obtain ⟨pr, -, hpar, -, hheld, -⟩ := Store.onBlockWith_eq_some hb
+  obtain ⟨pr, -, hpar, -, hheld, -⟩ := Store.onBlock_eq_some hb
   rw [hp] at hpar
   obtain ⟨Z, hZ⟩ := Option.isSome_iff_exists.1 hheld
-  have hrk := (Node.fg_reachable_at h hy k).reachableWith
-  have hZr := Store.blocks_root_with Store.finalitySpec_updateFinality hrk hZ
+  have hrk := Node.fg_reachable_at h hy k
+  have hZr := hrk.blocks_root hZ
   have hZt : Z ∈ (tr.state y k).fg.tree := by
     change _ = _
     rw [hZr, hZ]
   cases Option.some.inj hpar
   obtain rfl : Z = Y := tree_root_inj h hnc hy hy' hZt hY hZr
-  exact (Store.accepted_tree_with Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at h hy i).reachableWith).2.1.2 Z (tree_mono h hy hki.le hZt) X hX hp
+  exact (Store.accepted_tree P A.Payload _ _
+    (Node.fg_reachable_at h hy i)).2.1.2 Z (tree_mono h hy hki.le hZt) X hX hp
 
 theorem store_anc_of_honest_anc (h : LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat} {B C : A.Blk}
     (hBC : Anc (tr.HonestBlocks H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc B C := by
-  have hr := (Node.fg_reachable_at h hy k).reachableWith
+  have hr := Node.fg_reachable_at h hy k
   have hU := honest_blocks_coherent h hnc
   induction hBC with
   | refl => exact .refl
   | tail _ hYC ih =>
-    rcases ((Store.accepted_tree_with Store.finalitySpec_updateFinality hr).2.2.2 _ hC).cases_tail
+    rcases ((Store.accepted_tree P A.Payload _ _ hr).2.2.2 _ hC).cases_tail
       with hg | ⟨Z, -, hZ⟩
     · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
     obtain rfl : Z = _ := hU.1 ⟨y, hy, k, hZ.1⟩ hYC.1
@@ -581,9 +574,8 @@ theorem honest_held_height' {sp : AC.ACParams}
     ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
         ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) := by
-  have hr := (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
-  exact ⟨Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality hr h,
-    Store.Th_eq_of_anc_with Store.finalitySpec_updateFinality hr h⟩
+  have hr := Node.fg_reachable_at hrun.toLocalRun hy i
+  exact ⟨Healing.h_le_of_store_anc hr h, Healing.Th_eq_of_anc hr h⟩
 
 theorem honest_eq_genesis {sp : AC.ACParams}
     {proposer : Nat → Fin sp.n}
@@ -594,8 +586,8 @@ theorem honest_eq_genesis {sp : AC.ACParams}
     (hr : B.root = sp.genesisRoot) :
     B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload := by
   obtain ⟨y, hy, i, hBt⟩ := hB
-  have hg := (Store.accepted_tree_with Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith).2.2.1
+  have hg := (Store.accepted_tree sp.toParams (AC.Payload sp.n) _ _
+    (Node.fg_reachable_at hrun.toLocalRun hy i)).2.2.1
   exact hU.1 ⟨y, hy, i, hBt⟩ ⟨y, hy, i, hg⟩ hr
 
 section Growing
@@ -648,12 +640,11 @@ theorem honest_blocks_coherent_at
   rcases tree_accepted hr hy hXi with rfl | ⟨k, hki, hk⟩
   · cases hp
   have hblock := ((cutStep_block_true _ _ _ _ _).1 (hr.cutLaw y hy k _ hk)).2.1
-  rw [Store.onBlock_eq_onBlockWith] at hblock
-  obtain ⟨pr, _, hpar, _, hheld, _⟩ := Store.onBlockWith_eq_some hblock
+  obtain ⟨pr, _, hpar, _, hheld, _⟩ := Store.onBlock_eq_some hblock
   rw [hp] at hpar
   obtain ⟨Z, hZ⟩ := Option.isSome_iff_exists.1 hheld
-  have hrk := (Node.fg_reachable_at hr hy k).reachableWith
-  have hZr := Store.blocks_root_with Store.finalitySpec_updateFinality hrk hZ
+  have hrk := Node.fg_reachable_at hr hy k
+  have hZr := hrk.blocks_root hZ
   have hZt : Z ∈ ((tr.upTo t).state y k).fg.tree := by
     change _ = _
     rw [hZr, hZ]
@@ -661,8 +652,8 @@ theorem honest_blocks_coherent_at
   have hZH : Z ∈ tr.HonestBlocksAt H :=
     RunTrace.honestBlocks_upTo_subset h.time_mono ht ⟨y, hy, k, hZt⟩
   obtain rfl : Z = Y := held_root_inj h hnc hZH hY hZr
-  exact (Store.accepted_tree_with Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at hr hy i).reachableWith).2.1.2 Z
+  exact (Store.accepted_tree sp.toParams (AC.Payload sp.n) _ _
+    (Node.fg_reachable_at hr hy i)).2.1.2 Z
     (tree_mono hr hy hki.le hZt) X hXi hp
 
 theorem honestBlocksAt_coherent
@@ -676,13 +667,13 @@ theorem held_anc_at
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
     {A W : AC.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
     (hW : W ∈ (tr.state y i).fg.tree) : (tr.state y i).fg.Anc A W := by
-  have hr := (Node.fg_reachable_at (hrun.upTo hd).toLocalRun hy i).reachableWith
+  have hr := Node.fg_reachable_at (hrun.upTo hd).toLocalRun hy i
   rw [Trace.upTo_state tr y hi] at hr
   have hU := honestBlocksAt_coherent hrun hnc
   induction h with
   | refl => exact .refl
   | tail _ hYC ih =>
-    rcases ((Store.accepted_tree_with Store.finalitySpec_updateFinality hr).2.2.2 _ hW).cases_tail
+    rcases ((Store.accepted_tree sp.toParams (AC.Payload sp.n) _ _ hr).2.2.2 _ hW).cases_tail
       with hg | ⟨Z, -, hZ⟩
     · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
     obtain rfl : Z = _ := hU.1 ⟨y, i, d, hd, hi, hy, hZ.1⟩ hYC.1

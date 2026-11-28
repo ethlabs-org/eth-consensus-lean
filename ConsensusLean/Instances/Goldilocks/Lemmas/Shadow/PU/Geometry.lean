@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
@@ -35,19 +35,17 @@ the state's entry. -/
 theorem prog_rows (h : st.Reachable acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
     ∀ v ∈ (st.σ W.root).prog, ∃ X ∈ st.tree, st.Anc X W ∧ ∃ a ∈ X.fgPayload, a.val = v ∧
       a.T = (st.σ W.root).Th := by
-  have hu := finalitySpec_updateFinality (P := P) (ACP := ACP)
-  have hr := h.reachableWith
-  have hg := (accepted_tree_with hu hr).2.2.2 W hW
+  have hg := (accepted_tree P ACP _ _ h).2.2.2 W hW
   clear hW
   induction hg with
   | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr]
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, h.σ_genesis]
     intro v hv
     exact absurd hv (Finset.notMem_empty v)
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain_with hu hr W' h1
-    obtain ⟨-, -, -, hst⟩ := step_σ_with hu hr h2 hp
+    obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP _ _ h W' h1
+    obtain ⟨-, -, -, hst⟩ := h.step_σ h2 hp
     obtain ⟨-, p, hpv, hcase⟩ := Store.step_prog hst
       (FG.chain_invariants P.fg _ _ hc).2.2.2.2.2.2.2.2.2
     rcases hcase with ⟨-, hT, hpe⟩ | ⟨-, he⟩
@@ -68,20 +66,18 @@ theorem crossing_quorum (h : st.Reachable acp₀) {W : NodeBlock P ACP} (hW : W 
       ∃ E ∈ st.tree, st.Anc E W ∧ (st.σ E.root).h = j ∧ (st.σ E.root).Th = E.root ∧
         ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ X ∈ st.tree,
           st.Anc X W ∧ ∃ a ∈ X.fgPayload, a.val = v ∧ a.T = E.root := by
-  have hu := finalitySpec_updateFinality (P := P) (ACP := ACP)
-  have hr := h.reachableWith
-  have hg := (accepted_tree_with hu hr).2.2.2 W hW
+  have hg := (accepted_tree P ACP _ _ h).2.2.2 W hW
   clear hW
   induction hg with
   | refl =>
     intro j h1 h2
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr] at h2
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, h.σ_genesis] at h2
     simp [FG.ChainState.init] at h2
     omega
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨-, -, -, hst⟩ := step_σ_with hu hr h2 hp
-    obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain_with hu hr W' h1
+    obtain ⟨-, -, -, hst⟩ := h.step_σ h2 hp
+    obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP _ _ h W' h1
     obtain ⟨hstep, -⟩ := FG.height_step P.fg _ _ _ _ hc hst
     have lift : ∀ X, st.Anc X W' → st.Anc X W := fun X hX => hX.tail ⟨h1, h2, hp⟩
     intro j hj1 hj2
@@ -99,7 +95,7 @@ theorem crossing_quorum (h : st.Reachable acp₀) {W : NodeBlock P ACP} (hW : W 
         · omega
         · exact hq
       obtain ⟨⟨E, hE, hEr, hEW', hEh, hET⟩, -⟩ :=
-        entry_state_of_source_with hu hr W' h1
+        entry_state_of_source P ACP _ _ h W' h1
       refine ⟨E, hE, lift E hEW', hEh.trans hjeq.symm, hET.trans hEr.symm, p, hq, fun v hv => ?_⟩
       rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
       · obtain ⟨X, hX, hXW, a, ha, hav, haT⟩ := prog_rows h h1 v hv
@@ -111,7 +107,7 @@ theorem J_entry (h : st.Reachable acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.t
     (hj : 1 ≤ (st.σ Z.root).hj) :
     ∃ E ∈ st.tree, E.root = (st.σ Z.root).J ∧ st.Anc E Z ∧
       (st.σ E.root).h = (st.σ Z.root).hj ∧ (st.σ E.root).Th = E.root := by
-  obtain ⟨E, hE, hEr, hEZ, hcase⟩ := J_entry_hj_with finalitySpec_updateFinality h.reachableWith hZ
+  obtain ⟨E, hE, hEr, hEZ, hcase⟩ := J_entry_hj P ACP h hZ
   rcases hcase with ⟨-, h0⟩ | ⟨h1, h2⟩
   · omega
   · exact ⟨E, hE, hEr, hEZ, h1, h2⟩
@@ -224,8 +220,11 @@ theorem held_candidate_of_rows' (hr : Node.LocalRun proposer dg H sg tr ini)
     obtain ⟨W, hW, hBW, hv⟩ := h
     exact ⟨W, hW, hFB.trans hBW, hv, hBW⟩
   have hR := Node.fg_reachable_at hr hy i
-  have hs := hR.puSnapshot
-  have hjm := hs.hj_lt_hmax
+  obtain ⟨_, hJm, _, ⟨Bj, hBj, hBjJ, hBjhj⟩, hge, _, _⟩ :=
+    Store.cache_invariants _ _ _ _ hR
+  obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain _ _ _ _ hR Bj hBj
+  have hjm : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+    hBjhj ▸ (FG.chain_invariants P.fg _ _ hc).2.2.1.trans_le (hge Bj hBj)
   rcases floor_or_crossing_of' hr hfg hf hy (hsrc.above _) hGB hB with hpred |
       ⟨-, E, X, -, -, -, hBE, -, hX, hEX, hXv⟩
   swap
@@ -242,12 +241,18 @@ theorem held_candidate_of_rows' (hr : Node.LocalRun proposer dg H sg tr ini)
   have hcomp : Compatible (tr.state y i).fg.tree (tr.state y i).fg.J B := by
     rcases hJB with h | h
     · exact Or.inl (honest_held_anc hr hfg hy h hB)
-    · exact Or.inr (honest_held_anc hr hfg hy h hs.J_mem)
+    · exact Or.inr (honest_held_anc hr hfg hy h hJm)
   obtain ⟨hBJ, -⟩ := (Store.isViable_or_lt_J_of_pred_le hpred hcomp).resolve_left hv
-  refine ⟨_, hs.J_mem, hBJ, ?_⟩
-  have := Store.J_mem_viableHeads hs htop
-  rw [Store.toFrame_viableHeads] at this
-  exact this.2.2
+  refine ⟨_, hJm, hBJ, ?_⟩
+  obtain ⟨E, hE, hEr, _, hcase⟩ := Store.J_entry_hj _ _ hR hBj
+  have hcoh := (Store.accepted_tree _ _ _ _ hR).2.1
+  obtain rfl : E = (tr.state y i).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
+  apply ((tr.state y i).fg.isViable_iff _).2
+  rcases hcase with ⟨_, h0⟩ | ⟨hJh, _⟩
+  · obtain ⟨cJ, _, _, _, hcJ⟩ := Store.chain_state_of_chain _ _ _ _ hR _ hJm
+    have := (FG.chain_invariants P.fg _ _ hcJ).1
+    exact Or.inl (by omega)
+  · exact Or.inr ⟨by omega, Or.inr .refl⟩
 
 end Consensus.Goldilocks.Compose.FrameGeometry
 

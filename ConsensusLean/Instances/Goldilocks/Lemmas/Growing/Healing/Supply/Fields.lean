@@ -39,7 +39,7 @@ namespace Consensus.Goldilocks.Generic
 
 open AC (ACParams Payload gbar)
 open Healing.Growing (HZ IsReset)
-open Shadow.PU.Witness (onBlock_σ floor_le_of_isViable hj_lt_of_isViable)
+open Shadow.PU.Witness (onBlock_σ hmax_pred_le_of_isViable hj_lt_of_isViable)
 
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
@@ -144,8 +144,7 @@ private theorem warm_proposal_store_bounds_at {ini}
       fun q hq => hrun.time_mono (by omega)
     rw [← Trace.upTo_state tr z hle2, hst2]
   rw [hkP]
-  exact ⟨(Store.headHeightFloor_bounds _).1.trans
-      (floor_le_of_isViable hreach hDm hDv hatts hσ'),
+  exact ⟨hmax_pred_le_of_isViable hDv hσ',
     hj_lt_of_isViable hreach hDm hDv hatts hσ'⟩
 
 /-- **The `proposal_floor` field** at the Goldilocks run interface: an honest designated proposal,

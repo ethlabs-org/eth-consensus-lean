@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
@@ -54,7 +55,7 @@ theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
       hrun hframe hy hilo hihi hc.1 hQ
     have hQt : Q ∈ (tr.state y i).fg.tree := by
       have hv := hQ
-      rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1, Node.frame_eq,
+      rw [Compose.Growing.frame_of_projAC_at hrun hy hc.1, Node.frame_eq,
         Store.toFrame_viableHeads] at hv
       exact hv.1
     have hFQ := hframe.finalized_below_descendant_at hrun hnc hz hy hy hf hclo hchi
@@ -99,7 +100,7 @@ theorem fcRoot_anc_head_at_cast_at {lo hi : Time} {M : Nat}
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
   have hroot : ellz.frame.fcRoot = (tr.state z c).fg.F := by
-    rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hz hcz,
+    rw [Compose.Growing.frame_of_projAC_at hrun hz hcz,
       Node.frame_eq, Store.toFrame_fcRoot]
   rw [hroot] at haF ⊢
   exact finalized_anc_head_at_cast_at hframe hrun hnc hz hy hf hclo hchi hilo hihi hc
