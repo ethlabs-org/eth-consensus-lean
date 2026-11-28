@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -9,7 +10,7 @@ public section
 
 /-! # Outage lock safety under growing faults: the counts
 
-* `compatible_of_head_anc`, `compatible_of_voteCompat`, `compatible_of_anc`: compatibility with
+* `compatible_of_voteCompat`, `compatible_of_anc`: compatibility with
   `B` through a vote head, inside a coherent set of blocks;
 * `OutageLockPremises.compatible_of_within`, `vote_extends_pre`: origins and votes within `b₀`
   are compatible with, or extend, `P` (the Sleepy invariant up to `b₀`);
@@ -72,20 +73,13 @@ section Compat
 
 variable {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- A block below a block compatible with `B` is compatible with `B`. -/
-theorem compatible_of_head_anc (hU : Coherent U) {C R B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hCR : Anc U C R) (hR : Compatible U R B) : Compatible U C B := by
-  rcases hR with h | h
-  · exact Or.inl (hCR.trans h)
-  · exact Anc.total hU hCR h
-
 /-- A vote compatible with `B` whose head extends `C` makes `C` compatible with `B`. -/
 theorem compatible_of_voteCompat (hU : Coherent U) {v : Vote sp.n}
     {C R B : AC.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ U) (hRr : R.root = v.head)
     (hCR : Anc U C R) (hv : VoteCompat U v B) : Compatible U C B := by
   obtain ⟨Hd, hHd, hHdr, hHdB⟩ := voteCompat_iff.1 hv
   obtain rfl : Hd = R := hU.1 hHd hR (hHdr.trans hRr.symm)
-  exact compatible_of_head_anc hU hCR hHdB
+  exact compatible_of_anc_left hU hCR hHdB
 
 /-- `B ⪯ B'` and `C` compatible with `B'` give `C` compatible with `B`. -/
 theorem compatible_of_anc_right (hU : Coherent U) {B B' C : AC.Blk sp.n (List (FG.Att sp.n))}
