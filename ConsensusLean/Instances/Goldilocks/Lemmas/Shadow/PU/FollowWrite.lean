@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -124,7 +124,7 @@ theorem optimistic_write_later_proposal_head_at
   have hclo : sp.ts s₀ ≤ tr.time c := by rw [hti]; exact hts (by omega)
   have hchi : tr.time c ≤ sp.ts N + sp.Δ := by
     rw [hti]; linarith only [hts hrN, sp.toParams.hΔ]
-  have hW := Shadow.PU.frameIn_at hrun hnc hy hcw
+  have hW := Compose.Growing.frameIn_at hrun hnc hy hcw
   rcases hsource with hroot | ⟨Q, hvQ, hAQ⟩
   · have hFe : ellw.frame.F = (tr.state y a).fg.F := by
       rw [frame_of_projAC_at hrun hy hcw, Node.frame_eq, Store.toFrame_F]
