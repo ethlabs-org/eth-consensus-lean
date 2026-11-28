@@ -190,7 +190,6 @@ private theorem mem_addAtts {a : FG.Att P.n} {l : List (FG.Att P.n)}
 /-- Every attestation carried by a held block is in the pool. -/
 theorem payload_mem_atts (hr : st.Reachable acp₀) :
     ∀ B ∈ st.tree, ∀ a ∈ B.fgPayload, a ∈ st.atts := by
-  rw [Store.reachable_eq] at hr
   induction hr with
   | refl =>
     intro B hB a ha
@@ -200,7 +199,7 @@ theorem payload_mem_atts (hr : st.Reachable acp₀) :
     cases hB
     cases ha
   | @tail s s' _ hs ih =>
-    rcases (Store.step_iff _ _).1 hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
+    rcases hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
     · obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Goldilocks.Store.onBlock_eq_some hB'
       intro B hB a ha
       set st₁ : Store P ACP :=
