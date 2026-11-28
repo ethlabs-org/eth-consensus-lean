@@ -120,8 +120,7 @@ theorem warm_proposal_store_bounds_at {ini}
       fun q hq => hrun.time_mono (by omega)
     rw [← Trace.upTo_state tr z hle2, hst2]
   rw [hkP]
-  exact ⟨(Store.headHeightFloor_bounds _).1.trans
-      (floor_le_of_isViable hreach hDm hDv hatts hσ'),
+  exact ⟨hmax_pred_le_of_isViable hDv hσ',
     hj_lt_of_isViable hreach hDm hDv hatts hσ'⟩
 
 end Consensus.Goldilocks.Shadow.PU.Witness

@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
@@ -78,10 +79,9 @@ theorem proposal_window_witness
     by_cases he : d.head = B
     · exact he ▸ hBm
     · exact (Anc.mem hDBs he).1
-  have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at hr.toLocalRun hzk ip).reachableWith
-    Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1)).reachableWith
+  have hσ := Healing.Store.σ_eq_of_mem
+    (Node.fg_reachable_at hr.toLocalRun hzk ip)
+    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1))
     (Coherence.honest_blocks_coherent hr.toLocalRun (hnc.upTo _)).1
     (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
   have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1

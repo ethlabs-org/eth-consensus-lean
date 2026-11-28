@@ -1,4 +1,6 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
@@ -285,10 +287,9 @@ private theorem proposal_root_viable_at
   have ht := hrun.time_nonneg i
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
-  have hu := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
-  have hFQ := Store.F_anc_of_hmax_le_of_safe_with hu hr.reachableWith hr.reachableWith
-    (Store.accepted_tree_with hu hr.reachableWith).2.1 subset_rfl subset_rfl hf
+  have hFQ := Goldilocks.Store.F_anc_of_hmax_le_of_safe hr hr
+    (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1 subset_rfl subset_rfl hf
     (Healing.Growing.Shadow.held_atts_safe_at hrun hnc ht hb hy ht hb hy le_rfl le_rfl)
     hQ hheight.ge
   rw [Compose.Growing.frame_of_projAC_at hrun hy hc, Node.frame_eq]
@@ -354,43 +355,6 @@ theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
     (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
     hviab (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
-
-/-- An optimistic write propagates a viable prefix to next-slot votes. -/
-theorem optimistic_next_votes_of_early_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {s M : Nat} (hm : gbar g ≤ sp.ts s)
-    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
-    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
-    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D)
-    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
-    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  have hahi : tr.time a ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
-    linarith only [hat, AC.ts_succ s (sp := sp), sp.toParams.hΔ]
-  have hwit := early_witness_viable hrun hframe hw halo hahi hcw hvQ
-  have hQ : Q ∈ (tr.state w a).fg.tree := by
-    have h := hQw
-    rw [Compose.Growing.frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at h
-    exact h.1
-  exact optimistic_next_votes_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hm hmb hx hopt hXD
-    hw hat hcw hQw (Healing.windowWitness_of_frameWindow hrun hnc hframe hw hQ hwit)
-    (fun y i hy hlo hhi => hframe.finalized_below_descendant_at hrun hnc hy hw hw
-      (sp.toParams.fg.faults_lt_quorum_margin
-        (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
-          (hahi.trans hmb)))) hlo hhi hQ hwit hQ .refl) hXQ hK
 
 /-- The first next-slot proposal follows an optimistic prefix through a window witness: the
 window-free core of `optimistic_next_proposal_of_early_witness_at'` and its stock form. -/
