@@ -191,7 +191,9 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum"]
 reason = """the generic healing leaves over any NodeAC (and LocalRunCoreStock, the stock instance of their run-facts bundle LocalRunCore) use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold AC lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
@@ -205,7 +207,9 @@ reset leaves. Healing.M1.CallLag holds the relay calls from wakefulness at any s
 snapshot and call-lag leaves. Healing.AcquireClient (the client record facts and signed finality pairs) and
 Healing.M1.PreAdvanceFacts (client progress from the lock premise) hold the client facts at any start, for leaf 4.
 Healing.Retention.Prefix holds
-the store-level entry at a height and the honest attestation on a left entry, for leaf 13. HealingRounds, the leaves
+the store-level entry at a height and the honest attestation on a left entry, for leaf 13. Growing.Run.LocalFacts holds the node-local
+facts of `Growing.LocalRun` at an honest observation horizon, which the leaves read directly, and
+Healing.Retention.Quorum the store-level `h_j` bounds of held blocks. HealingRounds, the leaves
 over a healing supplier, imports HealingLeaves, and the same cut guard checks its constants. HealingEdges, the
 generic assembly edges, imports HealingLeaves and HealingRounds, and the same cut guard checks its
 constants. ClaimReductionEdges, the generic claim reductions, imports HealingLeaves for
