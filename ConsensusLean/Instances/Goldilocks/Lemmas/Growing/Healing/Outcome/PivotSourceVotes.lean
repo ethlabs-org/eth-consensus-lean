@@ -46,9 +46,7 @@ theorem reset_proposal_root_source_or_healed_at
     {p : Fin sp.n} {u i : Nat} (hpH : p ∈ H (tr.time i))
     (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
     ell.frame.fcRoot.root = sp.genesisRoot ∨
       (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
@@ -60,48 +58,26 @@ theorem reset_proposal_root_source_or_healed_at
   have hfr := Outcome.frame_of_call hp.run hpH hci
   rw [hfr]
   have hreach := fg_reachable_at hp.run ht hi hpH
-  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  -- the frame root `Σ.F` is below the analysis root `Store.fcRoot`
-  obtain ⟨hFt, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
-  have hFroot : Anc (tr.HonestBlocksAt H) (tr.state p i).fg.F (tr.state p i).fg.fcRoot := by
-    have hFJ' := hFJ.mono (fun X hX => (⟨p, i, tr.time i, ht, hi, hpH, hX⟩ :
-      X ∈ tr.HonestBlocksAt H))
-    unfold Store.fcRoot
-    split_ifs
-    · exact hFJ'
-    · exact .refl
-  rcases fcRoot_genesis_or_below_source hreach
+  rcases finalized_genesis_or_below_source hreach
     (Compose.Growing.honest_blocks_coherent hp.run hp.noColl)
     (fun _ hX => ⟨p, i, tr.time i, ht, hi, hpH, hX⟩)
     (fun O =>
       (∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b) ∨
-      (HighSourceCover tr H g a b ∧ ∃ s, HealedMemberBefore tr H g a b O s i ∧ s < u ∧
-        ∃ E ∈ (tr.state p i).fg.tree, HZ tr H g + 1 ≤ ((tr.state p i).fg.σ E.root).h ∧
-          Anc (tr.HonestBlocksAt H) E O))
+      (HighSourceCover tr H g a b ∧ ∃ s, HealedMemberBefore tr H g a b O s i ∧ s < u))
     (fun E hE C hET hEh hEC hlt => by
       rcases hp.proposal_entry_below_old_or_healed_at hpH hci hcall hti hib hE hET hEh hEC hlt
         with ⟨O, hO, hEO⟩ | ⟨hc, M, s, hM, hsu, hEM⟩
       · exact ⟨O, Or.inl hO, hEO⟩
-      · exact ⟨M, Or.inr ⟨hc, s, hM, hsu, E, hE, hEh, hEM⟩, hEM⟩)
-    (fun O hO W hW hOW => by
-      rcases hO with ⟨_, _, _, ho, _⟩ | ⟨_, s, _, _, E, hE, hEh, hEO⟩
-      · exact Outcome.high_of_anc_at hp.run hp.noColl ho ht hi hpH hW hOW
-      · exact hEh.trans (Healing.h_le_of_store_anc hreach
-          (store_anc_of_honest_anc_at hp.run hp.noColl ht hi hpH (hEO.trans hOW) hW)))
+      · exact ⟨M, Or.inr ⟨hc, s, hM, hsu⟩, hEM⟩)
     (fun hlow => by
       obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-      have hheld := ProposalImpl.proposal_holds_old_at hp hpH hci hcall hd hti hib ho hrt
-      rw [hfr] at hheld
       exact ⟨O, Or.inl ⟨v, r, l, ho, hrt, hrb⟩,
-        hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb, hheld⟩) with
+        hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb⟩) with
     hg | ⟨O, hO, hfO⟩
-  · have hgF := ((Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFt).mono
-      (fun X hX => (⟨p, i, tr.time i, ht, hi, hpH, hX⟩ : X ∈ tr.HonestBlocksAt H))
-    rw [← hg] at hgF
-    exact Or.inl (congrArg Block.root ((Anc.antisymm hU hFroot hgF).trans hg))
-  · rcases hO with ⟨v, r, l, ho, hrt, hrb⟩ | ⟨hc, s, hM, hsu, -⟩
-    · exact Or.inr (Or.inl ⟨v, r, l, O, ho, hrt, hrb, hFroot.trans hfO⟩)
-    · exact Or.inr (Or.inr ⟨hc, O, s, hM, hsu, hFroot.trans hfO⟩)
+  · exact Or.inl (congrArg Block.root hg)
+  · rcases hO with ⟨v, r, l, ho, hrt, hrb⟩ | ⟨hc, s, hM, hsu⟩
+    · exact Or.inr (Or.inl ⟨v, r, l, O, ho, hrt, hrb, hfO⟩)
+    · exact Or.inr (Or.inr ⟨hc, O, s, hM, hsu, hfO⟩)
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem proposal_start_supported_at
@@ -148,7 +124,7 @@ theorem proposal_start_supported_at
       (hstate ▸ AC.locksWF_stateU (hr := hr.toU) hac.vstart hpH i) hR hti hd
     with hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
-    rcases hp.reset_proposal_root_source_or_healed_at hpH hR hci hcall hd hti hib with
+    rcases hp.reset_proposal_root_source_or_healed_at hpH hR hci hcall hti hib with
       hg | ⟨x, r, l, O, ho, hOld, hrb, hfO⟩ | ⟨hc, C, s, hC, hsu, hfC⟩
     · exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg
         (hPsiU hhead)

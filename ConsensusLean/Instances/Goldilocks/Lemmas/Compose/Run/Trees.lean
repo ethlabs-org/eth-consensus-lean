@@ -11,6 +11,13 @@ run's credential `LocalRun.proposerCredential`, or `Proposes` for the own block)
 genesis root (genesis is held from the start). Under `NoColl` on the run, two such blocks with one
 root are one block, so the honest blocks of a run are a coherent set. -/
 
+namespace Consensus.Goldilocks.Node
+
+theorem frame_eq {P : Params} {A : NodeAC P} (st : NodeState A) :
+    frame st = st.fg.toFrame := by rfl
+
+end Consensus.Goldilocks.Node
+
 namespace Consensus.Goldilocks.Compose
 
 open Node
