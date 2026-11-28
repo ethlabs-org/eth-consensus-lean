@@ -467,6 +467,12 @@ structure WindowWitness (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n → Q ∈ (tr.state y j).fg.tree →
     Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F Q ∧ (tr.state y j).fg.IsViable Q
 
+/-- Restricting the interval keeps a window witness. -/
+theorem WindowWitness.mono {lo hi lo' hi' : Time} {Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : WindowWitness tr H lo hi Q) (hl : lo ≤ lo') (hh : hi' ≤ hi) :
+    WindowWitness tr H lo' hi' Q :=
+  ⟨fun y j hy h₁ h₂ => h.held y j hy (hl.trans h₁) (h₂.trans hh)⟩
+
 /-- The P-U witness clause of a held block is a witness of a `Generic.FrameWindow`. -/
 theorem windowWitness_of_frameWindow
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
