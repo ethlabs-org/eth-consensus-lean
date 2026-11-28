@@ -74,7 +74,7 @@ theorem result_source_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   have hsvc := hp.sync.ac_service_at hp.run (lo := g) (hi := b) le_rfl
   have hgs : g ≤ sp.ts s := by
     have := Healing.lt_cutZ sp g
-    have := AC.le_gbar g
+    have := Healing.le_gbar g
     have := sp.toParams.hΔ
     linarith
   have hreset : ∀ z c, z ∈ H (tr.time c) → tr.time c ≤ b → tr.projAC.RestartAt z c →

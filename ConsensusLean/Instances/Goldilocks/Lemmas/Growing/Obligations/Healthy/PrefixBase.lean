@@ -239,7 +239,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at_core
   have hr := hpre.acRun hncp
   have hdr := hpre.driven hncp
   rw [RunTrace.upTo_projAC] at hr hdr
-  refine ⟨hr, hdr, sync_window_at_reset_at_core hrun hs.toAC (AC.le_gbar g) hd0,
+  refine ⟨hr, hdr, sync_window_at_reset_at_core hrun hs.toAC (Healing.le_gbar g) hd0,
     catch_window_at_gbar_at_core hrun hc hd0, ?_, hfaults d hd0 hdb, hK.facts.hsize,
     AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
     AC.CommitteeTAt.upTo hrun.antitone (hrun.committeeTAt hK.facts hnc) d,

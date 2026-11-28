@@ -160,7 +160,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith
   have hau : sp.slot a + 2 * sp.k + 5 ≤ u := by
     rw [Healing.drainTime_eq] at hR

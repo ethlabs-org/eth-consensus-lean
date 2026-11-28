@@ -55,7 +55,7 @@ private theorem gbar_lt_of_drain (hq : Healing.Growing.ResetPremisesUpTo tr H pr
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hca := hq.cutZ_lt_reset_at
   have hcz := Healing.lt_cutZ sp g
-  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [Healing.gbar_nonneg g]
   have ha : a < sp.ts (sp.slot a + 1 : Nat) := by
     have hh := Int.lt_ediv_add_one_mul_self a (by linarith only [hΔ] : 0 < 4 * sp.Δ)
     rw [← AC.slot_eq sp ha0] at hh

@@ -137,7 +137,7 @@ theorem clean_optimistic_proposal_parent_at {cm : Time → Finset (Fin sp.n)} {�
     (Or.inr hop) v hv
   have hFD := hFB.trans hBD
   refine AC.Growing.heldAtProposal_of_writer_at hac.localRun hac.vstart
-    (hp.sync.ac_service_at hp.run (AC.le_gbar g))
+    (hp.sync.ac_service_at hp.run (Healing.le_gbar g))
     (by linarith) (b := b) (by rw [hti, hts] at hib; linarith) hpH hci hti hrs hvs hsend
     ⟨D, hD, hDr, hFD, ?_⟩
   rcases hacc with hg | ⟨q, hqH, hq, hqt⟩

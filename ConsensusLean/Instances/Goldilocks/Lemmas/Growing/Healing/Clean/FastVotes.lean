@@ -64,7 +64,7 @@ theorem fast_source_votes_of_domain_before_at {cm : Time → Finset (Fin sp.n)} 
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hgs : g ≤ sp.ts s := by
     have := Healing.lt_cutZ sp g
-    have := AC.le_gbar g
+    have := Healing.le_gbar g
     linarith
   intro i
   induction i using Nat.strong_induction_on with

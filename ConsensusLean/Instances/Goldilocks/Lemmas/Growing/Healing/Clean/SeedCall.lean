@@ -38,7 +38,7 @@ theorem ResetPremisesUpTo.reset_seed_held_at_call_at
     exact (AC.viableAncestor_anc (frame_tree_subset_at hp.run hp.noColl hv hcallS).1 hD).1
   have hcut := hp.cutZ_lt_reset_at
   have hnext : AC.gbar g < sp.ts (sp.slot (AC.gbar g) + 1 : Nat) := by
-    exact not_le.mp ((AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+    exact not_le.mp ((AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g)
       ((sp.slot (AC.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega))
   rw [Healing.cutZ_eq] at hcut
   have hΔ := sp.toParams.hΔ

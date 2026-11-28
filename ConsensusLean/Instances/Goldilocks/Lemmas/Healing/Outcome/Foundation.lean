@@ -75,7 +75,7 @@ theorem lt_drainTime {a : Time} (ha0 : 0 ≤ a) : a < drainTime sp a := by
 `ḡ`. -/
 theorem slot_gbar_lt_of_drainTime_le {g a : Time} {u : Nat} (hca : cutZ sp.toParams g < a)
     (hR : drainTime sp a ≤ sp.ts u) : sp.slot (AC.gbar g) + 1 ≤ u := by
-  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, AC.gbar_nonneg g, sp.toParams.hΔ]
+  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, Healing.gbar_nonneg g, sp.toParams.hΔ]
   exact slot_gbar_lt_of_cutZ_le (by linarith [lt_drainTime (sp := sp) ha0])
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
@@ -130,7 +130,7 @@ theorem sync_window_of_service {b : Time} (hrun : GoldilocksRun proposer dg H tr
       obtain ⟨ℓ, hc, hm⟩ := hsa
       refine ⟨ℓ, Compose.projAC_callAt.1 hc, ?_⟩
       rwa [Compose.projAC_state h hx] at hm
-    have he : max (tr.time i) g = tr.time i := max_eq_left ((AC.le_gbar g).trans hi)
+    have he : max (tr.time i) g = tr.time i := max_eq_left ((Healing.le_gbar g).trans hi)
     rw [Compose.projAC_deadline] at hdl
     obtain ⟨k, hk, h1, h2, h3⟩ := hsync.message x hx i m hsa' y hy j
       ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
@@ -143,7 +143,7 @@ theorem sync_window_of_service {b : Time} (hrun : GoldilocksRun proposer dg H tr
       simpa only [he] using h3
   · intro x hx i B ha hi y hy j ℓ hcj _ hdl hanc
     obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
-    have hgi : g ≤ tr.time i' := hti ▸ (AC.le_gbar g).trans hi
+    have hgi : g ≤ tr.time i' := hti ▸ (Healing.le_gbar g).trans hi
     have hmax : max (tr.time i') g = tr.time (i' + 1) := (max_eq_left hgi).trans hti
     apply Compose.acRelay_of_acceptNext (σ := tr.time (i' + 1)) hcj ?_
       (fun _ _ => Compose.accept_next h hy)
@@ -345,7 +345,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         (hp.faultBoundK_late (by clear * - hs1 hsm; omega) hcut hib)
         (hp.cs2 (by clear * - hs1 hsm; omega))
-        (hp.sync.syncAC hp.run ((AC.le_gbar g).trans
+        (hp.sync.syncAC hp.run ((Healing.le_gbar g).trans
           (hgs.trans ((AC.ts_le_iff sp).mpr (by clear * - hsm; omega))))) ?_
       rw [← hm]
       exact Or.inl hv
@@ -394,7 +394,7 @@ theorem raw_writer_held_at_slot_start
           change _ ≤ max (tr.time q) (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) + sp.Δ at hd
           linarith only [ht, hd]
         obtain ⟨k, hki, hak, _⟩ := ((ResetService.of_gst tr H hp.healthy.1 (b := 0)).syncAC
-          hp.run (hi := tr.time q) (AC.le_gbar g)).2 x hx q D hq hg le_rfl
+          hp.run (hi := tr.time q) (Healing.le_gbar g)).2 x hx q D hq hg le_rfl
           p hpH i ell hci (by
             have := hdl i le_rfl
             change tr.projAC.deadline p i (tr.time q) ≤ tr.time i
@@ -427,7 +427,7 @@ theorem reset_accept_frame
       rw [← max_add_add_right]
       exact max_le hq hjoin
     obtain ⟨k, hkj, hak, _⟩ := ((ResetService.of_gst tr H hp.healthy.1 (b := 0)).syncAC
-      hp.run (hi := tr.time q) (AC.le_gbar g)).2 x hx q B ha hnew le_rfl
+      hp.run (hi := tr.time q) (Healing.le_gbar g)).2 x hx q B ha hnew le_rfl
       y hy j ell hcall hdl hF
     exact AC.mem_tree_of_acceptAtU sp hr.toU hy hak hkj hcall hF
   · obtain ⟨k, hkj, hak, _⟩ := projection_catch_of_run hp.run hc x hx q B ha (not_le.mp hnew)

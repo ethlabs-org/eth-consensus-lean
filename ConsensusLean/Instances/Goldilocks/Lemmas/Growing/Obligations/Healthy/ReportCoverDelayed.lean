@@ -73,7 +73,7 @@ theorem report_cover_delayed_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {
   have hstep {m : Nat} : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hjoinu : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
-    have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (AC.gbar g))).2 (by rfl)
+    have hbase := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g) (sp.slot (AC.gbar g))).2 (by rfl)
     simp only [AC.ACParams.ts] at hbase hgu ⊢
     push_cast at hbase hgu ⊢
     linarith only [hbase, hgu]
@@ -84,7 +84,7 @@ theorem report_cover_delayed_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {
   have ht'b : t' ≤ b := (ht'2.trans (by linarith)).trans hTb
   have hyt' : y ∈ H t' := hp.run.antitone (by linarith) hy
   have hawake' : tr.awake y t' :=
-    hp.awake y t' hyt' (by linarith [AC.le_gbar g, hjoinu]) ht'b
+    hp.awake y t' hyt' (by linarith [Healing.le_gbar g, hjoinu]) ht'b
   rcases eq_or_lt_of_le ht'1 with heq | hlt
   · -- the signing tick at the update deadline
     subst heq

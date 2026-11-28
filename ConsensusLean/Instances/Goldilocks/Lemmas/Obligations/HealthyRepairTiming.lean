@@ -78,7 +78,7 @@ theorem healthy_opening_timing {sp : AC.ACParams} {ready r q heal b g X : Time} 
     ((le_max_left _ _).trans ((le_max_right _ _).trans
       ((le_max_right _ _).trans ((le_max_right _ _).trans hlower)))).trans hfresh.le
   refine ⟨by linarith, hR, hgu, ?_⟩
-  have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (AC.gbar g))).mpr le_rfl
+  have hbase := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g) (sp.slot (AC.gbar g))).mpr le_rfl
   simp only [AC.ACParams.ts] at hbase hgu ⊢
   push_cast at hbase hgu ⊢
   linarith

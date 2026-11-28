@@ -83,7 +83,7 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
       ell'.frame = ell.frame ∧
       AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
   have hgu : AC.gbar g ≤ sp.ts u := by
-    have hnext := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+    have hnext := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g)
       ((sp.slot (AC.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
     exact (not_le.mp hnext).le.trans hu
   apply toFG_call_after_update_of_sign hp.run hsign hy

@@ -203,7 +203,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
           fastLock_writer hr hp.run.vstart hx hfast v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans hBD, ha⟩
       apply AC.first_transfer_storedU sp hac.toU K hp.hP hp.hT hp.hsize hx hfast .refl hy hcast
-        hfirst (hp.sync.syncAC hp.run ((AC.le_gbar g).trans hgs)) carry
+        hfirst (hp.sync.syncAC hp.run ((Healing.le_gbar g).trans hgs)) carry
         (hp.faultBoundK_late hs1 hcut hib) (hp.cs2 (by omega))
       · rw [← hfirst]; exact Or.inl hv
       · exact fun z hz q hq e' he hslot => hprior z hz q hq e' he (by omega)
@@ -245,7 +245,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
         ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_specU hr.toU hy hcast).2.2.1,
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         (hp.faultBoundK_late (by omega) hcut hib) (hp.cs2 (by omega))
-        (hp.sync.syncAC hp.run ((AC.le_gbar g).trans
+        (hp.sync.syncAC hp.run ((Healing.le_gbar g).trans
           (hgs.trans ((AC.ts_le_iff sp).mpr (by omega))))) ?_
       rw [← hm]
       exact Or.inl hv

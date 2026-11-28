@@ -48,7 +48,7 @@ theorem restart_before_unanimous_slot_at
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith [sp.toParams.hΔ]
   rw [Healing.cutZ_eq] at hca
   have hqa := (AC.ts_le_iff_le_slot sp ha0 _).1 hca.le
@@ -70,7 +70,7 @@ theorem honest_votes_in_slot_at
       ∃ j e, AC.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
   intro y hy hyK
   have hΔ := sp.toParams.hΔ
-  have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := AC.gbar_nonneg g; linarith
+  have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := Healing.gbar_nonneg g; linarith
   have hS := healthy_base_of_reset_catch_before_at hp hd0 hub
   obtain ⟨j, e, ⟨ℓ, hcj, hej⟩, hs, hjt⟩ := AC.honest_votes_in_slot_before hS hgu le_rfl
     (fun x hx r hr hrs => by
@@ -105,7 +105,7 @@ theorem old_origin_below_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
         (not_le.mpr ht)
       omega
   have hT0 : 0 ≤ sp.ts u + sp.Δ := by
-    have := AC.gbar_nonneg g; linarith
+    have := Healing.gbar_nonneg g; linarith
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
     (by linarith) hT0 hub
   obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK

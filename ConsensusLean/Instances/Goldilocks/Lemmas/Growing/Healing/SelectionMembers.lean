@@ -52,7 +52,7 @@ theorem healed_member_supporter_after_drain_at
   apply healed_member_supporter_at hp ?_ hD
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
-    linarith [lt_cutZ sp g, AC.gbar_nonneg g, sp.toParams.hΔ]
+    linarith [lt_cutZ sp g, Healing.gbar_nonneg g, sp.toParams.hΔ]
   have ha : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
     have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
@@ -81,7 +81,7 @@ theorem healed_members_through_slot_below_at
   by_cases hju : j < u
   · have hΔ := sp.toParams.hΔ
     obtain ⟨x, hxK, hx⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-      (by linarith) (by linarith [AC.gbar_nonneg g]) hub
+      (by linarith) (by linarith [Healing.gbar_nonneg g]) hub
     obtain ⟨q, e, hv, hes, hq⟩ := honest_votes_in_slot_at hp hgu hR hub x hx hxK
     have hxq := hp.run.antitone hq hx
     obtain ⟨B, hB, hBr, hDB⟩ := hc.s2 D j hD x q e

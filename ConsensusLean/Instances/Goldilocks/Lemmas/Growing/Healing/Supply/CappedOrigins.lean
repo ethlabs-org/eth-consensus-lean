@@ -126,7 +126,7 @@ theorem accepted_before_cut_height_le
     (hk : tr.time k ≤ cutZ sp.toParams g - 4 * sp.Δ) :
     ((tr.state x (k + 1)).fg.σ R.root).h ≤ Healing.Growing.HZ tr H g := by
   have hΔ := sp.toParams.hΔ
-  have hg0 := AC.gbar_nonneg g
+  have hg0 := Healing.gbar_nonneg g
   have hcut : AC.gbar g + 8 * sp.Δ < cutZ sp.toParams g := by
     have ht := (AC.ts_le_iff_le_slot sp hg0 (sp.slot (AC.gbar g) + 1)).not.mpr
       (show ¬ (sp.slot (AC.gbar g) + 1 : Int) ≤ sp.slot (AC.gbar g) by omega)
@@ -202,7 +202,7 @@ theorem accepted_before_cut_height_le
             (hrun.antitone ((hrun.time_mono hr).trans
               (by linarith : tr.time j ≤ tr.time m)) hy) hrs)
           (max (tr.time k) g) sp.Δ
-        have hgg := AC.le_gbar g
+        have hgg := Healing.le_gbar g
         have hmax : max (max (tr.time k) g) (AC.gbar g) ≤
             cutZ sp.toParams g - 3 * sp.Δ := max_le
           (max_le (by linarith) (by linarith)) (by linarith)

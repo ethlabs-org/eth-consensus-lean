@@ -63,7 +63,7 @@ theorem raw_writer_held_at_slot_start_at
     have hqt₀ : tr.time q < sp.ts s + 2 * sp.Δ := hqt
     have hxk : x ∈ H (tr.time k) := hkt₀ ▸ hxq
     have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts s := by
-      have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+      have hbase := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g)
         (sp.slot (AC.gbar g))).mpr (by omega)
       simp only [ACParams.ts] at hbase hs ⊢
       push_cast at hbase hs ⊢

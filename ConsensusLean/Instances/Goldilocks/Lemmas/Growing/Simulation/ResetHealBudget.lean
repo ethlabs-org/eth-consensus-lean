@@ -92,7 +92,7 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   have hcz := D.reset.cutZ_lt_reset_at
   have hgz := Healing.lt_cutZ (sp := sp) gst
   have ha0 : 0 ≤ D.resetTime := by
-    have := AC.gbar_nonneg gst
+    have := Healing.gbar_nonneg gst
     linarith
   have hadrain : D.resetTime < Healing.drainTime sp D.resetTime := by
     rw [Healing.drainTime_eq]

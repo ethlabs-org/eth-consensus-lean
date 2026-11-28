@@ -35,7 +35,7 @@ theorem post_drain_slot {g a : Time} {u : Nat} (hca : cutZ sp.toParams g < a)
       sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ sp.ts (s + 1 : Nat) := by
   have hDelta := sp.toParams.hΔ
   have hcut := lt_cutZ (sp := sp) g
-  have hga0 := AC.gbar_nonneg g
+  have hga0 := Healing.gbar_nonneg g
   have ha0 : 0 ≤ a := by linarith
   have hu : sp.slot a + 2 * sp.k + 5 ≤ u := by
     rw [drainTime_eq] at hR

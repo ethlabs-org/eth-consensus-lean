@@ -54,7 +54,7 @@ theorem reset_accept_frame_at
       change max (tr.time q) (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) + sp.Δ ≤ tr.time j
       rw [← max_add_add_right]
       exact max_le hq hjoin
-    obtain ⟨k, hkj, hak, _⟩ := hp.frame_relay_at hx ha ((AC.le_gbar g).trans hnew)
+    obtain ⟨k, hkj, hak, _⟩ := hp.frame_relay_at hx ha ((Healing.le_gbar g).trans hnew)
       hy hcall hdl hF
     exact AC.mem_tree_of_acceptAtU sp hR.toU hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF

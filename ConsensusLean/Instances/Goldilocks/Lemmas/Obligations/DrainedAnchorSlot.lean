@@ -29,7 +29,7 @@ theorem drained_anchor_slot {g a : Time} {s : Nat} (hca : Healing.cutZ sp.toPara
   have hΔ := sp.toParams.hΔ
   have hcz := Healing.lt_cutZ sp g
   have ha0 : 0 ≤ a := by
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith
   have hau : sp.slot a + 2 * sp.k + 5 ≤ s := by
     rw [Healing.drainTime_eq] at hR

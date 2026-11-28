@@ -45,7 +45,7 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   obtain ⟨v, r, l, S, hS, hra, hrb, hheld⟩ := hp.reset_seed_held_at_call_at
   have hru : tr.time r < sp.ts u := by
     have hca := hp.cutZ_lt_reset_at
-    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g]
+    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, Healing.gbar_nonneg g]
     rw [Healing.drainTime_eq] at hdrain
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
       have := (AC.ts_le_iff_le_slot sp ha0 _).mp h
@@ -63,14 +63,14 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         exact (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) _).mpr (by omega)
     exact_mod_cast (AC.ts_lt_iff sp).mp (hts.trans_lt hru)
   have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
-    have hslot := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+    have hslot := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g)
       (sp.slot (AC.gbar g))).mpr (by omega)
     simp only [ACParams.ts] at hslot hgst ⊢
     push_cast
     linarith
   obtain ⟨j, ell, hup⟩ := Healing.update_call_of_awake hr hy
     ((Trace.upTo_awake _ _ _).mpr ⟨hp.awake y _ (hp.run.antitone htime hy)
-      (by linarith [AC.le_gbar g]) (htime.trans htb), htime⟩) (by
+      (by linarith [Healing.le_gbar g]) (htime.trans htb), htime⟩) (by
       intro i hi
       have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo t)).localRun
       unfold AC.joined
@@ -108,7 +108,7 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     exact (hgrow.2.mono hsub).trans hF
   have hacall : a + sp.Δ ≤ tr.time j := by
     have hca := hp.cutZ_lt_reset_at
-    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g]
+    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, Healing.gbar_nonneg g]
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
       have := (AC.ts_le_iff_le_slot sp ha0 _).mp h
       omega

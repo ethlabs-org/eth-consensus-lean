@@ -82,7 +82,7 @@ theorem operational_update_selection_proof_at {b : Time}
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith
   have haR : a ≤ drainTime sp a := by
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
@@ -95,7 +95,7 @@ theorem operational_update_selection_proof_at {b : Time}
     (by rw [ht]; linarith [haR.trans hR])
   -- an honest member of the slot-`u` committee votes for `P`, which then reaches `y`
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-    (by linarith) (by linarith [AC.gbar_nonneg g]) hub
+    (by linarith) (by linarith [Healing.gbar_nonneg g]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hRnext hub w hw hwK
   have hwq : w ∈ H (tr.time q) := hp.run.antitone hq hw
   have hfr := (hp.run.cutLaw y j _ (Compose.projAC_callAt.mp hup.1) hy).1

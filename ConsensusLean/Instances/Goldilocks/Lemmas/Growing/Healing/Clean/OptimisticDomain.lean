@@ -88,7 +88,7 @@ theorem optimistic_vote_domain_before_of_quarantine_at {cm : Time → Finset (Fi
     have hle := (AC.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
     exact AC.Growing.raw_writer_voterBlockTree_window_before_at
       hp.committee_pos hac.localRun hac.vstart
-      (hp.sync.ac_service_at hp.run (lo := AC.gbar g) (hi := b) (AC.le_gbar g))
+      (hp.sync.ac_service_at hp.run (lo := AC.gbar g) (hi := b) (Healing.le_gbar g))
       (catch_ac hp ) hx hy (Or.inr (Or.inr hop)) .refl hcast (by omega) hib
       (by linarith only [hle, hgs, hΔ]) hF
   · intro w c n O hci ho

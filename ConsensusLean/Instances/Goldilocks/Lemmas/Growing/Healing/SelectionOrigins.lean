@@ -52,7 +52,7 @@ theorem high_origins_before_next_slot_below_at
       omega
   rcases lt_or_eq_of_le hmu with hmu | rfl
   · have hT0 : 0 ≤ sp.ts u + sp.Δ := by
-      have := AC.gbar_nonneg g
+      have := Healing.gbar_nonneg g
       linarith [sp.toParams.hΔ]
     obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u)
       (by linarith [sp.toParams.hΔ]) (by linarith [sp.toParams.hΔ]) hT0 hub

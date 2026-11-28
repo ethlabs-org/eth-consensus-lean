@@ -279,7 +279,7 @@ theorem HandoverCore.of_reset {T : Time} {r σ : Nat}
   have hΔ := sp.toParams.hΔ
   have hca := hp.cutZ_lt_reset_at
   have hgz := Healing.lt_cutZ sp g
-  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [Healing.gbar_nonneg g]
   have hsa : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
     have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega

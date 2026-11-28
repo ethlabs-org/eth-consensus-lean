@@ -85,7 +85,7 @@ theorem restart_before_unanimous_slot {b : Time}
     (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith [sp.toParams.hΔ]
   rw [Healing.cutZ_eq] at hca
   have hqa := (AC.ts_le_iff_le_slot sp ha0 _).1 hca.le
@@ -106,7 +106,7 @@ theorem slotAfter_add_le_of_drain {b : Time}
     (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := AC.gbar_nonneg g
+    have := Healing.gbar_nonneg g
     linarith [sp.toParams.hΔ]
   have hcz : Healing.cutZ sp.toParams g ≤ sp.ts u := by
     rw [Healing.cutZ_eq] at hca ⊢
