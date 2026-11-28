@@ -8,11 +8,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.AnchorStepsG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCrossing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainedAnchorSlot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -24,10 +24,8 @@ The growing form of `Obligations/AnchorStepsGap`. A height witness is an honest 
 honest at that cut's time; replay states of a block agree across independently honest holders
 (`Healing.Growing.σ_eq_honest_at`), so a height bound read at one holder is read at every other.
 
-* `anchorStep_gap_at`: one step `A → X`, `A` at slot `s`, `X` at slot `s + c`, `2 ≤ c`, with the
-  delivery premise `t_s + 6Δ + ΔF ≤ t_{s+c}`;
-* `anchorSteps_gap_at`: the three steps of the window, anchors at `s₀ + [0, c, 2c, 3c]`, with the
-  slot-free delivery premise `6Δ + ΔF ≤ 4Δ·c`. -/
+The signing gap is paid at each report deadline. `anchorSteps_gap_delayed_at` links the four
+anchors at `s₀ + [0, c, 2c, 3c]` using the budget `6Δ + G·Δ + ΔF ≤ 4Δ·c`. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -39,7 +37,7 @@ variable {sp : ACParams}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 variable {hold : Time}
 
-/-- The facts of a post-drain honest anchor that `report_cover_of_unanimous_at` reads. -/
+/-- The facts of a post-drain honest anchor used to obtain report coverage. -/
 private theorem anchor_facts_at {g ΔR a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold) {s : Nat}
@@ -220,32 +218,6 @@ private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D hold : Time}
       exact ⟨by omega, by omega⟩
     rw [hfin hbE, hEJ, hEhj, hPrJ, hPrhj]
 
-/-- One anchor step with responsive reports and rows supplied within `D`. -/
-theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
-    (hsup : Healing.Growing.RowSupplyWithin tr H g b D hold) (hD : 0 ≤ D)
-    (hdel : sp.ts s + 6 * sp.Δ + D + ΔF ≤ sp.ts s')
-    (hcr : sp.ts s + 6 * sp.Δ + D + sp.Δ ≤ sp.ts s')
-    {A X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
-    (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
-    (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b)
-    (hgS : gbar gS ≤ sp.ts s + 6 * sp.Δ)
-    (hh : ∃ y k, y ∈ H (tr.time k) ∧ A ∈ (tr.state y k).fg.tree ∧
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ A.root).h) :
-    AnchorStepAt tr H A X := by
-  apply anchorStep_of_reports_within_at hp hs hhold hc2 hs' hsup hD (G := 0)
-    (by simpa using hdel) (by simpa using hcr) _ hA hX hR hb hgS hh
-  intro hAH hAs hu hAg hun hgu hR hb
-  simpa only [Nat.cast_zero, zero_mul, add_zero] using
-    Healing.Growing.report_cover_of_unanimous_at hp hsign hAH hAs hu hAg hun hgu hR
-      (by simpa using hb)
-
 /-- One anchor step using reports delayed by the signing calendar, with no additional row delay. -/
 theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -271,36 +243,6 @@ theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF hold : Time}
   intro hAH hAs hu hAg hun hgu hR hb
   exact Healing.Growing.report_cover_delayed_of_unanimous_at hp hcal hgap
     hAH hAs hu hAg hun hgu hR hb
-
-/-- **One route-A anchor step (gap `c`)** under growing faults. Honest proposals `A` at slot `s`
-and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at
-a holder honest at its cut: `AnchorStepAt tr H A X`. The same-tick FG update supplies the rows
-(`anchorStep_gap_within_at` at `D = 0`). -/
-theorem anchorStep_gap_at {g ΔR a b gS ΔF hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
-    (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
-    {A X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
-    (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
-    (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b)
-    (hgS : gbar gS ≤ sp.ts s + 6 * sp.Δ)
-    (hh : ∃ y k, y ∈ H (tr.time k) ∧ A ∈ (tr.state y k).fg.tree ∧
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ A.root).h) :
-    AnchorStepAt tr H A X := by
-  have hΔ := sp.toParams.hΔ
-  have h8 : sp.ts s + 8 * sp.Δ ≤ sp.ts s' := by
-    rw [hs', ts_add_gap (sp := sp)]
-    have : (2 : Time) ≤ c := by exact_mod_cast hc2
-    linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
-  exact anchorStep_gap_within_at hp hsign hs hhold hc2 hs' (hp.rowSupplyWithin_zero hhold)
-    le_rfl
-    (by simpa using hdel)
-    (by linarith) hA hX hR hb hgS hh
 
 /-- A height bound at a holder honest at its cut carries to a later honest proposal above it,
 read at its proposer just after the proposal cut. -/
@@ -330,85 +272,6 @@ private theorem height_next_at {g ΔR a b : Time}
   rw [Healing.Growing.σ_eq_honest_at hrun hnc h0 hle1 hm (hrun.time_nonneg k)
     (fun _ hq => hrun.time_mono hq.le) hy hAz hAy] at hle
   exact ⟨_, kX + 1, ht ▸ hm, hXm, by omega⟩
-
-/-- **The three route-A anchor steps (gap `c`)** under growing faults. Four honest proposals
-`P i` at the slots `s₀ + [0, c, 2c, 3c]`, `2 ≤ c`, after the drain, `t_{s₀+3c} ≤ b`, the HS
-premises with `6Δ + ΔF ≤ 4Δ·c` and `ḡ_S ≤ t_{s₀} + 6Δ`, and `H_z + 2 ≤ σ[P₀].h` at a holder
-honest at its cut: `AnchorStepAt tr H (P i) (P (i+1))` for `i < 3`. -/
-theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    {c : Nat} (hc2 : 2 ≤ c)
-    (hsup : Healing.Growing.RowSupplyWithin tr H g b d hold) (hd : 0 ≤ d)
-    (hdel : 6 * sp.Δ + d + ΔF ≤ 4 * sp.Δ * c)
-    (hrelay : 7 * sp.Δ + d ≤ 4 * sp.Δ * c) {s₀ : Nat}
-    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
-      (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
-    (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c : Nat) ≤ b)
-    (hgS : gbar gS ≤ sp.ts s₀ + 6 * sp.Δ)
-    (hh₀ : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h) :
-    ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ) := by
-  have hP0 : Healing.Growing.HonestProposalRun tr H proposer s₀ (P 0) := by simpa using hP 0
-  have hP1 : Healing.Growing.HonestProposalRun tr H proposer (s₀ + c) (P 1) := by
-    simpa using hP 1
-  have hP2 : Healing.Growing.HonestProposalRun tr H proposer (s₀ + 2 * c) (P 2) := by
-    simpa using hP 2
-  have hP3 : Healing.Growing.HonestProposalRun tr H proposer (s₀ + 3 * c) (P 3) := by
-    simpa using hP 3
-  have hmono : ∀ m n : Nat, m ≤ n → sp.ts m ≤ sp.ts n := fun m n h =>
-    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
-  have hΔ := sp.toParams.hΔ
-  have h1 := height_next_at hp hP0 hP1 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
-  have h2 := height_next_at hp hP0 hP2 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
-  have hbudget {s t : Nat} (ht : t = s + c) :
-      sp.ts s + 6 * sp.Δ + d + ΔF ≤ sp.ts t ∧
-        sp.ts s + 6 * sp.Δ + d + sp.Δ ≤ sp.ts t := by
-    rw [ht, ts_add_gap (sp := sp)]
-    exact ⟨by linarith, by linarith⟩
-  have st0 := anchorStep_gap_within_at hp hsign hs hhold hc2 rfl hsup hd
-    (hbudget (s := s₀) rfl).1 (hbudget (s := s₀) rfl).2 hP0 hP1 hR
-    ((hmono _ _ (by omega)).trans hb) hgS hh₀
-  have e1 : s₀ + 2 * c = (s₀ + c) + c := by omega
-  have st1 := anchorStep_gap_within_at hp hsign hs hhold hc2 e1 hsup hd
-    (hbudget e1).1 (hbudget e1).2 hP1 hP2
-    (hR.trans (hmono _ _ (by omega))) ((hmono _ _ (by omega)).trans hb)
-    (by linarith [hmono s₀ (s₀ + c) (by omega)]) h1
-  have e2 : s₀ + 3 * c = (s₀ + 2 * c) + c := by omega
-  have st2 := anchorStep_gap_within_at hp hsign hs hhold hc2 e2 hsup hd
-    (hbudget e2).1 (hbudget e2).2 hP2 hP3
-    (hR.trans (hmono _ _ (by omega))) hb
-    (by linarith [hmono s₀ (s₀ + 2 * c) (by omega)]) h2
-  intro i
-  fin_cases i
-  exacts [st0, st1, st2]
-
-/-- The three same-tick route-A anchor steps. -/
-theorem anchorSteps_gap_at {g ΔR a b gS ΔF hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    {c : Nat} (hc2 : 2 ≤ c)
-    (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
-    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
-      (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
-    (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c : Nat) ≤ b)
-    (hgS : gbar gS ≤ sp.ts s₀ + 6 * sp.Δ)
-    (hh₀ : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h) :
-    ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ) := by
-  have hc : (2 : Time) ≤ c := by exact_mod_cast hc2
-  have hΔ := sp.toParams.hΔ
-  exact anchorSteps_gap_within_at hp hsign hs hhold hc2 (hp.rowSupplyWithin_zero hhold) le_rfl
-    (by simpa only [add_zero] using hdel)
-    (by linarith [mul_le_mul_of_nonneg_left hc (show 0 ≤ 4 * sp.Δ by linarith)]) hP hR hb hgS hh₀
 
 /-- The three anchor steps with a signing-gap bound at each public anchor. Reports carry
 the calendar delay; the same-report rows have delay zero. -/

@@ -17,11 +17,9 @@ their event and recipients honest at their call:
 
 * `received_forward_stamp_le_of_stamp_at`: a received wrapper of a signer honest at its stamp is
   stamped no later than the receipt;
-* `publication_held_before_gst_deadline_at`, `publication_acceptedBy_psync_any_at`,
-  `acceptance_relay_psync_any_at`: acceptance relay at the effective `max(source, GST)` deadline;
-* `held_forward_blockCall_before_at`, `publication_blockDeliveredBy_psync_at`,
-  `ownBlockAt_accept_at`, `block_service_psync_at`: block service;
-* `vote_message_service_psync_other_at`, `message_service_psync_at`: message service;
+* `acceptance_relay_psync_any_at`: acceptance relay at the effective `max(source, GST)` deadline;
+* `held_forward_blockCall_before_at`, `block_service_psync_at`: block service;
+* `message_service_psync_at`: message service;
 * `resetService_of_psync_at`: the reset service of a healthy run;
 * `catchRun_of_psync_at`: old acceptances catch up by the first `2Δ` snapshot after GST. -/
 
@@ -270,73 +268,6 @@ theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
   exact h (received_forward_stamp_le_at S rho hn hv he hc
     (fun hf => hx (rho.faultyAt_mono hut hf)) hd)
 
-/-- GST holdings of an actual publication by an origin honest at its event, at a recipient
-honest at its call, before the effective `max(source, GST)` deadline. -/
-private theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
-    (hr : (publisherExecution S rho).actual r)
-    (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
-    (hrow : ¬ rho.log.fgAtt r.object)
-    {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
-    (hj : (simTraceAt S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ)
-    (ht : (publisherExecution S rho).eventTime r.event = τ)
-    (hb : (simTraceAt S rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
-    (hd : (simTraceAt S rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤ (simTraceAt S rho hn).time j) :
-    ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧
-      d < (simTraceAt S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ := by
-  have hrel : rho.releases (rho.key r.origin) r.object τ :=
-    ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩
-  have htr := network_trace_eq S rho hn
-  rw [htr, network_honestKeysAt_eq] at hy
-  rw [htr] at hj hb hd ⊢
-  exact NodeAsChainShape.CanonicalTrace.publication_held_before_psync (network_localRun S rho hn hv)
-    le_rfl hnet hrel (ht ▸ hx) hrow hy hj hτ hb hd
-
-/-- Acceptance service for an actual publication by an origin honest at its event, including a
-pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut. -/
-private theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
-    (hr : (publisherExecution S rho).actual r)
-    {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
-    (hx : rho.key r.origin ∉ rho.faultyAt τ)
-    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
-    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
-      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
-    {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
-    (hj : (simTraceAt S rho hn).IsCall y j)
-    (hb : (simTraceAt S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ
-      ≤ rho.horizon)
-    (hd : (simTraceAt S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ
-      ≤ (simTraceAt S rho hn).time j)
-    (hF : Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
-      ((simTraceAt S rho hn).state y j).fg.F B) :
-    (simTraceAt S rho hn).BlockAcceptedBy y j (max τ g) B := by
-  have hrel : rho.releases (rho.key r.origin) r.object τ :=
-    ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩
-  have hh := isCall_time_le_horizon S rho hn hv hj
-  have htr := network_trace_eq S rho hn
-  have hH := network_honestKeysAt_eq S rho
-  rw [htr, hH] at hy hF
-  rw [htr] at hj hh hb hd ⊢
-  have hrun := network_localRun S rho hn hv
-  apply NodeAsChainShape.CanonicalTrace.publication_acceptedBy hrun hx hrel
-    (fun _ hy hj => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
-      hrun le_rfl hnet hrel hx (not_isFGAtt_of_decodeForward hdecode) hy hj hτ) _ hy hj hh hb hd hF
-  intro j t₀ d D hj₀ hy hx hrel hheld hlt hd hF
-  rw [← htr] at hj₀ hd ⊢
-  rw [← htr, ← hH] at hF
-  exact held_forward_accepted_before_at S rho hn hv hnc hj₀ hy hx hrel hheld hdecode hlt hd hF
-
 /-- The acceptance-relay service for an acceptance by a node honest at its cut, including a
 pre-GST one, at a recipient honest at its call within the horizon. -/
 private theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
@@ -418,61 +349,6 @@ theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] 
     have hk : (simTrace S rho hn).time k < D := ht ▸ huD
     exact ⟨k, before hk, ht ▸ htu, hkey ▸ hc, hk⟩
 
-/-- A decoded publication by an origin honest at its event receives block service at the
-processing cut's GST deadline, including publications before GST. -/
-private theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
-    (hr : (publisherExecution S rho).actual r)
-    {τ : Time} (hτ : 0 ≤ τ)
-    (ht : (publisherExecution S rho).eventTime r.event = τ)
-    (hx : rho.key r.origin ∉ rho.faultyAt τ)
-    {p : Option (Wire (Fintype.card V) S.vote)}
-    {B : Blk (S.params (Model.pubOf E) hn)}
-    (hdecode : decodeForward (S.params
-      (Model.pubOf E) hn)
-      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
-    {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt S rho
-      ((simTraceAt S rho hn).time j))
-    (hj : (simTraceAt S rho hn).IsCall y j)
-    (hb : (simTraceAt S rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
-    (hd : (simTraceAt S rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤
-        (simTraceAt S rho hn).time j) :
-    (simTraceAt S rho hn).BlockDeliveredBy y j τ (max τ g) B := by
-  have hrel : rho.releases (rho.key r.origin) r.object τ :=
-    ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩
-  have htr := network_trace_eq S rho hn
-  rw [htr, network_honestKeysAt_eq] at hy
-  rw [htr] at hj hb hd ⊢
-  apply NodeAsChainShape.CanonicalTrace.publication_blockDeliveredBy_psync
-    (network_localRun S rho hn hv) le_rfl hnet hrel hx (not_isFGAtt_of_decodeForward hdecode)
-    hτ _ hy hj hb hd
-  intro j d D hh hlt hd
-  rw [← htr] at hd ⊢
-  exact held_forward_blockCall_before_at S rho hn hv hx hh hdecode hlt hd
-
-/-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
-private theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho)
-      (simTraceAt S rho hn))
-    {y : Fin (Fintype.card V)} {i : Nat}
-    (hy : y ∈ honestKeysAt S rho
-      ((simTraceAt S rho hn).time i))
-    {B : Blk (S.params (Model.pubOf E) hn)}
-    (hown : (simTraceAt S rho hn).OwnBlockAt y i B) :
-    (simTraceAt S rho hn).AcceptAt y i B := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  exact hrun.toLocalRun.ownBlockAt_accept (fun y => Compose.requirements_from _ (hrun.vstart y))
-    hrun.genesis_root_ok hnc hy hown
-
 /-- Finite GST block service for blocks accepted or proposed by a node honest at its cut, at a
 recipient honest at its call within the horizon, with the source-time lower bound and the
 effective `max(source, GST)` processing deadline. -/
@@ -519,46 +395,6 @@ theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V
   intro o parent k d D hdecode _ hx held hd' hk
   rw [← htr] at hdecode hx hk ⊢
   exact held_forward_blockCall_before_at S rho hn hv hx held hdecode hd' hk
-
-/-- A first-release vote envelope of a sender honest at its release reaches a different recipient
-honest at its call under PSync. The release time is the lower bound; GST changes only the service
-deadline. -/
-private theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    {g : Time} (hnet : rho.log.PSync rho.point g)
-    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
-    {z : Nat} (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
-    (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
-    (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
-    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∈
-      rho.releasesAt source)
-    (hfirst : ∀ i < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
-        rho.releasesAt i)
-    {j : Nat} (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
-    (hj : (simTraceAt S rho hn).IsCall y j)
-    (hb : (simTraceAt S rho hn).time j ≤ rho.horizon)
-    (hd : (simTraceAt S rho hn).projAC.deadline y j (max τ g) ≤ (simTraceAt S rho hn).time j) :
-    ∃ k ≤ j, τ ≤ (simTraceAt S rho hn).time k ∧
-      (simTraceAt S rho hn).projAC.ProcessAt y k m ∧
-      (simTraceAt S rho hn).time k < (simTraceAt S rho hn).projAC.deadline y k (max τ g) := by
-  have hrun := network_localRun S rho hn hv
-  have htr := network_trace_eq S rho hn
-  rw [Compose.projAC_deadline] at hd
-  rw [htr, network_honestKeysAt_eq] at hy
-  rw [htr] at hj hb hd
-  have hp := NodeAsChainShape.CanonicalTrace.publication_messageDeliveredBy hrun hx hne
-    (votePublication_intro S rho hck hs hrel hfirst)
-    (fun _ hy hj hb hd => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
-      hrun le_rfl hnet ⟨source, hs, hrel⟩ hx
-      (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) hy hj hτ hb hd)
-    (fun _ hh hx hhld => htr ▸ votePublication_process S rho hn hv hh hx hhld)
-    hy hj (hd.trans hb) hd
-  rw [← htr] at hp
-  obtain ⟨k, hk, hlo, hm, ht⟩ := hp
-  refine ⟨k, hk, hlo, ?_, by rwa [Compose.projAC_deadline]⟩
-  exact hm.elim (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inl h⟩)
-    (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inr h⟩)
 
 /-- AC sends and fresh admissions by a node honest at its cut are processed within the PSync
 deadline by every recipient honest at its call within the horizon. The sender processes at the

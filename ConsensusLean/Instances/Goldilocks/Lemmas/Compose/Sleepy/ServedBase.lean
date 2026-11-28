@@ -28,10 +28,9 @@ public section
 /-! # Goldilocks under `Sleepy`: the latest view's votes at a read
 
 The facts on the latest view that the served head (`Compose/Sleepy/Served`) and its steps
-(`Compose/Sleepy/ServedSteps`) share: the votes of the latest view are honest slot votes
-(`mem_latest_votes`), the FG tree grows (`fg_grows`), the latest view is in the frame
-(`latestView_mem`), and its honest supporter of a target with honest votes
-(`latest_honest_supporter_of_target_votes`). -/
+(`Compose/Sleepy/ServedSteps`) share: slot-pool votes appear in the latest view
+(`mem_latest_votes`), the FG tree grows (`fg_grows`), and the latest view's votes and
+support are characterized by their stamps (`latestView_mem`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -88,75 +87,6 @@ theorem latestView_mem {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.
   simp only [AC.voteView, AC.voteViewList, AC.View.ofLists, AC.ACState.poolAt, Set.mem_ofPred_eq,
     List.mem_filter, decide_eq_true_eq, Int.natCast_nonneg, not_lt.2, ↓reduceIte, Int.toNat_natCast,
     and_assoc, true_and]
-
-/-- Honest latest-view voters support a held target when their votes extend it and their
-heads are relayed with finite stamps. The target-vote and relay premises are independent of
-the invariant and service window used to establish them. -/
-theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hR : R ∈ (Node.frame (tr.state y i)).tree) {L : Nat}
-    (hL : (L : Int) = (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    (hvotes : ∀ z ∈ H, ∀ q < i, ∀ e, AC.VoteAt tr.projAC z q e → e.msg.slot = L →
-      AC.VoteExtends (tr.HonestBlocks H) e.msg R)
-    (hrelay : ∀ z ∈ H, ∀ q e, AC.VoteAt tr.projAC z q e → e.msg.slot = L →
-      ∀ Hd ∈ tr.HonestBlocks H, Hd.root = e.msg.head →
-        Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd →
-        Hd ∈ (Node.frame (tr.state y i)).tree ∧ (tr.projAC.state y i).blockStamp Hd.root < ⊤) :
-    ∀ w ∈ AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-        t).1.votes, w ∈ H →
-      w ∈ AC.supporters (Node.frame (tr.state y i))
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
-  intro w ⟨v, hvV, hvw⟩ hwH
-  subst hvw
-  have hrun' := goldilocks_ac_projection sp dg H tr proposer hrun hnc
-  have hr := hrun'.localRun
-  have hU := hr.coherent
-  have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
-  have hst := projAC_state hrun.toLocalRun hy i
-  have hpool : ∀ u ∈ (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-      t).1.votes, u ∈ (tr.projAC.state y i).pool L ∧ u.slot = L := fun u hu => by
-    have h := ((latestView_mem hL u).1.1 hu).1
-    rw [← hst] at h
-    exact ⟨h, AC.state_pool_slotU sp hr.toU (fun _ => AC.voteStart_initial _) hy i L u h⟩
-  obtain ⟨hvp, hvs⟩ := hpool v hvV
-  -- the vote is `v.val`'s own, of slot `L`, and extends `R` (S2)
-  obtain ⟨j', hj', e, hve, hev⟩ := hrun'.honest.pool_vote y hy i L v hvp hwH
-  obtain ⟨Hd, hHdU, hHdr, hRHd⟩ := hvotes v.val hwH j' hj' e hve (by rw [hev, hvs])
-  have hF : Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd :=
-    ((hΦ.rooted.2 R hR).mono hΦU).trans hRHd
-  obtain ⟨hHdΦ, hbst⟩ := hrelay v.val hwH j' e hve (by rw [hev, hvs]) Hd hHdU hHdr hF
-  obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := AC.honest_headU hrun'.toU hwH hve
-  obtain rfl : Hd = Hd₂ := hU.1 hHdU hHd₂ (hHdr.trans hHd₂r.symm)
-  rw [hev] at hHdr hHd₂s
-  -- the vote is resolved
-  have hvst : (tr.state y i).ac.voteStamp v < ⊤ := ((latestView_mem hL v).1.1 hvV).2
-  have hres : AC.resolutionTime (tr.state y i).ac (Node.frame (tr.state y i)) v < ⊤ := by
-    unfold AC.resolutionTime
-    rw [← hHdr, AC.lookup_of_mem hΦ hHdΦ]
-    dsimp only
-    simp only [not_lt.2 hHd₂s, ↓reduceIte]
-    rw [← hst] at hvst ⊢
-    exact max_lt hvst hbst
-  -- an honest validator does not equivocate
-  have hne : v.val ∉ AC.equivocators (AC.latestView sp (tr.state y i).ac
-      (Node.frame (tr.state y i)) t).1.votes := by
-    rintro ⟨a, ha, b, hb, hab, hav, hbv⟩
-    obtain ⟨hap, has⟩ := hpool a ha
-    obtain ⟨hbp, hbs⟩ := hpool b hb
-    obtain ⟨ja, -, ea, hea, hea'⟩ := hrun'.honest.pool_vote y hy i L a hap (by rw [hav]; exact hwH)
-    obtain ⟨jb, -, eb, heb, heb'⟩ := hrun'.honest.pool_vote y hy i L b hbp (by rw [hbv]; exact hwH)
-    rw [hav] at hea
-    rw [hbv] at heb
-    obtain ⟨-, rfl⟩ := AC.one_vote_per_slot sp _ H _ _ hr v.val hwH ja jb ea eb hea heb
-      (by rw [hea', heb', has, hbs])
-    exact hab (hea'.symm.trans heb')
-  refine ⟨hne, v, (latestView_mem hL v).2.2 ⟨(latestView_mem hL v).1.1 hvV, hres⟩, rfl,
-    by rw [hvs]; exact hL, Hd, hHdΦ, hHdr, AC.anc_tree_of_anc_U hU hΦ hΦU hR hRHd hHdΦ⟩
 
 end Consensus.Goldilocks.Compose
 
