@@ -16,7 +16,6 @@ that cut's time (`Growing.GoldilocksRun.upTo`), where the node is honest through
 
 * `projAC_state_at`, `sendOrAdmit_forward_source_at`: the AC projection holds the node's AC state,
   and a send or fresh admission is an emission, a message or a block-carried vote;
-* `run_F_mono_at`: `Σ.F` moves only to descendants, inside the blocks held while honest;
 * `acBlock_prev_at`, `accept_next_at`: an AC block call follows its FG acceptance at the same time;
 * `sleepyServiceBefore_of_message_relay_at`: the finite Sleepy service from AC message service and
   node acceptance relay. -/
@@ -89,14 +88,6 @@ theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg 
   rcases Compose.sendOrAdmit_forward_source hr hy h' with he | ⟨hc, hn, hp⟩
   · exact Or.inl ((RunTrace.upTo_emitAt tr).mp he).2
   · exact Or.inr ⟨((RunTrace.upTo_msgCallAt tr).mp hc).2, by rwa [hs] at hn, hp⟩
-
-/-- `Σ.F` of a node honest at cut `i'` moves only to descendants up to `i'`, inside the blocks held
-while honest. -/
-private theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i i' : Nat}
-    (hy : y ∈ H (tr.time i')) (hii : i ≤ i') :
-    Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y i').fg.F :=
-  hrun.toLocalRun.finalized_mono hy hii
 
 /-- An AC block call of a node honest at it follows the FG acceptance of the block at the same
 time. -/
