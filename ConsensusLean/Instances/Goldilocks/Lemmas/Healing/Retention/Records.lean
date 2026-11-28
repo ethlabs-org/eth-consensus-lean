@@ -14,11 +14,11 @@ public section
 An honest client record changes only when the node signs
 (`record_attestation`, the only writer; the record is durable over restarts): its target and
 timeout entries at `h` name the height pair of an attestation it signed at `h`, its lock entry at
-`h` the finality pair `(h, ·)` of one (`client_record_origin`). A signed height pair of height
+`h` the finality pair `(h, ·)` of one (`client_record_origin_of_run`). A signed height pair of height
 `≥ H_z + 1` is signed at or after `a` (HR.1 (c)), so by (R1)'s attestations it names the entry at
 its height of a high origin's chain; a finality pair names the entry at its height of an ancestor of
-the source's entry (`signed_fin_pair_entry`, `chain_pairs_entry`), which is then on a high
-origin's chain too (`high_record_entry`). Two entries at one height of comparable chains are one
+the source's entry (`signed_fin_pair_entry_of_run`, `chain_pairs_entry`), which is then on a high
+origin's chain too. Two entries at one height of comparable chains are one
 block (entry constancy, `entry_root_eq`). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -188,16 +188,6 @@ theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H t
     · obtain ⟨Z, hZ, hZE, hZr, hZh, hZT⟩ := hpend _ (List.mem_filter.1 h').1
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
 
-/-- Reset-premise specialization of the run-only signed finality-pair provenance. -/
-private theorem signed_fin_pair_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
-    (hfin : att.fin = some (h, r)) :
-    ∃ J ∈ (tr.state y k).fg.tree, ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧
-      (tr.state y k).fg.Anc J E ∧ J.root = r ∧ ((tr.state y k).fg.σ J.root).h = h ∧
-      ((tr.state y k).fg.σ J.root).Th = J.root :=
-  signed_fin_pair_entry_of_run hp.run hy hs hfin
-
 /-- Finalizing a strict descendant is witnessed by an actual earlier honest report.
 The height comparison is in the reporter's store at the report cut. -/
 theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
@@ -289,30 +279,6 @@ theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
     Goldilocks.Store.cache_invariants _ _ _ _ hr
   exact Or.inr (hp.finalized_descendant_report hy hW hF hWF.symm h he)
 
-/-- A signed attestation naming a held entry above the target produces an actual earlier
-higher report. The signing witness is retained explicitly; a covering origin alone
-does not supply this fact. Heights are compared at the resulting reporter's cut. -/
-theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
-    {P E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
-    {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
-    (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocks H) P E)
-    (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
-    ∃ r ell C, r < i ∧ AC.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  obtain ⟨r, hrd, -, ell, C, E', hto, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
-    signAt_report_entry hp.run hz hs
-  obtain rfl : E' = E := hp.honest_coherent.1 ⟨z, hz, r, hE'⟩ ⟨y, hy, i, hE⟩
-    (hEr.trans hT)
-  have hPC := hPE.trans (hEC.mono (tree_subset_honest hz))
-  have hPr := hp.mem_tree_of_anc hz hPC hC
-  refine ⟨r, ell, C, by omega, hto, hPC, ?_⟩
-  rw [← hEh, hp.σ_eq_run hz hy hPr hP, hp.σ_eq_run hz hy hE' hE]
-  exact hlt
-
 /-- Whole-run specialization of the finite finality/report alternative. -/
 theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -322,46 +288,6 @@ theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g
         Anc (tr.HonestBlocks H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
   (ResetPremises.toUpTo tr H hp le_rfl).finality_below_or_higher_report hy hcompat
-
-/-- **A high record entry names an entry of a high origin's chain**: the target, timeout
-or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
-block of a high origin, the entry at height `h` of its chain. -/
-theorem high_record_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
-    (hrows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
-      ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
-        (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
-        ((tr.state x i).fg.σ E.root).Th = E.root)
-    {y : Fin sp.n} (hy : y ∈ H) {i h r : Nat} (hh : HZ tr H g + 1 ≤ h)
-    (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
-      (tr.state y i).record.lock h = some r) :
-    ∃ x i' j B, HighOrigin tr H g x i' j B ∧ ∃ Z, Anc (tr.HonestBlocks H) Z B ∧ Z.root = r ∧
-      ∃ z ∈ H, ∃ m, Z ∈ (tr.state z m).fg.tree ∧ ((tr.state z m).fg.σ Z.root).h = h ∧
-        ((tr.state z m).fg.σ Z.root).Th = Z.root := by
-  have hrow : ∀ {k att}, tr.SignAt y k att → HZ tr H g + 1 ≤ att.h →
-      ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
-        (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
-        ((tr.state x i).fg.σ E.root).Th = E.root := fun hs hatt =>
-    hrows y hy _ _ hs (reset_le_of_high hp.run hp.healthy hp.reset hy hs hatt) hatt
-  rcases hr with hr | hr | hr
-  · obtain ⟨k, -, att, hs, rfl, rfl⟩ := (client_record_origin hp hy h r i).1 (Or.inl hr)
-    obtain ⟨x, i', j, B, ho, E, hE, hEB, hEr, hEh, hET⟩ := hrow hs hh
-    exact ⟨x, i', j, B, ho, E, Anc.mono (tree_subset_honest ho.1) hEB, hEr, x, ho.1, i',
-      hE, hEh, hET⟩
-  · obtain ⟨k, -, att, hs, rfl, rfl⟩ := (client_record_origin hp hy h r i).1 (Or.inr hr)
-    obtain ⟨x, i', j, B, ho, E, hE, hEB, hEr, hEh, hET⟩ := hrow hs hh
-    exact ⟨x, i', j, B, ho, E, Anc.mono (tree_subset_honest ho.1) hEB, hEr, x, ho.1, i',
-      hE, hEh, hET⟩
-  · obtain ⟨k, -, att, hs, hfin⟩ := (client_record_origin hp hy h r i).2 hr
-    obtain ⟨J, hJ, E, hE, hEr, hJE, hJr, hJh, hJT⟩ := signed_fin_pair_entry hp hy hs hfin
-    obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run hy hs
-    obtain rfl : E' = E :=
-      (honest_coherent hp).1 ⟨y, hy, k, hE'⟩ ⟨y, hy, k, hE⟩ (hE'r.trans hEr.symm)
-    have hJE' := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJE
-    obtain ⟨x, i', j, B, ho, E'', hE'', hE''B, hE''r, -, -⟩ := hrow hs (by omega)
-    obtain rfl : E'' = E' :=
-      (honest_coherent hp).1 ⟨x, ho.1, i', hE''⟩ ⟨y, hy, k, hE'⟩ (hE''r.trans hE'r.symm)
-    exact ⟨x, i', j, B, ho, J, (Anc.mono (tree_subset_honest hy) hJE).trans
-      (Anc.mono (tree_subset_honest ho.1) hE''B), hJr, y, hy, k, hJ, hJh, hJT⟩
 
 /-- **Two entries at one height below one held block are one block** (entry constancy). -/
 theorem ResetPremisesUpTo.entry_root_eq {b : Time}

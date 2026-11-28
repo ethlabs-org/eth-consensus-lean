@@ -14,7 +14,7 @@ public section
 HS.3 (a), with its settled premise: the facts
 that do not compare walks:
 
-* **The ready proposal is an honest proposal** of the AC projection (`honestProposalRun_of_ready`:
+* **The ready proposal is an honest proposal** of the AC projection (`honestProposalRun_of_proposesAt`:
   the own block is the tick's proposal, accepted at once, C0.3), so HS.2's proposal clause
   applies to it.
 * **The setting** `AgreeSetting`: HS.3 (a)'s premises with the proposal's `ac_proposal` call
@@ -24,15 +24,6 @@ namespace Consensus.Goldilocks.Healing
 
 open AC (ACParams Payload gbar)
 
-/-! ### Block stamps -/
-
-section Stamps
-
-variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP}
-
-end Stamps
-
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
@@ -40,8 +31,6 @@ variable {sp : ACParams}
   {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF w : Time}
   {i₀ i m : Nat}
   {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
-
-/-! ### The phase-interval sandwich -/
 
 /-! ### The ready proposal is an honest proposal -/
 
@@ -75,14 +64,6 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
   have ht1' : tr.projAC.time (j + 1) = tr.time (j + 2) := ht1
   rw [Compose.projAC_state h hp, hst1, ht1']
   exact hdp
-
-/-- **A ready proposal is an honest proposal** of the AC projection. The support and joined
-conjuncts are unnecessary for this operational extraction. -/
-theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p kP s P) : HonestProposalRun tr H proposer s P :=
-  honestProposalRun_of_proposesAt hrun hnc hP.1 hP.2.1 hP.2.2.2.1 hP.2.2.2.2.1
 
 /-! ### The setting -/
 
