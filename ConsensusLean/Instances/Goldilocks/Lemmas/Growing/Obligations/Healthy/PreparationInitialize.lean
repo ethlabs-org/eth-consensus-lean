@@ -14,15 +14,6 @@ open AsChainShape Simulation Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- **The coefficient inequality with `8Δ` more**: the heal margin exceeds the reset reserve
-`R + 8k + 4X + 29` by `4δ_t − 13 ≥ 11` (at `δ_t ≥ 6`), so the reserve `+ 8` still fits. -/
-private theorem contract_heal_ge_reset_late_within (cap : Capability) (X : ℕ+) (L : Nat) :
-    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 +
-      5 * L ≤ contract_heal S A cap X + 5 * L := by
-  rw [contract_heal_val, healMargin_val, healthyResetCoeff_val]
-  have := A.six_le_δt
-  omega
-
 set_option linter.unusedVariables false in
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with `8Δ`
 of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ` and the

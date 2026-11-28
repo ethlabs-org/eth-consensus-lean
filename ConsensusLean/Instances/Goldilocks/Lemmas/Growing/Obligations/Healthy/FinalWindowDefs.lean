@@ -92,14 +92,6 @@ def AnchorRun : Prop :=
 def AnchorSteps : Prop :=
   ∀ i : Fin 3, AnchorStepAt Q.trace Q.keys (W.block i.castSucc) (W.block i.succ)
 
-/-- Actual finalized-cache coverage at every later ready read. -/
-def CacheCoverage : Prop :=
-  ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
-    Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y t →
-      Regimes.CutAfter Q.trace j t →
-    W.Extends (W.block 0) (Q.trace.state y j).fg.F
-
 theorem anchorRun_iff : W.AnchorRun ↔
     ∃ (proposer : Nat → Fin Q.params.n)
       (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b hold : Time),
@@ -113,13 +105,6 @@ theorem anchorRun_iff : W.AnchorRun ↔
 
 theorem anchorSteps_iff : W.AnchorSteps ↔
     ∀ i : Fin 3, AnchorStepAt Q.trace Q.keys (W.block i.castSucc) (W.block i.succ) := Iff.rfl
-
-theorem cacheCoverage_iff : W.CacheCoverage ↔
-    ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
-      Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y t →
-        Regimes.CutAfter Q.trace j t →
-      W.Extends (W.block 0) (Q.trace.state y j).fg.F := Iff.rfl
 
 end FinalWindowDataAt
 
