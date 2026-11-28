@@ -105,7 +105,7 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF hold : Time}
     linarith [mul_le_mul_of_nonneg_left h2δ (mul_nonneg zero_le_four sp.toParams.hΔ.le)]
   have hus2 : u + 2 ≤ s₀ := by omega
   have hub : sp.ts u + 6 * sp.Δ ≤ b := by linarith
-  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [Healing.gbar_nonneg g]
+  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [AC.gbar_nonneg g]
   have hubG : sp.ts u + 6 * sp.Δ + G * sp.Δ ≤ b := by linarith [hs.sync.deltaF]
   -- Step 1: H0 at the seed
   obtain ⟨v, r, l, O, ho, -, -, hrt⟩ := hp.reset_seed_before_slot_at hR

@@ -174,7 +174,7 @@ private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D hold : Time}
     intro hbd
     obtain ⟨-, h2⟩ := hbd
     omega
-  have hd0 : 0 ≤ sp.ts s + 6 * sp.Δ := by linarith [Healing.gbar_nonneg g]
+  have hd0 : 0 ≤ sp.ts s + 6 * sp.Δ := by linarith [AC.gbar_nonneg g]
   have hreports : ∀ z, z ∈ H
       (max (Healing.cutZ sp.toParams g) (sp.ts s + 6 * sp.Δ + G * sp.Δ)) →
       ∃ r ell C, AC.ToFGAt tr.projAC z r ell C ∧
