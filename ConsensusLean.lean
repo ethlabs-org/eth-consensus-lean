@@ -158,6 +158,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientEquivalence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair

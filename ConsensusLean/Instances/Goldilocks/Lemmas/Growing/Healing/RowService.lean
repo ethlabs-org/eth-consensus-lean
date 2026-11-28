@@ -81,16 +81,6 @@ private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp).State}
   · exact Or.inl h
   · exact Or.inr ⟨att, ((RunTrace.upTo_signAt _).mp hs).2, h⟩
 
-/-- A sent content of a node honest at `t`, after every earlier cut, was signed earlier. -/
-private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) {b : FG.Content} (hb : b ∈ (tr.state y i).record.sent) :
-    ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b := by
-  obtain ⟨k, hk, att, hs, he⟩ := Healing.sent_origin_from (hrun.upTo ht0).toLocalRun hy i
-    (by rw [Trace.upTo_state tr y hle]; exact hb)
-  exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, he⟩
-
 /-- The entry of a signature of a node honest at its signing. -/
 private theorem signAt_entry_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -494,13 +484,13 @@ theorem sign_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
       ((tr.state z (r + 1)).fg.σ C.root).Th) = none at hcl
     rw [hσe] at hcl
-    rcases createAtt_refused hcl with ⟨hl, hl'⟩ | ⟨c, hc, _⟩
+    rcases FG.Record.createAtt_eq_none.1 hcl with ⟨hl, hl'⟩ | hb
     · obtain ⟨r', hr'⟩ := Option.ne_none_iff_exists'.1 hl
       have := hp.record_entry_eq_at h0 leR1 hzz hrb hhT (Or.inr (Or.inr hr'))
         ho hB hTB ht hle hy hT rfl hTe
       exact absurd (by rw [hr', this, hTe]) hl'
-    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin_at hrun h0 leR1 hz hc
-      exact ⟨k, att, hsk, (hrun.time_mono hk.le).trans hts'.le, by assumption⟩
+    · obtain ⟨k, hk, att, hsk, hah, -⟩ := (client_record_origin_at hrun h0 leR1 hz _ _).1 hb
+      exact ⟨k, att, hsk, (hrun.time_mono hk.le).trans hts'.le, hah⟩
 
 /-- A bounded same-height report of a node honest at the report and at `c_z` supplies the exact
 entry attestation, with historical finality permission checked at the actual signing cut. -/

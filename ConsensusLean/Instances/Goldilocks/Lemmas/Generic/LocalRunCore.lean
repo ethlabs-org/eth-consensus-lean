@@ -75,15 +75,6 @@ structure LocalRunCore {P : Params} {A : NodeAC P}
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
     ((tr.state y i).record.lock h = some r →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r))
-  /-- `Healing.sent_origin_from` on the prefix. -/
-  sent_origin : ∀ {y i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t → ∀ {b : FG.Content},
-    b ∈ (tr.state y i).record.sent → ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
-  /-- The sent contents are recorded (`Healing.Client.SentOK`, the first part of
-  `Healing.record_facts`) on the prefix. -/
-  record_sentOK : ∀ {y i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t →
-    ∀ b ∈ (tr.state y i).record.sent,
-      (b.2.2.1 = true → b.2.1 ∈ (tr.state y i).record.timeout b.1) ∧
-      (b.2.2.1 = false → (tr.state y i).record.target b.1 = some b.2.1)
   /-- `Healing.hj_mono` on the prefix. -/
   hj_mono_at : ∀ {y k i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t → k ≤ i →
     (tr.state y k).fg.hj ≤ (tr.state y i).fg.hj

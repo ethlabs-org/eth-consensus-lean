@@ -122,15 +122,6 @@ theorem _root_.Consensus.Goldilocks.Growing.LocalRun.toLocalRunCore
       exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
     · obtain ⟨k, hk, att, hsa, he⟩ := h₂ hx
       exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
-  sent_origin := fun {y i t} ht hle hy {b} hb => by
-    have hs := Trace.upTo_state tr y hle
-    obtain ⟨k, hk, att, hsa, he⟩ :=
-      Healing.sent_origin_from (hrun.upTo ht) hy i (by rw [hs]; exact hb)
-    exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
-  record_sentOK := fun {y i t} ht hle hy => by
-    have h := (Healing.record_facts (hrun.upTo ht) hy i).1
-    rw [Trace.upTo_state tr y hle] at h
-    exact (Healing.Client.sentOK_iff _).1 h
   hj_mono_at := fun {y k i t} ht hle hy hki => by
     have h := Healing.hj_mono (hrun.upTo ht) hy hki
     rwa [Trace.upTo_state tr y hle, Trace.upTo_state tr y fun q hq => hle q (by omega)] at h

@@ -115,28 +115,21 @@ end Pools
 height (for a target) or height and entry (for a timeout) it sent already. -/
 theorem createAtt_spec {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
     {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
-    a.val = v ∧ Λ' = Λ.recordAtt a ∧ ∀ b ∈ Λ.sent, ¬ (b.1 = a.h ∧ b.2.1 = a.T) := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h with hany
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, rfl⟩ := h
-    refine ⟨rfl, rfl, fun b hb hb' => hany ?_⟩
-    rw [List.any_eq_true]
-    exact ⟨b, hb, by simp [hb'.1, hb'.2]⟩
+    a.val = v ∧ Λ' = Λ.recordAtt a ∧ Λ.target a.h ≠ some a.T ∧ a.T ∉ Λ.timeout a.h := by
+  obtain ⟨hv, hr, -, -, -, -, ht, hm, -⟩ := FG.Record.createAtt_some h
+  exact ⟨hv, hr, ht, hm⟩
 
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
-/-- An honest client's sent contents only grow. -/
-private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp).State}
+/-- The entries recorded by an honest client only grow. -/
+private theorem entry_succ {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
-    (c : Nat) {b : FG.Content} (hb : b ∈ (tr.state v c).record.sent) :
-    b ∈ (tr.state v (c + 1)).record.sent := by
+    (c : Nat) {h T : Nat} (hb : (tr.state v c).record.target h = some T ∨
+      T ∈ (tr.state v c).record.timeout h) :
+    (tr.state v (c + 1)).record.target h = some T ∨ T ∈ (tr.state v (c + 1)).record.timeout h := by
   by_cases hc : ∃ cut, tr.CallAt v c cut
   · obtain ⟨cut, hc⟩ := hc
     have hlaw := hrun.cutLaw v hv c cut hc
@@ -159,13 +152,14 @@ private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp).State}
         | none =>
           rw [hlaw.2]; exact hb
         | some a' =>
-          rw [(createAtt_spec hlaw.1).2.1]
-          exact List.mem_append_left _ hb
+          obtain ⟨-, hr, -, -, -, -, -, -, ht⟩ := FG.Record.createAtt_some hlaw.1
+          rw [hr, FG.Record.recordAtt_entry_iff ht.mp]
+          exact Or.inl hb
   · rw [tr.state_succ_of_not fun cut hc' => hc ⟨cut, hc'⟩]
     exact hb
 
-/-- **An honest validator signs an attestation at most once**: after signing, its content is in
-the client's sent list, and `create_attestation` refuses it. -/
+/-- **An honest validator signs an attestation at most once**: the record retains its entry,
+and `create_attestation` refuses that entry. -/
 theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
@@ -177,15 +171,19 @@ theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
     obtain ⟨C', hc'⟩ := hs'
     have hcut := hrun.cutLaw v hv d _ hc
     have hcut' := hrun.cutLaw v hv d' _ hc'
-    have h₀ : att.content ∈ (tr.state v (d + 1)).record.sent := by
-      rw [tr.state_succ_of_call hc, (createAtt_spec hcut.1).2.1]
-      exact List.mem_append_right _ (List.mem_singleton_self _)
-    have hmem : ∀ c, d + 1 ≤ c → att.content ∈ (tr.state v c).record.sent := by
+    have h₀ : (tr.state v (d + 1)).record.target att.h = some att.T ∨
+        att.T ∈ (tr.state v (d + 1)).record.timeout att.h := by
+      obtain ⟨-, hr, -, -, -, -, -, -, ht⟩ := FG.Record.createAtt_some hcut.1
+      rw [tr.state_succ_of_call hc, hr, FG.Record.recordAtt_entry_iff ht.mp]
+      exact Or.inr ⟨rfl, rfl⟩
+    have hmem : ∀ c, d + 1 ≤ c → (tr.state v c).record.target att.h = some att.T ∨
+        att.T ∈ (tr.state v c).record.timeout att.h := by
       intro c hc
       induction c, hc using Nat.le_induction with
       | base => exact h₀
-      | succ c _ ih => exact sent_succ hrun hv c ih
-    exact (createAtt_spec hcut'.1).2.2 _ (hmem d' hlt) ⟨rfl, rfl⟩
+      | succ c _ ih => exact entry_succ hrun hv c ih
+    obtain ⟨-, -, ht, hm⟩ := createAtt_spec hcut'.1
+    exact (hmem d' hlt).elim ht hm
   rcases lt_trichotomy d d' with h | h | h
   · exact (key hs hs' h).elim
   · exact h

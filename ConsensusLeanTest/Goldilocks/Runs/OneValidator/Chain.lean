@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 @[expose] public section
 
 /-! # The one-validator tick run: its chain
@@ -556,13 +557,10 @@ structure RecGood (Λ : FG.Record) (n : Nat) : Prop where
   target : ∀ h, Λ.target h = if 1 ≤ h ∧ h ≤ n then some (eroot h) else none
   timeout : ∀ h, Λ.timeout h = ∅
   lock : ∀ h, Λ.lock h = if 1 ≤ h ∧ h + 1 ≤ n then some (eroot h) else none
-  sent : ∀ c ∈ Λ.sent, c.1 ≤ n
-  sent_height : ∀ h, 1 ≤ h → h ≤ n → ∃ c ∈ Λ.sent, c.1 = h
 
 theorem recGood_empty : RecGood FG.Record.empty 0 :=
   ⟨fun _ => by simp [FG.Record.empty]; omega, fun _ => rfl,
-    fun _ => by simp [FG.Record.empty], fun _ h => by simp [FG.Record.empty] at h,
-    fun _ h1 h2 => by omega⟩
+    fun _ => by simp [FG.Record.empty]⟩
 
 /-- **The attestation of slot `s`**, signed on the block of slot `s`. -/
 theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s) (h : FGGood fg s)
@@ -593,20 +591,12 @@ theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s)
       rw [ite_pos hb, ite_pos hperm, att_eq h2, hSe.hj, hSe.J]
       unfold ent; rw [ite_neg (by omega), ← eroot_pred h2]
   have hhp : Λ.heightPair s (eroot s) = some (s, eroot s, false) := by
-    unfold FG.Record.heightPair
-    rw [ite_neg (by rw [hΛ.lock, ite_neg (by omega)]; simp), ite_neg (by rw [hΛ.timeout]; simp),
-      ite_pos (Or.inl (by rw [hΛ.target, ite_neg (by omega)]))]
-  have hsent : ¬ (Λ.sent.any fun b => decide (b.1 = s ∧ ((!false) = true ∨ b.2.1 = eroot s))) =
-      true := by
-    rw [List.any_eq_true]
-    rintro ⟨b, hb, hb'⟩
-    have := hΛ.sent b hb
-    simp at hb'; omega
+    have hl : Λ.lock s = none := by rw [hΛ.lock, ite_neg (by omega)]
+    have ht : Λ.target s = none := by rw [hΛ.target, ite_neg (by omega)]
+    simp [FG.Record.heightPair, hl, ht, hΛ.timeout]
   refine ⟨Λ.recordAtt (att s), ?_, ?_⟩
   · unfold Store.attest FG.Record.createAtt
     rw [hTh, he_h, he_Th, hhp]
-    dsimp only
-    rw [ite_neg hsent]
     simp only [Option.some.injEq, Prod.mk.injEq]
     rw [hfin]
     have ha : (⟨w0, s, eroot s, false, (att s).fin⟩ : FG.Att sp1.n) = att s := by
@@ -624,7 +614,7 @@ theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s)
       · obtain rfl : s = 1 := by omega
         rfl
       · rw [att_eq h2]
-    refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_, fun c hc => ?_, fun h' h1 h2 => ?_⟩
+    refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_⟩
     · unfold FG.Record.recordAtt
       dsimp only
       rw [ite_pos ⟨by simp [hato], by rw [hah, hΛ.target, ite_neg (by omega)]⟩,
@@ -645,17 +635,6 @@ theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s)
         dsimp only
         rw [Function.update_apply, hΛ.lock]
         split_ifs with h1 h3 h4 <;> (try subst h1) <;> first | rfl | omega
-    · unfold FG.Record.recordAtt at hc
-      dsimp only at hc
-      rcases List.mem_append.1 hc with hc | hc
-      · have := hΛ.sent c hc; omega
-      · rw [List.mem_singleton] at hc; subst hc
-        change (att s).h ≤ s
-        omega
-    · by_cases he : h' = s
-      · exact ⟨(att s).content, List.mem_append_right _ (by simp), he ▸ hah⟩
-      · obtain ⟨c, hc, hh⟩ := hΛ.sent_height h' h1 (by omega)
-        exact ⟨c, List.mem_append_left _ hc, hh⟩
 
 /-- The client refuses an entry whose height has already been signed. -/
 theorem attest_old {fg : Store sp1.toParams N1.Payload} {τ s : Nat} (h : FGGood fg τ)
@@ -666,18 +645,10 @@ theorem attest_old {fg : Store sp1.toParams N1.Payload} {τ s : Nat} (h : FGGood
   have he : hexp (ent s) = hexp s := by unfold hexp ent; split_ifs <;> omega
   have h1 : 1 ≤ hexp s := by unfold hexp; split_ifs <;> omega
   have her : ent (hexp s) = ent s := by unfold hexp ent; split_ifs <;> omega
-  have hhp : Λ.heightPair (hexp s) (blk (ent (ent s))).root =
-      some (hexp s, (blk (ent (ent s))).root, false) := by
-    unfold FG.Record.heightPair
-    rw [ite_neg (by rw [hΛ.lock]; split_ifs <;> simp_all [eroot, ent_ent]),
-      ite_neg (by rw [hΛ.timeout]; simp),
-      ite_pos (Or.inr (by rw [hΛ.target, ite_pos ⟨h1, hh⟩]; simp [eroot, ent_ent, her]))]
-  unfold Store.attest FG.Record.createAtt
-  rw [hS.Th, hE.h, hE.Th, he, hhp]
-  dsimp only
-  rw [ite_pos (by
-    obtain ⟨c, hc, hh'⟩ := hΛ.sent_height _ h1 hh
-    exact List.any_eq_true.2 ⟨c, hc, by simp [hh']⟩)]
+  unfold Store.attest
+  apply FG.Record.createAtt_eq_none.2
+  rw [hS.Th, hE.h, hE.Th, he]
+  exact Or.inr (Or.inl (by rw [hΛ.target, ite_pos ⟨h1, hh⟩]; simp [eroot, ent_ent, her]))
 
 theorem hexp_succ (k : Nat) : hexp (k + 1) = k + 1 := by unfold hexp; split_ifs <;> omega
 

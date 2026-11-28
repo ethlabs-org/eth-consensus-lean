@@ -60,7 +60,7 @@ loose BJ (the justification gate at heights whose previous height is justified, 
 finality pair read from the entry state, $K_W=2$,
 $\delta_{\mathrm t}\geq x+\cF+k_F$) and the weakened E1 (the
 timeout record is a set of roots, $\fname{permits}$ requires
-$\mathsf{timeout}[j]\subseteq\{T\}$, $\fname{height\_pair}$ tests the lock
+$\mathsf{timeout}[j]=\emptyset$, $\fname{height\_pair}$ tests the lock
 first, E1 fires only against a height pair naming another block).  The
 FG liveness nodes follow the paper theorems A, B and Corollary~C of the FG
 liveness analysis for loose BJ (a paper proof, not in this repository).
@@ -697,7 +697,7 @@ pair at~$h$; and after a finality pair $(h,T)$ it sends no attestation at~$h$ na
 block other than~$T$ ($\fname{height\_pair}$ tests the lock first), and
 after an attestation at~$h$ naming~$T'$ it sends no finality pair $(h,T)$ with
 $T\neq T'$ ($\fname{permits}$ requires $\mathsf{target}[h]\in\{\bot,T\}$ and
-$\mathsf{timeout}[h]\subseteq\{T\}$).  Hypotheses (discharged by G0.2 (a),
+$\mathsf{timeout}[h]=\emptyset$).  Hypotheses (discharged by G0.2 (a),
 (c), (d) where G1.4 uses this node): the state $\sigma_e$ passed to
 $\fname{create\_attestation}$ has $\sigma_e.h=h_c$ and all its pending pairs
 and its $(h_j,J)$ below $\sigma_e.h$; then the finality pair of every honest
@@ -711,12 +711,11 @@ Lean task.}
 
 \dagnode{G0.10}{Aggregation at an entry whose previous height is justified}{Under $\mathsf{NoColl}$.  Say
 a record \emph{allows a target} at~$h$ when $\mathsf{lock}[h]\in\{\bot,T_h\}$,
-$\mathsf{target}[h]=\bot$, $\mathsf{timeout}[h]=\emptyset$ and no
-$b\in\mathsf{sent}$ has $b.h=h$.  (A record of a client run from the empty
-record has $\mathsf{target}[h]=\bot$ and $\mathsf{timeout}[h]=\emptyset$
-when nothing at~$h$ was sent, by G0.5's record invariants; on such records a
+$\mathsf{target}[h]=\bot$, and $\mathsf{timeout}[h]=\emptyset$.  On a record
+of a client run from the empty record, the two empty entries mean that
+nothing at~$h$ was sent, by G0.5's record invariants.  On such records a
 target is allowed exactly when $\fname{create\_attestation}$ returns a
-target.)  At an entry $E$ whose previous height is justified, with
+target.  At an entry $E$ whose previous height is justified, with
 predecessor~$P$, let $\sigma_e$ be the state of a chain ending at $E$'s
 entry block (G0.1 (chain)).  For every record that allows a target at~$h$,
 $\fname{create\_attestation}$ on $\sigma_e$ returns $(h,T_h,\mathsf{false};P)$

@@ -36,13 +36,7 @@ private theorem signer_eq
   have hh := (rc.upTo (rc.time_nonneg d)).cutLaw v hv d _
     ((Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩)
   have he := hh.1
-  unfold Store.attest FG.Record.createAtt at he
-  split at he
-  · cases he
-  · dsimp only at he
-    split_ifs at he
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj he)
-    rfl
+  exact (FG.Record.createAtt_some he).1
 
 /-- A historically honest signing carried by a held row precedes that row's acceptance. -/
 private theorem sign_before_accept

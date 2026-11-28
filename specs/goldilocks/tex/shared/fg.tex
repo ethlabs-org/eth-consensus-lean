@@ -165,16 +165,15 @@ notions of the analysis; the protocol does not read them.
 The anti-slashing record is
 \[
  \Lambda=(\mathsf{target}[\cdot],\mathsf{timeout}[\cdot],
- \mathsf{lock}[\cdot],\mathsf{sent}):
+ \mathsf{lock}[\cdot]):
 \]
 for each height~$h$, the first target that the validator sent at~$h$,
 the set of the blocks that its timeouts at~$h$ name, and the target of
-its first finality pair at~$h$, initially $(\bot,\emptyset,\bot)$; and
-the set of the contents (height pair and finality pair) of the
-attestations that it sent, initially empty.
-$\Call{record\_attestation}{}$ is its only writer.  The tests read only
-whether $\mathsf{timeout}[h]$ is empty, one block, or more, so a client
-can store it as $\bot$, a root, or a mark for two or more blocks.
+its first finality pair at~$h$, initially $(\bot,\emptyset,\bot)$.
+$\Call{record\_attestation}{}$ is its only writer. A timeout at a height
+follows a target vote there and names a different block. The timeout set
+is tested for emptiness for finality permission and for membership to
+avoid naming an entry twice.
 
 The client sends an attestation only with a height pair.  It sends a
 target at a height only as its first vote at that height, and it names
@@ -211,7 +210,7 @@ empty.
 \Function{permits}{$\Lambda,j,T$}
   \Comment{the record allows the finality pair $(j,T)$}
   \State \Return $\Lambda.\mathsf{target}[j]\in\{\bot,T\}$ and
-    $\Lambda.\mathsf{timeout}[j]\subseteq\{T\}$ and
+    $\Lambda.\mathsf{timeout}[j]=\emptyset$ and
     $\Lambda.\mathsf{lock}[j]\in\{\bot,T\}$
 \EndFunction
 \vspace{1pt}
@@ -222,11 +221,11 @@ empty.
     \State \Return $(\bot,\bot,\bot)$
     \Comment{locked elsewhere: wait out the height}
   \EndIf
-  \If{$\Lambda.\mathsf{timeout}[h_c]\neq\emptyset$}
-    \State \Return $(h_c,T_c,\mathsf{true})$
-    \Comment{select a timeout for the current entry}
+  \If{$\Lambda.\mathsf{target}[h_c]=T_c$ or $T_c\in\Lambda.\mathsf{timeout}[h_c]$}
+    \State \Return $(\bot,\bot,\bot)$
+    \Comment{the client has already named this entry}
   \EndIf
-  \If{$\Lambda.\mathsf{target}[h_c]\in\{\bot,T_c\}$}
+  \If{$\Lambda.\mathsf{target}[h_c]=\bot$}
     \State \Return $(h_c,T_c,\mathsf{false})$
     \Comment{vote for the target of that chain}
   \EndIf
@@ -242,11 +241,6 @@ empty.
   \If{$h=\bot$} \State \Return $\bot$
     \Comment{no attestation without a height pair}
   \EndIf
-  \If{some $b\in\Lambda.\mathsf{sent}$ has $b.h=h$ and ($\neg\tau$ or
-      $b.T=T$)}
-    \State \Return $\bot$
-    \Comment{a target only as the first vote at $h$; no entry twice}
-  \EndIf
   \State $a\gets(\valindex,h,T,\tau,h_f,T_f)$
   \State \Call{record\_attestation}{$\Lambda,a$}; \Return $a$
   \Comment{record, then send}
@@ -254,7 +248,6 @@ empty.
 \vspace{1pt}
 \Function{record\_attestation}{$\Lambda,a$}
   \Comment{the only writer of $\Lambda$}
-  \State add the content of $a$ to $\Lambda.\mathsf{sent}$
   \State $(h,T,\tau,h_f,T_f)\gets a$'s height and finality pairs
   \If{$T_f\neq\bot$} \State $\Lambda.\mathsf{lock}[h_f]\gets T_f$ \EndIf
   \If{$h\neq\bot$}

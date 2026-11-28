@@ -91,7 +91,7 @@ def RetentionThroughAppend : Prop :=
 
 /-- **G0.10, aggregation at an entry whose previous height is justified.** A record *allows a
 target* at the entry height `h` when it holds no lock at `h` for another block and has sent nothing
-at `h` (its target and timeout entries at `h` are then empty, as for every record of a client run).
+at `h` (represented by empty target and timeout entries at `h`).
 For an entry whose previous height is justified state, such a record makes the client send a target
 whose content is `(h, T_h, target; (h_j, J))` when the record permits the predecessor and `(h, T_h,
 target; none)` otherwise: never a timeout, and the same content at every validator with a permitting
@@ -99,7 +99,7 @@ record. -/
 def Aggregation : Prop :=
   ∀ (σe : ChainState gp.n) (Λ : Record) (v : Fin gp.n), σe.previousHeightJustified →
     (Λ.lock σe.h = none ∨ Λ.lock σe.h = some σe.Th) → Λ.timeout σe.h = ∅ →
-    Λ.target σe.h = none → (∀ b ∈ Λ.sent, b.1 ≠ σe.h) →
+    Λ.target σe.h = none →
     ∃ a Λ', Λ.createAtt v σe = some (a, Λ') ∧
       a.content = (σe.h, σe.Th, false,
         if Λ.permits σe.hj σe.J then some (σe.hj, σe.J) else none)

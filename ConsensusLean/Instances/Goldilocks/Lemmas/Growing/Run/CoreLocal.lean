@@ -13,7 +13,7 @@ public section
 
 `GoldilocksRunCore.toLocalRunCore`: a Goldilocks run core (stock or shadow) gives the generic
 node-run bundle `Generic.LocalRunCore` of its run, each field read on the honest prefix through
-`upTo`. The client-record facts (`record_facts`, `client_record_origin_from`, `sent_origin_from`,
+`upTo`. The client-record facts (`client_record_origin_from`,
 `signAt_wellFormed_from`), the proposal facts (`proposal_parent_held_from`,
 `proposal_rows_placed_from`) and client safety (`held_atts_safe_at_from`) are re-proved here from
 the core's cut law, reachability and signed runs, as copies of the stock proofs. -/
@@ -52,48 +52,34 @@ private theorem record_step (rc : StaticRunCore u frameOf proposer dg H tr ini) 
     · exact Or.inl ((cutStepWith_ac ℓ).1 hlaw).2.2.2
   · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
 
-/-- The honest client record (a copy of `Healing.record_facts`). -/
-theorem record_facts (rc : StaticRunCore u frameOf proposer dg H tr ini) {y : Fin sp.n}
+/-- Every lock in an honest client record comes from an earlier finality pair. -/
+theorem record_lock_origin (rc : StaticRunCore u frameOf proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) : ∀ i,
-    Healing.Client.SentOK (tr.state y i).record ∧
-    (∀ b ∈ (tr.state y i).record.sent, ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
     ∀ h r, (tr.state y i).record.lock h = some r →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)
-  | 0 => by
-    rw [Trace.state, rc.init y hy]
-    refine ⟨(Healing.Client.sentOK_iff _).2 fun b hb => ?_, fun b hb => ?_, fun h r hx => ?_⟩
-    · simp [Node.initWith, FG.Record.empty] at hb
-    · simp [Node.initWith, FG.Record.empty] at hb
-    · simp [Node.initWith, FG.Record.empty] at hx
-  | i + 1 => by
-    obtain ⟨ih₁, ih₂, ih₃⟩ := record_facts rc hy i
+  | 0, h, r, hx => by
+    rw [Trace.state, rc.init y hy] at hx
+    simp [Node.initWith, FG.Record.empty] at hx
+  | i + 1, h, r, hx => by
+    have ih := record_lock_origin rc hy i h r
     rcases record_step rc hy i with he | ⟨C, a, hc, hca⟩
-    · rw [he]
-      exact ⟨ih₁, fun b hb => let ⟨k, hk, h'⟩ := ih₂ b hb; ⟨k, by omega, h'⟩,
-        fun h r hx => let ⟨k, hk, h'⟩ := ih₃ h r hx; ⟨k, by omega, h'⟩⟩
-    · obtain ⟨hrec, -, -, -, ht⟩ := Healing.Client.createAtt_some hca
-      rw [hrec]
-      have hs : tr.SignAt y i a := ⟨C, hc⟩
-      refine ⟨Healing.Client.sentOK_recordAtt ih₁ fun hτ => (ht hτ).2, fun b hb => ?_,
-        fun h r hx => ?_⟩
-      · simp only [FG.Record.recordAtt, List.mem_append, List.mem_singleton] at hb
-        rcases hb with hb | rfl
-        · obtain ⟨k, hk, h'⟩ := ih₂ b hb
+    · rw [he] at hx
+      obtain ⟨k, hk, h'⟩ := ih hx
+      exact ⟨k, by omega, h'⟩
+    · rw [(FG.Record.createAtt_some hca).2.1] at hx
+      simp only [FG.Record.recordAtt] at hx
+      rcases hf : a.fin with _ | ⟨p₁, p₂⟩
+      · rw [hf] at hx
+        obtain ⟨k, hk, h'⟩ := ih hx
+        exact ⟨k, by omega, h'⟩
+      · rw [hf] at hx
+        dsimp only at hx
+        rw [Function.update_apply] at hx
+        split_ifs at hx with hh
+        · cases Option.some.inj hx
+          exact ⟨i, by omega, a, ⟨C, hc⟩, by rw [hf, hh]⟩
+        · obtain ⟨k, hk, h'⟩ := ih hx
           exact ⟨k, by omega, h'⟩
-        · exact ⟨i, by omega, a, hs, rfl⟩
-      · simp only [FG.Record.recordAtt] at hx
-        rcases hf : a.fin with _ | ⟨p₁, p₂⟩
-        · rw [hf] at hx
-          obtain ⟨k, hk, h'⟩ := ih₃ h r hx
-          exact ⟨k, by omega, h'⟩
-        · rw [hf] at hx
-          dsimp only at hx
-          rw [Function.update_apply] at hx
-          split_ifs at hx with hh
-          · cases Option.some.inj hx
-            exact ⟨i, by omega, a, hs, by rw [hf, hh]⟩
-          · obtain ⟨k, hk, h'⟩ := ih₃ h r hx
-            exact ⟨k, by omega, h'⟩
 
 /-- Target and timeout records have earlier signing witnesses (the first half of a copy of
 `Healing.client_record_origin_from`). -/
@@ -110,7 +96,7 @@ theorem record_target_origin (rc : StaticRunCore u frameOf proposer dg H tr ini)
     rcases record_step rc hy i with he | ⟨C, a', hc, hca⟩
     · rw [he]
       exact fun hx => let ⟨k, hk, att, h'⟩ := ih hx; ⟨k, by omega, att, h'⟩
-    · obtain ⟨hrec, -, -, -, -⟩ := Healing.Client.createAtt_some hca
+    · obtain ⟨-, hrec, -⟩ := FG.Record.createAtt_some hca
       rw [hrec]
       have hs : tr.SignAt y i a' := ⟨C, hc⟩
       intro hx
@@ -350,22 +336,13 @@ theorem toLocalRunCore (rc : GoldilocksRunCore u frameOf proposer dg H tr ini) :
   client_record_origin := fun {y i t} ht hle hy h r => by
     have hs := Trace.upTo_state tr y hle
     have h₁ := (rc.upTo ht).record_target_origin hy h r i
-    have h₂ := ((rc.upTo ht).record_facts hy i).2.2 h r
+    have h₂ := (rc.upTo ht).record_lock_origin hy i h r
     rw [hs] at h₁ h₂
     refine ⟨fun hx => ?_, fun hx => ?_⟩
     · obtain ⟨k, hk, att, hsa, he⟩ := h₁ hx
       exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
     · obtain ⟨k, hk, att, hsa, he⟩ := h₂ hx
       exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
-  sent_origin := fun {y i t} ht hle hy {b} hb => by
-    have h := ((rc.upTo ht).record_facts hy i).2.1 b
-    rw [Trace.upTo_state tr y hle] at h
-    obtain ⟨k, hk, att, hsa, he⟩ := h hb
-    exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
-  record_sentOK := fun {y i t} ht hle hy => by
-    have h := ((rc.upTo ht).record_facts hy i).1
-    rw [Trace.upTo_state tr y hle] at h
-    exact (Healing.Client.sentOK_iff _).1 h
   hj_mono_at := fun {y k i t} ht hle hy hki => by
     have h := (rc.upTo ht).hj_mono y hy hki
     rwa [Trace.upTo_state tr y hle, Trace.upTo_state tr y fun q hq => hle q (by omega)] at h
