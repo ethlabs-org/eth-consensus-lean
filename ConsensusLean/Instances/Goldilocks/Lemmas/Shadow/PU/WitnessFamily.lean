@@ -864,11 +864,10 @@ theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   rw [hs] at h
   linarith only [h, hts hrN]
 
-/-- **A next-vote base propagates through later labels** from an early viable witness
-(`later_heads_of_early_witness_at` over the shadow run). The witness is a viable head of the
-witness's call frame (`hvQ`), read inside the window (`halo`); `floor ≤ σ(Q).h` and
-`kindJ → J ⪯ X` are replaced by it (`early_witness_viable'`). -/
-theorem later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
+/-- **A next-vote base propagates through later labels** inside a frame window, from a viable
+head `Q` of an early call's frame (`hvQ`, read inside the window): the frame-window entry point
+to `later_heads_of_windowWitness_at`. -/
+theorem later_heads_of_frameWindow_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -1100,9 +1099,10 @@ theorem next_votes_of_windowWitness_at
   obtain ⟨ell, hc⟩ := hv
   exact hkernel y i e hy ⟨ell, hc⟩ (htime hy hc hs).2 hs
 
-/-- Common early-witness induction with the lock-specific transfer supplied by the caller
-(`next_votes_of_early_witness_at` over the shadow run, witness `hvQ` read inside the window). -/
-theorem next_votes_of_early_witness_at
+/-- Next-slot votes extend a prefix inside a frame window, from a viable head `Q` of an early
+call's frame, with the lock-specific transfer supplied by the caller: the frame-window entry
+point to `next_votes_of_windowWitness_at`. -/
+theorem next_votes_of_frameWindow_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)

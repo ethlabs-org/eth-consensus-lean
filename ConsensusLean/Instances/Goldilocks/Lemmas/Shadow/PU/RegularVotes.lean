@@ -213,7 +213,7 @@ theorem regular_fast_next_votes_of_early_witness_at
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_frameWindow_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hQw hvQ
       (hXD.trans (hDC.trans hCQ))
   intro y i ell e hy hc hs hhigh hFX hviab ih
@@ -260,7 +260,7 @@ theorem regular_slow_next_votes_of_early_witness_at
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_frameWindow_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hQw hvQ
       (hDC.trans hCQ)
   intro y i ell e hy hc hs hhigh hFD hviab ih
