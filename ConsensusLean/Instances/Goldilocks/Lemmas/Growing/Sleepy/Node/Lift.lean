@@ -60,81 +60,6 @@ theorem ac_state_upTo (hmono : Monotone trA.time) {y : Fin P.n} {i : Nat} (hi : 
 
 end ACUpTo
 
-section GoldilocksACUpTo
-
-variable {sp : ACParams} {FGP : Type} {trS : AC.GTrace sp FGP}
-  {d : Time}
-
-theorem ac_voteAt_upTo {y : Fin sp.n} {i : Nat} {e : AC.Em sp FGP} :
-    AC.VoteAt (trS.upTo d) y i e ↔ trS.time i ≤ d ∧ AC.VoteAt trS y i e := by
-  simp only [AC.VoteAt, Trace.upTo_callAt]
-  exact ⟨fun ⟨ℓ, ⟨h, hc⟩, hl⟩ => ⟨h, ℓ, hc, hl⟩, fun ⟨h, ℓ, hc, hl⟩ => ⟨ℓ, ⟨h, hc⟩, hl⟩⟩
-
-theorem ac_castAt_upTo {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
-    {e : AC.Em sp FGP} :
-    AC.CastAt (trS.upTo d) y i ℓ e ↔ trS.time i ≤ d ∧ AC.CastAt trS y i ℓ e := by
-  simp only [AC.CastAt, Trace.upTo_callAt, and_assoc]
-
-theorem ac_updateAt_upTo (hmono : Monotone trS.time) {x : Fin sp.n} {i s : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} :
-    AC.UpdateAt (trS.upTo d) x i s ℓ ↔ trS.time i ≤ d ∧ AC.UpdateAt trS x i s ℓ := by
-  simp only [AC.UpdateAt, Trace.upTo_callAt]
-  constructor
-  · rintro ⟨⟨h, hc⟩, hl, ht, hj⟩
-    rw [ac_state_upTo hmono h] at hj
-    exact ⟨h, hc, hl, ht, hj⟩
-  · rintro ⟨h, hc, hl, ht, hj⟩
-    rw [← ac_state_upTo hmono h] at hj
-    exact ⟨⟨h, hc⟩, hl, ht, hj⟩
-
-theorem ac_resultAt_upTo (hmono : Monotone trS.time) {x : Fin sp.n} {i s : Nat}
-    {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)} :
-    AC.ResultAt (trS.upTo d) x i s C CV ↔ trS.time i ≤ d ∧ AC.ResultAt trS x i s C CV := by
-  simp only [AC.ResultAt]
-  constructor
-  · rintro ⟨ℓ, hu, hc, hCV⟩
-    obtain ⟨h, hu⟩ := (ac_updateAt_upTo hmono).mp hu
-    rw [ac_state_upTo hmono h] at hc hCV
-    exact ⟨h, ℓ, hu, hc, hCV⟩
-  · rintro ⟨h, ℓ, hu, hc, hCV⟩
-    rw [← ac_state_upTo hmono h] at hc hCV
-    exact ⟨ℓ, (ac_updateAt_upTo hmono).mpr ⟨h, hu⟩, hc, hCV⟩
-
-theorem ac_optimisticLockAt_upTo (hmono : Monotone trS.time) {x : Fin sp.n} {i s : Nat}
-    {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)} :
-    AC.OptimisticLockAt (trS.upTo d) x i s C CV ↔
-      trS.time i ≤ d ∧ AC.OptimisticLockAt trS x i s C CV := by
-  simp only [AC.OptimisticLockAt, AC.OptimisticPoint, Trace.upTo_callAt]
-  constructor
-  · rintro ⟨ℓ, A, ⟨⟨h, hc⟩, hA⟩, hs⟩
-    rw [ac_state_upTo hmono h] at hA
-    exact ⟨h, ℓ, A, ⟨hc, hA⟩, hs⟩
-  · rintro ⟨h, ℓ, A, ⟨hc, hA⟩, hs⟩
-    rw [← ac_state_upTo hmono h] at hA
-    exact ⟨ℓ, A, ⟨⟨h, hc⟩, hA⟩, hs⟩
-
-theorem ac_retainedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {j : Nat}
-    (hj : trS.time j ≤ d) {v : Vote sp.n} {T : Time} (h : AC.RetainedBefore trS y j v T) :
-    AC.RetainedBefore (trS.upTo d) y j v T := by
-  obtain ⟨q, hqj, hq, hr⟩ := (AC.retainedBefore_iff _ _ _ _).mp h
-  refine (AC.retainedBefore_iff _ _ _ _).mpr ⟨q, hqj, ?_, fun r h1 h2 hrr => hr r h1 h2
-    ((ACTrace.upTo_restartAt (tr := trS)).mp hrr).2⟩
-  rwa [ac_state_upTo hmono ((hmono hqj).trans hj)]
-
-theorem ac_messageServedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {j : Nat}
-    (hj : trS.time j ≤ d) {τ : Time} {v : Vote sp.n} (h : AC.MessageServedBefore trS y j τ v) :
-    AC.MessageServedBefore (trS.upTo d) y j τ v := by
-  rcases (AC.messageServedBefore_iff _ _ _ _).mp h with ⟨k, hkj, hk0, hk, hkd⟩ | hr
-  · have hkd' : trS.time k ≤ d := (hmono hkj).trans hj
-    exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k, hkj, hk0,
-      (ACTrace.upTo_processAt (tr := trS)).mpr ⟨hkd', hk⟩,
-      by rw [ACTrace.upTo_deadline hmono hkd']; exact hkd⟩)
-  · refine (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inr ?_)
-    rw [ACTrace.upTo_deadline hmono hj]
-    exact ac_retainedBefore_upTo hmono hj hr
-
-end GoldilocksACUpTo
-
 variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {d : Time}
@@ -285,7 +210,7 @@ theorem SleepyServiceBefore.upTo {ini} (hrun : Growing.GoldilocksRun proposer dg
   · obtain ⟨hid, hv⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hv
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
     rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
-    exact ac_messageServedBefore_upTo hm hjd
+    exact (AC.upTo_messageServedBefore hm hjd).2
       (h.message x i v (anti hid hx) hv h0 y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
         hdj)
   · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
@@ -312,7 +237,7 @@ theorem SleepyServiceFrom.acWindow_upTo {ini} (hrun : Growing.GoldilocksRun prop
   · obtain ⟨hid, hv⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hv
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
     rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
-    exact ac_messageServedBefore_upTo hm hjd
+    exact (AC.upTo_messageServedBefore hm hjd).2
       (h.message x i v (anti hid hx) hv hai y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
         hdj)
   · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
@@ -364,7 +289,7 @@ theorem castAt_spec_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
         (ℓ.frame.viableTree (AC.voteDomain sp e.readPoint ℓ.frame e.msg.slot))
         (AC.mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root :=
   AC.castAt_specU (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun.toU hy
-    (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+    (AC.upTo_castAt.mpr ⟨le_rfl, hc⟩)
 
 theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
@@ -373,7 +298,7 @@ theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
   have ha := acRun_upTo hrun hnc (hrun.time_nonneg i)
-  cast_head_fcRoot ha.localRun ha.vstart hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+  cast_head_fcRoot ha.localRun ha.vstart hy (AC.upTo_castAt.mpr ⟨le_rfl, hc⟩)
 
 theorem frame_of_projAC_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
@@ -394,7 +319,7 @@ theorem mayVote_of_castAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) : (tr.state y i).ac.mayVote e.msg.slot = true := by
   have h := AC.mayVote_of_castAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
-    (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+    (AC.upTo_castAt.mpr ⟨le_rfl, hc⟩)
   rwa [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy] at h
 
 theorem frame_slot_le_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -422,7 +347,7 @@ theorem pool_vote_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hm := hrun.time_mono
   obtain ⟨j, hj, e, hve, hev⟩ := (acRun_upTo hrun hnc (hrun.time_nonneg i)).honest.pool_vote y hy
     i σ v (by rw [projAC_upTo_state hrun le_rfl]; exact hv) hvH
-  obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+  obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
   exact ⟨j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **One vote per slot** of a node honest at both casts. -/
@@ -437,8 +362,8 @@ theorem one_vote_per_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hjd := hrun.time_mono hjj
   have hr := (acRun_upTo hrun hnc hd).localRun
   exact AC.one_vote_per_slotU sp _ _ _ _ hr.toU x (hVoteAt_iff.1 hv').1 j j' e e'
-    (ac_voteAt_upTo.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩)
-    (ac_voteAt_upTo.mpr ⟨le_rfl, (hVoteAt_iff.1 hv').2⟩) hs
+    (AC.upTo_voteAt.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩)
+    (AC.upTo_voteAt.mpr ⟨le_rfl, (hVoteAt_iff.1 hv').2⟩) hs
 
 /-- Every ancestor (held while honest) of a block of the frame of a call is genesis or was
 accepted by the caller by then. -/
@@ -500,7 +425,7 @@ theorem CommitteeFacts.committeeTAt {K : AC.CommitteeDict sp.n} (hKB : Committee
   have hacr := acRun_upTo hrun hnc (hrun.time_nonneg i)
   have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
     hrun.time_mono (Nat.lt_succ_iff.mp hk)
-  have hcU := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcU := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hpool : ∀ k, ∀ w ∈ e.readPoint.pool k, w.slot = k := fun k w hw =>
     AC.state_pool_slotU _ hacr.localRun.toU hacr.vstart hy (i + 1) k w
       (AC.readPoint_poolU hacr.localRun.toU hy hcU hw).1
@@ -550,7 +475,7 @@ theorem vote_of_awake_joined_at {ini} (hrun : Growing.GoldilocksRun proposer dg 
   obtain ⟨k, e, hv, hs, hk⟩ := vote_of_awake_joined (hrun.upTo hd) (hnc.upTo _) hy
     (mayVote_upTo hrun hmv) ⟨hw, le_rfl⟩ (joinedAt_upTo hj)
   rw [RunTrace.upTo_projAC] at hv
-  obtain ⟨hkd, hv⟩ := ac_voteAt_upTo.mp hv
+  obtain ⟨hkd, hv⟩ := AC.upTo_voteAt.mp hv
   exact ⟨k, e, hVoteAt_iff.2 ⟨hrun.antitone hkd hy, hv⟩, hs, hk⟩
 
 /-- The counted votes of an optimistic selection by a node honest at its check: each is of the
@@ -571,7 +496,7 @@ theorem optimistic_writer_votes_at {ini} (hrun : Growing.GoldilocksRun proposer 
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
     optimistic_writer_votes (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hx
-      ((ac_optimisticLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hO⟩) v hv
+      ((AC.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hO⟩) v hv
   obtain ⟨hkd, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hx, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
     hacc.imp_right fun ⟨k', hk', hk't⟩ => ?_⟩
@@ -648,9 +573,9 @@ theorem originBefore_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   obtain ⟨x, hx, k, hk, CV, hO⟩ := Compose.originBefore_iff.1 h
   rw [RunTrace.upTo_projAC] at hO
   rcases hO with hO | hO
-  · obtain ⟨hkd, hO⟩ := (ac_resultAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_resultAt hrun.time_mono).mp hO
     exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inl hO⟩
-  · obtain ⟨hkd, hO⟩ := (ac_optimisticLockAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_optimisticLockAt hrun.time_mono).mp hO
     exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inr hO⟩
 
 /-- A slow lock write of the prefix through `d` is one of the run, at a cut at a time `≤ d`. -/
@@ -660,7 +585,7 @@ private theorem slowLockAt_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer 
     (h : AC.SlowLockAt (tr.projAC.upTo d) x i s B) :
     tr.time i ≤ d ∧ AC.SlowLockAt tr.projAC x i s B := by
   obtain ⟨ℓ, C, hu, hconf, hdeep⟩ := h
-  obtain ⟨hid, hu⟩ := (ac_updateAt_upTo hrun.time_mono).mp hu
+  obtain ⟨hid, hu⟩ := (AC.upTo_updateAt hrun.time_mono).mp hu
   have hst := projAC_upTo_state hrun (y := x) hid
   refine ⟨hid, ℓ, C, hu, by rwa [hst] at hconf, ?_⟩
   simpa only [hst, Trace.upTo_time] using hdeep

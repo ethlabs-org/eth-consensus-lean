@@ -69,7 +69,7 @@ private theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun propos
     · exact Or.inr ⟨k', hrun.antitone (hrun.time_mono hk') hxk, hacc,
         lt_of_le_of_lt (hrun.time_mono hk') hkt'⟩
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   exact ⟨(hr.awake_of_call y hy i ℓ hcT.1).1, (castAt_spec_at hrun hnc hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 

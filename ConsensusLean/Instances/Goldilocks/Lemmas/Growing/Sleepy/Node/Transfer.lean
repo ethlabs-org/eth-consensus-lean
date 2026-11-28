@@ -65,7 +65,7 @@ theorem vote_extends_of_counted_batch_at {ini}
   have hsub := upTo_subset hrun hd
   have hU := honestBlocksAt_coherent hrun hnc
   have hr := acRun_upTo hrun hnc hd
-  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hts1 := AC.ts_succ (sp := sp) s
   have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i := by
     have h := (castAt_spec_at hrun hnc hy hc).2.1
@@ -75,7 +75,7 @@ theorem vote_extends_of_counted_batch_at {ini}
   have hT : sp.ts s + 3 * sp.Δ ≤ tr.time i := by linarith
   have hvote : ∀ x j e', x ∈ H (tr.time i) → AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
       HVoteAt tr H x j e' := fun x j e' hx hv => by
-    obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.mp hv
+    obtain ⟨hjd, hv⟩ := AC.upTo_voteAt.mp hv
     exact hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩
   have hΦ := (frameIn_at hrun hnc hy hc.1).1
   have hBt : B ∈ ℓ.frame.tree := by
@@ -87,7 +87,7 @@ theorem vote_extends_of_counted_batch_at {ini}
     Compose.vote_extends_of_counted_batch hr hy hc' hs hviab (SX := SX) (W := W) hSXH
       (fun x hx => by
         obtain ⟨j, e', hv, hes⟩ := hSXv x hx
-        exact ⟨j, e', ac_voteAt_upTo.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
+        exact ⟨j, e', AC.upTo_voteAt.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
           (hVoteAt_iff.1 hv).2⟩, hes⟩)
       (fun x hx j e' hv hes => voteExtends_upTo hrun hnc hd (hSXH hx)
         (by rw [RunTrace.upTo_projAC]; exact hv) (hall x hx j e' (hvote x j e' (hSXH hx) hv) hes))

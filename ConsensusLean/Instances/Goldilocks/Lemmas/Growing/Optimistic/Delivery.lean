@@ -61,7 +61,7 @@ private theorem pool_vote_unique {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hac := acRun_upTo hrun hnc hd
   obtain ⟨j', -, e', hv', rfl⟩ := hac.honest.pool_vote y hy c σ w hw (hwx ▸ hxd)
   have hs := AC.state_pool_slotU sp hac.localRun.toU hrun.vstart hy c σ _ hw
-  obtain ⟨hjd, hv'⟩ := ac_voteAt_upTo.mp hv'
+  obtain ⟨hjd, hv'⟩ := AC.upTo_voteAt.mp hv'
   rw [hwx] at hv'
   obtain ⟨-, rfl⟩ := one_vote_per_slot_at hrun hnc (hVoteAt_iff.2 ⟨hrun.antitone hjd hxd, hv'⟩) he
     (hs.trans hes.symm)

@@ -137,9 +137,9 @@ theorem effectiveRecordInterval_of_candidates_before_at
   refine hw.mono ?_
   rintro D ⟨s, CV, h | h⟩
   · rw [RunTrace.upTo_projAC] at h
-    exact ⟨s, CV, Or.inl ((Compose.Growing.ac_resultAt_upTo hrun.time_mono).mp h).2⟩
+    exact ⟨s, CV, Or.inl ((AC.upTo_resultAt hrun.time_mono).mp h).2⟩
   · rw [RunTrace.upTo_projAC] at h
-    exact ⟨s, CV, Or.inr ((Compose.Growing.ac_optimisticLockAt_upTo hrun.time_mono).mp h).2⟩
+    exact ⟨s, CV, Or.inr ((AC.upTo_optimisticLockAt hrun.time_mono).mp h).2⟩
 
 /-- **The interval preserves the effective record**, for a node honest at `t`, every cut before
 `j` at a time `≤ t`. -/

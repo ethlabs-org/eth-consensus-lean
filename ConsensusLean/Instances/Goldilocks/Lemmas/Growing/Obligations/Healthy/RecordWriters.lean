@@ -77,8 +77,8 @@ private theorem writer_shape_of_upTo
   have hm := hrun.time_mono
   rw [RunTrace.upTo_projAC, Trace.upTo_state tr y hle] at h
   rcases h with ⟨s, CV, hR⟩ | ⟨⟨CV, hO⟩, e, hl⟩
-  · exact Or.inl ⟨s, CV, ((Compose.Growing.ac_resultAt_upTo hm).mp hR).2⟩
-  · exact Or.inr ⟨⟨CV, ((Compose.Growing.ac_optimisticLockAt_upTo hm).mp hO).2⟩, e, hl⟩
+  · exact Or.inl ⟨s, CV, ((AC.upTo_resultAt hm).mp hR).2⟩
+  · exact Or.inr ⟨⟨CV, ((AC.upTo_optimisticLockAt hm).mp hO).2⟩, e, hl⟩
 
 /-- A non-genesis current record of a reader honest at `t` has a last own writer, with unchanged
 record roots thereafter and the actual creation lock in the optimistic case. -/
@@ -151,7 +151,7 @@ theorem clean_optimistic_writer_candidate_interval_at
     fun m hm' => Trace.upTo_state tr y fun k hk => hnt k (by omega)
   have hr := Compose.Growing.acRun_upTo hrun hnc ht0
   obtain ⟨_, _, ell, _, hpoint, hRq, _, _⟩ := AC.optimisticLockAt_spec hr hy
-    ((Compose.Growing.ac_optimisticLockAt_upTo hm).mpr ⟨hqt, hop⟩) (AC.CommitteeDict.full sp.n)
+    ((AC.upTo_optimisticLockAt hm).mpr ⟨hqt, hop⟩) (AC.CommitteeDict.full sp.n)
     (fun _ _ _ => AC.mem_full _ _)
   have hcallq : tr.projAC.CallAt y q ell := ((Trace.upTo_callAt _).mp hpoint.1).2
   have hframe := Compose.Growing.frame_of_projAC_at hrun hyq hcallq
@@ -299,7 +299,7 @@ private theorem optimistic_unlock_keeps_at
     have hkt := (hm hkj.le).trans hjt
     obtain ⟨Hd', hHd', hHd'r, hRHd⟩ := hp.fast_source_votes_before_at hx (Or.inr hop)
       (by have := sp.two_le_k; omega) hqb k (hkt.trans htb) v (hrun.antitone hkt hv) ell e
-      (Compose.Growing.ac_castAt_upTo.mp hc).2 (by
+      (AC.upTo_castAt.mp hc).2 (by
         change (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 at hvs
         omega)
     have heq : Hd' = Hd := (Compose.Growing.honest_blocks_coherent hrun hnc).1 hHd'

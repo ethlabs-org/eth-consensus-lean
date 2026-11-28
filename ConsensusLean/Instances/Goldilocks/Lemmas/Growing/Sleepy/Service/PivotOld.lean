@@ -156,7 +156,7 @@ theorem sync_from_forward_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hserv := hsync.message y k v hy hsend ha X i ℓ hX hc (hdl'.trans hb) (hdl'.trans hdl)
   have h := AC.held_of_deadline_serviceU (acRun_upTo hrun hnc hd).localRun.toU (k := k) hX
     (fun k' hk' hrk => hrs k' hk' ((ACTrace.upTo_restartAt (tr := _)).mp hrk).2) hdl hslot
-    (ac_messageServedBefore_upTo hm le_rfl hserv)
+    ((AC.upTo_messageServedBefore hm le_rfl).2 hserv)
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 /-- **A block accepted by `t_{s−1} + 2Δ` by a node honest then reaches the proposer** of slot

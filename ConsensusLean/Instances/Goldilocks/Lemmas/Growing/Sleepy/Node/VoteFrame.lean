@@ -50,7 +50,7 @@ theorem honest_vote_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg 
     (∀ c ≤ i, tr.projAC.RestartAt y c → tr.time c ≤ sp.ts s) ∧
       sp.ts s + 4 * sp.Δ ≤ tr.time i := by
   obtain ⟨h1, h2⟩ := honest_vote_restarts (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo _) hy
-    (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hs
+    (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩) hs
   refine ⟨fun c hci hr => h1 c hci ?_, h2⟩
   rw [RunTrace.upTo_projAC]
   exact (ACTrace.upTo_restartAt (tr := _)).mpr ⟨hrun.time_mono hci, hr⟩
@@ -158,7 +158,7 @@ theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
         ((AC.accept_new sp (acRun_upTo hrun hnc hd).localRun hy hk'').1 ℓk
           ((Trace.upTo_callAt_of_le tr.projAC hk'd).mpr hck))
   have h := accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy
-    (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hs hHdp
+    (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩) hs hHdp
     (by
       rw [RunTrace.upTo_projAC]
       exact hacc.imp_right fun ⟨k', hk', hk't⟩ =>
@@ -190,7 +190,7 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hUp := (projFG_localRun hrun' hnc').coherent
   have hst : (tr.upTo (tr.time i)).state y i = tr.state y i := RunTrace.upTo_state_of_le hm le_rfl
   have hc' : AC.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e := by
-    rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+    rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hΦ := frameIn_at hrun hnc hy hc.1
   have hfr := frame_of_projAC_at hrun hy hc.1
   -- the origins of the prefix of labels at most `s`, and the sources below them

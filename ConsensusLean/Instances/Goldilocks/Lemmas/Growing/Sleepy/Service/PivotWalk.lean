@@ -47,10 +47,10 @@ theorem oldOrigin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
     OldOrigin tr H s O := by
   obtain ⟨x, hx, k, m, CV, ⟨hR, hm⟩ | ⟨hO, hm⟩⟩ := Compose.oldOrigin_iff.1 h
   · rw [RunTrace.upTo_projAC] at hR
-    obtain ⟨hkd, hR⟩ := (ac_resultAt_upTo hrun.time_mono).mp hR
+    obtain ⟨hkd, hR⟩ := (AC.upTo_resultAt hrun.time_mono).mp hR
     exact oldOrigin_iff.2 ⟨x, k, m, CV, hrun.antitone hkd hx, Or.inl ⟨hR, hm⟩⟩
   · rw [RunTrace.upTo_projAC] at hO
-    obtain ⟨hkd, hO⟩ := (ac_optimisticLockAt_upTo hrun.time_mono).mp hO
+    obtain ⟨hkd, hO⟩ := (AC.upTo_optimisticLockAt hrun.time_mono).mp hO
     exact oldOrigin_iff.2 ⟨x, k, m, CV, hrun.antitone hkd hx, Or.inr ⟨hO, hm⟩⟩
 
 /-- The proposal call and its duty head, read in the prefix through the call's time. -/
@@ -147,10 +147,10 @@ private theorem vote_anchor_cases_at {ini} (hrun : Growing.GoldilocksRun propose
     (k := k) (P := P) ⟨(RunTrace.upTo_ownBlockAt tr).mpr ⟨hkj, hP.1⟩, hP.2.1, hP.2.2⟩ hs0 hPQ hQU
     hDQ' hDU (fun O hO => RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hDU
       (hDold O (oldOrigin_of_upTo hrun hO))) hy
-    (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hcy⟩) hes
+    (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hcy⟩) hes
     (fun x hx j' hj' e' hv hs => by
       rw [RunTrace.upTo_projAC] at hv
-      obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.mp hv
+      obtain ⟨hjd, hv⟩ := AC.upTo_voteAt.mp hv
       exact hE x j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs)
     K (by rw [RunTrace.upTo_projAC]; exact
       AC.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time j)) hKB.hsize

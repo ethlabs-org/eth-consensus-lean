@@ -198,7 +198,7 @@ theorem unlockKeeps_of_voteCompat_at
     (by rw [hst]; exact hB) fun x hx hxG k hk e hv hs => by
       have hv' := hv
       rw [RunTrace.upTo_projAC] at hv'
-      obtain ⟨hkd, hv'⟩ := ac_voteAt_upTo.mp hv'
+      obtain ⟨hkd, hv'⟩ := AC.upTo_voteAt.mp hv'
       exact voteCompat_upTo hrun hnc hd hx hv ⟨y, hy, j, by rw [hst]; exact hB.1⟩
         (hcompat x (not_not.1 hxG) k hk e (hVoteAt_iff.2 ⟨hrun.antitone hkd hx, hv'⟩) hs)
   intro ℓ hc
@@ -305,7 +305,7 @@ theorem vote_extends_of_prot_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.
   have hd := hrun.time_nonneg k
   obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
   have hr := (acRun_upTo hrun D.hnc hd).localRun
-  have hcast : AC.CastAt (tr.projAC.upTo (tr.time k)) x k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc, he⟩
+  have hcast : AC.CastAt (tr.projAC.upTo (tr.time k)) x k ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
   have hfr : ℓ.frame = Node.frame (tr.state x k) := frame_of_projAC_at hrun hx hc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun D.hnc hx hc
   rcases prot_iff.1 hp with hfl | hroot

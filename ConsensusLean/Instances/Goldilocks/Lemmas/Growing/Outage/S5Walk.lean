@@ -182,7 +182,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
   have hd := D.hrun.time_nonneg i
   have hr := (acRun_upTo D.hrun D.hnc hd).localRun
-  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hf := D.two_faults_lt_at hy ⟨_, projAC_callAt.1 hc.1⟩
   have hfr : ℓ.frame = Node.frame (tr.state y i) := frame_of_projAC_at D.hrun hy hc.1
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
@@ -236,7 +236,7 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
   obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ hL
   obtain ⟨B', hB', hB'r, h⟩ := AC.readPoint_locks_provenance_strict (acRun_upTo D.hrun D.hnc hd)
-    hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hpos l' hl'
+    hy (AC.upTo_castAt.mpr ⟨le_rfl, hc⟩) hpos l' hl'
   obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
   refine compatible_of_anc_right hU hBP
     (compatible_of_anc_left hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
@@ -246,12 +246,12 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
     obtain rfl : B₁ = L' :=
       hU.1 (hΦU hB₁) (tree_held_at hd hy (fun _ hk => hm hk.le) hL') (hB₁r.trans hL'r.symm)
     exact compatible_of_anc_left hU (hanc.mono hΦU) hcomp
-  · obtain ⟨-, hfl⟩ := (ac_optimisticLockAt_upTo hm).mp hfl
+  · obtain ⟨-, hfl⟩ := (AC.upTo_optimisticLockAt hm).mp hfl
     refine compatible_of_anc_left hU (hanc.mono hΦU)
       (fastLock_compatible_at hinv.toOutageVoteInv hy (Or.inr hfl) (fun v hv hvH => ?_)
         fun hsK => D.hzc _ ?_ ⟨y, i, hy, hcall, le_rfl⟩)
     · obtain ⟨j, hj, e', hve, he'⟩ := hcut v hv hvH
-      obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+      obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
       exact ⟨j, hj, e', hVoteAt_iff.2 ⟨D.hrun.antitone hjd hvH, hve⟩, he'⟩
     · -- the cast's slot is at most `j₀ + k`, so `t_i < t_{j₀+k} + 4Δ`
       have h := (AC.ts_le_iff_le_slot sp hd ((sp.slot (tr.time i) + 1 : Nat) : Int))
@@ -314,8 +314,8 @@ private theorem slowLock_extending_vote_at {x : Fin sp.n} {i : Nat} (hx : x ∈ 
   obtain ⟨c, hci, ℓ, C, CV, huU, hCU, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
     AC.slow_lock_saved hr hrun.vstart hx i l hl' hlf
   obtain ⟨-, hΦU⟩ := AC.frameIn_of_callAt hr hx huU.1
-  obtain ⟨-, hu⟩ := (ac_updateAt_upTo hrun.time_mono).mp huU
-  obtain ⟨-, hC⟩ := (ac_resultAt_upTo hrun.time_mono).mp hCU
+  obtain ⟨-, hu⟩ := (AC.upTo_updateAt hrun.time_mono).mp huU
+  obtain ⟨-, hC⟩ := (AC.upTo_resultAt hrun.time_mono).mp hCU
   have htc : tr.time c = sp.ts l.slot + 6 * sp.Δ := hu.2.2.1
   have hxc : x ∈ H (tr.time c) := hrun.antitone (hrun.time_mono hci.le) hx
   have hLLb' : Anc (tr.HonestBlocksAt H) L Lb := hLLb.mono hsub
@@ -338,7 +338,7 @@ private theorem slowLock_extending_vote_at {x : Fin sp.n} {i : Nat} (hx : x ∈ 
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
     have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1
     obtain rfl : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
-    obtain ⟨-, hC''⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC'
+    obtain ⟨-, hC''⟩ := (AC.upTo_resultAt hrun.time_mono).mp hC'
     have hxk : x ∈ H (tr.time k') := hrun.antitone (hrun.time_mono (hk'c.trans hci).le) hx
     obtain ⟨w, jw, ew, -, hvw, hws, hext⟩ := result_extending_vote_at D hxk hC'' (Or.inl le_rfl)
     exact ⟨w, jw, ew, hvw, by omega, extend C' ((Anc.mono hΦU hLbS).mono hsub) ew hext⟩
