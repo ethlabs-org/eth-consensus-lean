@@ -9,13 +9,14 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
@@ -115,7 +116,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
       (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
       Q ∈ (Node.frame (tr.state y i)).viableHeads := by
   have htime := hrun.time_mono hai
-  rw [Node.frame_of_projAC_at hrun.toLocalRun hy hc, Node.frame_eq,
+  rw [Compose.frame_of_projAC hrun hy hc, Node.frame_eq,
     Store.toFrame_viableHeads] at hv
   have hQa : Q ∈ (tr.state y a).fg.tree := hv.1
   have hQi := Compose.tree_mono hrun.toLocalRun hy hai hQa
@@ -130,16 +131,16 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
         ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).trans
         (hframe.root_eq y i hy (halo.trans htime) hihi
           ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).symm)
-      (hj_lt_hmax' hrun hy i)
+      (hj_lt_hmax hrun hy i)
       (Store.σ_eq_of_mem_with
-        (Node.fg_reachable_at hrun.toLocalRun hy a).reachableWith
+        (Compose.fg_reachable hrun.toLocalRun hy a).reachableWith
         Store.finalitySpec_updateFinality
-        (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
-        (Coherence.honest_blocks_coherent hrun.toLocalRun hnc).1
+        (Compose.fg_reachable hrun.toLocalRun hy i).reachableWith
+        (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1
         (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi)
       (fun h => h.mono (Compose.tree_mono hrun.toLocalRun hy hai)) hv.2.2
-  have hFQ := finalized_below_viable (Node.fg_reachable_at hrun.toLocalRun hy i)
-    (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) hsub hf
+  have hFQ := finalized_below_viable (Compose.fg_reachable hrun.toLocalRun hy i)
+    (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hsub hf
     (fun a b ha hb hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy i i a b
       (by simpa only [Compose.store_eq hrun hy] using ha)
       (by simpa only [Compose.store_eq hrun hy] using hb) hv) hQi hvi
@@ -173,27 +174,27 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have hR := Node.fg_reachable_at hrun.toLocalRun hy a
+  have hR := Compose.fg_reachable hrun.toLocalRun hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hv : (tr.state y a).fg.IsViable Q :=
     (Store.isViable_iff _ _).mpr (Or.inl hQh.ge)
   have hFQ := finalized_below_viable hR
-    (Coherence.honest_blocks_coherent hrun.toLocalRun hnc)
+    (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
     (fun B hB => ⟨y, hy, a, hB⟩) hf
     (fun b c h₁ h₂ hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a a b c
       (by simpa only [Compose.store_eq hrun hy] using h₁)
       (by simpa only [Compose.store_eq hrun hy] using h₂) hv) hQ hv
   have hQt : Q ∈ ell₀.frame.tree := by
-    rw [Node.frame_of_projAC_at hrun.toLocalRun hy ha, Node.frame_eq,
+    rw [Compose.frame_of_projAC hrun hy ha, Node.frame_eq,
       Store.toFrame_tree]
     exact ⟨hQ, hFQ⟩
   have hv₀ : Q ∈ ell₀.frame.viableHeads := by
-    rw [Node.frame_of_projAC_at hrun.toLocalRun hy ha, Node.frame_eq,
+    rw [Compose.frame_of_projAC hrun hy ha, Node.frame_eq,
       Store.toFrame_viableHeads]
     exact ⟨hQ, hFQ, hv⟩
   obtain ⟨hQi, hrooti, hvi⟩ :=
     hframe.viableHead_persists' hrun hnc hf hy hai halo hihi ha hv₀
-  rw [← Node.frame_of_projAC_at hrun.toLocalRun hy hc.1] at hQi hrooti hvi
+  rw [← Compose.frame_of_projAC hrun hy hc.1] at hQi hrooti hvi
   refine ⟨Q, ⟨hQi, Or.inl ?_⟩, hvi, hrooti⟩
   apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQt hQi hat
   intro r _ hrs

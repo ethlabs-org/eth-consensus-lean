@@ -8,8 +8,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
