@@ -3,8 +3,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames

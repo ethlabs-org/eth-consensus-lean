@@ -1,9 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation

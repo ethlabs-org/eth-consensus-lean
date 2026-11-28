@@ -3,7 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.UnanimityWalk
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase

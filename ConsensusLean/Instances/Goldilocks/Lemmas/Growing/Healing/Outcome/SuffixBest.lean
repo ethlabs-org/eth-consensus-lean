@@ -10,8 +10,7 @@ public section
 
 /-! # A best child on the proposal-parent path stays best at the voter, under growing faults
 
-`reset_suffix_best_at`, the growing form of `Healing.ResetPremisesUpTo.reset_suffix_best`
-(`Healing/Outcome/SupplierViews`), from the frame step `Healing.suffix_best_of_views`
+`reset_suffix_best_at`, from the frame step `Healing.suffix_best_of_views`
 (`Healing/Outcome/SuffixTransfer`): the winner is transported through the viable proposal
 (`reset_winner_voter_tree_at`), competitors reflect through guarded relay
 (`reset_competitor_reflect_at`), and the views agree (`reset_views_agree_at`). -/

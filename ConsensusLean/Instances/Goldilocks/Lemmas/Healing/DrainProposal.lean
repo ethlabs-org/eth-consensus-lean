@@ -1,9 +1,14 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainCommon
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

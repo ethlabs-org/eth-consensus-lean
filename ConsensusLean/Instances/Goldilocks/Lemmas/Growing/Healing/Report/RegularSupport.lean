@@ -2,7 +2,9 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Lemmas.Tactic.Linarith

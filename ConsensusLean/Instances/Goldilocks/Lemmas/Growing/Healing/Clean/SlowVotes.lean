@@ -10,7 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HealedMembers
 
@@ -18,9 +18,9 @@ public section
 
 /-! # Clean slow sources and their votes, under growing faults
 
-The growing forms of the slow-source part of `Healing/Outcome/FiniteSources`. Each writer is
-honest at its own write; its frame, pool and locks are read on the prefix through the write, and
-the comparisons of two writers of one label use the release service owed at each release.
+Comparisons of slow sources. Each writer is honest at its own write; its frame, pool and locks are
+read on the prefix through the write, and the comparisons of two writers of one label use the
+release service owed at each release.
 
 * `ResetPremisesUpTo.result_source_compatible_at`: a result and a result or optimistic source of
   one label are compatible;

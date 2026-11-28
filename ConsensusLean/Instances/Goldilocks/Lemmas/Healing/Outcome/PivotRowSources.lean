@@ -1,8 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
@@ -11,14 +9,18 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance

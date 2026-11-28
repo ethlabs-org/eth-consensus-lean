@@ -4,7 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Hig
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -13,9 +13,9 @@ public section
 
 /-! # Optimistic sources and their supporters, under growing faults
 
-The growing forms of the optimistic comparisons of `Healing/Outcome/FiniteSources`. Each writer
-is honest at its own write. Its pool and frame are read on the prefix through the write, and an
-optimistic lock's three-quarter quorum is charged at a single observation `≤ b`: the later write
+Comparisons of optimistic sources. Each writer is honest at its own write. Its pool and frame are
+read on the prefix through the write, and an optimistic lock's three-quarter quorum is charged at a
+single observation `≤ b`: the later write
 for two locks, the write itself for one, against the slot's committee (its pools hold committee
 votes, P, and fewer than half of it is faulty from `ḡ` on). Faults only grow, so a voter honest at
 that observation was honest at each earlier vote, and the static one-vote-per-slot applies on the

@@ -29,7 +29,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -94,8 +94,8 @@ Leaf 4 (`row_or_high_of_report_at_from`): a held report, before any height advan
 supplies a row of a lower block of the same height signed while honest, or is strictly higher.
 Its `fg_attest` call follows in the same tick with the same store; the lock at the height is
 free (no advance) or names the entry (the client record's provenance,
-`Healing.client_record_origin_from`, and its signed finality pairs, `Healing.signed_fin_justified`),
-so the client signs the row now or signed it before (`Healing.client_progress_of_lock`).
+`Healing.client_record_origin_from`, and its signed finality pairs), so the client signs the row
+now or signed it before.
 
 Truncation after a horizon (`truncH_eq_of_le`, `truncH_antitone`, `honestBlocksAt_truncH_subset`,
 `catchRun_truncH`, `HZ_truncH`, `isReset_truncH_iff`): the honest sets truncated after `b` agree

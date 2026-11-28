@@ -1,5 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 
 public section
 

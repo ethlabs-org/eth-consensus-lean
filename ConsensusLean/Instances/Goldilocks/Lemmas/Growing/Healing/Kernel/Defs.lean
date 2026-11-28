@@ -4,7 +4,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 
 public section
 

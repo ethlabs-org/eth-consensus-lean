@@ -15,7 +15,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientAdapters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor

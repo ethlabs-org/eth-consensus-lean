@@ -15,8 +15,7 @@ public section
 
 /-! # The operational proposal's view agrees with the voter's, under growing faults
 
-`reset_views_agree_at`, the growing form of `Healing.ResetPremisesUpTo.reset_views_agree`
-(`Healing/Outcome/SupplierFrames`): the proposal's view and a slot-`(s+1)` voter's merged view
+`reset_views_agree_at`: the proposal's view and a slot-`(s+1)` voter's merged view
 agree on common held targets, for a proposer honest through `t_{s+1} + hold` and a voter honest
 at its cast. -/
 

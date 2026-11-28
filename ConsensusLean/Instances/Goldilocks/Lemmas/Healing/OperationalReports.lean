@@ -1,20 +1,32 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
@@ -23,11 +35,15 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Operational update selection and reports after the drain
+/-! # Fast candidates at the update and the adjacent call
 
-Finite-horizon vote propagation, update selection and report coverage shared by Healing and
-the obligations proof. Start with `UpTo.operational_update_selection`; its supporting arguments
-work backwards from actual bounded calls to unanimous votes, retained sources and compatible locks.
+* `effective_record_update_slot_growth`: writing a held candidate leaves that candidate or a
+  strictly later descendant.
+* `UpTo.deepest_of_subset`: a deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`.
+* `UpTo.candidate_after_fast_update`, `UpTo.candidate_at_adjacent_call`: full viability makes the
+  newly selected fast lock an exact toFG candidate, which persists into an adjacent call with the
+  same frame and timestamp.
+
 Generic effective-record preservation and interval contracts are in `Obligations/HealthyEffective`.
 -/
 

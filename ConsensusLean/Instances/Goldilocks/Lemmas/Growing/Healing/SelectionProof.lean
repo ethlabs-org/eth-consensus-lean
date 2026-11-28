@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Unanimou
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame

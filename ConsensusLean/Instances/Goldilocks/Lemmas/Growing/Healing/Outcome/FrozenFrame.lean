@@ -12,8 +12,7 @@ public section
 
 /-! # A voter's pre-freeze block reaches the proposer's frame, under growing faults
 
-`reset_frozen_frame_at`, the growing form of `Healing.ResetPremisesUpTo.reset_frozen_frame`
-(`Healing/Outcome/SupplierFrames`): a bounded pre-freeze block of a voter honest at its cast,
+`reset_frozen_frame_at`: a bounded pre-freeze block of a voter honest at its cast,
 above the `Σ.F` of a proposer honest at its proposal call, is in the proposer's frame. The
 block's stamp is an acceptance of the voter, honest then, relayed to the proposer. -/
 

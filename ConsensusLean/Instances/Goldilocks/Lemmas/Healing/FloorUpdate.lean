@@ -12,7 +12,7 @@ public section
 Under `Unanimous tr H p P`, the slot-`p` update of an honest node at
 `t_p + 6Δ` has result `P`, no veto, and `P` passes the fast test. When `P`
 is its own viable ancestor, the update writes the fast lock `⟨P.root, p, true⟩`
-(`fastLock_mem_updateConfirmation`, the step `hlock` of `candidate_after_fast_update`, stated
+(`fastLock_mem_updateConfirmation_floor`, the step `hlock` of `candidate_after_fast_update`, stated
 here without the viable-tree premise). So after the tick the node has the floor of slot `p` on
 every `B₀ ⪯ P` of its frame. -/
 

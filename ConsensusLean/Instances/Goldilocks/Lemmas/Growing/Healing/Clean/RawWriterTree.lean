@@ -11,8 +11,7 @@ public section
 
 /-! # A raw writer's block in a later voter's frozen tree, under growing faults
 
-The growing form of `Healing.raw_writer_voterBlockTree_window_before` (`Healing/Retention/Relay`):
-the writer is honest at its write, and its counted head is genesis or accepted by it while
+The writer is honest at its write, and its counted head is genesis or accepted by it while
 honest (`Healing.Growing.raw_writer_relay_source_at`); the voter is honest at its cast. An
 accepted head reaches the voter before its slot's freeze through the window service or, for an
 acceptance before the window, the catch-up, each owed from the writer's acceptance alone. The

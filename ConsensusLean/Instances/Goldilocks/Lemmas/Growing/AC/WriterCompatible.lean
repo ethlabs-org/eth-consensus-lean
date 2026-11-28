@@ -9,10 +9,10 @@ public section
 
 /-! # Same-slot writers under windowed service, across a compromise
 
-The growing forms of the static `result_result_compatible_window_before` and
-`result_optimistic_compatible_window_before` (`Healing/AC/Compat`). Each writer is honest at its
-write, and each counted vote is released by a writer while that writer is honest (`Relayed`).
-Service is the growing `ServiceWindowBefore` from `a ≤ t_s`, used only through the update at
+Two results of one slot, or a result and an optimistic confirmation, are compatible. Each writer is
+honest at its write, and each counted vote is released by a writer while that writer is honest
+(`Relayed`). Service is the growing `ServiceWindowBefore` from `a ≤ t_s`, used only through the
+update at
 `t_s + 6Δ ≤ b`. The releases end before `t_s + 2Δ`, so the only deadlines consumed are by
 `t_s + 3Δ`. -/
 

@@ -20,7 +20,7 @@ facts of a slot dictionary `K` in the form the growing proofs use,
   counted declared head vote is backed in the read point's pool);
 * `mayVote_iff_of_facts`: an honest node may vote in exactly its committees' slots (the gate);
 * `cs2_of_twoK`: CS2 against `committeeSize`;
-* `faultBoundK_of_twoK`: CS at a slot after the slot of `ḡ`, read at a time whose previous slot
+* `faultBoundK_of_awake`: CS at a slot after the slot of `ḡ`, read at a time whose previous slot
   starts at or after `ḡ`, from CS2, awake honest nodes and no restart after `ḡ`. -/
 
 namespace Consensus.Goldilocks.Healing

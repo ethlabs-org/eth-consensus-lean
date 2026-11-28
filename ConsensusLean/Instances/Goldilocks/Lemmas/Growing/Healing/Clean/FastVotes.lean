@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.L
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
@@ -17,7 +17,7 @@ public section
 
 /-! # Clean fast sources and their votes, under growing faults
 
-The growing form of the fast-source part of `Healing/Outcome/FiniteSources`: a clean fast source,
+A clean fast source,
 written by a node honest at its write, is extended by every later vote of a node honest at it
 through the horizon, by strong induction on the cast's cut.
 

@@ -1,6 +1,13 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

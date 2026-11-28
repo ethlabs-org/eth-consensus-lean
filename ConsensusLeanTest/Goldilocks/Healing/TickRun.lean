@@ -2,7 +2,9 @@ module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 @[expose] public section
 

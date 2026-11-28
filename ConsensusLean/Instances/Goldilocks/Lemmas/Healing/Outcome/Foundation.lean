@@ -6,15 +6,23 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -28,17 +36,13 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
 
 * **RN, stored ancestry is irreversible**: every lock stored at a later cut sits below a
   stored lock of its slot at an earlier cut, or below a fresh write between them
-  (`stored_lock_below`, `AC.lock_provenance_fromU` on the AC projection). **RU** is
+  (`AC.lock_provenance_fromU` on the AC projection). **RU** is
   `AC.unlock_compatible`: unlocking against a view with at least `n/2` validators whose slot-`s`
   support votes extend `B`, or that equivocate, moves every lock of a slot below `s` to a block
   compatible with `B`.
 * **The drain** (HS.2 (3)): from `R` on, every live lock has a label at least `b + k + 2`, so
   every lock with a label before `b` or a slow window straddling `b` has expired
-  (`drain_live_locks`).
-* **Clean fast transfer** (`clean_fast_transfer`, HS.2 (1)): the stored block of a fast lock of
-  label `≥ b` written by an honest joined node is extended by every honest vote of a later slot,
-  and is in the voter's viable voter block tree or at or below its `fc_root` there (HR.4 (R3)
-  when it is high; inherited from a high seed when it is a low ancestor of one).
+  (`drain_live_locks`, and `drain_stored_lock_label` for a stored lock).
 
 `Outcome.Pivot` consumes these source facts. The downstream `Outcome.Supplier` retains
 the report-cover suppliers; this separation lets
