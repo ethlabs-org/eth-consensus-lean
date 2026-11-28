@@ -26,6 +26,7 @@ public import ConsensusLeanTest.Goldilocks.Compose.Statements
 public import ConsensusLeanTest.Goldilocks.Compose.ThresholdRejections
 public import ConsensusLeanTest.Goldilocks.FG.AccountableTightness
 public import ConsensusLeanTest.Goldilocks.FG.Aggregation
+public import ConsensusLeanTest.Goldilocks.FG.ClientEquivalence
 public import ConsensusLeanTest.Goldilocks.FG.ConflictChains
 public import ConsensusLeanTest.Goldilocks.FG.Faulty
 public import ConsensusLeanTest.Goldilocks.FG.FaultyFinalization
