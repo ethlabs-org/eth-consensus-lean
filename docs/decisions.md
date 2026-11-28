@@ -9,7 +9,7 @@ detail in `TRUST.md`.
 The generic healing milestone's `FrameWindow` pins `hmax = M`, the equivalence
 `hmax = hj + 1 ↔ isTop`, and `J` whenever `isTop` holds. It does not pin the
 head-height floor or exclude contests from the top case. The frame key is
-`frameKey'' = 2 * hmax + [hmax = hj + 1]`.
+`frameKey = 2 * hmax + [hmax = hj + 1]`.
 
 This is a milestone restatement, not an equivalence of the old and new premises.
 It excludes mixed contest(h)/gap(h+1) windows and top contest windows with varying
@@ -366,18 +366,17 @@ caches and frame: the viability test, descendant guard, and `fg_to_ac` frame.
   At stock numbers (`k = 2`, `δ_t = 6`, `finalSlots = 2`, `G = 0`) the bound is `715 ≤ 4D`, and the least such
   depth is `D = 179` (`4D = 716`). Every claim at the headline contract, `GoldilocksContinues` included, holds
   only for assumption sets `A` that satisfy `deep_final` (a field of `ContractAssumptions`) and at admitted gaps.
-- **Deep FG sources: a reset budget and an origin cap in the generic healing contract.** A deep
+- **Deep FG sources: a reset budget in the generic healing contract.** A deep
   candidate of state height above `H_z` is excluded only until the end `c_z + 4DΔ` of the deep quarantine, after
   which a high source need not be a fast lock. `ACHealing` therefore gains `deepBudget : Option Nat` (default
   `none`), a budget in slots after `c_z`. It bounds the admissible resets: `ResetInBudget` says the slot after the
   reset's drain is at most `deepBudget` slots after `c_z`, and `heal_after_reset`, `HealthyReadPoint.healed`,
-  `HealthyReadPoint.proposal`, `HighCanonicalSupply` and `ResetHealBudgetSupply` take or provide it. It also caps
-  the times the origin fields speak about: `OriginInCap` on `report_origin`, `origins_comparable` and the leaves
-  `high_row_source_at` and `high_entry_eq_at`, with `HighCanonical` read at the capped
-  horizon `originCapTime`. `Origin` stays fast-only (a joined node's stored fast-lock write) and is not
-  generalized to deep sources. The Goldilocks supplier
+  `HealthyReadPoint.proposal` and `ResetHealBudgetSupply` take or provide it. The Goldilocks supplier
   fixes `deepBudget = sp.deepDepth` (`GoldilocksHealingData`). With `deepBudget = none` every new premise is
-  vacuous and `originCapTime` is the horizon, so the stock contract is unchanged.
+  vacuous, so the stock contract is unchanged. (Wave 7 Q1 retired the abstract origin interface — `Origin`,
+  `report_origin`, `origins_comparable`, `OriginInCap`/`originCapTime`, the generic leaves 12–14 and the
+  `HighCanonical` premise of `heal_after_reset`, with `HighCanonicalSupply`: the concrete supplier never read
+  that premise. The concrete fast-only origin, its compatibility and the reset budget/cover proofs stay.)
 
 ## Regimes
 

@@ -146,30 +146,6 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   run_truncH : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
     ∀ b, Run cm proposer dg (truncH H b) tr
 
-/-- Canonical high entries, with historical honesty read at independently bounded cuts. -/
-structure HighCanonical
-    (Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop)
-    (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g b : Time) : Prop where
-  row_origin : ∀ y k att, y ∈ H (max (cutZ P g) (tr.time k)) →
-    tr.SignAt y k att → tr.time k ≤ b →
-    HZ tr H g + 1 ≤ att.h →
-    ∃ r < k, ∃ j B, Origin tr y r j B ∧ y ∈ H (max (cutZ P g) (tr.time r)) ∧
-      HZ tr H g + 1 ≤ ((tr.state y r).fg.σ B.root).h ∧
-      ∃ E ∈ (tr.state y r).fg.tree, (tr.state y r).fg.Anc E B ∧ E.root = att.T ∧
-        ((tr.state y r).fg.σ E.root).h = att.h ∧ ((tr.state y r).fg.σ E.root).Th = E.root
-  entry_eq : ∀ x x' i j i' j' B B' y₁ y₂ m₁ m₂ Z₁ Z₂ t₁ t₂,
-    x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
-    HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
-    x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
-    HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
-    Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →
-    0 ≤ t₁ → (∀ q < m₁, tr.time q ≤ t₁) → y₁ ∈ H t₁ →
-    0 ≤ t₂ → (∀ q < m₂, tr.time q ≤ t₂) → y₂ ∈ H t₂ →
-    Z₁ ∈ (tr.state y₁ m₁).fg.tree → Z₂ ∈ (tr.state y₂ m₂).fg.tree →
-    ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h →
-    ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root →
-    ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root → Z₁.root = Z₂.root
-
 /-- Shift a time by `d` delays; definitionally `t` at `d = 0`. -/
 def shiftDelay (P : Params) (d : Nat) (t : Time) : Time :=
   match d with
@@ -186,17 +162,6 @@ abbrev SlotWindowWithin (tr : RunTrace A) (H : Time → Set (Fin P.n))
 def ResetInBudget (P : Params) (budget : Option Nat) (drain : Nat) (g a : Time) : Prop :=
   ∀ m, budget = some m → P.slotOf a + drain + 1 ≤ P.slotOf (cutZ P g) + m
 
-/-- A time within the origin cap: with budget `m`, at or before `m` slots after `c_z` (for
-Goldilocks, the end `c_z + 4DΔ` of the deep quarantine). Vacuous without a budget. -/
-def OriginInCap (P : Params) (budget : Option Nat) (g t : Time) : Prop :=
-  ∀ m, budget = some m → t ≤ P.slotTime (P.slotOf (cutZ P g) + m)
-
-/-- The horizon `b` capped at the origin cap; `b` itself without a budget. -/
-def originCapTime (P : Params) (budget : Option Nat) (g b : Time) : Time :=
-  match budget with
-  | none => b
-  | some m => min b (P.slotTime (P.slotOf (cutZ P g) + m))
-
 /-- Protocol obligations for growing runs. New source and warmth laws require genuine suppliers.
 The premises are read at release hold `hold` (default `0`). -/
 structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg)
@@ -205,17 +170,17 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg)
   follow : Nat
   reportDelay : Nat
   drain : Nat
-  /-- Deep budget in slots after `c_z`: bounds admissible resets (`ResetInBudget`) and the times
-  the origin fields speak about (`OriginInCap`); `none` bounds nothing. -/
+  /-- Deep budget in slots after `c_z`: bounds admissible resets (`ResetInBudget`); `none` bounds
+  nothing. -/
   deepBudget : Option Nat := none
-  Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
   follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold → follow ≤ P.δt
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R
-  /-- The proposal reaches the predecessor of the maximum height and exceeds justification. -/
-  proposal_floor : ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop}
+  /-- The proposed block's post-proposal state height is at least the proposer's pre-proposal
+  maximum height minus one and strictly above its pre-proposal justified height. -/
+  proposal_height : ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi M isTop J →
     z ∈ H (P.slotTime u) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
@@ -241,39 +206,12 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg)
         Anc (tr.HonestBlocksAt H) B R ∧
         ∀ x, u + follow ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = P.slotTime x → Anc (tr.HonestBlocksAt H) R d.head
-  /-- A high honest report after a reset has an earlier origin extending it.
-  Certificate: no open obligation recorded. -/
-  report_origin : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
-    {y : Fin P.n} {i : Nat} {R : A.Blk},
-    βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-    IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b →
-    OriginInCap P deepBudget g (tr.time i) → ReportAt tr y i R →
-    HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
-    ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
-      B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B
-  /-- High honest FG sources after a reset are compatible across all slots.
-  Certificate: cert obligation open: same-slot FG-source safety plus C1.1 across slots,
-  including the analogue excluding high sources before cutZ. -/
-  origins_comparable : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n}
-    {i j i' j' : Nat} {B B' : A.Blk},
-    βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-    IsReset tr H g a → a ≤ b → OriginInCap P deepBudget g a →
-    x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
-    OriginInCap P deepBudget g (tr.time i) →
-    HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
-    x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
-    OriginInCap P deepBudget g (tr.time i') →
-    HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
-    Compatible (tr.HonestBlocksAt H) B B'
-  /-- Canonical high sources yield chained honest proposals after the AC's drain bound.
+  /-- Honest proposals chain after the AC's drain bound.
   Certificate: cert obligation open: the certificate healing bound. -/
   heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     IsReset tr H g a → a ≤ b → ResetInBudget P deepBudget drain g a →
-    HighCanonical Origin tr H g (originCapTime P deepBudget g b) →
     HealedFrom tr H proposer (P.slotOf a + drain) b
 
 end Consensus.Goldilocks.Generic

@@ -48,7 +48,7 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   obtain ⟨hmargin, hdrainC, hdeepC⟩ := Generic.ACCorrectLocal.cast_signer hsg C
     (fun _ C' => C'.margin = C.margin ∧ C'.healing.drain = C.healing.drain ∧
       C'.healing.deepBudget = C.healing.deepBudget) ⟨rfl, rfl, rfl⟩
-  obtain ⟨-, -, -, -, hdrain, hdeep, -⟩ := hC.healing
+  obtain ⟨-, -, -, -, hdrain, hdeep⟩ := hC.healing
   have hm := hC.margin
   intro hv' hnc cap idx gst hcap hH hp hhb
   rw [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]

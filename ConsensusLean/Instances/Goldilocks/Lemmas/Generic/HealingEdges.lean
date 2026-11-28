@@ -22,10 +22,6 @@ The assembly edges over any node AC, from the generic healing leaves (`HealingLe
 gives a reset no later (leaf 1, `reset_of_height_advance_at_from`); without one, `NoAdvance` holds
 at `T`.
 
-`highCanonical` is proved over any `ACHealing`: by the horizon of a premised reset, honest stores
-have no high contest (leaf 13), high signings come from high origins (leaf 12), and self-entries of
-equal height below two high origins are equal (leaf 14, `high_entry_eq_at_of_healing`).
-
 `rise_reset_rounds_within_of` proves the rise under vote latency `D` over any `ACHealing`, by
 induction on the remaining rounds: a warm high proposal gives the reset (leaf 10 under latency);
 a lower one is crossed by the next honest proposal `δt` to `δt + G - 1` slots later (leaf 11),
@@ -43,7 +39,7 @@ latency `D`, report delay `G = O.reportDelay`, proposal gap `Gp`, drain length `
 `W + Gp ≤ L + 1` (`W = O.warmup`) and rise round `ρ = δt + Gp - 1`, on the four-delay slot grid.
 
 Without an advance before the bound there is no high signing (`reset_or_noAdvance`), so honest
-`h_max` is in `[HZ, HZ + 1]` from `r + 4Δ` (leaf 2) and the key `frameKey''` takes at most four
+`h_max` is in `[HZ, HZ + 1]` from `r + 4Δ` (leaf 2) and the key `frameKey` takes at most four
 values. The sequential pigeonhole (`Healing.exists_const_window_seq_of_mem`, lag `2Δ` by the relay
 calls) gives a window at a constant key `v` of real length
 `len v = 4Δ(L + 2) + r(v)·4Δρ + 2Δ - 1 + D + GΔ`. The first slot `s₀` in the window starts the
@@ -87,7 +83,7 @@ open Healing.Growing (HZ IsReset CatchRun)
 
 /-! ## The milestone frame key
 
-The arithmetic of `frameKey''` (twice `h_max`, plus one in a top frame), restriction of a
+The arithmetic of `frameKey` (twice `h_max`, plus one in a top frame), restriction of a
 `FrameWindow`, and a frame window from a constant key. -/
 
 section FrameWindowKey
@@ -99,30 +95,30 @@ section Key
 variable {a b : Store P A.Payload}
 
 /-- Monotone store heights give a monotone key; at fixed `h_max`, top cannot become gap. -/
-theorem frameKey''_mono (hm : a.hmax ≤ b.hmax) (hj : a.hj ≤ b.hj) (hb : b.hj < b.hmax) :
-    frameKey'' A a ≤ frameKey'' A b := by
+theorem frameKey_mono (hm : a.hmax ≤ b.hmax) (hj : a.hj ≤ b.hj) (hb : b.hj < b.hmax) :
+    frameKey A a ≤ frameKey A b := by
   classical
-  rw [frameKey''_eq, frameKey''_eq]
+  rw [frameKey_eq, frameKey_eq]
   split_ifs <;> omega
 
 /-- The key along an honest node's cuts is monotone. -/
-theorem frameKey''_monotone {st : Nat → Store P A.Payload}
+theorem frameKey_monotone {st : Nat → Store P A.Payload}
     (hm : Monotone fun i => (st i).hmax) (hj : Monotone fun i => (st i).hj)
-    (hlt : ∀ i, (st i).hj < (st i).hmax) : Monotone fun i => frameKey'' A (st i) :=
-  fun _ _ hij => frameKey''_mono (hm hij) (hj hij) (hlt _)
+    (hlt : ∀ i, (st i).hj < (st i).hmax) : Monotone fun i => frameKey A (st i) :=
+  fun _ _ hij => frameKey_mono (hm hij) (hj hij) (hlt _)
 
 /-- On two consecutive maximum heights, the key takes one of four consecutive values. -/
-theorem frameKey''_bounds {HZ : Nat} (hlo : HZ ≤ a.hmax) (hhi : a.hmax ≤ HZ + 1) :
-    2 * HZ ≤ frameKey'' A a ∧ frameKey'' A a ≤ 2 * HZ + 3 := by
+theorem frameKey_bounds {HZ : Nat} (hlo : HZ ≤ a.hmax) (hhi : a.hmax ≤ HZ + 1) :
+    2 * HZ ≤ frameKey A a ∧ frameKey A a ≤ 2 * HZ + 3 := by
   classical
-  rw [frameKey''_eq]
+  rw [frameKey_eq]
   split_ifs <;> omega
 
 /-- Equal keys are exactly equal maximum heights and equal top status. -/
-theorem frameKey''_eq_iff : frameKey'' A a = frameKey'' A b ↔
+theorem frameKey_eq_iff : frameKey A a = frameKey A b ↔
     a.hmax = b.hmax ∧ ((a.hmax = a.hj + 1) ↔ (b.hmax = b.hj + 1)) := by
   classical
-  rw [frameKey''_eq, frameKey''_eq]
+  rw [frameKey_eq, frameKey_eq]
   split_ifs <;> simp_all <;> omega
 
 end Key
@@ -142,19 +138,19 @@ theorem FrameWindow.key_eq {tr : RunTrace A} {H : Time → Set (Fin P.n)}
     {lo hi : Time} {M : Nat} {isTop : Prop} {J : A.Blk}
     (h : FrameWindow tr H lo hi M isTop J) {y : Fin P.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) (hl : lo ≤ tr.time i) (hh : tr.time i ≤ hi) :
-    frameKey'' A (tr.state y i).fg = 2 * M + if isTop then 1 else 0 := by
+    frameKey A (tr.state y i).fg = 2 * M + if isTop then 1 else 0 := by
   classical
-  rw [frameKey''_eq, h.M_eq y i hy hl hh]
+  rw [frameKey_eq, h.M_eq y i hy hl hh]
   have ht := h.top_iff y i hy hl hh
   rw [h.M_eq y i hy hl hh] at ht
   simp only [ht]
 
 /-- A constant key gives constant `(M, isTop)`; agreement at equal `h_j` supplies `J`. -/
-theorem frameData_of_frameKey''_eq {α : Type*} (mem : α → Nat → Prop)
+theorem frameData_of_frameKey_eq {α : Type*} (mem : α → Nat → Prop)
     (time : Nat → Time) (st : α → Nat → Store P A.Payload) (dflt : A.Blk)
     {lo hi : Time}
     (hK : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
-      time m ≤ hi → frameKey'' A (st y i) = frameKey'' A (st z m))
+      time m ≤ hi → frameKey A (st y i) = frameKey A (st z m))
     (hJ : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
       time m ≤ hi → (st y i).hj = (st z m).hj → (st y i).J = (st z m).J) :
     ∃ M isTop J,
@@ -166,7 +162,7 @@ theorem frameData_of_frameKey''_eq {α : Type*} (mem : α → Nat → Prop)
   by_cases hex : ∃ y i, mem y i ∧ lo ≤ time i ∧ time i ≤ hi
   · obtain ⟨y₀, i₀, hy₀, h₁, h₂⟩ := hex
     have heq := fun y i hy hl hh =>
-      frameKey''_eq_iff.mp (hK y y₀ i i₀ hy hy₀ hl hh h₁ h₂)
+      frameKey_eq_iff.mp (hK y y₀ i i₀ hy hy₀ hl hh h₁ h₂)
     refine ⟨_, _, (st y₀ i₀).J, fun y i hy hl hh => (heq y i hy hl hh).1,
       fun y i hy hl hh => (heq y i hy hl hh).2, fun y i hy hl hh ht => ?_⟩
     have h := heq y i hy hl hh
@@ -232,47 +228,6 @@ theorem reset_or_noAdvance {hold : Time} :
   · refine Or.inr fun v k att hv hs hk => ?_
     by_contra h
     exact hadv ⟨v, k, att, hv, hs, hk, by omega⟩
-
-/-- A reset within the budget is within the origin cap. -/
-private theorem originInCap_of_resetInBudget {P : Params} {budget : Option Nat} {drain : Nat}
-    {g a : Time} (ha0 : 0 ≤ a) (h : ResetInBudget P budget drain g a) :
-    OriginInCap P budget g a := by
-  intro m hm
-  have hb := h m hm
-  have hspec := (slotOfSpec_iff.mp slotOf_spec) P
-  exact (hspec a ha0).2.le.trans (P.slotTime_strictMono.monotone (by omega))
-
-/-- A time within the capped horizon is within the horizon and the origin cap. -/
-private theorem le_originCapTime {P : Params} {budget : Option Nat} {g b t : Time}
-    (h : t ≤ originCapTime P budget g b) : t ≤ b ∧ OriginInCap P budget g t := by
-  cases budget with
-  | none => exact ⟨h, fun m hm => by cases hm⟩
-  | some m =>
-    simp only [originCapTime] at h
-    exact ⟨h.trans (min_le_left _ _), fun m' hm' => by cases hm'; exact h.trans (min_le_right _ _)⟩
-
-/-- Canonical high entries by the capped horizon of a premised reset within the budget, field by
-field from leaves 12 and 14 over the supplier `O`. -/
-theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
-    ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-      IsReset tr H g a → a ≤ b → ResetInBudget P O.deepBudget O.drain g a →
-      HighCanonical O.Origin tr H g (originCapTime P O.deepBudget g b) := by
-  intro cm βK tr H proposer dg g ΔF b a hβ hrun hP hr hab hbudget
-  have hacap : OriginInCap P O.deepBudget g a := by
-    obtain ⟨y, k, att, -, -, -, hk⟩ := hr.1
-    exact originInCap_of_resetInBudget (hk ▸ (runs.run_local hrun).time_nonneg k) hbudget
-  refine ⟨fun _ _ _ hy hs hkb hh => ?_, ?_⟩
-  · obtain ⟨r, hrk, l, Og, ⟨hyr, hO, hOh⟩, E, hE, hEO, hEr, hEh, hET⟩ :=
-      high_row_source_at_of_healing O hβ hrun hP hr hab hy (le_originCapTime hkb).1
-        (le_originCapTime hkb).2 hs hh
-    exact ⟨r, hrk, l, Og, hO, hyr, hOh, E, hE, hEO, hEr, hEh, hET⟩
-  · intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hx hO hib hBh hx' hO' hi'b hB'h h₁ h₂ ht₁ hle₁ hy₁
-      ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
-    exact high_entry_eq_at_of_healing O hβ hrun hP hr hab hacap ⟨hx, hO, hBh⟩
-      (le_originCapTime hib).1 (le_originCapTime hib).2 ⟨hx', hO', hB'h⟩
-      (le_originCapTime hi'b).1 (le_originCapTime hi'b).2
-      h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
 /-- **The rise under vote latency `D`** over the supplier `O`, by induction on the remaining
 rounds `r`. A warm proposal at or above `HZ + 1` gives the reset by leaf 10 under latency
@@ -377,7 +332,7 @@ theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
 
 /-- **The milestone key lag** between independently honest observations, after a call of `z` at or
 after the relay deadline of `i` (`Healing.key_le_of_relay` at the two observations). -/
-theorem frameKey''_lag_obs_from {proposer : Nat → Fin P.n}
+theorem frameKey_lag_obs_from {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
     {tr : RunTrace A} {ini : Fin P.n → A.State} {hold : Time}
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
@@ -388,14 +343,14 @@ theorem frameKey''_lag_obs_from {proposer : Nat → Fin P.n}
     (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
     (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
     (hcm : gbar g + κ ≤ tr.time m) :
-    frameKey'' A (tr.state x i).fg ≤ frameKey'' A (tr.state z m).fg := by
+    frameKey A (tr.state x i).fg ≤ frameKey A (tr.state z m).fg := by
   have hi0 := h.time_nonneg i
   have hm0 := h.time_nonneg m
   have hxle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => h.time_mono hk.le
   have hzle : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => h.time_mono hk.le
   have hfmi : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n := by
     rw [max_eq_right him]; exact hf _ hm0 hmb
-  rw [frameKey''_eq, frameKey''_eq]
+  rw [frameKey_eq, frameKey_eq]
   exact Healing.key_le_of_relay (fg_reachable_at_from h hi0 hxle hx)
     (fg_reachable_at_from h hm0 hzle hz) (Compose.Growing.honest_blocks_coherent_local h hnc)
     (fun _ hX => ⟨x, i, tr.time i, hi0, hxle, hx, hX⟩)
@@ -407,7 +362,7 @@ theorem frameKey''_lag_obs_from {proposer : Nat → Fin P.n}
 
 /-- A milestone key that is constant over the cuts of `[lo, hi]` of nodes honest at them gives a
 `FrameWindow`, when `hi ≤ b`: `J` from agreement at equal `h_j`. -/
-theorem frameWindow_of_frameKey''_eq_obs_from {proposer : Nat → Fin P.n}
+theorem frameWindow_of_frameKey_eq_obs_from {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
     {tr : RunTrace A} {ini : Fin P.n → A.State}
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
@@ -416,10 +371,10 @@ theorem frameWindow_of_frameKey''_eq_obs_from {proposer : Nat → Fin P.n}
     {lo hi : Time} (hhi : hi ≤ b)
     (hK : ∀ y z i m, y ∈ H (tr.time i) → z ∈ H (tr.time m) → lo ≤ tr.time i →
       tr.time i ≤ hi → lo ≤ tr.time m → tr.time m ≤ hi →
-      frameKey'' A (tr.state y i).fg = frameKey'' A (tr.state z m).fg) :
+      frameKey A (tr.state y i).fg = frameKey A (tr.state z m).fg) :
     ∃ M isTop J, FrameWindow tr H lo hi M isTop J := by
   have hle : ∀ i k, k < i → tr.time k ≤ tr.time i := fun _ _ hk => h.time_mono hk.le
-  obtain ⟨M, isTop, J, h1, h2, h3⟩ := frameData_of_frameKey''_eq
+  obtain ⟨M, isTop, J, h1, h2, h3⟩ := frameData_of_frameKey_eq
     (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
     (P.genesisBlock A.genesisPayload) hK
     (fun y z i m hy hz _ hi _ hm he =>
@@ -576,14 +531,14 @@ theorem exists_reset_within {hold : Time} (O : ACHealing A sg runs hold)
     rw [hBdef]
     ring
   obtain ⟨v, hv, hv3, a, ha, hav, hK⟩ := Healing.exists_const_window_seq_of_mem
-    (fun y i => y ∈ H' (tr.time i)) tr.time (fun y i => frameKey'' A (tr.state y i).fg)
+    (fun y i => y ∈ H' (tr.time i)) tr.time (fun y i => frameKey A (tr.state y i).fg)
     (2 * HZ tr H' g) 3 len hlen (show (0 : Time) ≤ 2 * P.Δ by linarith) (lo := lo) (T := B)
     (fun y i hy hi hiB => by
       have hib : tr.time i ≤ b := hiB.le.trans hb
       have hczi : cutZ P g ≤ tr.time i := hczlo.trans hi
       have hmx : max (cutZ P g) (tr.time i) = tr.time i := max_eq_right hczi
       obtain ⟨hsnap, hcall⟩ := snapshotCall_of_awake_at_from hrl hP.awake hy (by linarith) hib
-      exact frameKey''_bounds
+      exact frameKey_bounds
         (HZ_le_hmax_at_from hrl hnc hP.sync hP.catchUp
           (hP.nonempty.mono (hrl.antitone hczb)) hsnap hy
           (by rw [hmx]; exact hf2 _ (hrl.time_nonneg i) hib) hcall (by linarith))
@@ -591,7 +546,7 @@ theorem exists_reset_within {hold : Time} (O : ACHealing A sg runs hold)
           (by rw [hmx]; exact faults_lt_q hP.faults (hrl.time_nonneg i) hib) hiB))
     (fun x z i k hx hz hi _ hik hk => by
       have hkb : tr.time k ≤ b := hk.le.trans hb
-      exact frameKey''_lag_obs_from hrl hnc hf2 hP.sync hP.catchUp hx hz (by linarith) hkb
+      exact frameKey_lag_obs_from hrl hnc hf2 hP.sync hP.catchUp hx hz (by linarith) hkb
         (callLag_of_awake_at_from hrl hP.awake hczlo hz hi hik hkb) (by linarith))
     (by rw [hsum]; linarith)
   have hpart : ∑ j ∈ Finset.range (v - 2 * HZ tr H' g + 1), (len (2 * HZ tr H' g + j) + 2 * P.Δ)
@@ -599,7 +554,7 @@ theorem exists_reset_within {hold : Time} (O : ACHealing A sg runs hold)
     Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
       (fun j _ _ => add_nonneg (hlen _) (by linarith))
   have hend : a + len v ≤ B - 4 := by linarith
-  obtain ⟨M, isTop, J, hwin⟩ := frameWindow_of_frameKey''_eq_obs_from hrl hnc hf2
+  obtain ⟨M, isTop, J, hwin⟩ := frameWindow_of_frameKey_eq_obs_from hrl hnc hf2
     (show a + len v ≤ b by linarith) (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ => by
       rw [hK y i hy hi₁ hi₂, hK z m hz hm₁ hm₂])
   -- the first slot in the window starts the proposal gap

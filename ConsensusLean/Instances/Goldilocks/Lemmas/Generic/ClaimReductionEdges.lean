@@ -212,7 +212,7 @@ def PersistenceReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
         (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g
           (resilienceTarget O g) T ((Sys F V).recoveryAt K b₁ r)
 
-/-- Healed-safety reduction. Reset, canonicality and the selected drain
+/-- Healed-safety reduction. Reset and the selected drain
 budget are independent inputs to healing. Same-reader ancestry uses its own actual
 stored-read context and transport; representation still supplies the chain-prefix step.
 Proved by `healedSafetyReduction`. -/
@@ -225,7 +225,7 @@ def HealedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
     (∃ hold, RegimeTransport M K L hold) ∧ EngineReadPoint M ∧
       ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K fgHold (E.ΔFG + fgHold) ∧
-      HighCanonicalSupply M K L (E.ΔFG + fgHold) ∧ ResetHealBudgetSupply M K L ∧
+      ResetHealBudgetSupply M K L ∧
       HealthyReadPoint L ∧ LocalReadPoint L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealedReadAncestry M K (R E hE rho hv) ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
@@ -424,7 +424,7 @@ read at an engine cut is the chain of the reader's stored read tip (`stored_outp
 its store (`LocalReadPoint.held` at the stored read point of `StoredReadTransport.ready_point`).
 - Monotonicity: the same reader's tips are ancestors (`HealedReadAncestry`).
 - Agreement: the selected reset and its opening (`ResetHealBudgetSupply`) with the premises
-  (`PreparationPremisesSupply`), canonicality (`HighCanonicalSupply`) and the healing bound
+  (`PreparationPremisesSupply`) and the healing bound
   (`ACHealing.heal_after_reset`) give compatible tips at the opening's margin
   (`HealthyReadPoint.healed`): the stored reads are at `R.now ≥ cutTime − 1 ≥ heal − 1`.
 Honest ancestry of two held tips is a chain prefix (`ReadRepresentation.ancestor_prefix`). -/
@@ -438,7 +438,7 @@ theorem healedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
   by_cases hc : rho.HashCollision
   · exact Or.inr hc
   refine Or.inl ?_
-  obtain ⟨-, heng, hfit, hprep, hhc, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
+  obtain ⟨-, heng, hfit, hprep, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
     h E hpub rho hv
   set M := B.map E hpub rho hv
   set L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hpub rho hv ▸ C
@@ -508,8 +508,7 @@ theorem healedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     have hP := hprep hβ hv hc cap idx gst hcap hH hprog hb
     obtain ⟨a, ha, hab, hbudget, -, -, s₁, z, k, X, hs₁, hgs₁, h6, hms₁, hX⟩ :=
       hbud hv hc cap idx gst hcap hH hprog hb
-    have hcan := hhc hcf hv hc gst a hH hrun hP ha hab hbudget
-    have hheal := L.healing.heal_after_reset hcf hrun hP ha hab hbudget hcan
+    have hheal := L.healing.heal_after_reset hcf hrun hP ha hab hbudget
     have hheal₁ : HealedFrom M.trace M.honest M.proposer s₁ rho.horizon :=
       fun s s' z z' k k' X X' hs => hheal s s' z z' k k' X X' (hs₁.trans hs)
     have hmono : ∀ {y i t}, ReadyReadPoint M.trace M.honest rho.horizon (c - 1) y i t →
@@ -932,7 +931,7 @@ theorem meetsObligations_of_local_proof {O : OutputSchema} {Info : Type} [Decida
           (fun E hE rho hv =>
           let L := hL V ⟨pub, hn⟩ E hE rho hv
           ⟨L.regime, L.engineRead, L.deadlines, L.preparation,
-            L.highCanonical, L.resetBudget, L.healthyRead, L.localRead, L.storedRead,
+            L.resetBudget, L.healthyRead, L.localRead, L.storedRead,
             L.healedAncestry, L.reads, L.honestReads, L.coherent⟩) cap g hcap hg idx gst)
         fun h => (hE h).healedSafe cap g hcap hg idx gst
       persists := fun g hg T b₀ b₁ => holds_of_forall_public (fun pub hn =>

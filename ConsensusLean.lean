@@ -389,7 +389,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedRo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedToFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.CappedOrigins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
@@ -522,7 +521,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Goldi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HeldRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows
