@@ -51,7 +51,8 @@ private theorem report_mem_at {ini : Fin sp.n → (goldilocksNode sp).State}
   exact hR'.1
 
 /-- The reset service through `b` is one through every `T ≤ b`. -/
-private theorem resetService_restrict {g ΔF b T : Time} (h : ResetService tr H g ΔF b hold)
+theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetService.restrict {g ΔF b T : Time}
+    (h : ResetService tr H g ΔF b hold)
     (hTb : T ≤ b) : ResetService tr H g ΔF T hold :=
   ⟨h.deltaF, h.message, h.block, h.relay,
     fun x i att hx hs hh y j hy hc hjT hd =>
@@ -277,7 +278,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
   have hBb : B ≤ b := hb
   -- the four-attempt search at horizon `B - 1`: every premise read below `B`
   obtain ⟨a, ha, hab⟩ := Healing.Growing.Shadow.exists_reset (b := B - 1) hrun hnc
-    (fun t ht htb => hf t ht (by linarith)) (resetService_restrict hsvc (by linarith))
+    (fun t ht htb => hf t ht (by linarith)) (hsvc.restrict (by linarith))
     (fun y t hy hg ht => hawake y t hy hg (by linarith)) hcatch hnr
     (hH.mono fun _ hy => hrun.antitone (by linarith) hy) hδ hG hlat hlat0 hΔF
     (by dsimp [lo]; linarith) (by dsimp [lo, D]; linarith)

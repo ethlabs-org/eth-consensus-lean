@@ -16,6 +16,8 @@ delayed report-follow supplier, not an independent warm-crossing stub.
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
+open Consensus.Goldilocks.Generic (riseRounds)
+
 open AC (ACParams Payload gbar)
 
 variable {sp : ACParams}
