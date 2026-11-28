@@ -78,47 +78,6 @@ theorem fastLock_carry_service_at
   refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi⟩, Hv, hroot, hFD.trans hanc, ?_⟩
   exact hacc.imp_right fun ⟨k', hk', hacc', ht⟩ => ⟨x, k', hk', hacc', ht⟩
 
-/-- The regular fast transfer step with service and fault margins at the receiving cut, at the
-slot committees `K` of a run from `K`'s committee start. -/
-theorem first_transfer_service_at
-    {K : AC.CommitteeDict sp.n}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    {s : Nat} (hm : gbar g ≤ sp.ts s)
-    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
-    (hviab : AC.ViableAtVote ell e (s + 1) B)
-    (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  have hac := hrun.acRun hnc
-  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
-  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
-  change sp.slot (tr.time i) = s + 1 at hslot
-  have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
-    rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
-    exact hm
-  have hnext : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])
-  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
-  exact AC.Growing.first_transfer_stored hac K
-    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
-    (AC.CommitteeTAt.upTo hrun.antitone (hrun.committeeTAt hK.facts hnc)) hK.facts.hsize
-    hx hfl hBD hy hc hs
-    (service_syncACAt hrun hsvc ((AC.le_gbar g).trans hm))
-    (fastLock_carry_service_at hrun hnc hsvc hcatch hm hx hy hfl hc hs (hFB.trans hBD))
-    (faultBoundK_of_service_at hK hrun hawake hnr hm (by linarith) (hrun.time_nonneg i) hprev hib)
-    (hK.cs2 (s + 1) (hm.trans hss) (hnext.trans hib) _ (hrun.time_nonneg i) hib)
-    hviab hearlier
-
 /-- Finite service compares the receiver's merged votes with an independently honest writer,
 from any vote-permitted start. -/
 theorem writer_merged_service_at
@@ -187,9 +146,27 @@ theorem first_transfer_service_at
     (hviab : AC.ViableAtVote ell e (s + 1) B)
     (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B :=
-  Core.first_transfer_service_at hrun.toCore hnc hsvc hawake hcatch hnr hm hx hy
-    hfl hBD hc hs hib hFB hviab hearlier hK
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+  have hac := hrun.toCore.acRun hnc
+  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
+  change sp.slot (tr.time i) = s + 1 at hslot
+  have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
+    rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
+    exact hm
+  have hnext : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])
+  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
+  exact AC.Growing.first_transfer_stored hac K
+    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
+    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
+    hx hfl hBD hy hc hs
+    (service_syncACAt hrun hsvc ((AC.le_gbar g).trans hm))
+    (fastLock_carry_service_at hrun hnc hsvc hcatch hm hx hy hfl hc hs (hFB.trans hBD))
+    (faultBoundK_of_service_at hK hrun hawake hnr hm (by linarith) (hrun.time_nonneg i) hprev hib)
+    (hK.cs2 (s + 1) (hm.trans hss) (hnext.trans hib) _ (hrun.time_nonneg i) hib)
+    hviab hearlier
 
 /-- Finite service compares the receiver's merged votes with an independently honest writer. -/
 theorem writer_merged_service_at
