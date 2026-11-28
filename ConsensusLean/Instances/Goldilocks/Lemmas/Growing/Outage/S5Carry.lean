@@ -110,7 +110,7 @@ theorem carryAt_after_at
   obtain ⟨-, -, hyj, -⟩ := castAt_spec_at hrun hnc hy hc
   obtain ⟨hrsy, hti⟩ := honest_vote_restarts_at hrun hnc hy hc hs
   have hrsyT : ∀ c ≤ i, T.RestartAt y c → T.time c ≤ sp.ts s := fun c hc' hrc =>
-    hrsy c hc' ((ac_restartAt_upTo _).mp hrc).2
+    hrsy c hc' ((ACTrace.upTo_restartAt (tr := _)).mp hrc).2
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ →
       tr.projAC.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
@@ -141,7 +141,7 @@ theorem carryAt_after_at
     have hdk := hrun.time_nonneg ky
     have hHvk : Hv ∈ ℓk.frame.tree :=
       (AC.accept_new sp (acRun_upTo hrun hnc hdk).localRun hyk
-        ((ac_acceptAt_upTo _).mpr ⟨le_rfl, ℓk, hck, hcall⟩)).1 ℓk
+        ((ACTrace.upTo_acceptAt (tr := _)).mpr ⟨le_rfl, ℓk, hck, hcall⟩)).1 ℓk
         ((Trace.upTo_callAt_of_le _ le_rfl).mpr hck)
     rcases frame_anc_accepted_at hrun hnc hyk hck hHvk hX with hgen | ⟨k, hk, hkX⟩
     · exact Or.inl hgen
@@ -159,7 +159,7 @@ theorem carryAt_after_at
     obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hS.message x k v hxk hsend i ℓ hy hc.1
       (by have := hdl i le_rfl _ hmx; change _ ≤ tr.time i; linarith only [this, hti, hΔ])
     have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hmx)
-    have hpT : T.ProcessAt y k' v := (ac_processAt_upTo _).mpr ⟨hm hk'i, hp⟩
+    have hpT : T.ProcessAt y k' v := (ACTrace.upTo_processAt (tr := _)).mpr ⟨hm hk'i, hp⟩
     obtain ⟨ℓ', hc', -⟩ := id hpT
     have hnr : ∀ r, k' + 1 ≤ r → r < i + 1 → ¬ T.RestartAt y r := by
       rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩

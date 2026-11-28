@@ -91,7 +91,7 @@ theorem exists_honest_slot_vote_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       tr.time q ≤ sp.ts u + sp.Δ := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-    (by linarith) (by linarith [Healing.gbar_nonneg g]) hub
+    (by linarith) (by linarith [AC.gbar_nonneg g]) hub
   obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
   exact ⟨w, q, e, hp.run.antitone hq hw, hv, hs, hq⟩
 

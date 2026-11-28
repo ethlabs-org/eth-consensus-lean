@@ -313,7 +313,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.Healt
       exact h.1
   refine ⟨j, hj, B', CV', hfl, ?_, ?_⟩
   · -- the lock was written in a slot after `ḡ`'s
-    have hg0 := gbar_nonneg g
+    have hg0 := AC.gbar_nonneg g
     have hcz : (sp.slot (gbar g) : Int) + 3 ≤ sp.slot (tr.time i) := by
       have h := (AC.ts_le_iff_le_slot sp (hacr.localRun.time_nonneg i) _).1
         ((cutZ_eq sp g).symm.le.trans hi)

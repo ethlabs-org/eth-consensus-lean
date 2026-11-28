@@ -26,7 +26,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 
@@ -207,7 +207,7 @@ theorem warm_slot_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       sp.slot a + 2 * sp.k + 4 ≤ u := by
   have hz := hp.cutZ_lt_reset_at
   have := Healing.lt_cutZ sp g
-  have ha0 : 0 ≤ a := by linarith [Healing.gbar_nonneg g, sp.toParams.hΔ]
+  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g, sp.toParams.hΔ]
   have hlt : a < sp.ts (sp.slot a + 1 : Nat) := not_le.1 fun h => by
     have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     push_cast at this
@@ -335,7 +335,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hts := @Compose.ts_le_ts sp
   have hstep := AC.ts_succ (sp := sp)
   have hum1 := hts (show u + 1 ≤ m + 1 by omega)
-  obtain ⟨hjlo, hjhi⟩ := castAt_time_bounds hp.run hp.noColl hy hc
+  obtain ⟨hjlo, hjhi⟩ := Compose.Growing.cast_time_at hp.run hp.noColl hy hc
   rw [hs] at hjlo hjhi
   have hub : sp.ts u + sp.Δ ≤ b := by have := @hstep u; linarith
   have hRm : drainTime sp a ≤ sp.ts (m + 1 : Nat) := hR.trans hum1
@@ -387,7 +387,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     have hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g := fun r hrj hrs =>
       hp.noRestart y r (hrun.antitone (hm hrj) hy) hrs ((hm hrj).trans hjb)
     obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hp.run hp.noColl hp.sync
-      hp.catchUp hP hslot hu hun (by linarith [Healing.le_gbar g]) hy hc.1
+      hp.catchUp hP hslot hu hun (by linarith [AC.le_gbar g]) hy hc.1
       (by have := @hstep u; linarith) hjb hnr (exists_honest_slot_vote_at hp hgu hR hub)
       hFP'
     exact accepted_voter_tree_of_accept_at hrun hp.noColl hy hc hs hk'j ha'
@@ -477,7 +477,7 @@ theorem post_drain_votes_extend_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hgm : AC.gbar g + 4 * sp.Δ ≤ sp.ts m := (hgu.trans (hts (by omega)))
     have hRm : drainTime sp a ≤ sp.ts (m + 1 : Nat) := hR.trans (hts (by omega))
     have hnext := extend_next_votes_core_at hp.run hp.noColl (resetService_mono hp.sync hTb)
-      hp.catchUp (hprev m hum le_rfl) (by linarith [Healing.le_gbar g]) hp.committeeFacts.hP
+      hp.catchUp (hprev m hum le_rfl) (by linarith [AC.le_gbar g]) hp.committeeFacts.hP
       (hp.committeeFacts.committeeTAt hp.run hp.noColl) hp.committeeFacts.hsize
       (committee_voted_in_slot_at hp hgm hRm hmb)
       (fun i hi hiT => faultBoundK_after_slot_at hp hgm hRm i hi (hiT.trans hTb))
@@ -539,7 +539,7 @@ theorem fast_lock_renewal_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       AC.VoteAt tr.projAC x i e → e.msg.slot = s →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
     intro s hrs hsr x i e hx hv hes
-    have hi := (castAt_time_bounds hp.run hp.noColl hx hv.choose_spec).2
+    have hi := (Compose.Growing.cast_time_at hp.run hp.noColl hx hv.choose_spec).2
     rw [hes] at hi
     have his : tr.time i ≤ sp.ts r + 6 * sp.Δ := by
       have := hts hsr; have := @hstep r; linarith
@@ -557,7 +557,7 @@ theorem fast_lock_renewal_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       ).resolve_left fun h => hesc (h.mono hhi)
   -- the update of slot `r`, joined
   have hjoinu : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts r := by
-    have hbase := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g) (sp.slot (AC.gbar g))).2 (by rfl)
+    have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (AC.gbar g))).2 (by rfl)
     simp only [AC.ACParams.ts] at hbase hgr ⊢
     push_cast at hbase hgr ⊢
     linarith only [hbase, hgr, hΔ]
@@ -672,7 +672,7 @@ theorem toFG_candidate_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hvotes : ∀ s, u + 1 ≤ s → ∀ x q e, x ∈ H (tr.time q) → AC.VoteAt tr.projAC x q e →
       tr.time q ≤ tr.time i → e.msg.slot = s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
     intro s hs x q e hx hv hq hes
-    have ht := (castAt_time_bounds hp.run hp.noColl hx hv.choose_spec).1
+    have ht := (Compose.Growing.cast_time_at hp.run hp.noColl hx hv.choose_spec).1
     rw [hes] at ht
     have hsσ : s ≤ σ := by exact_mod_cast (AC.ts_le_iff_le_slot sp hi0 _).1 (ht.trans hq)
     exact ((post_drain_votes_extend_at hp hP hslot hu hun hgu hR (N := σ) (hσlo.trans hib) hib

@@ -125,7 +125,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>
-        ⟨k, (ac_acceptAt_upTo _).mpr ⟨hkT.le.trans hT, hk⟩, hkT⟩,
+        ⟨k, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkT.le.trans hT, hk⟩, hkT⟩,
       fun v ⟨x, hx, j, e', hv, hev, hvs⟩ =>
         hcarry.holds v ⟨x, j, e', hvote x j e' (votersAt_iff.1 hx).1 hv, hev, hvs⟩⟩
     (fun L hL => compatible_upTo hrun hnc hd (frame_upTo_at hrun hnc hy hc.1 hL.1) hBU

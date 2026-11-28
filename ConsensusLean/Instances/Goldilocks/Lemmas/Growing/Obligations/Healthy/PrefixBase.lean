@@ -14,8 +14,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommi
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -39,17 +39,12 @@ variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 variable {hold : Time}
 
-section Core
+variable {ini : Fin sp.n → (goldilocksNode sp).State}
 
-variable
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-  {ini : Fin sp.n → (goldilocksNode sp).State}
-
-/-- Finite AC service projects to AC synchrony using only the run core. -/
-theorem ACResetService.syncACAt_core
+/-- Finite AC service projects to AC synchrony on the concrete run. -/
+theorem ACResetService.syncACAt
     (hs : ACResetService tr H g ΔF)
-    (core : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (core : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {lo hi : Time} (hg : g ≤ lo) :
     SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   refine ⟨?_, ?_⟩
@@ -57,7 +52,7 @@ theorem ACResetService.syncACAt_core
     have hsa' : tr.SendOrAdmitAt x i m := by
       obtain ⟨ell₀, hc₀, hm⟩ := hsa
       refine ⟨ell₀, Compose.projAC_callAt.1 hc₀, ?_⟩
-      rwa [core.projAC_state_at hx] at hm
+      rwa [Compose.Growing.projAC_state_at core hx] at hm
     have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
     rw [Compose.projAC_deadline] at hdl
     obtain ⟨k, hk, h1, h2, h3⟩ := hs.message x i m hx hsa' y j hy
@@ -70,20 +65,20 @@ theorem ACResetService.syncACAt_core
       change tr.time k < tr.deadline y k (tr.time i) sp.Δ
       simpa only [he] using h3
   · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
-    apply core.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
+    apply core.toLocalRun.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
     intro k hki hx' hk hj hF
     have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
     have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
     simpa only [he] using hs.relay x k B hx' hk hgi y j hy hj
       (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
 
-/-- The synchrony window on a read prefix, independent of the finality update. -/
-theorem sync_window_at_reset_at_core
-    (core : GoldilocksRunCore u frameOf proposer dg H tr ini)
+/-- The synchrony window on a read prefix. -/
+theorem sync_window_at_reset_at
+    (core : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hs : ACResetService tr H g ΔF) {t : Time} (hga : g ≤ a) (ht0 : 0 ≤ t) :
     SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t (tr.projAC.upTo t) := by
   have hm := core.time_mono
-  have hsy := hs.syncACAt_core core (lo := a) (hi := t) hga
+  have hsy := hs.syncACAt core (lo := a) (hi := t) hga
   constructor
   · intro x hx i m hsend hi y hy j ell hj ht hd
     obtain ⟨hid, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
@@ -104,9 +99,9 @@ theorem sync_window_at_reset_at_core
     exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨hkd, hak⟩,
       by rwa [ACTrace.upTo_deadline hm hkd]⟩
 
-/-- Prefix catch-up uses only the core's AC catch-up field. -/
-theorem catch_window_at_gbar_at_core
-    (core : GoldilocksRunCore u frameOf proposer dg H tr ini)
+/-- Prefix catch-up reads the concrete run's AC catch-up service. -/
+theorem catch_window_at_gbar_at
+    (core : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) :
     CatchACWindowBefore (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) (gbar g)
       (2 * sp.Δ) d := by
@@ -119,11 +114,9 @@ theorem catch_window_at_gbar_at_core
   rw [RunTrace.upTo_projAC] at ha hj ⊢
   obtain ⟨hid, ha'⟩ := ACTrace.upTo_acceptAt.mp ha
   obtain ⟨_, hj'⟩ := (Trace.upTo_callAt _).mp hj
-  obtain ⟨k, hkj, hak, hkt⟩ := core.acCatchAt hc (core.antitone hid hx) ha' hi
+  obtain ⟨k, hkj, hak, hkt⟩ := core.toLocalRun.acCatchAt hc (core.antitone hid hx) ha' hi
     (core.antitone hjd hy) hj' ht (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
   exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨(hm hkj).trans hjd, hak⟩, hkt⟩
-
-end Core
 
 /-- **The AC service on a prefix**: the finite reset service, at any release hold, read on the
 prefix through `d`, gives the static AC service (message, block and relay delivery) of the
@@ -177,27 +170,6 @@ theorem ResetService.upTo_ac_at {ini : Fin sp.n → (goldilocksNode sp).State}
     Healing.ACService (tr.upTo d) (H d) g :=
   hs.toAC.upTo_ac_at hrun
 
-/-- **AC synchrony from the reset on the prefix through `t`**: for the validators honest at `t`,
-over the blocks they hold on that prefix, from any source time `a ≥ g` through `t`. -/
-theorem sync_window_at_reset_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hs : ACResetService tr H g ΔF) {t : Time} (hga : g ≤ a) (ht0 : 0 ≤ t) :
-    SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t (tr.projAC.upTo t) :=
-  sync_window_at_reset_at_core hrun.toCore hs hga ht0
-
-/-- **Catch from `ḡ` on the prefix through `d`**: an acceptance before `ḡ` by a validator honest
-at `d` is accepted before `ḡ + 2Δ` by every validator honest at `d` whose finalized block it
-extends, as observed at a call in `[ḡ + 2Δ, d]` (the run's catch-up at the first cut from
-`ḡ + 2Δ ≤ d`, with each node honest at its own cut by antitonicity). -/
-theorem catch_window_at_gbar_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) :
-    CatchACWindowBefore (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) (gbar g)
-      (2 * sp.Δ) d :=
-  catch_window_at_gbar_at_core hrun.toCore hc hd0
-
 /-- **The committee half bound through `b`** for the slot dictionary `K`: the run's committee
 facts at `K`, and fewer than half of each slot committee from `ḡ` by `b` faulty at every read time
 `d ∈ [0, b]`. Finite reset premises give their slot committees
@@ -221,12 +193,10 @@ the static healthy AC base of the validators honest at a read time `d ∈ [0, b]
 through `d`, over the blocks they hold there, at the slot committees `K` of a run from `K`'s
 committee start. Their facts restrict to the prefix, and the committee half bound gives CS2 from
 `ḡ` through `d`. No reset is used. -/
-theorem CommitteeHalfUpTo.healthy_base_before_at_core
-    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+theorem CommitteeHalfUpTo.healthy_base_before_at
     {K : AC.CommitteeDict sp.n} {b : Time}
     (hK : CommitteeHalfUpTo tr H K g b)
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hs : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -236,30 +206,17 @@ theorem CommitteeHalfUpTo.healthy_base_before_at_core
       ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
   have hpre := hrun.upTo hd0
   have hncp := hnc.upTo d
-  have hr := hpre.acRun hncp
-  have hdr := hpre.driven hncp
+  have hr := Compose.goldilocks_ac_projection_from hpre hncp
+  have hdr := Healing.projection_driven_of_run hpre hncp hpre.genesis_root_ok
   rw [RunTrace.upTo_projAC] at hr hdr
-  refine ⟨hr, hdr, sync_window_at_reset_at_core hrun hs.toAC (AC.le_gbar g) hd0,
-    catch_window_at_gbar_at_core hrun hc hd0, ?_, hfaults d hd0 hdb, hK.facts.hsize,
+  refine ⟨hr, hdr, sync_window_at_reset_at hrun hs.toAC (AC.le_gbar g) hd0,
+    catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb, hK.facts.hsize,
     AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
-    AC.CommitteeTAt.upTo hrun.antitone (hrun.committeeTAt hK.facts hnc) d,
+    AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc) d,
     fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
   intro y hy t hgt htd
   exact (Trace.upTo_awake _ y t).mpr
     ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩
-
-/-- The stock run is the stock-finality instance of the core healthy-base supplier. -/
-theorem CommitteeHalfUpTo.healthy_base_before_at {K : AC.CommitteeDict sp.n} {b : Time}
-    (hK : CommitteeHalfUpTo tr H K g b)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hs : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
-      ((tr.upTo d).HonestBlocks (H d)) proposer g d :=
-  hK.healthy_base_before_at_core hrun.toCore hnc hs hawake hfaults hc hd0 hdb
 
 /-- **The healthy AC premises on a read prefix**: finite reset health and catch-up give the
 static healthy AC base of the validators honest at a read time `d ∈ [0, b]`, on the prefix

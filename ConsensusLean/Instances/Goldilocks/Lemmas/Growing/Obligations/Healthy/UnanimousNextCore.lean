@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
@@ -217,7 +218,7 @@ theorem unanimous_head_accepted_core_at
       (fun r hrc hrs => hnr r (hrc.trans hcj) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
   by_cases hkg : AC.gbar g ≤ tr.time k
   · obtain ⟨k', hk'j, ha', hlt⟩ := relayed_of_resetService hrun hsvc hwk ha
-      ((Healing.le_gbar g).trans hkg) hy hcall
+      ((AC.le_gbar g).trans hkg) hy hcall
       ((hdl j le_rfl).trans (by rw [max_eq_left hkg]; linarith)) hanc
     have := hdl k' hk'j
     rw [max_eq_left hkg] at this
@@ -276,18 +277,6 @@ theorem unanimous_next_vote_viable_core_at
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/
 
-/-- A cast of a node honest at it is no earlier than the start of its slot and at most `Δ` after
-it. -/
-theorem castAt_time_bounds {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcast : AC.CastAt tr.projAC y j ell e) :
-    sp.ts e.msg.slot ≤ tr.time j ∧ tr.time j ≤ sp.ts e.msg.slot + sp.Δ := by
-  exact ⟨(AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by
-    rw [(Compose.Growing.castAt_spec_at hrun hnc hy hcast).2.1]),
-    (Compose.Growing.cast_head_fcRoot_at hrun hnc hy hcast).2⟩
-
 /-- Extend an already established prefix through the next slot, using viability at each cast. -/
 theorem extend_next_votes_core_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
@@ -316,7 +305,7 @@ theorem extend_next_votes_core_at
   · intro y j ell e hy hc' hs hjb ih
     exact Or.inr (hcast y j ell e hy hc' hs hjb fun x q e' hq hx hv hvs => ih x q hq hx e' hv hvs)
   · intro y j ell e hy hc' hs hjb hFP hvi ih
-    have htime := (castAt_time_bounds hrun hnc hy hc').1
+    have htime := (Compose.Growing.cast_time_at hrun hnc hy hc').1
     rw [hs] at htime
     exact UnanimousStep.next_vote_of_batch hrun hnc hsvc hc hext hg hPK hTK hsize hy hc' hs hjb
       (fun x hx => hvotes x (hrun.antitone htime hx.2) hx.1)
