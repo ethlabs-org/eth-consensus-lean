@@ -42,10 +42,14 @@ private theorem unanimous_next_votes_extend_at
     (fun i hti hib => hp.committee_cs2_at
       (by have := (AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega)
           linarith [sp.toParams.hΔ]) (hti.trans hib) (hp.run.time_nonneg i) hib)
-    (fun _ _ _ _ hy hcast hs hjb =>
-      hp.reset_vote_root_below_bound_or_covered_at hR hP hbound hcovered hy hcast hs hjb)
+    (fun _ _ _ _ hy hcast hs hjb => by
+      have hF := congrArg Frame.fcRoot (Outcome.frame_of_call hp.run hy hcast.1)
+      change _ = (tr.state _ _).fg.F at hF
+      rw [← hF]
+      exact (hp.cast_root_anc_analysis_root_at hy hcast).trans
+        (hp.reset_vote_root_below_bound_or_covered_at hR hP hbound hcovered hy hcast hs hjb))
     (fun _ _ _ _ hy hcast hs hjb hstore =>
-      hp.reset_vote_floor_above_old_or_covered_at hy hR hcast hs hjb hstore hbound
+      hp.reset_vote_viable_above_old_or_covered_at hy hR hcast hs hjb hstore hbound
         (fun _ C s hC hs => hcovered C s hC.healedOrigin hs))
 
 /-- Under the source cover, every healed member through the slot of the update deadline is

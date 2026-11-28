@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ViableSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
@@ -23,7 +23,7 @@ with the target by the state-level forms of the call-level root lemmas
 `high_J_root_of_held_at_call_before_covered_at` and `low_root_of_held_seed_at_call_at` (the same
 arguments, with the reader's honesty read at `t`); a seed below the head-height floor leaves an
 entry at or past it below an earlier high origin, from a high floor's signed source
-(`high_floor_signed_source_or_covered_before_at`). -/
+(`high_pred_signed_source_or_covered_before_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -141,21 +141,16 @@ theorem guarded_seed_ancestor_candidate_at_state_covered_at
       (fun ⟨hc, s, hs, hsm⟩ => hcomp2 hc B s hs hsm))
     (fun hSf => ?_)
     fun _ hlow => hp.high_J_root_J_compatible_covered_at ht hle hy htb hPt.1 (by omega) hcompare
-  have hpred : (tr.state y i).fg.hmax - 1 ≤ (tr.state y i).fg.headHeightFloor := by
-    unfold Store.headHeightFloor
-    split_ifs <;> omega
-  rcases high_floor_signed_source_or_covered_before_at
+  rcases high_pred_signed_source_or_covered_before_at
       hp hseed ht hle hy htb
       (u := sp.slot t + 1)
       (guarded_row_bound hp ht hle)
-      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
-        ((hle r hri).trans htb) ho' ((hle r' hr'i).trans htb))
       (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
-        ((hle r hri).trans htb)) (hSf.trans_le hpred) with
+        ((hle r hri).trans htb)) hSf with
     ⟨x, r, l, O, E, hri, ho, -, hE, hEO, -, hEf, -⟩ | ⟨E, hE, hcov, hEf, -⟩
-  · exact ⟨O, Or.inl ⟨x, r, l, hri, ho⟩, E, hE, hEO, hpred.trans hEf⟩
+  · exact ⟨O, Or.inl ⟨x, r, l, hri, ho⟩, E, hE, hEO, hEf⟩
   · obtain ⟨hc, C, s, hC, hsm, hEC⟩ := coveredBefore_iff.1 hcov
-    exact ⟨C, Or.inr ⟨hc, s, hC, hsm⟩, E, hE, hEC, hpred.trans hEf⟩
+    exact ⟨C, Or.inr ⟨hc, s, hC, hsm⟩, E, hE, hEC, hEf⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

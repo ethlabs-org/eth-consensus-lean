@@ -3,17 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 
 public section
 
-/-! # Goldilocks Healing: the fork-choice root and the height floor of a reset store
+/-! # Goldilocks Healing: viable entries and the analysis root
 
 Two cache arguments about one reachable FG store, stated for a height bound `hz` (the snapshot
 height `H_z`), a set `U` of blocks around the store and a predicate `Src` of sources (the old
 high origins). Run facts enter only as premises, so readers honest under constant or growing
 faults, proposers or voters, instantiate the same proofs.
 
-* `headHeightFloor_le_of_entries_below`: a high held block above every high left entry of the
-  store reaches the head height floor: without a high contest the floor is `h_max − 1`, whose entry
-  on the deepest chain is such a left entry.
-* `isViable_of_entries_below`: such a block is viable, with no contest premise.
+* `isViable_of_entries_below`: such a block is viable.
 * `fcRoot_genesis_or_below_source`: the fork-choice root is genesis or below a source. A high
   `J` is a left entry; a low `J` has a source above `F`, and when the root is `J` that source is
   held and high, so `J` is below it by the root's no-contest condition. -/
@@ -22,37 +19,8 @@ namespace Consensus.Goldilocks.Healing
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
 
-/-- **The height floor below a high block.** A high block `B` that is a store descendant of every
-high left entry reaches the head height floor of a store without a high contest. -/
-theorem headHeightFloor_le_of_entries_below (hr : st.Reachable acp₀) {hz : Nat}
-    {B : NodeBlock P ACP}
-    -- Highness: `B` is above the snapshot height.
-    (hBh : hz + 1 ≤ (st.σ B.root).h)
-    -- No high contest: a contest has `h_max ≤ hz + 1`.
-    (hnc : ¬ (st.Contest ∧ hz + 2 ≤ st.hmax))
-    -- Crossings: a high left entry (an entry below a higher block) is a store ancestor of `B`.
-    (hcross : ∀ E ∈ st.tree, ∀ C, (st.σ E.root).Th = E.root → hz + 1 ≤ (st.σ E.root).h →
-      st.Anc E C → (st.σ E.root).h < (st.σ C.root).h → st.Anc E B) :
-    st.headHeightFloor ≤ (st.σ B.root).h := by
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ st.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by clear * - hBh hfloor; omega⟩
-  have hfl : st.headHeightFloor = st.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
-  obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height hr hC (h := st.hmax - 1)
-    (by clear * - hfloor; omega) (by clear * - hCh; omega)
-  have := h_le_of_store_anc hr (hcross E hE C hET (by clear * - hBh hfloor hEh; omega) hEC
-    (by clear * - hfloor hCh hEh; omega))
-  clear * - hfloor hEh this; omega
-
 /-- **A high block above every high left entry is viable.** A held block `B` above the snapshot
-height that is a store descendant of every high left entry is viable, with no contest premise:
+height that is a store descendant of every high left entry is viable:
 it reaches `h_max − 1` (the entry at `h_max − 1` of a maximal block is such a left entry); at
 `h_max − 1` in a top frame, `Σ.J` is genesis or a high left entry (`h_j = h_max − 1 ≥ hz + 1`),
 so `Σ.J ⪯ B`. -/
