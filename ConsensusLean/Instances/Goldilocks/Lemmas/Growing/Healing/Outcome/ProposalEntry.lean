@@ -42,7 +42,8 @@ theorem proposal_entry_below_old_or_covered_at
     hp.left_entry_origin_or_covered_at (hp.run.time_nonneg i)
       (fun _ hq => hp.run.time_mono hq.le) hpH hib hE hET hEh hEC hlt
   rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
-  · have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib (by omega : r < i) ho
+  · have hlu := ProposalSources.origin_label_lt_at_proposal_at hp hpH hci hcall hti hib
+      (by omega : r < i) ho
     obtain ⟨_, _, _, _, hfl, _⟩ := ho.2.2.1
     have hrti : tr.time r ≤ tr.time i := hp.run.time_mono (by omega)
     have hrt := Outcome.fastLock_time_lt_at hp.run hfl hlu (by
@@ -136,7 +137,8 @@ theorem proposal_entry_below_old_or_healed_at
   obtain ⟨W, hW, att, ha, v, d, hv, hdi, hs, hT, hsource⟩ :=
     hp.left_entry_origin_or_covered_at ht hle hpH hib hE hET hEh hEC hlt
   rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨hvz, hcov⟩
-  · have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib (by omega : r < i) ho
+  · have hlu := ProposalSources.origin_label_lt_at_proposal_at hp hpH hci hcall hti hib
+      (by omega : r < i) ho
     obtain ⟨_, _, _, _, hfl, _⟩ := ho.2.2.1
     have hrti : tr.time r ≤ tr.time i := hp.run.time_mono (by omega)
     have hrt := Outcome.fastLock_time_lt_at hp.run hfl hlu (by

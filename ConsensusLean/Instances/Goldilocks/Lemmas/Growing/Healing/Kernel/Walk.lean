@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.WalkInputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
@@ -12,7 +13,7 @@ public section
 
 The provenance of a stored high lock is read on the proposer's finite prefix
 (`proposal_high_lock_source_at`); the protected-source comparison
-(`WalkInputs.protected_source_compatible_high_origin_at`) is charged separately at the source
+(`protected_source_compatible_high_origin_at`) is charged separately at the source
 and origin writes.
 -/
 
@@ -57,7 +58,7 @@ theorem proposal_stored_locks_compatible_old_at
     have := sp.two_le_k
     rw [Healing.cleanLabel_eq]
     omega
-  rcases WalkInputs.protected_source_compatible_high_origin_at hp hpr
+  rcases protected_source_compatible_high_origin_at hp hpr
       (Or.inl ⟨CV, Or.inr hop⟩) hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
   · exact Or.inl (hLD.trans h)
   · exact Anc.total hU hLD h

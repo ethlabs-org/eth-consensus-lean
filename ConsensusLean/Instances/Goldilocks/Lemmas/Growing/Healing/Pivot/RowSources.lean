@@ -1,7 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.TargetOlder
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.FoundationSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Compatibility
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FastVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -82,7 +83,7 @@ theorem protected_source_compatible_high_origin_of_sources_at
           hp.optimistic_supporter_at hx hrb (Healing.gbar_le_of_cutZ_le sp hts) hC
         exact ⟨z, j, e, hp.run.antitone (hp.run.time_mono hj) hz, hj, hv, hes, hCH⟩
     obtain ⟨z, j, e, hz, hj, hv, hes, W, hW, hWr, hCW⟩ := supporter
-    exact target_compatible_older_origin_at hp ho hqb hz hv
+    exact hp.target_compatible_older_origin_at ho hqb hz hv
       ((hp.run.time_mono hj).trans hrb) hes h ⟨W, hW, hWr, hBC.trans hCW⟩
   · obtain ⟨_, E, EV, _, hfl, hDE⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
     have hcomp : Compatible (tr.HonestBlocksAt H) C E := by
