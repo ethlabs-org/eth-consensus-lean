@@ -12,9 +12,7 @@ Two facts over observations `(y, i)` (a node and a cut) selected by an eligibili
 
 * `exists_const_window_seq_of_mem`: a bounded key with pairwise lag between eligible observations
   is constant over the eligible cuts of a window.
-* `frameData_of_frameKey'_eq`: a merged key that is constant over the eligible cuts of `[lo, hi]`
-  determines the head height floor and the root kind there, and, in kind J, `Σ.J` when eligible
-  observations with equal `h_j` have equal `Σ.J`. -/
+  The frame data of a constant milestone key are `Generic.frameData_of_frameKey''_eq`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -86,50 +84,6 @@ theorem exists_const_window_seq_of_mem {α : Type*} (mem : α → Nat → Prop) 
   obtain ⟨y, i, hy, hi1, _, hiT, hkey⟩ := step m le_rfl (hinv m le_rfl)
   have := (hrange y i hy (by linarith [hS0 m]) hiT).2
   omega
-
-variable {P : Params} {ACP : Type}
-
-/-- **The frame data of a constant merged key.** Equal merged keys give equal head height floors
-and root kinds (`frameKey'_eq_floor_kind`); in kind J (`h_max = h_j + 1` without a contest)
-equal floors give equal `h_j`, hence equal `Σ.J` by `hJ`. Without an eligible observation in
-`[lo, hi]` any data serve, with `J := dflt`. -/
-theorem frameData_of_frameKey'_eq {α : Type*} (mem : α → Nat → Prop) (time : Nat → Time)
-    (st : α → Nat → Store P ACP) (dflt : NodeBlock P ACP) {lo hi : Time}
-    -- Reachability: `h_j < h_max` at every eligible observation.
-    (hlt : ∀ y i, mem y i → (st y i).hj < (st y i).hmax)
-    (hK : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
-      time m ≤ hi → frameKey' (st y i) = frameKey' (st z m))
-    -- Agreement: eligible observations in `[lo, hi]` with equal `h_j` have equal `Σ.J`.
-    (hJ : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
-      time m ≤ hi → (st y i).hj = (st z m).hj → (st y i).J = (st z m).J) :
-    ∃ floor kindJ J,
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi → (st y i).headHeightFloor = floor) ∧
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi →
-        (((st y i).hmax = (st y i).hj + 1 ∧ ¬ (st y i).Contest) ↔ kindJ)) ∧
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi → kindJ → (st y i).J = J) := by
-  classical
-  by_cases hex : ∃ y i, mem y i ∧ lo ≤ time i ∧ time i ≤ hi
-  · obtain ⟨y₀, i₀, hy₀, h₁, h₂⟩ := hex
-    have hkey : ∀ y i, mem y i → lo ≤ time i → time i ≤ hi →
-        (st y i).headHeightFloor = (st y₀ i₀).headHeightFloor ∧
-          (((st y i).hmax = (st y i).hj + 1 ∧ ¬ (st y i).Contest) ↔
-            ((st y₀ i₀).hmax = (st y₀ i₀).hj + 1 ∧ ¬ (st y₀ i₀).Contest)) :=
-      fun y i hy hlo hhi => frameKey'_eq_floor_kind (by have := hlt y i hy; omega)
-        (by have := hlt y₀ i₀ hy₀; omega) (hK y y₀ i i₀ hy hy₀ hlo hhi h₁ h₂)
-    refine ⟨_, _, (st y₀ i₀).J, fun y i hy hlo hhi => (hkey y i hy hlo hhi).1,
-      fun y i hy hlo hhi => (hkey y i hy hlo hhi).2, fun y i hy hlo hhi hk => ?_⟩
-    obtain ⟨hfl, hkd⟩ := hkey y i hy hlo hhi
-    have hk' := hkd.2 hk
-    have hj1 := hlt y i hy
-    have hj2 := hlt y₀ i₀ hy₀
-    apply hJ y y₀ i i₀ hy hy₀ hlo hhi h₁ h₂
-    unfold Store.headHeightFloor at hfl
-    simp [hk.2, hk'.2] at hfl
-    omega
-  · push Not at hex
-    exact ⟨0, True, dflt, fun y i hy hlo hhi => absurd hhi (not_le.2 (hex y i hy hlo)),
-      fun y i hy hlo hhi => absurd hhi (not_le.2 (hex y i hy hlo)),
-      fun y i hy hlo hhi => absurd hhi (not_le.2 (hex y i hy hlo))⟩
 
 end Consensus.Goldilocks.Healing
 

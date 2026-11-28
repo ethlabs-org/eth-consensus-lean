@@ -239,15 +239,15 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
     hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hpos l' hl'
   obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
   refine compatible_of_anc_right hU hBP
-    (compatible_of_head_anc hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
+    (compatible_of_anc_left hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
   rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hcut, hanc⟩
   · rw [projAC_upTo_state D.hrun le_rfl, projAC_state_at D.hrun hy] at hl
     obtain ⟨L', hL', hL'r, hcomp⟩ := hinv.locks_at_cut le_rfl hy l hl
     obtain rfl : B₁ = L' :=
       hU.1 (hΦU hB₁) (tree_held_at hd hy (fun _ hk => hm hk.le) hL') (hB₁r.trans hL'r.symm)
-    exact compatible_of_head_anc hU (hanc.mono hΦU) hcomp
+    exact compatible_of_anc_left hU (hanc.mono hΦU) hcomp
   · obtain ⟨-, hfl⟩ := (ac_optimisticLockAt_upTo hm).mp hfl
-    refine compatible_of_head_anc hU (hanc.mono hΦU)
+    refine compatible_of_anc_left hU (hanc.mono hΦU)
       (fastLock_compatible_at hinv.toOutageVoteInv hy (Or.inr hfl) (fun v hv hvH => ?_)
         fun hsK => D.hzc _ ?_ ⟨y, i, hy, hcall, le_rfl⟩)
     · obtain ⟨j, hj, e', hve, he'⟩ := hcut v hv hvH

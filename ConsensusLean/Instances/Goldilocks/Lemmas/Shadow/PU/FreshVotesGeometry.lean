@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
@@ -70,8 +71,8 @@ theorem viableHead_transfer_call_at {lo hi : Time} {M : Nat}
     (hcx : tr.projAC.CallAt x j ellx) (hcw : tr.projAC.CallAt w q ellw)
     (hv : W ∈ ellw.frame.viableHeads) (hW : W ∈ ellx.frame.tree) :
     W ∈ ellx.frame.viableHeads := by
-  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  rw [Compose.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Compose.Growing.frame_of_projAC_at hrun hw hcw] at hv
   exact viableHead_transfer_at hframe hrun hnc hx hw hm hjl hjh hql hqh hv hW
 
 /-- A frozen competing child reflects into the actual proposer's full viable tree.

@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growin
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
@@ -19,6 +19,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
 public section
 
@@ -79,11 +80,11 @@ variable {sp : ACParams}
 theorem hj_lt_hmax' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
-  have hr := (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
+  have hr := Node.fg_reachable_at hrun.toLocalRun hy i
   obtain ⟨_, _, _, ⟨Bj, hBj, _, hBjhj⟩, hge, _, _⟩ :=
-    Goldilocks.Store.cache_invariants_with Goldilocks.Store.finalitySpec_updateFinality hr
-  exact hBjhj ▸ (Goldilocks.Store.hj_lt_h_with
-    Goldilocks.Store.finalitySpec_updateFinality hr hBj).trans_le (hge Bj hBj)
+    Goldilocks.Store.cache_invariants _ _ _ _ hr
+  obtain ⟨c, _, _, _, hc⟩ := Goldilocks.Store.chain_state_of_chain _ _ _ _ hr Bj hBj
+  exact hBjhj ▸ (FG.chain_invariants sp.toParams.fg _ _ hc).2.2.1.trans_le (hge Bj hBj)
 
 end Consensus.Goldilocks.Healing
 

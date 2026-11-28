@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 
 public section
