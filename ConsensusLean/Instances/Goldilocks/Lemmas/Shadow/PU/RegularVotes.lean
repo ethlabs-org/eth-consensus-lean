@@ -375,7 +375,8 @@ theorem regular_fast_next_votes_at {s₀ s M : Nat}
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -435,7 +436,8 @@ theorem regular_slow_next_votes_at {s₀ s M : Nat}
   have hres : AC.ResultAt tr.projAC x c s C
       (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    Healing.Growing.KernelProof.result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun

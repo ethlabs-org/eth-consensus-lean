@@ -352,7 +352,8 @@ theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp).State}
   obtain ⟨j, hj⟩ := Healing.Growing.signTickAt_of_calendar_at hrun hcal hy ht0 hpub hawake hsign
   obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff tr proposer dg y j t).1 hj
   obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick hg
-  exact ⟨j + k, ell, hc, hcall, htime, Healing.Growing.joined_of_restart_le_at hrun hnc hy (by linarith)
+  exact ⟨j + k, ell, hc, hcall, htime,
+    Healing.Growing.joined_of_restart_le_at hrun hnc hy (by linarith)
     (fun r _ hyr hrs => (hnr y r hyr hrs).trans hgu) htime⟩
 
 /-- A block of an honest frame above a non-genesis block is not genesis
@@ -569,7 +570,8 @@ theorem proposal_report_follow_delayed_at
   obtain ⟨r, ellr, R, hR, hrt, hBR⟩ := report_of_compatible_candidate_of_run_at hrun hnc hyi hc
     hcall hjoin hBg hB (Healing.Growing.toFG_candidates_compatible_at_call_at hrun hnc hyi hc hB)
   have hPR := hPB.trans hBR
-  have hrlo := Healing.Growing.toFG_time_ge_of_ancestor_slot_at hrun hnc (hrun.antitone hrt hyi) hR hPs hPR
+  have hrlo :=
+    Healing.Growing.toFG_time_ge_of_ancestor_slot_at hrun hnc (hrun.antitone hrt hyi) hR hPs hPR
   have hrhi : tr.time r ≤ T + (G : Time) * sp.Δ := hrt.trans (by rw [hti]; exact htr)
   refine ⟨r, ellr, R, hrun.antitone hrt hyi, hR, hrlo, hrhi, hPR, ?_⟩
   intro x hx hxN w c ellp hw hcp hcallp htc d pay hd
