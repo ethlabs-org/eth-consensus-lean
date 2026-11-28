@@ -190,10 +190,9 @@ theorem goldilocksExtension_iff : GoldilocksExtension (sp := sp) sign G ↔
         Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u) := by
   rfl
 
-/-- Serviced proposal ancestry at the actual bounded read. The source route is
-`sleepy_serviced_proposal_coverage_at` / `include_sleepy_at`; the committee facts
-remain explicit as in the other adapters. Catch-up and hold dominate the concrete
-durations, and the margin covers six delays. No proposal witness is selected here. -/
+/-- Serviced proposal ancestry at the actual bounded read, from `include_sleepy_at`.
+The committee facts stay explicit. Catch-up and hold dominate the concrete durations,
+and the margin covers six delays. No proposal witness is selected here. -/
 def GoldilocksProposalCoverage (sign : Fin sp.n → Time → Bool := fun _ _ => true)
     (G : Nat := 0) :
     Prop :=
