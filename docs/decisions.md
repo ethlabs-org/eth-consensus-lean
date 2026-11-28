@@ -478,10 +478,7 @@ lines 147–152 give the frame returned to the available chain.
   classically choose a parent-order enumeration when one exists, and otherwise use the empty list.
   This construction uses only the validator count and genesis root, not runtime parameters or a
   positive-validator hypothesis. The projection and section are not an isomorphism of setup types.
-  The historical `BeforeHighest` comparison also calls the production stamp at restart: it holds
-  restart fixed on both sides and compares only the lock and expiry rules. On a `FrameOK` frame
-  at a nonnegative time, the historical replay agrees with this stamp; outside those guards,
-  normalizing the historical restart changes the raw `BeforeHighest.stepWith` and `step` values.
+  Restart preserves stored lock expiries; it does not recalculate them from the restart time.
 - **The publisher.** Successful block cuts, including own-proposal acceptance, enqueue signed timestamped wrappers;
   duplicate or refused calls do not. A durable node-root-to-wrapper map supplies the exact same-origin parent; the
   next selected poll drains the event queue in acceptance order through `releaseAll`, after the vote/attestation
