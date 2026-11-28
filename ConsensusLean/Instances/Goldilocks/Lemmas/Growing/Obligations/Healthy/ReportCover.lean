@@ -142,10 +142,10 @@ private theorem held_target_viableHeads_or_higher_report_of_cases
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
-    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
+    (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hhighroot : ¬ (tr.state y i).fg.hj ≤ HZ tr H g →
-      Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P)
-    (hfloorrep : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor →
+      Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J P)
+    (hfloorrep : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.hmax - 1 →
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) :
@@ -157,72 +157,37 @@ private theorem held_target_viableHeads_or_higher_report_of_cases
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
   have hy := hrun.antitone (le_max_right _ _) hyz
-  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hd := hrun.time_nonneg i
   have hle := before_cut hrun i
-  have hPhi := (Store.frame_realization _ _ _ _ (fg_reachable_at hrun hd hle hy)).1
-  have hPhiU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H :=
-    fun X hX => ⟨y, i, tr.time i, hd, hle, hy, hX.1⟩
   have hPy := hPt.1
   have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
-  have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
-    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
-    · exact hp.low_analysis_root_of_held_seed_at hy hib hseed hqb
-        (mem_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy) hlow (Or.inr hSP)
-        (fun _ => hPt)
-    · exact hhighroot hlow
-  by_cases hrootP : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P
-  · by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
-    · have hreach := fg_reachable_at hrun hd hle hy
-      have hcache := Store.cache_invariants _ _ _ _ hreach
-      have hrootStore := Store.anc_of_anc_universe hreach hU
-        (fun X hX => ⟨y, i, tr.time i, hd, hle, hy, hX⟩) hrootP hPy
-      have hrootf : (Node.frame (tr.state y i)).Anc
-          (Node.frame (tr.state y i)).fcRoot P := Anc.restrict .refl hPt.2
-      refine Or.inl ⟨hPt, hrootf, hPy, hPt.2, ?_⟩
-      by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ P.root).h
-      · exact Or.inl hh
-      have hpred : ((tr.state y i).fg.σ P.root).h + 1 = (tr.state y i).fg.hmax := by
-        have hb : (tr.state y i).fg.hmax - 1 ≤ (tr.state y i).fg.headHeightFloor := by
-          unfold Store.headHeightFloor
-          split_ifs <;> omega
-        omega
-      refine Or.inr ⟨hpred, ?_⟩
-      by_cases hgap : (tr.state y i).fg.hj + 1 < (tr.state y i).fg.hmax
-      · exact Or.inl hgap
-      right
-      have htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 := by
-        obtain ⟨C, hC, -, hCh⟩ := hcache.2.2.2.1
-        have := Store.hj_lt_h hreach hC
-        have := hcache.2.2.2.2.1 C hC
-        omega
-      have hnc : ¬ (tr.state y i).fg.Contest := by
-        intro hc
-        have hf : (tr.state y i).fg.headHeightFloor = (tr.state y i).fg.hmax := by
-          simp only [Store.headHeightFloor, ite_eq_left hc]
-        omega
-      simpa only [Store.fcRoot, ite_eq_left (show
-        (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬ (tr.state y i).fg.Contest from
-          ⟨htop, hnc⟩)] using hrootStore
-    · exact Or.inr (hfloorrep (lt_of_not_ge hfloor))
-  · have hPR := hroot.resolve_left hrootP
-    have hne : P ≠ (tr.state y i).fg.fcRoot := fun he => hrootP (he ▸ .refl)
-    have hJ : (tr.state y i).fg.fcRoot = (tr.state y i).fg.J := by
-      have hFP := (hPhi.rooted.2 P hPt).mono hPhiU
-      change ¬ Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P at hrootP
-      change Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F P at hFP
-      change (tr.state y i).fg.fcRoot = _
-      unfold Store.fcRoot at hrootP ⊢
-      split_ifs at hrootP ⊢ with hactive
-      · rfl
-      · exact False.elim (hrootP hFP)
+  by_cases hbelow : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.hmax - 1
+  · exact Or.inr (hfloorrep hbelow)
+  have finish (hv : (tr.state y i).fg.IsViable P) :
+      P ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot P ∧
+      P ∈ (Node.frame (tr.state y i)).viableHeads :=
+    ⟨hPt, Anc.restrict .refl hPt.2, hPt.1, hPt.2, hv⟩
+  by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ P.root).h
+  · exact Or.inl (finish (Or.inl hh))
+  have hpred : ((tr.state y i).fg.σ P.root).h + 1 = (tr.state y i).fg.hmax := by omega
+  by_cases hgap : (tr.state y i).fg.hj + 1 < (tr.state y i).fg.hmax
+  · exact Or.inl (finish (Or.inr ⟨hpred, Or.inl hgap⟩))
+  have hhigh : ¬ (tr.state y i).fg.hj ≤ HZ tr H g := by
+    have hPh := Outcome.high_of_anc_at hrun hp.noColl hseed hd hle hy hPy hSP
+    omega
+  rcases hhighroot hhigh with hJP | hPR
+  · exact Or.inl (finish (Or.inr ⟨hpred, Or.inr
+      (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy hJP hPy)⟩))
+  · by_cases he : P = (tr.state y i).fg.J
+    · exact Or.inl (finish (Or.inr ⟨hpred, Or.inr (he ▸ .refl)⟩))
     have hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q := by
       have hf := hp.faults _ hd hib
       have hn : 0 < sp.n := sp.toParams.hn
       change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
       omega
     obtain ⟨x, hx, r, hri, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
-      cache_ahead_report_at hrun hp.noColl hy hf (Or.inr hJ) hPy hPR hne
+      cache_ahead_report_at hrun hp.noColl hy hf (Or.inr rfl) hPy hPR he
     have hxle : ∀ k < r, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono (by omega)
     have hPx := mem_of_honest_anc_at hrun hp.noColl hd hxle hx hPR hJx
     have hσ := σ_eq_honest_at hrun hp.noColl hd hle hy hd hxle hx hPy hPx
@@ -249,18 +214,11 @@ theorem held_target_viableHeads_or_higher_report_covered_at
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h :=
   have hy := hp.run.antitone (le_max_right _ _) hyz
   have hrun := hp.run
-  held_target_viableHeads_or_higher_report_of_cases hp hyz hib hPt hseed hqb hSP
+  held_target_viableHeads_or_higher_report_of_cases hp hyz hib hPt hseed hSP
     (fun hhigh => by
-      have hJ := hp.high_J_root_J_compatible_covered_at (hrun.time_nonneg i)
-        (before_cut hrun i) hy hib hPt.1 (by omega) hcompare
-      unfold Store.fcRoot
-      split_ifs
-      · exact hJ
-      · exact Or.inl (hPt.2.mono
-          (fun X hX => ⟨y, i, tr.time i, hrun.time_nonneg i, before_cut hrun i, hy, hX⟩)))
-    (fun hfl => hp.held_target_high_floor_report_before_covered_at hy hib hPt.1 hseed hSP
-      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
-        ((hrun.time_mono hri.le).trans hib) ho' ((hrun.time_mono hr'i.le).trans hib))
+      exact hp.high_J_root_J_compatible_covered_at (hrun.time_nonneg i)
+        (before_cut hrun i) hy hib hPt.1 (by omega) hcompare)
+    (fun hfl => hp.held_target_high_pred_report_before_covered_at hy hib hPt.1 hseed hSP
       (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
         ((hrun.time_mono hri.le).trans hib)) hcompare hfl)
 
