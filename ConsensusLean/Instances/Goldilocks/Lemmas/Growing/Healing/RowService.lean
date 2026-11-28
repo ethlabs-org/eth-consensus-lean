@@ -418,7 +418,7 @@ theorem row_of_sign_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     hJ₀T').trans hJ₀r
   have hperm : (tr.state z j).record.permits ((tr.state y m).fg.σ T.root).hj
       ((tr.state y m).fg.σ T.root).J := by
-    refine ⟨?_, fun r hr => Finset.mem_singleton.2 (heq r (Or.inr (Or.inl hr))), ?_⟩
+    refine ⟨?_, timeout_empty_before_at hp hj0 hzz hjb j (leC j) _ (hhj hb), ?_⟩
     · rcases ht' : (tr.state z j).record.target _ with _ | r
       exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inl ht')])]
     · rcases hl : (tr.state z j).record.lock _ with _ | r

@@ -63,7 +63,7 @@ theorem attest_new {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
         unfold FG.ChainState.previousHeightJustified; rw [he_hj, he_h]; omega
       have hperm : Λ.permits (csN (ent q)).hj (csN (ent q)).J := by
         rw [he_hj, he_J]
-        refine ⟨Or.inr ?_, by rw [hΛ.timeout]; simp, Or.inl ?_⟩
+        refine ⟨Or.inr ?_, hΛ.timeout _, Or.inl ?_⟩
         · rw [hΛ.target, ite_eq_left ⟨by omega, le_rfl⟩]
         · rw [hΛ.lock, ite_eq_right (by omega)]
       rw [ite_eq_left hb, ite_eq_left hperm, he_hj, he_J, ite_eq_right (by omega)]

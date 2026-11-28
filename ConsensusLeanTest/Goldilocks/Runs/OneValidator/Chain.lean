@@ -584,7 +584,7 @@ theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s)
         unfold ent; split_ifs <;> omega
       have hperm : Λ.permits (fg.σ (blk (ent s)).root).hj (fg.σ (blk (ent s)).root).J := by
         rw [hSe.hj, hSe.J]
-        refine ⟨Or.inr ?_, by rw [hΛ.timeout]; simp, Or.inl ?_⟩
+        refine ⟨Or.inr ?_, hΛ.timeout _, Or.inl ?_⟩
         · rw [hΛ.target, ite_pos (by unfold ent; split_ifs <;> omega)]
           unfold ent; rw [ite_neg (by omega), ← eroot_pred h2]
         · rw [hΛ.lock, ite_neg (by unfold ent; split_ifs <;> omega)]
