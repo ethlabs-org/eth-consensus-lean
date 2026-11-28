@@ -77,7 +77,7 @@ theorem deep_report_acceptance_before_cut
   have hr := hrun.upTo hd
   have hs : ∀ m ≤ i, (tr.upTo (tr.time i)).state y m = tr.state y m :=
     fun m hm => Trace.upTo_state tr y (fun q hq => hrun.time_mono (hq.le.trans hm))
-  rcases Healing.tree_accepted hr.toLocalRun hy (by rw [hs i le_rfl]; exact hRi) with
+  rcases Compose.tree_cases hr.toLocalRun hy (by rw [hs i le_rfl]; exact hRi) with
     rfl | ⟨k, hki, ha⟩
   · exact absurd rfl hRg
   obtain ⟨ell', hc', hcall', ht'⟩ := Compose.accept_next hr.toLocalRun hy ha

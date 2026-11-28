@@ -30,7 +30,7 @@ theorem local_observations
   have hlek : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
   have he := Trace.upTo_state tr y hlek
   have hW' : W ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by rwa [he]
-  rcases Healing.tree_accepted (hrun.upTo hk0).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+  rcases Compose.tree_cases (hrun.upTo hk0).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
   · cases ha
   have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
   obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att

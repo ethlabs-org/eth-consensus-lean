@@ -81,6 +81,9 @@ change; the comparator cannot replace that reading.
 | Cited names | docs (12) | Every `Consensus.…` name in `docs/roadmap.md` and `docs/goldilocks-mapping.md` exists; the trusted-file list of `docs/definition.md` is complete. |
 | Unrecorded trusted change | `review-boundary.sh` | Every non-merge commit touching a trusted path carries its `Trusted-surface:` line. |
 
+Goldilocks restart is covered by the protected-surface snapshot and the Lean build and axiom audit of its
+regression theorems. No source-migration helper is part of that assurance.
+
 CI is GitHub Actions: `check` runs the fast mode on every pull request and every push to `main`; `full` runs
 everything (kernel replay, `lake check`, the paranoid comparator) nightly, on milestone and release tags and on
 demand. A pull request runs on the `pull_request` event with a read-only token and no secrets, so the scripts of a

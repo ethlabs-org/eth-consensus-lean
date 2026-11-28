@@ -38,12 +38,6 @@ theorem anc_mem {S : Set (NodeBlock P ACP)} {A W : NodeBlock P ACP} (h : Anc S A
     (hW : W ∈ S) : A ∈ S :=
   FrameGeometry.anc_mem h hW
 
-/-- One accepted block keeps the justification or justifies its parent's entry. -/
-theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
-    (h : gp.stateTransition σ B = some σ') :
-    (σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h) :=
-  FrameGeometry.step_J h
-
 end Store
 
 variable {sp : ACParams}

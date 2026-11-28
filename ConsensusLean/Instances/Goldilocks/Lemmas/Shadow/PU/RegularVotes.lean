@@ -4,7 +4,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
@@ -59,7 +58,7 @@ private theorem result_carry_service_at
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  exact KernelProof.Core.result_carry_service_at hrun.toCore hnc hsvc hcatch hts
+  exact KernelProof.result_carry_service_at hrun hnc hsvc hcatch hts
     hx hy hres hc hes hFC
 
 /-- The shared service proof compares merged votes with the result writer. -/
@@ -76,7 +75,7 @@ private theorem writer_merged_service_at
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state x c).pool s ∨
         v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
-  exact KernelProof.Core.writer_merged_service_at hrun.toCore hnc hsvc hm hx hy hu hc hs
+  exact KernelProof.writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs
 
 /-- Stored slow-window locks compare with the slow origin. -/
 private theorem slow_live_locks_service_at
@@ -319,8 +318,8 @@ theorem next_votes_of_supporter_at {s₀ s M : Nat}
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
       rw [← hcast]
       linarith only [hΔ, hm]) hK
-  apply KernelProof.Core.next_votes_of_supporter_at (kindJ := False) (J := J)
-    hrun.toCore hnc hz hc hes hQU hQr hXQ ?_ hbase (fun h => h.elim) hoptimistic
+  apply KernelProof.next_votes_of_supporter_at (kindJ := False) (J := J)
+    hrun hnc hz hc hes hQU hQr hXQ ?_ hbase (fun h => h.elim) hoptimistic
   refine ⟨Hd, hHd, hHdr, ?_⟩
   exact hclass.elim (fun hv => Or.inl hv.2) (fun ho => Or.inr (Or.inr ho))
 

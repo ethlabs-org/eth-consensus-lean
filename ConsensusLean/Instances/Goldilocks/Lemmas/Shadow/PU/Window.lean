@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
@@ -16,7 +15,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
@@ -53,13 +54,10 @@ theorem finalized_below_viable {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hsafe : ∀ a b, (∃ Y ∈ st.tree, a ∈ Y.fgPayload) →
       (∃ Y ∈ st.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
     {Q : NodeBlock P ACP} (hQ : Q ∈ st.tree) (hv : st.IsViable Q) : st.Anc st.F Q := by
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    hR.reachableWith
+  have hj := Healing.Store.hj_lt_hmax_of_reachable hR
   rcases (Store.isViable_iff st Q).mp hv with hh | ⟨hh, hgap | hJ⟩
-  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality
-      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
-  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality
-      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
+  · exact Healing.Store.F_anc_of_hj_lt_of_safe hR hR hU hsub hsub hV hsafe hQ (by omega)
+  · exact Healing.Store.F_anc_of_hj_lt_of_safe hR hR hU hsub hsub hV hsafe hQ (by omega)
   · exact (Store.cache_invariants _ _ _ _ hR).2.2.1.trans hJ
 
 /-- Viability transport within fixed numerical frame data. The caller separately supplies
@@ -132,10 +130,9 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
         (hframe.root_eq y i hy (halo.trans htime) hihi
           ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).symm)
       (hj_lt_hmax hrun hy i)
-      (Store.σ_eq_of_mem_with
-        (Compose.fg_reachable hrun.toLocalRun hy a).reachableWith
-        Store.finalitySpec_updateFinality
-        (Compose.fg_reachable hrun.toLocalRun hy i).reachableWith
+      (Healing.Store.σ_eq_of_mem
+        (Compose.fg_reachable hrun.toLocalRun hy a)
+        (Compose.fg_reachable hrun.toLocalRun hy i)
         (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1
         (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi)
       (fun h => h.mono (Compose.tree_mono hrun.toLocalRun hy hai)) hv.2.2

@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finali
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -44,7 +45,7 @@ theorem J_entry_h {st : Store P ACP} (hr : st.Reachable acp₀) {W : NodeBlock P
     exact ⟨_, Store.genesis_mem hr, rfl, by simp [FG.ChainState.init]⟩
   | tail _ hYW ih =>
     obtain ⟨X, -, hXr, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases Compose.step_J ht with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
+    rcases Compose.FrameGeometry.step_J ht with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
     · obtain ⟨E, hE, h1, h2⟩ := ih
       exact ⟨E, hE, h1.trans hJ.symm, hj ▸ h2⟩
     · obtain ⟨⟨E, hE, h1, -, h2, -⟩, -⟩ :=
