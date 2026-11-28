@@ -1,7 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNextCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -31,16 +29,9 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 
-namespace Core
-
-variable
-  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-
-/-- Compatible historical roots cannot veto a proposal in the current frame, over a run bundle
-`GoldilocksRunCore`. -/
+/-- Compatible historical roots cannot veto a proposal in the current frame. -/
 theorem no_veto_of_lock_roots_compatible_at
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
@@ -49,12 +40,12 @@ theorem no_veto_of_lock_roots_compatible_at
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  have hr := (hrun.acRun_upTo hnc (hrun.time_nonneg k)).localRun
+  have hr := (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg k)).localRun
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   have hPhi := AC.frameIn_of_callAt hr hy hc'
-  have hsub := hrun.upTo_subset (hrun.time_nonneg k)
-  have hU := hrun.coherent hnc
+  have hsub := Compose.Growing.upTo_subset hrun (hrun.time_nonneg k)
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have down : ∀ {X Y}, Anc (tr.HonestBlocksAt H) X Y →
       Compatible (tr.HonestBlocksAt H) Y P → Compatible (tr.HonestBlocksAt H) X P := by
     rintro X Y hXY (h | h)
@@ -72,21 +63,6 @@ theorem no_veto_of_lock_roots_compatible_at
   rcases hcomp with h | h
   · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi.1 (fun Q hQ => hsub (hPhi.2 hQ)) hLt h hPt)
   · exact Or.inl (AC.anc_tree_of_anc_U hU hPhi.1 (fun Q hQ => hsub (hPhi.2 hQ)) hPt h hLt)
-
-end Core
-
-/-- Compatible historical roots cannot veto a proposal in the current frame. -/
-theorem no_veto_of_lock_roots_compatible_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
-    (hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
-      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
-        Compatible (tr.HonestBlocksAt H) L P) :
-    ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P :=
-  Core.no_veto_of_lock_roots_compatible_at hrun.toCore hnc hy hc hPt hlocks
 
 end
 
