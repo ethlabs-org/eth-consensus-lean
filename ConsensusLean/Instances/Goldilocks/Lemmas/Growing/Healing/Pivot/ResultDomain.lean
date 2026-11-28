@@ -87,7 +87,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
     apply (hp.restart_le_before_at hw (Compose.projAC_restartAt.mp hrest) hcb).trans
     have hh := (AC.ts_le_iff sp).mp ((Healing.cutZ_eq sp g) ▸ hts)
     exact (AC.ts_le_iff sp).mpr (by omega)
-  have hgs : g ≤ sp.ts s := by linarith [le_gbar g, sp.toParams.hΔ]
+  have hgs : g ≤ sp.ts s := by linarith [AC.le_gbar g, sp.toParams.hΔ]
   apply hdomain hx hy hBx hrb hcast hib
     (raw_writer_voterBlockTree_before_at hp hx hy
       (Or.inl ⟨ellX, hupd, hconf, hCV⟩) hBC htiming hcast hsi)

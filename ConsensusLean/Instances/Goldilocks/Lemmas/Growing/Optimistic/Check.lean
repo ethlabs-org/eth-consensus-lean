@@ -200,7 +200,7 @@ theorem optimistic_record_extends_at {ini} (hrun : Growing.GoldilocksRun propose
   obtain ⟨ℓ, A₀, hpt₀, hjs1, hjs2⟩ := hjpt
   have hc := hpt₀.1
   have hyj : y ∈ H (tr.time js) := hrun.antitone hjs2.le hyd
-  have hsl : sp.slot (tr.time js) = q + 1 := slot_eq_of_window hjs1 (by linarith)
+  have hsl : sp.slot (tr.time js) = q + 1 := AC.CompatibleSides.slot_of_lt hjs1 (by linarith)
   have hsl' : sp.toParams.slotOf (tr.time js) = q + 1 := hsl
   have hts : sp.ts (q : Nat) + 4 * sp.Δ = sp.ts (q + 1 : Nat) := by
     simp only [ACParams.ts]; push_cast; ring

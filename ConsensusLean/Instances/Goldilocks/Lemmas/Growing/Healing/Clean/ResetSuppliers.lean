@@ -79,7 +79,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.faultBoundK_lat
   have htb := htd.trans hdb
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
+  have ht0 : 0 ≤ t := (AC.gbar_nonneg g).trans hgt
   have hst : sp.slot (gbar g) + 3 ≤ sp.slot t := by
     have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)
@@ -275,7 +275,7 @@ theorem carry_of_senders {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
   have hsync := reset_syncACAt hp (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hgs : gbar g + 8 * sp.Δ < sp.ts s := (lt_cutZ sp g).trans_le hts
-  have hgg := le_gbar g
+  have hgg := AC.le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     have hsl := (castAt_facts_at hrun hp.noColl hy hcast).2.2
     have h := (AC.ts_le_iff_le_slot sp hd ((s + 1 : Nat) : Int)).2 (by rw [← hsl, hs])
@@ -390,7 +390,7 @@ theorem writer_merged_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   obtain ⟨ellX, hupd, -⟩ := hres
   have hg : g ≤ sp.ts s := by
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     linarith
   exact AC.Growing.writer_merged
     (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl) hx hupd

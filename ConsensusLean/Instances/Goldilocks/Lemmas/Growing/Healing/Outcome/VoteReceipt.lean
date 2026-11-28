@@ -102,7 +102,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_origin_hel
       ((AC.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
   have hgc : g ≤ tr.time c := by
     have := hp.cutZ_lt_of_anc_at ho hzc hWc hBW
-    linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
+    linarith [lt_cutZ sp g, AC.le_gbar g, sp.toParams.hΔ]
   have hΔ := sp.toParams.hΔ
   have hys := (AC.castAt_specU hr.toU hy hc').2.1
   change e.msg.slot = sp.slot (tr.time k) at hys

@@ -18,7 +18,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
 public section
@@ -52,65 +52,11 @@ section ACUpTo
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} (trA : ACTrace A) {d : Time}
 
-theorem ac_restartAt_upTo {y : Fin P.n} {k : Nat} :
-    ACTrace.RestartAt (trA.upTo d) y k ↔ trA.time k ≤ d ∧ ACTrace.RestartAt trA y k := by
-  simp only [ACTrace.RestartAt, Trace.upTo_callAt]
-  exact ⟨fun ⟨ℓ, ⟨h, hc⟩, hl⟩ => ⟨h, ℓ, hc, hl⟩, fun ⟨h, ℓ, hc, hl⟩ => ⟨ℓ, ⟨h, hc⟩, hl⟩⟩
-
-theorem ac_acceptAt_upTo {y : Fin P.n} {k : Nat} {B : A.Blk} :
-    ACTrace.AcceptAt (trA.upTo d) y k B ↔ trA.time k ≤ d ∧ ACTrace.AcceptAt trA y k B := by
-  simp only [ACTrace.AcceptAt, Trace.upTo_callAt]
-  exact ⟨fun ⟨ℓ, ⟨h, hc⟩, hl⟩ => ⟨h, ℓ, hc, hl⟩, fun ⟨h, ℓ, hc, hl⟩ => ⟨ℓ, ⟨h, hc⟩, hl⟩⟩
-
-theorem ac_processAt_upTo {y : Fin P.n} {k : Nat} {m : A.Msg} :
-    ACTrace.ProcessAt (trA.upTo d) y k m ↔ trA.time k ≤ d ∧ ACTrace.ProcessAt trA y k m := by
-  simp only [ACTrace.ProcessAt, Trace.upTo_callAt]
-  exact ⟨fun ⟨ℓ, ⟨h, hc⟩, hl⟩ => ⟨h, ℓ, hc, hl⟩, fun ⟨h, ℓ, hc, hl⟩ => ⟨ℓ, ⟨h, hc⟩, hl⟩⟩
-
 variable {trA}
 
 theorem ac_state_upTo (hmono : Monotone trA.time) {y : Fin P.n} {i : Nat} (hi : trA.time i ≤ d) :
     (trA.upTo d).state y i = trA.state y i :=
   Trace.upTo_state trA y fun _ hk => (hmono hk.le).trans hi
-
-theorem ac_sendOrAdmit_upTo (hmono : Monotone trA.time) {x : Fin P.n} {i : Nat} {m : A.Msg} :
-    ACTrace.SendOrAdmit (trA.upTo d) x i m ↔ trA.time i ≤ d ∧ ACTrace.SendOrAdmit trA x i m := by
-  simp only [ACTrace.SendOrAdmit, Trace.upTo_callAt]
-  constructor
-  · rintro ⟨ℓ, ⟨h, hc⟩, hm⟩
-    rw [ac_state_upTo hmono h] at hm
-    exact ⟨h, ℓ, hc, hm⟩
-  · rintro ⟨h, ℓ, hc, hm⟩
-    rw [← ac_state_upTo hmono h] at hm
-    exact ⟨ℓ, ⟨h, hc⟩, hm⟩
-
-theorem ac_lastWake_upTo (hmono : Monotone trA.time) (y : Fin P.n) :
-    ∀ {k : Nat}, trA.time k ≤ d → ACTrace.lastWake (trA.upTo d) y k = ACTrace.lastWake trA y k
-  | 0, h => by
-    unfold ACTrace.lastWake
-    by_cases hr : ACTrace.RestartAt trA y 0
-    · have hr' : ACTrace.RestartAt (trA.upTo d) y 0 := (ac_restartAt_upTo trA).mpr ⟨h, hr⟩
-      simp only [hr, hr', ite_true]
-      rfl
-    · have hr' : ¬ ACTrace.RestartAt (trA.upTo d) y 0 :=
-        fun h' => hr ((ac_restartAt_upTo trA).mp h').2
-      simp only [hr, hr', ite_false]
-  | k + 1, h => by
-    have ih := ac_lastWake_upTo hmono y (k := k) ((hmono (Nat.le_succ k)).trans h)
-    unfold ACTrace.lastWake
-    by_cases hr : ACTrace.RestartAt trA y (k + 1)
-    · have hr' : ACTrace.RestartAt (trA.upTo d) y (k + 1) := (ac_restartAt_upTo trA).mpr ⟨h, hr⟩
-      simp only [hr, hr', ite_true]
-      rfl
-    · have hr' : ¬ ACTrace.RestartAt (trA.upTo d) y (k + 1) :=
-        fun h' => hr ((ac_restartAt_upTo trA).mp h').2
-      simp only [hr, hr', ite_false]
-      exact ih
-
-theorem ac_deadline_upTo (hmono : Monotone trA.time) {y : Fin P.n} {k : Nat}
-    (h : trA.time k ≤ d) (τ : Time) :
-    ACTrace.deadline (trA.upTo d) y k τ = ACTrace.deadline trA y k τ := by
-  simp only [ACTrace.deadline, ac_lastWake_upTo hmono y h]
 
 end ACUpTo
 
@@ -172,7 +118,7 @@ theorem ac_retainedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {j : N
     AC.RetainedBefore (trS.upTo d) y j v T := by
   obtain ⟨q, hqj, hq, hr⟩ := (AC.retainedBefore_iff _ _ _ _).mp h
   refine (AC.retainedBefore_iff _ _ _ _).mpr ⟨q, hqj, ?_, fun r h1 h2 hrr => hr r h1 h2
-    ((ac_restartAt_upTo trS).mp hrr).2⟩
+    ((ACTrace.upTo_restartAt (tr := trS)).mp hrr).2⟩
   rwa [ac_state_upTo hmono ((hmono hqj).trans hj)]
 
 theorem ac_messageServedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {j : Nat}
@@ -181,9 +127,10 @@ theorem ac_messageServedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {
   rcases (AC.messageServedBefore_iff _ _ _ _).mp h with ⟨k, hkj, hk0, hk, hkd⟩ | hr
   · have hkd' : trS.time k ≤ d := (hmono hkj).trans hj
     exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k, hkj, hk0,
-      (ac_processAt_upTo trS).mpr ⟨hkd', hk⟩, by rw [ac_deadline_upTo hmono hkd']; exact hkd⟩)
+      (ACTrace.upTo_processAt (tr := trS)).mpr ⟨hkd', hk⟩,
+      by rw [ACTrace.upTo_deadline hmono hkd']; exact hkd⟩)
   · refine (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inr ?_)
-    rw [ac_deadline_upTo hmono hj]
+    rw [ACTrace.upTo_deadline hmono hj]
     exact ac_retainedBefore_upTo hmono hj hr
 
 end GoldilocksACUpTo
@@ -335,20 +282,20 @@ theorem SleepyServiceBefore.upTo {ini} (hrun : Growing.GoldilocksRun proposer dg
   rw [RunTrace.upTo_projAC]
   refine ⟨fun x hx i v hv h0 y hy j ℓ hc hdb hdj => ?_,
     fun x hx i B hB h0 y hy j ℓ hc hdb hdj ha => ?_⟩
-  · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
+  · obtain ⟨hid, hv⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hv
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     exact ac_messageServedBefore_upTo hm hjd
       (h.message x i v (anti hid hx) hv h0 y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
         hdj)
-  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+  · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB h0 y j ℓ (anti hjd hy) hc
       (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
     have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
-      by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
+    exact ⟨k, hkj, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkd, hk⟩,
+      by rw [ACTrace.upTo_deadline hm hkd]; exact hkt⟩
 
 /-- **Transport of the AC service from `a`** to the prefix through `d ≥ 0`: the static AC service
 window from `a` of the validators honest at `d`, with the deadline bound `min b d`. -/
@@ -362,20 +309,20 @@ theorem SleepyServiceFrom.acWindow_upTo {ini} (hrun : Growing.GoldilocksRun prop
   rw [RunTrace.upTo_projAC]
   refine ⟨fun x hx i v hv hai y hy j ℓ hc hdb hdj => ?_,
     fun x hx i B hB hai y hy j ℓ hc hdb hdj ha => ?_⟩
-  · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
+  · obtain ⟨hid, hv⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hv
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     exact ac_messageServedBefore_upTo hm hjd
       (h.message x i v (anti hid hx) hv hai y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
         hdj)
-  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+  · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB hai y j ℓ (anti hjd hy) hc
       (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
     have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
-      by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
+    exact ⟨k, hkj, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkd, hk⟩,
+      by rw [ACTrace.upTo_deadline hm hkd]; exact hkt⟩
 
 /-! ### Node-local AC facts at a cut (lifted at the time of the cut) -/
 
@@ -508,7 +455,7 @@ theorem frame_anc_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
       (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (frame_upTo_at hrun hnc hy hc hB) hXB)
     with h | ⟨k, hk, hA⟩
   · exact Or.inl h
-  · exact Or.inr ⟨k, hk, ((ac_acceptAt_upTo _).mp hA).2⟩
+  · exact Or.inr ⟨k, hk, ((ACTrace.upTo_acceptAt (tr := _)).mp hA).2⟩
 
 theorem ts_add_delta_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s + sp.Δ :=
   add_nonneg (by
@@ -625,10 +572,10 @@ theorem optimistic_writer_votes_at {ini} (hrun : Growing.GoldilocksRun proposer 
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
     optimistic_writer_votes (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hx
       ((ac_optimisticLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hO⟩) v hv
-  obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
+  obtain ⟨hkd, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hx, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
     hacc.imp_right fun ⟨k', hk', hk't⟩ => ?_⟩
-  obtain ⟨hk'd, hk'⟩ := (ac_acceptAt_upTo _).mp hk'
+  obtain ⟨hk'd, hk'⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hk'
   exact ⟨k', hrun.antitone hk'd hx, hk', hk't⟩
 
 /-- A block of the frame of a call at a time `≤ d`, of a node honest at `d`, is in the prefix's
@@ -653,7 +600,7 @@ theorem mem_tree_of_acceptAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg 
   have hr := (acRun_upTo hrun hnc hd).localRun
   have hkd : tr.time k ≤ tr.time i := hm hki
   have hk' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k B :=
-    (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩
+    (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkd, hk⟩
   obtain ⟨ℓk, hck, -⟩ := hk
   have hBU : B ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
     mem_upTo_of_frame hrun hy hkd hck
@@ -687,8 +634,9 @@ theorem blockStamp_lt_of_acceptedBefore_at {ini} (hrun : Growing.GoldilocksRun p
   have h := AC.blockStamp_lt_of_acceptedBeforeU sp
     (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun.toU hrun.vstart hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hB
-    (hacc.imp_right fun ⟨k, hk, hkT⟩ => ⟨k, (ac_acceptAt_upTo _).mpr ⟨(hkT.le.trans hT), hk⟩, hkT⟩)
-    (fun k hk hrk => hrs k hk ((ac_restartAt_upTo _).mp hrk).2) (Or.inl hT)
+    (hacc.imp_right fun ⟨k, hk, hkT⟩ =>
+      ⟨k, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkT.le.trans hT, hk⟩, hkT⟩)
+    (fun k hk hrk => hrs k hk ((ACTrace.upTo_restartAt (tr := _)).mp hrk).2) (Or.inl hT)
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 /-! ### Origins and stored locks -/

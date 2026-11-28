@@ -26,7 +26,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 
@@ -237,7 +237,7 @@ theorem extend_next_votes_core_at
     | h j ih =>
       rintro hjb y e hy ⟨ell, hc'⟩ hs
       have htime : sp.ts (m + 1 : Nat) ≤ tr.time j := by
-        have := (castAt_time_bounds hrun hnc hy hc').1
+        have := (Compose.Growing.cast_time_at hrun hnc hy hc').1
         rwa [hs] at this
       obtain ⟨hFP, hvi⟩ := hcast y j ell e hy hc' hs hjb
         fun x q e' hq hx hv hvs => ih q hq ((hrun.time_mono hq.le).trans hjb) x e' hx hv hvs
@@ -262,7 +262,7 @@ theorem extend_next_votes_core_at
       refine AC.Growing.next_transfer_from hacr K hPK hTK hsize hy hc' hs ?_ hhalf hcarry hf
         (hcs2 j htime hjb) hvi ?_
       · intro x q e' hx hv hvs
-        have hq := (castAt_time_bounds hrun hnc hx hv.choose_spec).2
+        have hq := (Compose.Growing.cast_time_at hrun hnc hx hv.choose_spec).2
         rw [hvs] at hq
         exact hext x q e' hx hv (by linarith) hvs
       · intro x q hq hx e' hv hvs
@@ -494,7 +494,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hstep {s : Nat} : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hum1 := hts (show u + 1 ≤ m + 1 by omega)
-  obtain ⟨hjlo, hjhi⟩ := castAt_time_bounds hp.run hp.noColl hy hc
+  obtain ⟨hjlo, hjhi⟩ := Compose.Growing.cast_time_at hp.run hp.noColl hy hc
   rw [hs] at hjlo hjhi
   have hub : sp.ts u + sp.Δ ≤ b := by have := @hstep u; linarith
   have hRm : drainTime sp a ≤ sp.ts (m + 1 : Nat) := hR.trans hum1
@@ -714,7 +714,7 @@ theorem fast_lock_renewal_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       AC.VoteAt tr.projAC x i e → e.msg.slot = s →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
     intro s hrs hsr x i e hx hv hes
-    have hi := (castAt_time_bounds hp.run hp.noColl hx hv.choose_spec).2
+    have hi := (Compose.Growing.cast_time_at hp.run hp.noColl hx hv.choose_spec).2
     rw [hes] at hi
     have his : tr.time i ≤ sp.ts r + 6 * sp.Δ := by
       have := hts hsr; have := @hstep r; linarith
@@ -881,7 +881,7 @@ theorem toFG_candidate_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       tr.time q ≤ tr.time i → e.msg.slot = s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
     intro s hs x q e hx hv hq hes
     have hsσ : s ≤ σ := by
-      have := (castAt_time_bounds hp.run hp.noColl hx hv.choose_spec).1
+      have := (Compose.Growing.cast_time_at hp.run hp.noColl hx hv.choose_spec).1
       rw [hes] at this
       exact (AC.ts_le_iff_le_slot sp hi0 _).1 (this.trans hq) |> fun h => by exact_mod_cast h
     exact ((post_drain_votes_extend_at hp hP hslot hu hun hgu hR (N := σ) (hσlo.trans hib) hib
