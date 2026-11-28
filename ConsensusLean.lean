@@ -491,7 +491,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Recor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Select
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.CoreLift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
