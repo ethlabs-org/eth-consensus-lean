@@ -1,8 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.VoterReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.FoundationSources
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.TargetOlder
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.TargetCompare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.WriterCompatible
@@ -91,11 +92,11 @@ theorem result_prefix_vote_domain_before_of_domain_at
     (raw_writer_voterBlockTree_before_at hp hx hy
       (Or.inl ⟨ellX, hupd, hconf, hCV⟩) hBC htiming hcast hsi)
     hseed hdb (by omega)
-    (target_compatible_older_origin_at hp hseed hdb hzq hv hqb hvs hms hVB)
+    (hp.target_compatible_older_origin_at hseed hdb hzq hv hqb hvs hms hVB)
   · intro w c n O hci ho
     have hcb := (hp.run.time_mono hci.le).trans hib
     rcases lt_trichotomy n s with hn | rfl | hn
-    · exact target_compatible_older_origin_at hp ho hcb hzq hv hqb hvs hn hVB
+    · exact hp.target_compatible_older_origin_at ho hcb hzq hv hqb hvs hn hVB
     · obtain ⟨ellD, D, DV, _, hfl, hOD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
       have hw := hp.run.antitone (le_max_right _ _) ho.1
       have hsvc := hp.sync.ac_service_at hp.run (lo := g) (hi := b) le_rfl

@@ -344,7 +344,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalMembers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RowSource
@@ -365,7 +364,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Re
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ResultDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RootSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.TargetOlder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.VoteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.VoterReceipt
