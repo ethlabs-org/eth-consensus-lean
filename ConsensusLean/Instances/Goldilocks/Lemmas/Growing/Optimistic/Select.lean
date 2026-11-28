@@ -67,7 +67,7 @@ private theorem optimisticPoint_pool_vote_at {ini}
   obtain ⟨hs, j, hj, e, hve, hev⟩ := AC.optimisticPoint_pool_voteU
     (acRun_upTo hrun hnc (hrun.time_nonneg i)).toU hy
     ((AC.upTo_optimisticPoint hrun.time_mono).mpr ⟨le_rfl, hpt⟩) hv hvH
-  exact ⟨hs, j, hj, e, (ac_voteAt_upTo.mp hve).2, hev⟩
+  exact ⟨hs, j, hj, e, (AC.upTo_voteAt.mp hve).2, hev⟩
 
 /-- **A0: every optimistic quorum of the window lies below the proposal.** At an optimistic point
 of a node honest at its call, by `t_p + 2Δ`, with `P` in the frame, a block of the frame with

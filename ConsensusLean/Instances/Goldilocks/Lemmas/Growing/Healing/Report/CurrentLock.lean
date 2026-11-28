@@ -31,7 +31,7 @@ theorem current_lock_write_readPoint_at
       sp.ts e.msg.slot ≤ tr.time a ∧
       ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Anc (tr.HonestBlocksAt H) L D := by
   have hd := hrun.time_nonneg i
-  have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   obtain ⟨hslot, a, hai, D, CV, ho, ht, L, hL, hLr, hLD⟩ :=
     AC.current_lock_write_readPoint (acRun_upTo hrun hnc hd).localRun
       hrun.vstart hy hc' hpos hl hs

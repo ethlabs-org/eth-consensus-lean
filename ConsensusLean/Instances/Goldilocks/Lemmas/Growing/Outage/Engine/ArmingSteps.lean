@@ -49,7 +49,7 @@ private theorem head_mem_upTo {ini}
     {Hd : AC.Blk sp.n (List (FG.Att sp.n))} (hHd : Hd ∈ tr.HonestBlocksAt H)
     (hHdr : Hd.root = e.msg.head) : Hd ∈ (tr.upTo d).HonestBlocks (H d) := by
   have hv' : AC.VoteAt (tr.upTo d).projAC x j e := by
-    rw [RunTrace.upTo_projAC]; exact ac_voteAt_upTo.mpr ⟨hjd, hv⟩
+    rw [RunTrace.upTo_projAC]; exact AC.upTo_voteAt.mpr ⟨hjd, hv⟩
   obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU
     (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)).toU
     hx hv'
@@ -117,9 +117,9 @@ theorem update_result_extends_origin_at
       (by have := hvb x j e hv hes; linarith) (by omega)
     have hHdU' := head_mem_upTo hrun hnc hd hx hjd (hVoteAt_iff.1 hv).2 hHdU hHdr
     have h := honest_vote_at_update_early hacr hsvc (le_min hsb (by rw [ht]; linarith))
-      hy ((ac_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩) hHdU'
+      hy ((AC.upTo_updateAt hm).mpr ⟨le_rfl, hu⟩) hHdU'
       (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdU' (hFeq ▸ hFC.trans hCHd)) hx
-      (ac_voteAt_upTo.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩) hes hHdr.symm
+      (AC.upTo_voteAt.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩) hes hHdr.symm
     rw [projAC_upTo_state hrun le_rfl] at h
     exact ⟨Hd, h.1, hHdr, hCHd, h.2.1, h.2.2⟩
   -- `C` is in the frame, above `Σ.F`
@@ -269,17 +269,17 @@ theorem saved_rows_above_at
   have hCU : C ∈ (tr.upTo (tr.time c)).HonestBlocks (H (tr.time c)) :=
     ⟨y, hy, c, by rw [hst c le_rfl]; exact hCt⟩
   have h := saved_rows_above (hrun.upTo hd) (hnc.upTo _) hy (C := C)
-    (by rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩) hks
+    (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_updateAt hm).mpr ⟨le_rfl, hu⟩) hks
     (by rw [hst c le_rfl]; exact RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hCU hFC)
     (by rw [hst c le_rfl]; exact hCt)
     (fun k hk hrk => hnr k hk ((RunTrace.upTo_restartAt tr).mp hrk).2)
     (fun q hq₁ hq₂ => by
       obtain ⟨k, hk, ℓ', hu'⟩ := hex q hq₁ hq₂
       exact ⟨k, hk, ℓ', by
-        rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo hm).mpr ⟨hm hk.le, hu'⟩⟩)
+        rw [RunTrace.upTo_projAC]; exact (AC.upTo_updateAt hm).mpr ⟨hm hk.le, hu'⟩⟩)
     (fun q hq₁ hq₂ k hk ℓ' hu' => by
       rw [RunTrace.upTo_projAC] at hu'
-      obtain ⟨hkd, hu'⟩ := (ac_updateAt_upTo hm).mp hu'
+      obtain ⟨hkd, hu'⟩ := (AC.upTo_updateAt hm).mp hu'
       obtain ⟨R, hR, hCR⟩ := hrow q hq₁ hq₂ k hk ℓ' hu'
       have hRU : R ∈ (tr.upTo (tr.time c)).HonestBlocks (H (tr.time c)) :=
         mem_upTo_of_frame hrun hy hkd hu'.1 (AC.deepest_mem hR).1.1
@@ -304,8 +304,8 @@ theorem own_optimistic_compatible_result_at
   have h := own_optimistic_compatible_result (hrun.upTo hd) (hnc.upTo _)
     (by rw [RunTrace.upTo_projAC]; exact AC.CommitteePAt.upTo hm hrun.antitone hKB.hP _)
     hKB.hsize hy
-    (by rw [RunTrace.upTo_projAC]; exact (ac_optimisticLockAt_upTo hm).mpr ⟨hm hkc.le, hO⟩)
-    (by rw [RunTrace.upTo_projAC]; exact (ac_resultAt_upTo hm).mpr ⟨le_rfl, hR⟩) hkc
+    (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_optimisticLockAt hm).mpr ⟨hm hkc.le, hO⟩)
+    (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_resultAt hm).mpr ⟨le_rfl, hR⟩) hkc
     (fun r h₁ h₂ hrr => hnr r h₁ h₂ ((RunTrace.upTo_restartAt tr).mp hrr).2)
   exact h.imp (fun h => h.mono (upTo_subset hrun hd)) (fun h => h.mono (upTo_subset hrun hd))
 
@@ -373,8 +373,8 @@ theorem cover_gate_veto_above_at
   have hyk' : y ∈ H (tr.time k') := hrun.antitone hk'c hy
   replace hO' : AC.ResultAt tr.projAC y k' l.slot O CV ∨
       AC.OptimisticLockAt tr.projAC y k' l.slot O CV :=
-    hO'.imp (fun h => ((ac_resultAt_upTo hm).mp h).2)
-      (fun h => ((ac_optimisticLockAt_upTo hm).mp h).2)
+    hO'.imp (fun h => ((AC.upTo_resultAt hm).mp h).2)
+      (fun h => ((AC.upTo_optimisticLockAt hm).mp h).2)
   -- an origin within `b` of a label below `s` is compatible with `D` (its supporter)
   have hearly : ∀ σ', σ' < s → OriginWithin tr H O σ' b →
       Compatible (tr.HonestBlocksAt H) O D := by
@@ -397,7 +397,7 @@ theorem cover_gate_veto_above_at
       simp only [ACParams.ts] at hts ht hsb ⊢
       linarith
     · have ht := (AC.optimisticLockAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg k')) hyk'
-        ((ac_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hopt⟩) K
+        ((AC.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hopt⟩) K
         ((AC.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time k')).1 y hyk' (k' + 1))).1
       change tr.time k' < _ at ht
       simp only [ACParams.ts] at hts ht hsb ⊢
@@ -436,7 +436,7 @@ theorem cover_gate_veto_above_at
       omega
     -- the optimistic voters, classified at `t_c`
     obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, hCVK⟩ := AC.optimisticLockAt_spec hacr hy
-      ((ac_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩) K
+      ((AC.upTo_optimisticLockAt hm).mpr ⟨hk'c, hopt⟩) K
       ((AC.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time c)).1 y hy (k' + 1))
     obtain ⟨-, hpc⟩ := (Trace.upTo_callAt _).mp hp.1
     have hellU := (frameIn_at hrun hnc hyk' hpc).2
@@ -448,7 +448,7 @@ theorem cover_gate_veto_above_at
         refine ⟨hls' ▸ hCVK ⟨v, hv, rfl⟩, ?_⟩
         by_cases hvH : v.val ∈ H (tr.time c)
         · obtain ⟨a, ha, e', he', hev⟩ := hCVv v hv hvH
-          obtain ⟨had, he'⟩ := ac_voteAt_upTo.mp he'
+          obtain ⟨had, he'⟩ := AC.upTo_voteAt.mp he'
           rcases hcast _ a e' (hVoteAt_iff.2 ⟨hrun.antitone had (hev ▸ hvH), hev ▸ he'⟩)
             hvH (by rw [hev, (hCV v hv).2.1, hls']) (by omega) with h | h
           · exact absurd h (hno v hv hvH)
@@ -457,7 +457,7 @@ theorem cover_gate_veto_above_at
       have := Set.ncard_le_ncard hsub' (Set.toFinite _)
       omega
     obtain ⟨a, ha, e', he', hev⟩ := hCVv v hvCV hvH
-    obtain ⟨had, he'⟩ := ac_voteAt_upTo.mp he'
+    obtain ⟨had, he'⟩ := AC.upTo_voteAt.mp he'
     obtain ⟨Hd, hHd, hHdr, hCHd⟩ := hN v.val hvHold a e'
       (hVoteAt_iff.2 ⟨hrun.antitone had (hev ▸ hvH), hev ▸ he'⟩)
       (by rw [hev, (hCV v hvCV).2.1, hls']) (by omega)
@@ -524,7 +524,7 @@ theorem update_of_awakeOn_at
   obtain ⟨k, ℓ, hu⟩ := update_of_awake_joined (hrun.upTo hd) (hrun.antitone hqz hw)
     ⟨haw _ (by linarith) hqz, le_rfl⟩ (joinedAt_upTo hj)
   rw [RunTrace.upTo_projAC] at hu
-  exact ⟨k, ℓ, ((ac_updateAt_upTo hrun.time_mono).mp hu).2⟩
+  exact ⟨k, ℓ, ((AC.upTo_updateAt hrun.time_mono).mp hu).2⟩
 
 /-- **The first armed update** of slot `s` of a holder `w` (honest at `z`, awake on
 `[a, z]`): it exists, its restarts are at or before `t_{s−k+1}`, and when `Σ.F ⪯ C` the origin
@@ -624,7 +624,7 @@ private theorem locks_after_update_at
   have hst1 : (tr.upTo (tr.time c)).state w (c + 1) = tr.state w (c + 1) :=
     Trace.upTo_state tr w fun _ hk' => hm (Nat.lt_succ_iff.1 hk')
   have h := AC.state_after_update (acRun_upTo hrun hnc hd).localRun hw
-    ((ac_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩)
+    ((AC.upTo_updateAt hm).mpr ⟨le_rfl, hu⟩)
   rw [← RunTrace.upTo_projAC, projAC_state hr.toLocalRun hw (c + 1),
     projAC_state hr.toLocalRun hw c, hst1, RunTrace.upTo_state_of_le hm le_rfl] at h
   rw [h]

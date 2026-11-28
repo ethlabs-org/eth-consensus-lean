@@ -43,7 +43,7 @@ theorem update_of_awake_joined_at {ini} (hrun : Growing.GoldilocksRun proposer d
   obtain ⟨k, ℓ, hu⟩ := Compose.update_of_awake_joined (hrun.upTo hd) hx ⟨hw, le_rfl⟩
     (joinedAt_upTo hj)
   rw [RunTrace.upTo_projAC] at hu
-  exact ⟨k, ℓ, ((ac_updateAt_upTo hrun.time_mono).1 hu).2⟩
+  exact ⟨k, ℓ, ((AC.upTo_updateAt hrun.time_mono).1 hu).2⟩
 
 /-- A block held while honest below a block of the tree of a node honest at a cut is below it in
 that node's store (the static `honest_held_anc` on the prefix through the cut). -/

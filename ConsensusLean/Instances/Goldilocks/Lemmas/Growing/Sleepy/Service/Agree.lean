@@ -90,7 +90,7 @@ theorem stop_at_parent_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
     rw [hP.2.1]
     exact hrun.antitone htj hp
   exact AC.stop_core (acRun_upTo hrun hnc (hrun.time_nonneg j)) hy
-    (ac_castAt_upTo.2 ⟨le_rfl, hcy⟩) hes hPs hPQ hpj hng hvt (fun X hX hXQ hXs => hold X hX hXQ hXs)
+    (AC.upTo_castAt.2 ⟨le_rfl, hcy⟩) hes hPs hPQ hpj hng hvt (fun X hX hXQ hXs => hold X hX hXQ hXs)
 
 /-- **Every slot-`s` vote of a node honest at its vote is the proposal `P` of slot `s`**, from a
 pivot `D` of the proposal walk (`hvot`, as in `pivot_of`), the suffix agreement from `D` at every
@@ -169,7 +169,7 @@ theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer
     ⟨P, hstep₀.1.1⟩
   rw [AC.viableTree_voteDomain_eq_of_viable hne] at hXend
   have hspec := AC.castAt_head_of_viableU (acRun_upTo hrun hnc (hrun.time_nonneg j)).localRun.toU hy
-    (ac_castAt_upTo.2 ⟨le_rfl, hcast⟩) (hes ▸ hne)
+    (AC.upTo_castAt.2 ⟨le_rfl, hcast⟩) (hes ▸ hne)
   rw [hes] at hspec
   rw [hspec]
   congr 1

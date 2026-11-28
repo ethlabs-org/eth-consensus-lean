@@ -53,7 +53,7 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hU := honestBlocksAt_coherent hrun hnc
   have hrun' := acRun_upTo hrun hnc hd
   have hr := hrun'.localRun
-  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hΔ := sp.toParams.hΔ
   obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
@@ -105,7 +105,7 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
         (fun _ ⟨v, hv, hvx, _⟩ => hvx ▸ hPi.1 y hy (k₀ + 1) _ v (hk₀ hv)) hfK
         fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
-    obtain ⟨hjd, hvote⟩ := ac_voteAt_upTo.mp hvote
+    obtain ⟨hjd, hvote⟩ := AC.upTo_voteAt.mp hvote
     have hvj : e'.msg.val ∈ H (tr.time j) := hrun.antitone hjd hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_spec_at hrun hnc hvj hcj).2.1

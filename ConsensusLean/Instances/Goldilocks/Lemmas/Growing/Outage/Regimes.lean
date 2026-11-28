@@ -227,7 +227,7 @@ private theorem vote_pooled_before_early_at
   have h := vote_pooled_before_early (acRun_upTo hrun hnc hd) hy (hS.upTo hrun hd hy)
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hct hg
     (fun k hk hrk => hres k hk ((ACTrace.upTo_restartAt (tr := _)).mp hrk).2) hx
-    (ac_voteAt_upTo.mpr ⟨show tr.time j ≤ tr.time c by linarith, ℓv, hcv, hev⟩) hes
+    (AC.upTo_voteAt.mpr ⟨show tr.time j ≤ tr.time c by linarith, ℓv, hcv, hev⟩) hes
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 /-- **D3**. A slot-`q` vote by a node honest at its cast and still honest at the receiver call is

@@ -53,15 +53,15 @@ private theorem ac_fastLockAt_upTo (hm : Monotone tr.time) {d : Time} {y : Fin s
   have hm' : Monotone tr.projAC.time := hm
   constructor
   · rintro (⟨ℓ, C, hu, hC, hD, hCV⟩ | hO)
-    · obtain ⟨hi, hu⟩ := (ac_updateAt_upTo hm').mp hu
+    · obtain ⟨hi, hu⟩ := (AC.upTo_updateAt hm').mp hu
       rw [ac_state_upTo hm' hi] at hC hD hCV
       exact ⟨hi, Or.inl ⟨ℓ, C, hu, hC, hD, hCV⟩⟩
-    · obtain ⟨hi, hO⟩ := (ac_optimisticLockAt_upTo hm').mp hO
+    · obtain ⟨hi, hO⟩ := (AC.upTo_optimisticLockAt hm').mp hO
       exact ⟨hi, Or.inr hO⟩
   · rintro ⟨hi, ⟨ℓ, C, hu, hC, hD, hCV⟩ | hO⟩
     · rw [← ac_state_upTo hm' hi] at hC hD hCV
-      exact Or.inl ⟨ℓ, C, (ac_updateAt_upTo hm').mpr ⟨hi, hu⟩, hC, hD, hCV⟩
-    · exact Or.inr ((ac_optimisticLockAt_upTo hm').mpr ⟨hi, hO⟩)
+      exact Or.inl ⟨ℓ, C, (AC.upTo_updateAt hm').mpr ⟨hi, hu⟩, hC, hD, hCV⟩
+    · exact Or.inr ((AC.upTo_optimisticLockAt hm').mpr ⟨hi, hO⟩)
 
 /-- A fast lock is written at a call of its writer. -/
 theorem fastLockAt_isCall {y : Fin sp.n} {c s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -181,7 +181,7 @@ theorem fastLock_honest_vote_at
         refine ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hpt.1, ?_⟩
         rw [projAC_upTo_state hrun le_rfl]
         exact hpt.2) hv.1 hvH
-    obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+    obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
     exact ⟨j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, he⟩
 
 variable {D : OutageLockPremises tr H proposer dg ini}
@@ -302,7 +302,7 @@ theorem slow_lock_compatible_at
     rw [projAC_state_by hrun ht0 ht hx]; exact hl
   obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
     AC.slow_lock_saved hr hrun.vstart hx i l hl' hlf
-  obtain ⟨-, hC⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC
+  obtain ⟨-, hC⟩ := (AC.upTo_resultAt hrun.time_mono).mp hC
   obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
   obtain ⟨-, hΦU⟩ := AC.frameIn_of_callAt hr hx hu.1
   refine ⟨L, hsub hL, hLr, compatible_of_anc_left hU (hLLb.mono hsub) ?_⟩
@@ -314,7 +314,7 @@ theorem slow_lock_compatible_at
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
     have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1
     have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
-    obtain ⟨-, hC'⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC'
+    obtain ⟨-, hC'⟩ := (AC.upTo_resultAt hrun.time_mono).mp hC'
     exact compatible_of_anc_left hU ((Anc.mono hΦU hLbS).mono hsub)
       (heq ▸ hgood k C' CV' (hkc.trans hci) hC')
   · have hmn : m.toNat = l.slot := by omega
