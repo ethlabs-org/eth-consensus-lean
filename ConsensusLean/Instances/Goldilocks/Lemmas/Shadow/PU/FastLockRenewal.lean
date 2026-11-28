@@ -1,7 +1,9 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
@@ -57,7 +59,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ hi := by linarith
   have hsub {lo hi' : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi' ≤ hi) :
       Generic.FrameWindow tr H lo hi' M isTop J := hframe.mono hl hh
-  have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
+  have hjoin := fun w hw => Goldilocks.Healing.Growing.joined_voteTime_of_warm_frame_at
     hrun hnr hm (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hyu : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := hrun.antitone hlo.le hy
   obtain ⟨j₀, ell₀, hu₀, hconf₀, hnv₀, hfast₀, _, hvi₀, _⟩ :=
@@ -156,13 +158,13 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     rcases Nat.eq_or_lt_of_le hur with rfl | hlt
     · exact ⟨j₀, D₀, CV₀, hfu₀, hPD₀⟩
     obtain ⟨s, rfl⟩ : ∃ s, r = s + 1 := ⟨r - 1, by omega⟩
-    obtain ⟨j, ellj, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr
+    obtain ⟨j, ellj, hu⟩ := Healing.Growing.update_call_of_awake_at hrun hnc hawake hnr
       (u := s + 1) (by have := hts (show u ≤ s + 1 by omega); linarith)
       (by rw [hstep]; linarith) (hrun.antitone (by rw [hstep]; linarith) hy)
     have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
     have hyj := hrun.antitone (by rw [hjt]; linarith : tr.time j ≤ tr.time i) hy
     have hsr := hts (show s₀ ≤ s + 1 by omega)
-    have hjoinr := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
+    have hjoinr := fun w hw => Goldilocks.Healing.Growing.joined_voteTime_of_warm_frame_at
       hrun hnr hm (by omega : s₀ + 1 ≤ s + 1) (y := w) hw
     have hnr' : NoRestartUpTo tr H (gbar g) b :=
       noRestartUpTo_iff.mpr (fun w k hw hr _ => hnr w k hw hr)

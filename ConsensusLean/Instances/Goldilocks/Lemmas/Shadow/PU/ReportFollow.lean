@@ -1,4 +1,7 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
@@ -346,10 +349,10 @@ theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp).State}
   have ht0 : 0 ≤ t := by
     have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
     linarith
-  obtain ⟨j, hj⟩ := signTickAt_of_calendar_at hrun hcal hy ht0 hpub hawake hsign
+  obtain ⟨j, hj⟩ := Healing.Growing.signTickAt_of_calendar_at hrun hcal hy ht0 hpub hawake hsign
   obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff tr proposer dg y j t).1 hj
   obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick hg
-  exact ⟨j + k, ell, hc, hcall, htime, joined_of_restart_le_at hrun hnc hy (by linarith)
+  exact ⟨j + k, ell, hc, hcall, htime, Healing.Growing.joined_of_restart_le_at hrun hnc hy (by linarith)
     (fun r _ hyr hrs => (hnr y r hyr hrs).trans hgu) htime⟩
 
 /-- A block of an honest frame above a non-genesis block is not genesis
@@ -417,7 +420,7 @@ theorem proposal_report_follow_at
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN, hΔ, hmb])
     hz hdes hP hPs hK
   have hshort := hframe.mono (hts (by omega : s₀ ≤ u)) hT
-  have hjoin := fun w hw => joined_voteTime_of_warm_frame_at hrun hnr hm
+  have hjoin := fun w hw => Healing.Growing.joined_voteTime_of_warm_frame_at hrun hnr hm
     (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u := by
     have := hts (show s₀ ≤ u by omega)
@@ -457,7 +460,7 @@ theorem proposal_report_follow_at
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hacc, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hPg := AC.accept_ne_genesisU sp
@@ -465,11 +468,11 @@ theorem proposal_report_follow_at
       (hnc.upTo _)).localRun.toU hzk hacc
   obtain ⟨i, ellr, R, hR, htime, hPR⟩ := report_of_compatible_candidate_of_run_at
     hrun hnc hyc hc hto hj hPg hPc
-    (toFG_candidates_compatible_at_call_at hrun hnc hyc hc hPc)
+    (Healing.Growing.toFG_candidates_compatible_at_call_at hrun hnc hyc hc hPc)
   have hyi := hrun.antitone htime hyc
   have hit := htime.trans ht.le
   refine ⟨i, ellr, R, hyi, hR,
-    toFG_time_ge_of_ancestor_slot_at hrun hnc hyi hR hPs hPR,
+    Healing.Growing.toFG_time_ge_of_ancestor_slot_at hrun hnc hyi hR hPs hPR,
     hit, hPR, ?_⟩
   intro x hx hNx w c ellp hw hcp hcall htc d pay hd
   have hbound : tr.time i ≤ sp.ts N + sp.Δ := by
@@ -556,7 +559,7 @@ theorem proposal_report_follow_delayed_at
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hacc, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hPg := AC.accept_ne_genesisU sp
@@ -564,9 +567,9 @@ theorem proposal_report_follow_delayed_at
       (hnc.upTo _)).localRun.toU hzk hacc
   have hBg := root_ne_genesis_of_anc hrun hnc hyi hc hPg hPB hB.1.1
   obtain ⟨r, ellr, R, hR, hrt, hBR⟩ := report_of_compatible_candidate_of_run_at hrun hnc hyi hc
-    hcall hjoin hBg hB (toFG_candidates_compatible_at_call_at hrun hnc hyi hc hB)
+    hcall hjoin hBg hB (Healing.Growing.toFG_candidates_compatible_at_call_at hrun hnc hyi hc hB)
   have hPR := hPB.trans hBR
-  have hrlo := toFG_time_ge_of_ancestor_slot_at hrun hnc (hrun.antitone hrt hyi) hR hPs hPR
+  have hrlo := Healing.Growing.toFG_time_ge_of_ancestor_slot_at hrun hnc (hrun.antitone hrt hyi) hR hPs hPR
   have hrhi : tr.time r ≤ T + (G : Time) * sp.Δ := hrt.trans (by rw [hti]; exact htr)
   refine ⟨r, ellr, R, hrun.antitone hrt hyi, hR, hrlo, hrhi, hPR, ?_⟩
   intro x hx hxN w c ellp hw hcp hcallp htc d pay hd
