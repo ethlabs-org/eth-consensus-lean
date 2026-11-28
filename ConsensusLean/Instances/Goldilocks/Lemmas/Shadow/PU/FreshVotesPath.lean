@@ -95,7 +95,7 @@ theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
     (AC.proposal_slot (tr := tr.projAC) hti)
     (Healing.Growing.proposal_walk_end_at hrun hnc hz' hcp hpay) hPs
     hparent hPv
-    (Core.proposal_views_agree_before_at rc hnc hsvc hawake hf hcatch hnr hm hz
+    (Healing.Growing.proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
       hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hK)
     (fun X B hXt hrootX hBX hne hB => frozen_competitor_reflect_at hframe hrun hnc hsvc hcatch
       hnr hf hm hs₀ hz hdesignated hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh
@@ -182,7 +182,7 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
     obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hri.localRun.toU hy i ell hci
     have he := hac.localRun.coherent.1 (hPhi.2 hB) hG (hg.trans hGr.symm)
     exact hpar (he ▸ hGp)
-  have hv := Core.proposal_views_agree_before_at rc hnc hsvc hawake hf hcatch hnr hm hz
+  have hv := Healing.Growing.proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
     hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hK
   have hpH : P.proposer ∈ H (tr.time i) := hactual.2.1 ▸ rc.antitone hhigh hz
   have hcore := AC.stop_core hri hy ⟨hci, hc.2⟩ hes hPs hparent hpH hng hPv
