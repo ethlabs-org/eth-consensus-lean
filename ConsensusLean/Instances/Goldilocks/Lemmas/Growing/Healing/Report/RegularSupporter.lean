@@ -1,10 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -14,10 +10,7 @@ public section
 
 /-! # The next votes after a supporter of label `s`, under growing faults
 
-`Core.next_votes_of_supporter_at`: the window-free propagation step from a supporter's classified
-cast head, independent of the frame's root policy. The stock-window classification wrapper
-(`FrameWindow.next_votes_of_supporter_at`) is removed: its classification
-(`vote_head_classification_of_service_at`) does not hold under P-U viability. -/
+`next_votes_of_supporter_at` propagates a classified supporter's head without assuming a window. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -28,15 +21,11 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
-namespace Core
-
 /-- Classification and propagation are independent of the frame's root policy. -/
 theorem next_votes_of_supporter_at
-    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {ini : Fin sp.n → (goldilocksNode sp).State} {s : Nat}
     {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hrun : Consensus.Goldilocks.GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
@@ -65,8 +54,8 @@ theorem next_votes_of_supporter_at
     ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   obtain ⟨Hd, hHd, hHdr, hclass⟩ := hclass
-  have hPhiU := (hrun.frameIn_at hnc hz hc.1).2
-  have hEQ : Hd = Q := (hrun.coherent hnc).1
+  have hPhiU := (Compose.Growing.frameIn_at hrun hnc hz hc.1).2
+  have hEQ : Hd = Q := (Compose.Growing.honestBlocksAt_coherent hrun hnc).1
     (hPhiU hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
   rcases hclass with hv | hj | ho
@@ -77,8 +66,6 @@ theorem next_votes_of_supporter_at
     intro y i ev hy hv hesv
     obtain ⟨W, hW, hWr, hQW⟩ := hheads y i ev hy hv hesv
     exact ⟨W, hW, hWr, hXQ.trans hQW⟩
-
-end Core
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
