@@ -69,7 +69,7 @@ private theorem read_majority_at_read_cut {ini}
       rw [hs] at hkt
       have hvp : AC.VoteAt (tr.upTo t).projAC x k e := by
         rw [RunTrace.upTo_projAC]
-        exact ac_voteAt_upTo.mpr ⟨hkt.trans hLt, ℓ, hc⟩
+        exact AC.upTo_voteAt.mpr ⟨hkt.trans hLt, ℓ, hc⟩
       have hpool := latest_vote_delivered (hrun.upTo ht0) (hnc.upTo t)
         (Or.inr ⟨a, hsync', ha'⟩) hy hrd hLp hx hvp hs
       obtain ⟨Hd, hHd, hHdr, hRHd⟩ := voteExtends_upTo hrun hnc ht0 hx hvp hext

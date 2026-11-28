@@ -63,7 +63,7 @@ private theorem accepted_voter_tree_at
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, -⟩ := frameIn_at hrun hnc hy hc.1
   obtain ⟨-, hti⟩ := honest_vote_restarts_at hrun hnc hy hc hs
-  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hXt : X ∈ ℓ.frame.tree := by
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · obtain ⟨G, hGU, hGr, hGp⟩ :=
@@ -109,7 +109,7 @@ private theorem vote_viable_at
       Anc (tr.HonestBlocksAt H) B ℓ.frame.F := by
   have hd := hrun.time_nonneg k
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hcT : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   have hfr := frame_of_projAC_at hrun hy hc.1

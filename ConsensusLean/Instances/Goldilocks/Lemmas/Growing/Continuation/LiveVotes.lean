@@ -107,7 +107,7 @@ theorem proposer_row_labels
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall hti
     a.val hav c (by omega) O OV ?_
   rw [RunTrace.upTo_projAC]
-  exact (ac_optimisticLockAt_upTo hS.run.time_mono).mpr ⟨hci, hOp⟩
+  exact (AC.upTo_optimisticLockAt hS.run.time_mono).mpr ⟨hci, hOp⟩
 
 /-- **The high rows of a voter of slot `s` are sourced below members of labels below `s`** (the
 row classification of `seeded_reader_old` at the vote cut). -/
@@ -260,7 +260,7 @@ theorem seeded_vote_anchor
     Anc.mono hΦU (AC.anc_viableAncestor _ B)
   have hrun' := acRun_upTo hrun hnc hd
   have hr' := hrun'.localRun
-  have hcy' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ℓy e := ac_castAt_upTo.mpr ⟨le_rfl, hcy⟩
+  have hcy' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ℓy e := AC.upTo_castAt.mpr ⟨le_rfl, hcy⟩
   have hsub := upTo_subset hrun hd
   have hBP : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
     mem_upTo_of_frame hrun hy le_rfl hcy.1 hB
@@ -290,7 +290,7 @@ theorem seeded_vote_anchor
       by_contra hn
       exact hxH ⟨hOK ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hn⟩
     obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
-    obtain ⟨hj'd, hv'⟩ := ac_voteAt_upTo.mp hv'
+    obtain ⟨hj'd, hv'⟩ := AC.upTo_voteAt.mp hv'
     have hhead := hE _ j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hj'd hvH, hv'⟩) (hvs.trans hls)
     obtain rfl : R = P := hU.1 (hsub (hΦ'U hR)) hPU (hRr.trans hhead)
     have haP := haB.trans (Anc.mono hsub (hLD'.trans (Anc.mono hΦ'U hDR)))

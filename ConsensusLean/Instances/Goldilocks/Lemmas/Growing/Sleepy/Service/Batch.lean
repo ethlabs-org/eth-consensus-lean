@@ -37,7 +37,7 @@ theorem update_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
   intro k hk hrk
   have hd := hrun.time_nonneg k₀
   exact Compose.update_restarts (acRun_upTo hrun hnc hd).localRun hy
-    ((ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) k hk
+    ((AC.upTo_updateAt hrun.time_mono).2 ⟨le_rfl, hu⟩) k hk
     ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hrun.time_mono hk, hrk⟩)
 
 /-- **Transport of the catch-up from `a`** to the prefix through `d ≥ 0`: an AC acceptance of a
@@ -85,16 +85,16 @@ theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer
   have hcatch := hsync.acCatch_upTo hrun hd
   have hu' : AC.UpdateAt (tr.upTo (tr.time k₀)).projAC y k₀ s ℓ := by
     rw [RunTrace.upTo_projAC]
-    exact (ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩
+    exact (AC.upTo_updateAt hrun.time_mono).2 ⟨le_rfl, hu⟩
   have hall' : ∀ x ∈ H (tr.time k₀), ∀ j e, AC.VoteAt (tr.upTo (tr.time k₀)).projAC x j e →
       e.msg.slot = s → e.msg.head = P.root := by
     intro x hx j e hv hs
     rw [RunTrace.upTo_projAC] at hv
-    obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.1 hv
+    obtain ⟨hjd, hv⟩ := AC.upTo_voteAt.1 hv
     exact hall x j e (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs
   have hv' : AC.VoteAt (tr.upTo (tr.time k₀)).projAC x j e := by
     rw [RunTrace.upTo_projAC]
-    exact ac_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩
+    exact AC.upTo_voteAt.2 ⟨hjt, ℓx, hcx, hex⟩
   have h := Compose.honest_batch_at_update_window (hrun.upTo hd) (hnc.upTo _) hsvc hcatch hy hu'
     ha hκ (le_min (by linarith) (by linarith)) le_rfl hPt hall' x hxd j e hv' hes
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
@@ -137,8 +137,8 @@ theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer 
   rw [RunTrace.upTo_projAC] at hsvc hcatch
   have h := Compose.honest_vote_at_update_window (acRun_upTo hrun hnc hd) hsvc hcatch ha hκ
     (le_min (by linarith) (by linarith)) le_rfl hy
-    ((ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
-    (ac_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
+    ((AC.upTo_updateAt hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
+    (AC.upTo_voteAt.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 end Consensus.Goldilocks.Compose.Growing

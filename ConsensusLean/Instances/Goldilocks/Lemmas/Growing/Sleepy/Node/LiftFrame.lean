@@ -51,9 +51,9 @@ theorem originWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   obtain ⟨x, hx, k, CV, hk, hO⟩ := Compose.originWithin_iff.1 h
   rw [RunTrace.upTo_projAC] at hO
   rcases hO with hO | hO
-  · obtain ⟨hkd, hO⟩ := (ac_resultAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_resultAt hrun.time_mono).mp hO
     exact OriginWithin.of_result (hrun.antitone hkd hx) hk hO
-  · obtain ⟨hkd, hO⟩ := (ac_optimisticLockAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (AC.upTo_optimisticLockAt hrun.time_mono).mp hO
     exact OriginWithin.of_optimistic (hrun.antitone hkd hx) hk hO
 
 /-- The block of an origin of the prefix is in the prefix's honest blocks. -/
@@ -64,8 +64,8 @@ theorem originWithin_upTo_mem {ini} (hrun : Growing.GoldilocksRun proposer dg H 
   rw [RunTrace.upTo_projAC] at hO
   refine origin_mem_upTo hrun hx hk (s := s) (CV := CV) ?_
   rcases hO with hO | hO
-  · exact Or.inl ((ac_resultAt_upTo hrun.time_mono).mp hO).2
-  · exact Or.inr ((ac_optimisticLockAt_upTo hrun.time_mono).mp hO).2
+  · exact Or.inl ((AC.upTo_resultAt hrun.time_mono).mp hO).2
+  · exact Or.inr ((AC.upTo_optimisticLockAt hrun.time_mono).mp hO).2
 
 /-- **S3 at a held origin** (`held_origin_viable_before` at the cut's time `d = tr.time i`, with
 `2 f_d < n`): at a cut of a node honest then, a block `B` it holds that is compatible with every

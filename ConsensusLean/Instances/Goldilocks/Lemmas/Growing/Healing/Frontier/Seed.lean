@@ -367,7 +367,7 @@ theorem handover_live_lock_label_at {T : Time} {r σ : Nat}
     push_cast
     omega
   have hwf := AC.castAt_readPoint_locksWFU (hr := (acRun_upTo hrun hnc hd).localRun.toU)
-    hrun.vstart hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+    hrun.vstart hy (AC.upTo_castAt.mpr ⟨le_rfl, hc⟩)
   intro l hl
   rw [hr]
   exact Healing.drain_live_locks (a := a) hwf hdrain l hl
