@@ -26,14 +26,6 @@ theorem sign_unique_at_core
     ((RunTrace.upTo_signAt tr).mpr ⟨rc.time_mono hdd, hs⟩)
     ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs'⟩)
 
-/-- A client executing honestly throughout a prefix signs an attestation at most once. -/
-theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRun proposer dg H tr ini)
-    {v : Fin sp.n} (hv : v ∈ H)
-    {d d' : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hs' : tr.SignAt v d' att) :
-    d = d' :=
-  Healing.sign_unique hrun hv hs hs'
-
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end

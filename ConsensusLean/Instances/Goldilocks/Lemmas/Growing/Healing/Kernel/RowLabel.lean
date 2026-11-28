@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowPools
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowSign
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs

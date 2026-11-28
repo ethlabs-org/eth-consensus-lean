@@ -185,7 +185,8 @@ the previous-slot votes for labels strictly before `u - 1`. At the adjacent labe
 and fast/slow update writes occur too late; retain the optimistic writer route instead.
 Reuse `reset_proposal_passes_at` in `Growing/Healing/Kernel/ProposalPasses` as the batch and
 retention template: `AC.batch_proposal`, `AC.late_vote_held_of_frame_before`,
-`AC.Growing.optimistic_first_proposal_anc_at`, and `fastLock_writer_at` are its two walk arms.
+`AC.Growing.ProposalSources.optimistic_first_proposal_anc_at`, and `fastLock_writer_at`
+are its two walk arms.
 Historical writer delivery is `AC.Growing.heldAtProposal_of_writer_at` in
 `Growing/Healing/Kernel/ProposalDelivery`; `ResetService.ac_service_at` is in
 `Growing/Healing/Kernel/ProposalService`. The generic walk target is

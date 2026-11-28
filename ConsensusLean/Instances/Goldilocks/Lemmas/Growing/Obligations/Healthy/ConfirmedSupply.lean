@@ -79,7 +79,7 @@ theorem operational_update_fresh_lock_at
   have hΔ := sp.toParams.hΔ
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   obtain ⟨hPt, hconf, hnv, hfast, hpost, -⟩ :=
-    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
+    operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
   have hframe := Compose.Growing.frame_of_projAC_at hp.run hy hup.1
   have hPj : P ∈ (Node.frame (tr.state y j)).tree := hframe ▸ hPt
   have hPU : P ∈ tr.HonestBlocksAt H :=

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VoteFrame

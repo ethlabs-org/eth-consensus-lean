@@ -5,7 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl

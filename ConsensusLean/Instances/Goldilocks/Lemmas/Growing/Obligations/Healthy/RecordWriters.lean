@@ -7,7 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
@@ -247,7 +248,7 @@ theorem retained_writer_slot_after_update_at
           (Compose.Growing.frameIn_at hrun hnc hyj hup.1).1.coherent.1 hB hRj hBr
         exact congrArg some heq
     obtain ⟨hPt, -, -, -, -, hrecord⟩ :=
-      operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
+      operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
     obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
     have hPR : Anc (tr.HonestBlocksAt H) P
         ((AC.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
