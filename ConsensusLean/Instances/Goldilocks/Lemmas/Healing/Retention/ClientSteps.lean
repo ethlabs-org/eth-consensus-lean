@@ -8,7 +8,8 @@ public section
 Facts that the report service (`Outcome/Service`), its growing-fault sibling
 (`Growing/Healing/RowService`) and the retention rows (`Retention/Rows`) share: the entry named by
 a source's `T_h` (`source_entry`), what `create_attestation` signs (`createAtt_fields`) and when
-it refuses (`createAtt_refused`), and the frame of a fast-lock write (`fastLockAt_frame_mem`). -/
+it refuses (`FG.Record.createAtt_eq_none`), and the frame of a fast-lock write
+(`fastLockAt_frame_mem`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -39,38 +40,11 @@ theorem createAtt_fields {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.Ch
     {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
     a.val = v ∧ a.h = σe.h ∧ a.T = σe.Th ∧ a.fin = Λ.finalityPair σe ∧ Λ' = Λ.recordAtt a ∧
       (a.timeout = true → Λ.timeout σe.h ≠ ∅ ∨ ∃ T', Λ.target σe.h = some T' ∧ T' ≠ σe.Th) := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · cases h
-  dsimp only at h
-  split_ifs at h
-  simp only [Option.some.injEq, Prod.mk.injEq] at h
-  obtain ⟨rfl, rfl⟩ := h
-  obtain ⟨rfl, rfl⟩ := Store.heightPair_eq hp
-  refine ⟨rfl, rfl, rfl, rfl, rfl, fun hτ => ?_⟩
-  unfold FG.Record.heightPair at hp
-  split_ifs at hp with h1 h2 h3 <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp
-  · exact Or.inl h2
-  · simp_all
-  · push Not at h3
-    obtain ⟨T'', hT''⟩ := Option.ne_none_iff_exists'.1 h3.1
-    exact Or.inr ⟨T'', hT'', fun e => h3.2 (hT''.trans (by rw [e]))⟩
-
-/-- `create_attestation` signs nothing only on a lock of another root at the input's height, or
-a content of that height already sent. -/
-theorem createAtt_refused {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    (h : Λ.createAtt v σe = none) :
-    (Λ.lock σe.h ≠ none ∧ Λ.lock σe.h ≠ some σe.Th) ∨ ∃ b ∈ Λ.sent, b.1 = σe.h := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · unfold FG.Record.heightPair at hp
-    split_ifs at hp with h1
-    exact Or.inl h1
-  · obtain ⟨rfl, -⟩ := Store.heightPair_eq hp
-    dsimp only at h
-    split_ifs at h with hany
-    obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
-    exact Or.inr ⟨b, hb, (of_decide_eq_true hb').1⟩
+  obtain ⟨hv, hrec, hh, hT, hfin, -, hne, -, ht⟩ := FG.Record.createAtt_some h
+  refine ⟨hv, hh, hT, hfin, hrec, fun hτ => ?_⟩
+  have hn : Λ.target a.h ≠ none := by simpa [hτ] using ht
+  obtain ⟨R, hR⟩ := Option.ne_none_iff_exists'.1 hn
+  exact Or.inr ⟨R, hh ▸ hR, fun e => hne ((e.trans hT.symm) ▸ hR)⟩
 
 variable {sp : ACParams} {tr : GoldilocksTrace sp}
 

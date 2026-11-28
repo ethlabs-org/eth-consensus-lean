@@ -1632,48 +1632,46 @@ def Consensus.Goldilocks.FG.Content : Type := Prod.{0, 0} Nat (Prod.{0, 0} Nat (
   #3931117990/1561506114
 induct Consensus.Goldilocks.FG.Record : Type
   #3931117990/-
-def Consensus.Goldilocks.FG.Record._sizeOf_1 #2739497276/1210867826
+def Consensus.Goldilocks.FG.Record._sizeOf_1 #2739497276/4212075981
 def Consensus.Goldilocks.FG.Record._sizeOf_inst #3109327031/2024627217
-def Consensus.Goldilocks.FG.Record.casesOn : {motive : Consensus.Goldilocks.FG.Record → Sort u} → (t : Consensus.Goldilocks.FG.Record) → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → (sent : List.{0} Consensus.Goldilocks.FG.Content) → motive { target := target, timeout := timeout, lock := lock, sent := sent }) → motive t := fun {motive} t mk => Consensus.Goldilocks.FG.Record.rec.{u} (fun target timeout lock sent => mk target timeout lock sent) t
-  #1696909960/2030764746
-def Consensus.Goldilocks.FG.Record.createAtt : {n : Nat} → Consensus.Goldilocks.FG.Record → Fin n → Consensus.Goldilocks.FG.ChainState n → Option.{0} (Prod.{0, 0} (Consensus.Goldilocks.FG.Att n) Consensus.Goldilocks.FG.Record) := fun {n} Λ v σe => Consensus.Goldilocks.FG.Record.createAtt.match_1.{1} (fun x => Option.{0} (Prod.{0, 0} (Consensus.Goldilocks.FG.Att n) Consensus.Goldilocks.FG.Record)) (Λ.heightPair σe.h σe.Th) (fun _ => Option.none.{0}) fun h T τ => ite.{1} (Eq.{1} (List.any.{0} Λ.sent fun b => instDecidableAnd.decide (And (Eq.{1} (Prod.fst.{0, 0} b) h) (Or (Eq.{1} τ.not Bool.true) (Eq.{1} (Prod.fst.{0, 0} (Prod.snd.{0, 0} b)) T)))) Bool.true) Option.none.{0} (have a := { val := v, h := h, T := T, timeout := τ, fin := Λ.finalityPair σe }; Option.some.{0} (Prod.mk.{0, 0} a (Λ.recordAtt a)))
-  #148837952/4238589047
+def Consensus.Goldilocks.FG.Record.casesOn : {motive : Consensus.Goldilocks.FG.Record → Sort u} → (t : Consensus.Goldilocks.FG.Record) → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → motive { target := target, timeout := timeout, lock := lock }) → motive t := fun {motive} t mk => Consensus.Goldilocks.FG.Record.rec.{u} (fun target timeout lock => mk target timeout lock) t
+  #1662279951/1225779194
+def Consensus.Goldilocks.FG.Record.createAtt : {n : Nat} → Consensus.Goldilocks.FG.Record → Fin n → Consensus.Goldilocks.FG.ChainState n → Option.{0} (Prod.{0, 0} (Consensus.Goldilocks.FG.Att n) Consensus.Goldilocks.FG.Record) := fun {n} Λ v σe => Consensus.Goldilocks.FG.Record.createAtt.match_1.{1} (fun x => Option.{0} (Prod.{0, 0} (Consensus.Goldilocks.FG.Att n) Consensus.Goldilocks.FG.Record)) (Λ.heightPair σe.h σe.Th) (fun _ => Option.none.{0}) fun h T τ => have a := { val := v, h := h, T := T, timeout := τ, fin := Λ.finalityPair σe }; Option.some.{0} (Prod.mk.{0, 0} a (Λ.recordAtt a))
+  #148837952/3905705214
 def Consensus.Goldilocks.FG.Record.createAtt.match_1 #3745245222/1040482881
 def Consensus.Goldilocks.FG.Record.ctorIdx #2739497276/385797531
-def Consensus.Goldilocks.FG.Record.empty : Consensus.Goldilocks.FG.Record := { target := fun x => Option.none.{0}, timeout := fun x => EmptyCollection.emptyCollection.{0}, lock := fun x => Option.none.{0}, sent := List.nil.{0} }
-  #603450715/2577480052
+def Consensus.Goldilocks.FG.Record.empty : Consensus.Goldilocks.FG.Record := { target := fun x => Option.none.{0}, timeout := fun x => EmptyCollection.emptyCollection.{0}, lock := fun x => Option.none.{0} }
+  #603450715/1410414096
 def Consensus.Goldilocks.FG.Record.finalityPair : {n : Nat} → Consensus.Goldilocks.FG.Record → Consensus.Goldilocks.FG.ChainState n → Option.{0} (Prod.{0, 0} Nat Nat) := fun {n} Λ σe => ite.{1} σe.previousHeightJustified (ite.{1} (Λ.permits σe.hj σe.J) (Option.some.{0} (Prod.mk.{0, 0} σe.hj σe.J)) Option.none.{0}) (List.foldl.{0, 0} (fun acc p => Consensus.Goldilocks.FG.Record.finalityPair.match_1.{1} (fun acc => Option.{0} (Prod.{0, 0} Nat Nat)) acc (fun _ => Option.some.{0} p) fun r => ite.{1} (LT.lt.{0} (Prod.fst.{0, 0} r) (Prod.fst.{0, 0} p)) (Option.some.{0} p) (Option.some.{0} r)) Option.none.{0} (List.filter.{0} (fun p => (Λ.instDecidablePermits (Prod.fst.{0, 0} p) (Prod.snd.{0, 0} p)).decide (Λ.permits (Prod.fst.{0, 0} p) (Prod.snd.{0, 0} p))) σe.pending))
   #1933835348/4261165322
 def Consensus.Goldilocks.FG.Record.finalityPair.match_1 #1989698932/1749983
-def Consensus.Goldilocks.FG.Record.heightPair : Consensus.Goldilocks.FG.Record → Nat → Nat → Option.{0} (Prod.{0, 0} Nat (Prod.{0, 0} Nat Bool)) := fun Λ hc Tc => ite.{1} (And (Ne.{1} (Λ.lock hc) Option.none.{0}) (Ne.{1} (Λ.lock hc) (Option.some.{0} Tc))) Option.none.{0} (ite.{1} (Ne.{1} (Λ.timeout hc) EmptyCollection.emptyCollection.{0}) (Option.some.{0} (Prod.mk.{0, 0} hc (Prod.mk.{0, 0} Tc Bool.true))) (ite.{1} (Or (Eq.{1} (Λ.target hc) Option.none.{0}) (Eq.{1} (Λ.target hc) (Option.some.{0} Tc))) (Option.some.{0} (Prod.mk.{0, 0} hc (Prod.mk.{0, 0} Tc Bool.false))) (Option.some.{0} (Prod.mk.{0, 0} hc (Prod.mk.{0, 0} Tc Bool.true)))))
-  #1749095684/4190779979
-def Consensus.Goldilocks.FG.Record.instDecidablePermits : (Λ : Consensus.Goldilocks.FG.Record) → (j T : Nat) → Decidable (Λ.permits j T) := fun Λ j T => { decide := (instDecidableOr.decide (Or (Eq.{1} (Λ.target j) Option.none.{0}) (Eq.{1} (Λ.target j) (Option.some.{0} T)))).and (instDecidableAnd.decide (And (LE.le.{0} (Λ.timeout j) (Singleton.singleton.{0, 0} T)) (Or (Eq.{1} (Λ.lock j) Option.none.{0}) (Eq.{1} (Λ.lock j) (Option.some.{0} T))))), reflects_decide := ⋯ }
-  #2896989039/3517156781
-theorem Consensus.Goldilocks.FG.Record.instDecidablePermits._proof_1 #2563605189/-
+def Consensus.Goldilocks.FG.Record.heightPair : Consensus.Goldilocks.FG.Record → Nat → Nat → Option.{0} (Prod.{0, 0} Nat (Prod.{0, 0} Nat Bool)) := fun Λ hc Tc => ite.{1} (And (Ne.{1} (Λ.lock hc) Option.none.{0}) (Ne.{1} (Λ.lock hc) (Option.some.{0} Tc))) Option.none.{0} (ite.{1} (Or (Eq.{1} (Λ.target hc) (Option.some.{0} Tc)) (Membership.mem.{0, 0} (Λ.timeout hc) Tc)) Option.none.{0} (ite.{1} (Eq.{1} (Λ.target hc) Option.none.{0}) (Option.some.{0} (Prod.mk.{0, 0} hc (Prod.mk.{0, 0} Tc Bool.false))) (Option.some.{0} (Prod.mk.{0, 0} hc (Prod.mk.{0, 0} Tc Bool.true)))))
+  #1749095684/471830146
+def Consensus.Goldilocks.FG.Record.instDecidablePermits : (Λ : Consensus.Goldilocks.FG.Record) → (j T : Nat) → Decidable (Λ.permits j T) := fun Λ j T => { decide := (instDecidableOr.decide (Or (Eq.{1} (Λ.target j) Option.none.{0}) (Eq.{1} (Λ.target j) (Option.some.{0} T)))).and (instDecidableAnd.decide (And (Eq.{1} (Λ.timeout j) EmptyCollection.emptyCollection.{0}) (Or (Eq.{1} (Λ.lock j) Option.none.{0}) (Eq.{1} (Λ.lock j) (Option.some.{0} T))))), reflects_decide := ⋯ }
+  #2896989039/2521447448
+theorem Consensus.Goldilocks.FG.Record.instDecidablePermits._proof_1 #2765473643/-
 def Consensus.Goldilocks.FG.Record.lock : Consensus.Goldilocks.FG.Record → Nat → Option.{0} Nat := fun self => self.3
   #2633532868/1703304615
-ctor Consensus.Goldilocks.FG.Record.mk : (Nat → Option.{0} Nat) → (Nat → Finset.{0} Nat) → (Nat → Option.{0} Nat) → List.{0} Consensus.Goldilocks.FG.Content → Consensus.Goldilocks.FG.Record
-  #685267202/-
-def Consensus.Goldilocks.FG.Record.mk._flat_ctor #685267202/2644093979
-theorem Consensus.Goldilocks.FG.Record.mk.inj #2513530456/-
-theorem Consensus.Goldilocks.FG.Record.mk.injEq #621059749/-
-def Consensus.Goldilocks.FG.Record.mk.noConfusion : {P : Sort u} → {target : Nat → Option.{0} Nat} → {timeout : Nat → Finset.{0} Nat} → {lock : Nat → Option.{0} Nat} → {sent : List.{0} Consensus.Goldilocks.FG.Content} → {target' : Nat → Option.{0} Nat} → {timeout' : Nat → Finset.{0} Nat} → {lock' : Nat → Option.{0} Nat} → {sent' : List.{0} Consensus.Goldilocks.FG.Content} → Eq.{1} { target := target, timeout := timeout, lock := lock, sent := sent } { target := target', timeout := timeout', lock := lock', sent := sent' } → (Eq.{1} target target' → Eq.{1} timeout timeout' → Eq.{1} lock lock' → Eq.{1} sent sent' → P) → P := fun {P} {target} {timeout} {lock} {sent} {target'} {timeout'} {lock'} {sent'} eq k => id.{u} (Consensus.Goldilocks.FG.Record.noConfusion.{u} eq k)
-  #2329870342/881442006
-theorem Consensus.Goldilocks.FG.Record.mk.sizeOf_spec #1190331188/-
-def Consensus.Goldilocks.FG.Record.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.FG.Record} → Eq.{1} t t' → Consensus.Goldilocks.FG.Record.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.FG.Record.casesOn.{u} t fun target timeout lock sent k => k ⋯ ⋯ ⋯ ⋯) eq
-  #668631152/3286204803
-def Consensus.Goldilocks.FG.Record.noConfusionType #516879040/2563246889
-def Consensus.Goldilocks.FG.Record.permits : Consensus.Goldilocks.FG.Record → Nat → Nat → Prop := fun Λ j T => And (Or (Eq.{1} (Λ.target j) Option.none.{0}) (Eq.{1} (Λ.target j) (Option.some.{0} T))) (And (LE.le.{0} (Λ.timeout j) (Singleton.singleton.{0, 0} T)) (Or (Eq.{1} (Λ.lock j) Option.none.{0}) (Eq.{1} (Λ.lock j) (Option.some.{0} T))))
-  #1459938830/4146630550
-recursor Consensus.Goldilocks.FG.Record.rec : {motive : Consensus.Goldilocks.FG.Record → Sort u} → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → (sent : List.{0} Consensus.Goldilocks.FG.Content) → motive { target := target, timeout := timeout, lock := lock, sent := sent }) → (t : Consensus.Goldilocks.FG.Record) → motive t
-  #981112873/-
-def Consensus.Goldilocks.FG.Record.recOn : {motive : Consensus.Goldilocks.FG.Record → Sort u} → (t : Consensus.Goldilocks.FG.Record) → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → (sent : List.{0} Consensus.Goldilocks.FG.Content) → motive { target := target, timeout := timeout, lock := lock, sent := sent }) → motive t := fun {motive} t mk => Consensus.Goldilocks.FG.Record.rec.{u} mk t
-  #1696909960/2020319307
-def Consensus.Goldilocks.FG.Record.recordAtt : {n : Nat} → Consensus.Goldilocks.FG.Record → Consensus.Goldilocks.FG.Att n → Consensus.Goldilocks.FG.Record := fun {n} Λ a => { target := ite.{1} (And (Eq.{1} a.timeout.not Bool.true) (Eq.{1} (Λ.target a.h) Option.none.{0})) (Function.update.{1, 1} Λ.target a.h (Option.some.{0} a.T)) Λ.target, timeout := ite.{1} (Eq.{1} a.timeout Bool.true) (Function.update.{1, 1} Λ.timeout a.h (Insert.insert.{0, 0} a.T (Λ.timeout a.h))) Λ.timeout, lock := Consensus.Goldilocks.FG.Record.recordAtt.match_1.{1} (fun x => Nat → Option.{0} Nat) a.fin (fun p => Function.update.{1, 1} Λ.lock (Prod.fst.{0, 0} p) (Option.some.{0} (Prod.snd.{0, 0} p))) fun _ => Λ.lock, sent := HAppend.hAppend.{0, 0, 0} Λ.sent (List.cons.{0} a.content List.nil.{0}) }
-  #1459416290/3701952727
+ctor Consensus.Goldilocks.FG.Record.mk : (Nat → Option.{0} Nat) → (Nat → Finset.{0} Nat) → (Nat → Option.{0} Nat) → Consensus.Goldilocks.FG.Record
+  #3080198591/-
+def Consensus.Goldilocks.FG.Record.mk._flat_ctor #3080198591/562269820
+theorem Consensus.Goldilocks.FG.Record.mk.inj #2360210735/-
+theorem Consensus.Goldilocks.FG.Record.mk.injEq #217047379/-
+def Consensus.Goldilocks.FG.Record.mk.noConfusion : {P : Sort u} → {target : Nat → Option.{0} Nat} → {timeout : Nat → Finset.{0} Nat} → {lock target' : Nat → Option.{0} Nat} → {timeout' : Nat → Finset.{0} Nat} → {lock' : Nat → Option.{0} Nat} → Eq.{1} { target := target, timeout := timeout, lock := lock } { target := target', timeout := timeout', lock := lock' } → (Eq.{1} target target' → Eq.{1} timeout timeout' → Eq.{1} lock lock' → P) → P := fun {P} {target} {timeout} {lock target'} {timeout'} {lock'} eq k => id.{u} (Consensus.Goldilocks.FG.Record.noConfusion.{u} eq k)
+  #1707478544/4126258804
+theorem Consensus.Goldilocks.FG.Record.mk.sizeOf_spec #3375391903/-
+def Consensus.Goldilocks.FG.Record.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.FG.Record} → Eq.{1} t t' → Consensus.Goldilocks.FG.Record.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.FG.Record.casesOn.{u} t fun target timeout lock k => k ⋯ ⋯ ⋯) eq
+  #668631152/3269838877
+def Consensus.Goldilocks.FG.Record.noConfusionType #516879040/1521407669
+def Consensus.Goldilocks.FG.Record.permits : Consensus.Goldilocks.FG.Record → Nat → Nat → Prop := fun Λ j T => And (Or (Eq.{1} (Λ.target j) Option.none.{0}) (Eq.{1} (Λ.target j) (Option.some.{0} T))) (And (Eq.{1} (Λ.timeout j) EmptyCollection.emptyCollection.{0}) (Or (Eq.{1} (Λ.lock j) Option.none.{0}) (Eq.{1} (Λ.lock j) (Option.some.{0} T))))
+  #1459938830/819684208
+recursor Consensus.Goldilocks.FG.Record.rec : {motive : Consensus.Goldilocks.FG.Record → Sort u} → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → motive { target := target, timeout := timeout, lock := lock }) → (t : Consensus.Goldilocks.FG.Record) → motive t
+  #2920362531/-
+def Consensus.Goldilocks.FG.Record.recOn : {motive : Consensus.Goldilocks.FG.Record → Sort u} → (t : Consensus.Goldilocks.FG.Record) → ((target : Nat → Option.{0} Nat) → (timeout : Nat → Finset.{0} Nat) → (lock : Nat → Option.{0} Nat) → motive { target := target, timeout := timeout, lock := lock }) → motive t := fun {motive} t mk => Consensus.Goldilocks.FG.Record.rec.{u} mk t
+  #1662279951/2961969761
+def Consensus.Goldilocks.FG.Record.recordAtt : {n : Nat} → Consensus.Goldilocks.FG.Record → Consensus.Goldilocks.FG.Att n → Consensus.Goldilocks.FG.Record := fun {n} Λ a => { target := ite.{1} (And (Eq.{1} a.timeout.not Bool.true) (Eq.{1} (Λ.target a.h) Option.none.{0})) (Function.update.{1, 1} Λ.target a.h (Option.some.{0} a.T)) Λ.target, timeout := ite.{1} (Eq.{1} a.timeout Bool.true) (Function.update.{1, 1} Λ.timeout a.h (Insert.insert.{0, 0} a.T (Λ.timeout a.h))) Λ.timeout, lock := Consensus.Goldilocks.FG.Record.recordAtt.match_1.{1} (fun x => Nat → Option.{0} Nat) a.fin (fun p => Function.update.{1, 1} Λ.lock (Prod.fst.{0, 0} p) (Option.some.{0} (Prod.snd.{0, 0} p))) fun _ => Λ.lock }
+  #1459416290/973391365
 def Consensus.Goldilocks.FG.Record.recordAtt.match_1 #2334899416/2548399876
-def Consensus.Goldilocks.FG.Record.sent : Consensus.Goldilocks.FG.Record → List.{0} Consensus.Goldilocks.FG.Content := fun self => self.4
-  #3596917580/3293753986
 def Consensus.Goldilocks.FG.Record.target : Consensus.Goldilocks.FG.Record → Nat → Option.{0} Nat := fun self => self.1
   #2633532868/3027888994
 def Consensus.Goldilocks.FG.Record.timeout : Consensus.Goldilocks.FG.Record → Nat → Finset.{0} Nat := fun self => self.2

@@ -98,21 +98,6 @@ theorem client_record_origin {y i t} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q 
   · obtain ⟨k, hk, att, hsa, he⟩ := h₂ hx
     exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
 
-theorem sent_origin {y i t} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) {b : FG.Content} (hb : b ∈ (tr.state y i).record.sent) :
-    ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b := by
-  obtain ⟨k, hk, att, hsa, he⟩ :=
-    Healing.sent_origin_from (hrun.upTo ht) hy i (by rw [Trace.upTo_state tr y hle]; exact hb)
-  exact ⟨k, hk, att, ((RunTrace.upTo_signAt tr).mp hsa).2, he⟩
-
-theorem record_sentOK {y i t} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) : ∀ b ∈ (tr.state y i).record.sent,
-      (b.2.2.1 = true → b.2.1 ∈ (tr.state y i).record.timeout b.1) ∧
-      (b.2.2.1 = false → (tr.state y i).record.target b.1 = some b.2.1) := by
-  have h := (Healing.record_facts (hrun.upTo ht) hy i).1
-  rw [Trace.upTo_state tr y hle] at h
-  exact (Healing.Client.sentOK_iff _).1 h
-
 theorem hj_mono_at {y k i t} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) (hki : k ≤ i) : (tr.state y k).fg.hj ≤ (tr.state y i).fg.hj := by
   have h := Healing.hj_mono (hrun.upTo ht) hy hki
