@@ -305,7 +305,7 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
       have ht := ts_natCast_nonneg (sp := sp) s
       have h := hcommitteeCount (sp.ts s) d (hslotNonempty s) ht htd hdb (by linarith)
       simp only [dictOfTime, sp.slotTime_eq]
-      exact two_mul_inter_compl_lt (fun _ hy => hy.1) h
+      exact AC.cs2_of_cs _ (fun _ hy => hy.1) h
   exact ⟨hb, hsync, hB, hBK⟩
 
 /-- The existing sleepy induction, with committee positivity explicit rather than

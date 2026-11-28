@@ -104,7 +104,7 @@ theorem carry_of_service_senders
   have hr := (hac.upTo hd).localRun
   have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
   have hsync := service_syncACAt hrun hsvc (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
-  have hgg := le_gbar g
+  have hgg := AC.le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     have hsl := (AC.castAt_specU hr.toU hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsl
@@ -116,7 +116,7 @@ theorem carry_of_service_senders
       fun v hv => by
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
-    · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) (k := i) hm le_rfl] at hdl
+    · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := i) hm le_rfl] at hdl
       exact ac_messageServedBefore_upTo hm le_rfl
         ((AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
           (hsync.1 w k v hwk hsend (hgg.trans (hts.trans hk1)) hk2.le y i ell hy hcast.1 hdl)))
@@ -124,21 +124,23 @@ theorem carry_of_service_senders
     · exact Or.inr (Or.inl hg)
     by_cases hgk : g ≤ tr.time kw
     · refine Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩
-      rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) (k := i) hm le_rfl] at hdl
+      rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := i) hm le_rfl] at hdl
       obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.2 w' kw Hv hwkw hkw hgk hkwt.le y i ell
         hy hcast.1 hdl hFHv
       have hkyd : tr.time ky ≤ tr.time i := hm hky
-      exact ⟨ky, hky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩,
-        by rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) (k := ky) hm hkyd]; exact hkyt⟩
+      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkyd, hacc'⟩,
+        by
+          rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := ky) hm hkyd]
+          exact hkyt⟩
     · obtain ⟨ky, hky, hacc', hkyt⟩ := service_catch_at hrun hcatch hwkw hkw
         (lt_of_lt_of_le (not_le.mp hgk) hgg) hy hcast.1 (by linarith) hFHv
-      exact Or.inr (Or.inr ⟨ky, (ac_acceptAt_upTo _).mpr ⟨hm hky, hacc'⟩,
+      exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hm hky, hacc'⟩,
         show tr.time ky < sp.ts s + 3 * sp.Δ by linarith⟩)
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
   refine ⟨Hv, hHv, hHvr, fun X hX => ?_⟩
   exact (hacc X hX).imp_right
-    fun ⟨k, hk, hkt⟩ => ⟨k, ((ac_acceptAt_upTo _).mp hk).2, hkt⟩
+    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (tr := _)).mp hk).2, hkt⟩
 
 /-- A regular result's counted votes reach the next-slot cast even after its writer's compromise. -/
 theorem result_carry_service_at

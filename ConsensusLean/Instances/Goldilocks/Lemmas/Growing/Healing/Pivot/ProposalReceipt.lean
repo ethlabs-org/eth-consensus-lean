@@ -122,7 +122,7 @@ theorem proposal_holds_old_at
     have hgc : g ≤ tr.time c := by
       have hcZ := cutZ_lt_of_anc_at hp ho hzc hBc hOB
       have := lt_cutZ sp g
-      have := le_gbar g
+      have := AC.le_gbar g
       have := sp.toParams.hΔ
       linarith
     have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by

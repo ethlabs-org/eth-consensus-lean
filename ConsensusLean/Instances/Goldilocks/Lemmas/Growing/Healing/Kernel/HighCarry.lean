@@ -58,18 +58,18 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.carry_of_post_g
       w', kw, hw', hacc, hgk, hkwt⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr,
       Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩⟩
-    · rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm le_rfl] at hdl
+    · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm le_rfl] at hdl
       obtain ⟨k', hk', hk1', ⟨ell', hc', hm'⟩, hk2'⟩ := hsync.1 w k v hw hsend
         (hgs.trans hk1) hk2.le y i ell hy hc.1 hdl
       exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k', hk', hk1',
         ⟨ell', (Trace.upTo_callAt _).mpr ⟨hm hk', hc'⟩, hm'⟩,
-        by rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (hm hk')]
+        by rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm (hm hk')]
            exact hk2'⟩)
-    · rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm le_rfl] at hdl
+    · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm le_rfl] at hdl
       obtain ⟨ky, hky, ⟨ella, hca, hcall⟩, hkyt⟩ := hsync.2 w' kw Hv hw' hacc hgk hkwt.le
         y i ell hy hc.1 hdl hFHv
       exact ⟨ky, hky, ⟨ella, (Trace.upTo_callAt _).mpr ⟨hm hky, hca⟩, hcall⟩,
-        by rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (hm hky)]
+        by rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm (hm hky)]
            exact hkyt⟩
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv

@@ -284,7 +284,7 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
 /-- `Sync[a, b]` for every `a ≥ ḡ`. -/
 theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
     SyncAC (goldilocksAC sp FGP) H U a b tr := by
-  have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (le_gbar g).trans (ha.trans h)
+  have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (AC.le_gbar g).trans (ha.trans h)
   refine ⟨fun x hx i m hm hai _ y hy j ℓ hc hdl => ?_,
     fun x hx i B hB hai _ y hy j ℓ hc hdl hF =>
       hS.healthy.relay x hx i B hB (hg _ hai) y hy j ℓ hc hdl hF⟩

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
@@ -272,14 +273,10 @@ theorem pool_mono (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {y : Fin sp
     (σ : Nat) : (tr.state y a).pool σ ⊆ (tr.state y b).pool σ :=
   pool_monoU (hr := hr.toU) (y := y) (hy := hy) (a := a) (b := b) (hab := hab) (hnr := hnr) (σ := σ)
 
+open FamilyFacts (PoolEvidenceBefore)
+
 /-- Retained service carries actual pool evidence, not merely a network receipt.
 Both witnesses of an equivocation retain the requested slot and validator. -/
-def PoolEvidenceBefore (A : ACState sp.n) (v : Vote sp.n) (T : Time) : Prop :=
-  HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
-    a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧
-    HeldBefore A a T ∧ HeldBefore A b T
-
-/-- Characterization for consumers without exposing the definition body. -/
 theorem poolEvidenceBefore_iff (A : ACState sp.n) (v : Vote sp.n) (T : Time) :
     PoolEvidenceBefore A v T ↔ HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
       a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧

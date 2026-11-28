@@ -86,7 +86,7 @@ private theorem accepted_voter_tree_at
     rw [RunTrace.upTo_projAC]
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · exact Or.inl hg
-    · refine Or.inr ⟨k, (ac_acceptAt_upTo _).mpr ⟨?_, hk⟩, hkt⟩
+    · refine Or.inr ⟨k, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨?_, hk⟩, hkt⟩
       change tr.time k < _ at hkt
       change tr.time k ≤ tr.time i
       linarith only [hkt, hti, hΔ]
@@ -227,7 +227,7 @@ private theorem vote_extends_of_counted_batch_run
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>
-        ⟨k, (ac_acceptAt_upTo _).mpr ⟨hkT.le.trans hT, hk⟩, hkT⟩,
+        ⟨k, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkT.le.trans hT, hk⟩, hkT⟩,
       fun v ⟨x, hx, j, e', hv, hev, hvs⟩ =>
         hcarry.holds v ⟨x, hx, j, e', hvote x j e' (hSXH hx) hv, hev, hvs⟩⟩
     (fun L hL => compatible_upTo hrun hnc hd (frame_upTo_at hrun hnc hy hc.1 hL.1) hBU

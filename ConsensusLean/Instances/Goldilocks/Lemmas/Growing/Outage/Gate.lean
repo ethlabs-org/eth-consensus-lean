@@ -85,7 +85,7 @@ private theorem restarts_of_joined
     (joinedAt_upTo hJ)
   intro k hk hkt
   rw [RunTrace.upTo_projAC] at h
-  exact h k ((ac_restartAt_upTo tr.projAC).2 ⟨hkt, hk⟩) hkt
+  exact h k ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hkt, hk⟩) hkt
 
 /-- E0–E4 at an actual strict read, independently of the engine representation. -/
 theorem outage_reader_gate_at
@@ -225,7 +225,7 @@ theorem gate_result_extends_at
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg c)).localRun
   have hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := fun k hk hrk =>
     Compose.update_restarts hr hy ((ac_updateAt_upTo hm).2 ⟨le_rfl, hu⟩) k hk
-      ((ac_restartAt_upTo tr.projAC).2 ⟨hm hk, hrk⟩)
+      ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hm hk, hrk⟩)
   have hct : sp.ts s + 2 * sp.Δ ≤ tr.time c := by
     have : tr.projAC.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
     change sp.ts s + 2 * sp.Δ ≤ tr.projAC.time c

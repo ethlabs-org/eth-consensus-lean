@@ -902,7 +902,7 @@ private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H t
       rwa [honestAt_eq_genesis hrun hU hZ hg]
     · have hk'd : tr.time k' ≤ tr.time i := hk't.le.trans hT
       have hk'' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k' Z :=
-        (ac_acceptAt_upTo _).mpr ⟨hk'd, hk'⟩
+        (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hk'd, hk'⟩
       obtain ⟨ℓk, hck, -⟩ := hk'
       exact mem_upTo_of_frame hrun hy hk'd hck
         ((AC.accept_new sp (acRun_upTo hrun hnc hd).localRun hy hk'').1 ℓk
@@ -912,7 +912,7 @@ private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H t
     (by
       rw [RunTrace.upTo_projAC]
       exact hacc.imp_right fun ⟨k', hk', hk't⟩ =>
-        ⟨k', (ac_acceptAt_upTo _).mpr ⟨hk't.le.trans hT, hk'⟩, hk't⟩)
+        ⟨k', (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hk't.le.trans hT, hk'⟩, hk't⟩)
     (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hZp hFZ)
 
 /-- **A head of a slot `≤ s`, of a vote of a node honest at it, is accepted before the freeze** by a
