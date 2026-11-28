@@ -41,7 +41,7 @@ private theorem rows_delivered_upTo_at
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (v + hold)) {att : FG.Att sp.n}
     (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
     ∃ k' < kX, tr.ProcessAttAt p k' att ∧ tr.time k' < tr.time kX := by
-  have hg : max (tr.time k) g ≤ v := max_le hk ((le_gbar g).trans hv)
+  have hg : max (tr.time k) g ≤ v := max_le hk ((AC.le_gbar g).trans hv)
   have hyk : y ∈ H (tr.time k) := hrun.antitone (by linarith) hy
   have hdl : ∀ j ≤ kX, tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := fun j hj => by
     have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)

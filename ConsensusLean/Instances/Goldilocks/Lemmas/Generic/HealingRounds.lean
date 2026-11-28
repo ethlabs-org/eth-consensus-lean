@@ -334,7 +334,7 @@ theorem round_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs hold)
     rw [shiftDelay_eq_add] at hmb
     linarith
   have hczx : cutZ P g ≤ P.slotTime x := by
-    have hg := ((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (Healing.gbar_nonneg g)).1
+    have hg := ((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (le_max_right g 0)).1
     have hs₀ : P.slotOf (gbar g) + 1 ≤ s₀ := by
       by_contra h
       have := hmono (show s₀ ≤ P.slotOf (gbar g) by omega)

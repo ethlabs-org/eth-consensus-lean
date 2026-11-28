@@ -266,7 +266,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
       obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
       rw [ACTrace.upTo_deadline hm hjd] at ht hd
       obtain ⟨k, hkj, hik, hproc, hkt⟩ := hsync.1 x i m (hrun.antitone hid hx) hsend
-        ((Healing.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
       have hkd : tr.time k ≤ d := (hm hkj).trans hjd
       exact ⟨k, hkj, hik, ACTrace.upTo_processAt.mpr ⟨hkd, hproc⟩,
         by rwa [ACTrace.upTo_deadline hm hkd]⟩
@@ -275,7 +275,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
       obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
       rw [ACTrace.upTo_deadline hm hjd] at ht hd
       obtain ⟨k, hkj, hak, hkt⟩ := hsync.2 x i B (hrun.antitone hid hx) hacc
-        ((Healing.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
         (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
       have hkd : tr.time k ≤ d := (hm hkj).trans hjd
       exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨hkd, hak⟩,

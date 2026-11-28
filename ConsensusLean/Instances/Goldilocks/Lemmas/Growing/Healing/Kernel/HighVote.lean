@@ -81,7 +81,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_vote_exten
       rw [hBD]
       exact (AC.anc_viableAncestor ellx.frame D).mono hsub
     have hgj : g ≤ sp.ts j := by
-      linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
+      linarith [lt_cutZ sp g, AC.le_gbar g, sp.toParams.hΔ]
     exact AC.Growing.first_transfer_stored hac _
       (fun t => AC.CommitteePAt.upTo rc.time_mono rc.antitone hPK t)
       (AC.CommitteeTAt.upTo rc.antitone hTK) hp.committeeFacts.hsize hx hfl hBD' hy hc hs

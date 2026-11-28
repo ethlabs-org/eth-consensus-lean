@@ -11,10 +11,7 @@ public section
 
 /-! # Receiver-scoped service from post-stop service under growing faults
 
-* `goldilocks_postStopService`: partial synchrony with GST `g` gives the node-level post-stop
-  service of the canonical trace (`PostStopService`). Each recipient call is within the horizon
-  (`isCall_time_le_horizon`), so the engine's horizon-bounded services apply unchanged.
-* `receiverServiceAfterAt_of_postStop`: on any Goldilocks run, post-stop service gives the
+`receiverServiceAfterAt_of_postStop`: on any Goldilocks run, post-stop service gives the
   receiver-scoped service of the AC projection; its AC acceptance relay is derived from the node
   relay (`acBlock_prev`, `accept_next`). -/
 
@@ -58,18 +55,6 @@ theorem receiverServiceAfterAt_of_postStop {ini}
       (by rw [hki, ← Compose.projAC_deadline]; exact hdl) hF
 
 end Run
-
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- Partial synchrony with GST `g` gives post-stop service on the canonical trace: the engine's
-message service and acceptance relay (including pre-GST acceptances) at every recipient call,
-each of which lies within the horizon. -/
-theorem goldilocks_postStopService (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
-    (hnet : rho.log.PSync rho.point g) :
-    PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g :=
-  Obligations.Growing.postStopService_of_psync_at S rho hn hv hnc hnet
 
 end Consensus.Goldilocks.Simulation
 

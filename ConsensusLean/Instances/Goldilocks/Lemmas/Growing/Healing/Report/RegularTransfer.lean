@@ -51,10 +51,10 @@ theorem fastLock_writer_at
   obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, hHv, hroot, hDHv, hacc⟩ :=
     Healing.fastLock_writer hr.localRun hr.vstart hx
       ((AC.upTo_fastLockAt hrun.time_mono).mpr ⟨le_rfl, hfl⟩) v hv
-  obtain ⟨hkt, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
+  obtain ⟨hkt, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hHv, hroot,
     hDHv, hacc.imp_right fun ⟨k', hk', ht⟩ => ?_⟩
-  obtain ⟨hkt', hk'⟩ := (ac_acceptAt_upTo _).mp hk'
+  obtain ⟨hkt', hk'⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hk'
   exact ⟨k', hrun.antitone hkt' hx, hk', ht⟩
 
 /-- Fast-lock carry does not require the writer to remain honest at the next cast, from any

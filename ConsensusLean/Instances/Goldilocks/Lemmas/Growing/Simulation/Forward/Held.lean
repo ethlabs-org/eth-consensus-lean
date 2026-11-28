@@ -3,6 +3,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraversal
 
@@ -48,7 +49,8 @@ private theorem accepted_held_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {k : Nat} {B : Blk sp} (hx : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) :
     B ∈ tr.HonestBlocksAt H :=
-  held_upTo (hrun.time_nonneg k) (time_le_acc hrun k) hx (accepted_mem_succ_at hrun hx ha)
+  Compose.Growing.tree_subset_at (hrun.time_nonneg k) (time_le_acc hrun k) hx
+    (accepted_mem_succ_at hrun hx ha)
 
 /-- A root occupied at a receiver honest through its cut is the exact already-accepted source
 block. -/
@@ -65,7 +67,8 @@ private theorem received_root_absent_at
     have hC : C ∈ (tr.state y r).fg.tree := by
       change (tr.state y r).fg.blocks C.root = some C
       rwa [hroot]
-    have heq := (Compose.Growing.honest_blocks_coherent hrun hnc).1 (held_upTo hd hb hy hC)
+    have heq := (Compose.Growing.honest_blocks_coherent hrun hnc).1
+      (Compose.Growing.tree_subset_at hd hb hy hC)
       (accepted_held_at hrun hx ha) hroot
     exact False.elim (hnot (heq ▸ hC))
 
@@ -84,7 +87,7 @@ private theorem accepted_parent_held_at
     change (tr.state x k).fg.blocks Q.root = some Q
     rwa [hroot]
   have hQP := (Compose.Growing.honest_blocks_coherent hrun hnc).1
-    (held_upTo (hrun.time_nonneg k) hb hx hQt) hP (hroot.trans heq)
+    (Compose.Growing.tree_subset_at (hrun.time_nonneg k) hb hx hQt) hP (hroot.trans heq)
   exact hQP ▸ hQt
 
 /-- Two FG runs over one coherent universe give a block held at two of their honest nodes the same
@@ -172,7 +175,7 @@ private theorem receipt_held_or_transfer_at
     (hp : A.parent = some P.root) (hP : P ∈ (tr.state y r).fg.tree) :
     A ∈ (tr.state y r).fg.tree ∨ ∃ dst', (tr.state y r).fg.onBlock A = some dst' := by
   have hbr : ∀ m < r, tr.time m ≤ d := fun m hm => hbj m (by omega)
-  have hPu : P ∈ tr.HonestBlocksAt H := held_upTo hd hbr hy hP
+  have hPu : P ∈ tr.HonestBlocksAt H := Compose.Growing.tree_subset_at hd hbr hy hP
   have hAu : A ∈ tr.HonestBlocksAt H := accepted_held_at hrun hx ha
   rcases receipt_held_or_ancestry_at hrun hnc hd hbj hy hrj hAB hFB ⟨hPu, hAu, hp⟩ hP with
     hheld | hanc

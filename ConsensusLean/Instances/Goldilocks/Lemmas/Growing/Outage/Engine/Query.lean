@@ -82,7 +82,7 @@ private theorem outage_psync_at
 /-- Post-stop service on the query's canonical node trace. -/
 theorem outage_postStopService_at (Q : OutageQueryAt S A V) :
     Generic.PostStopService Q.trace Q.keys Q.stop :=
-  goldilocks_postStopService S Q.run.2 Q.hn Q.valid
+  postStopService_of_psync_at S Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q)
 
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/

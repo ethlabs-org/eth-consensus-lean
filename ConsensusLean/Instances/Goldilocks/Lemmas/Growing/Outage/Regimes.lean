@@ -121,22 +121,22 @@ theorem ReceiverServiceAfterAt.upTo
     ReceiverServiceAfter (H d) ((tr.upTo d).HonestBlocks (H d)) g y (tr.projAC.upTo d) := by
   have hm : Monotone tr.projAC.time := hrun.time_mono
   refine ⟨fun x hx i m hm' j ℓ hc hdl => ?_, fun x hx i B hB j ℓ hc hdl hF => ?_⟩
-  · obtain ⟨hid, hm'⟩ := (ac_sendOrAdmit_upTo hm).mp hm'
+  · obtain ⟨hid, hm'⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hm'
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdl
+    rw [ACTrace.upTo_deadline hm hjd] at hdl
     obtain ⟨k, hkj, hik, hp, hkdl⟩ := hS.message x i m (hrun.antitone hid hx) hm' j ℓ
       (hrun.antitone hjd hy) hc hdl
     have hkd : tr.projAC.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, hik, (ac_processAt_upTo _).mpr ⟨hkd, hp⟩,
-      by rw [ac_deadline_upTo hm hkd]; exact hkdl⟩
-  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+    exact ⟨k, hkj, hik, (ACTrace.upTo_processAt (tr := _)).mpr ⟨hkd, hp⟩,
+      by rw [ACTrace.upTo_deadline hm hkd]; exact hkdl⟩
+  · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdl
+    rw [ACTrace.upTo_deadline hm hjd] at hdl
     obtain ⟨k, hkj, hk, hkdl⟩ := hS.relay x i B (hrun.antitone hid hx) hB j ℓ
       (hrun.antitone hjd hy) hc hdl (hF.mono (upTo_subset hrun hd))
     have hkd : tr.projAC.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
-      by rw [ac_deadline_upTo hm hkd]; exact hkdl⟩
+    exact ⟨k, hkj, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkd, hk⟩,
+      by rw [ACTrace.upTo_deadline hm hkd]; exact hkdl⟩
 
 /-! ### The delivery halves -/
 
@@ -226,7 +226,7 @@ theorem vote_pooled_before_early_at
   have hjt' : tr.time j ≤ sp.ts q + sp.Δ := hjt
   have h := vote_pooled_before_early (acRun_upTo hrun hnc hd) hy (hS.upTo hrun hd hy)
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hct hg
-    (fun k hk hrk => hres k hk ((ac_restartAt_upTo _).mp hrk).2) hx
+    (fun k hk hrk => hres k hk ((ACTrace.upTo_restartAt (tr := _)).mp hrk).2) hx
     (ac_voteAt_upTo.mpr ⟨show tr.time j ≤ tr.time c by linarith, ℓv, hcv, hev⟩) hes
   rwa [projAC_upTo_state hrun le_rfl] at h
 

@@ -256,7 +256,7 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
       (by simpa using htd) hdb (by linarith)
     simp only [add_zero] at h
     simp only [dictOfTime, sp.slotTime_eq]
-    exact two_mul_inter_compl_lt (fun _ hy => hy.1) h
+    exact AC.cs2_of_cs _ (fun _ hy => hy.1) h
 
 /-- Population bounds from precisely the local supplier's L9 participation premises. -/
 theorem outage_bounds_of_local
