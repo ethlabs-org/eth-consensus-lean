@@ -10,7 +10,7 @@ public import ConsensusLean.Spec.Blocks.Payload
 /-! # Goldilocks supplier contracts
 
 These admission-free propositions specify intended suppliers; they construct no supplier and are
-not evidence. The source-origin obligations remain open along with the other fields. The local
+not evidence. The open obligations remain open along with the other fields. The local
 correctness contract does not assert the missing engine, healing or regime edges. No stronger
 ready-majority premise replaces an original Goldilocks premise.
 -/
@@ -44,15 +44,12 @@ def GoldilocksHealingData (sp : ACParams)
     (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
   GoldilocksRunData sp R sign G ∧
     O.warmup = 2 * sp.k ∧ O.follow = 3 + (G + 3) / 4 ∧ O.reportDelay = G ∧ O.drain = 2 * sp.k + 5 ∧
-    O.deepBudget = sp.deepDepth ∧
-    O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
-      ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
+    O.deepBudget = sp.deepDepth
 
 /-- Committee-indexed Goldilocks healing supplier, proved for the canonical committee-start
 interface by `goldilocks_ac_healing` in `Lemmas/Growing/Healing/Supply/Fields.lean`.
 Its witness has `warmup = 2 * sp.k`, `follow = 3 + (G + 3) / 4`, `reportDelay = G`,
-`drain = 2 * sp.k + 5` and the
-joined stored-fast-lock origin, at the release hold `Rg·Δ` of a release gap `Rg`. This
+and `drain = 2 * sp.k + 5`, at the release hold `Rg·Δ` of a release gap `Rg`. This
 supplies healing only, not `ACCorrectLocal` or the endpoint. The theorem takes the timeout bound
 `follow ≤ δ_t`; the service-delay inequality alone does not imply it. -/
 def goldilocksACHealing (sp : ACParams)

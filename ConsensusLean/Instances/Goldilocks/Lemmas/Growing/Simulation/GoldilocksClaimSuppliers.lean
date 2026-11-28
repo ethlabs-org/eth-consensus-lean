@@ -9,7 +9,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalReads
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalWindowSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PreparationPremises
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
@@ -123,7 +122,6 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
       rw [hdata.fgHold_eq]
       exact goldilocks_preparation_premises_supply S rho hn hv (K S A) hgap hfgR
         (fun cap idx _ => hheal cap idx)
-    highCanonical := goldilocks_highCanonicalSupply S rho hn hv (K S A) _
     resetBudget := goldilocks_resetHealBudgetSupply S A rho hn hv C hdata hsg
     storedRead := goldilocksRunMap_storedReadTransport S rho hn hv
     healedAncestry := goldilocks_healedReadAncestry S A rho hn hv }

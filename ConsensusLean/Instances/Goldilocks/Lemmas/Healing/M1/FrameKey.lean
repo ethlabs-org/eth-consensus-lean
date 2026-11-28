@@ -11,7 +11,7 @@ public section
 /-! # Cache facts of honest stores
 
 `h_j < h_max` in every honest store and `h_j` is monotone along an honest node's run. The
-frame key itself is the milestone `Generic.frameKey''`. -/
+frame key itself is the milestone `Generic.frameKey`. -/
 
 namespace Consensus.Goldilocks.Healing
 

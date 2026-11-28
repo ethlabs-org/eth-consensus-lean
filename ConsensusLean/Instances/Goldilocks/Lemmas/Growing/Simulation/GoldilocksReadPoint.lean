@@ -187,7 +187,7 @@ private theorem localData_eqs
       (goldilocksRunInterface sp sign G).Run cm proposer dg H tr) ∧
     C.healing.drain = 2 * sp.k + 5 ∧ C.healing.deepBudget = sp.deepDepth ∧
     C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧ C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ := by
-  obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, hbudget, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ :=
+  obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, hbudget⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ :=
     hdata
   refine ⟨fun cm proposer dg H tr hrun => ?_, hdrain, hbudget, hcatch, hhold, hmargin, hlat⟩
   rw [hrunEq] at hrun

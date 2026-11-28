@@ -25,7 +25,7 @@ variable {P : Params} {A : NodeAC P}
 
 open Classical in
 /-- **The key lag of a relay**, for the milestone key `2·h_max + [h_max = h_j + 1]`
-(`Generic.frameKey''`): only the maximum-height and `J` carriers are needed. -/
+(`Generic.frameKey`): only the maximum-height and `J` carriers are needed. -/
 theorem key_le_of_relay {acp₀ : A.Payload} {stx stz : Store P A.Payload}
     (hRx : stx.Reachable acp₀) (hRz : stz.Reachable acp₀)
     {U : Set (NodeBlock P A.Payload)} (hU : Coherent U)

@@ -12,7 +12,7 @@ Two facts over observations `(y, i)` (a node and a cut) selected by an eligibili
 
 * `exists_const_window_seq_of_mem`: a bounded key with pairwise lag between eligible observations
   is constant over the eligible cuts of a window.
-  The frame data of a constant milestone key are `Generic.frameData_of_frameKey''_eq`. -/
+  The frame data of a constant milestone key are `Generic.frameData_of_frameKey_eq`. -/
 
 namespace Consensus.Goldilocks.Healing
 

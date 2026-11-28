@@ -83,12 +83,6 @@ cut just before it, at the same time and with the same store; under the requirem
 node's AC start the report is held (`Healing.toFG_source_mem_from`), and its entry is the signed
 target at the signed height.
 
-Leaf 14 (`high_entry_eq_at_from`): two self-entries of equal height below two compatible honest
-blocks are the same block. Both lie below the later block, which some node holds at an honest
-observation, and along that store's ancestry the entry is constant at one height
-(`Healing.Th_eq_of_anc`). Its form over any `ACHealing` (`high_entry_eq_at_of_healing`, in
-`HealingRounds`) compares the two high origins by `ACHealing.origins_comparable`.
-
 Slot alignment (`exists_slot_align_of_grid`): on the four-delay grid, `s₀ = ⌈a_f / 4Δ⌉` has
 `a_f ≤ t_{s₀}` and `4Δ·s₀ < a_f + 4Δ`.
 
@@ -1200,73 +1194,6 @@ theorem round_cross_at_from
     hX hf hv hvx hkb hage hrow
 
 end RoundCross
-
-/-! ## Leaf 14 -/
-
-section HighEntry
-
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-
-/-- Leaf 14: two self-entries of equal height, each read at its own observation honest at a time
-after its cuts, below two compatible honest blocks, are the same block. The generic leaf supplies
-the compatibility of its high origins by `ACHealing.origins_comparable`. -/
-theorem high_entry_eq_at_from
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hnc : Compose.NoCollRun dg tr) {B B' Z₁ Z₂ : A.Blk}
-    (hBB' : Compatible (tr.HonestBlocksAt H) B B')
-    (h₁ : Anc (tr.HonestBlocksAt H) Z₁ B) (h₂ : Anc (tr.HonestBlocksAt H) Z₂ B')
-    {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time}
-    (ht₁ : 0 ≤ t₁) (hle₁ : ∀ q < m₁, tr.time q ≤ t₁) (hy₁ : y₁ ∈ H t₁)
-    (ht₂ : 0 ≤ t₂) (hle₂ : ∀ q < m₂, tr.time q ≤ t₂) (hy₂ : y₂ ∈ H t₂)
-    (hZ₁ : Z₁ ∈ (tr.state y₁ m₁).fg.tree) (hZ₂ : Z₂ ∈ (tr.state y₂ m₂).fg.tree)
-    (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
-    (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
-    (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
-  have hU := Compose.Growing.honest_blocks_coherent_local h hnc
-  -- Both entries below one block `D` held at an honest observation: compare them in that store.
-  have key : ∀ {D : A.Blk}, D ∈ tr.HonestBlocksAt H → Anc (tr.HonestBlocksAt H) Z₁ D →
-      Anc (tr.HonestBlocksAt H) Z₂ D → Z₁.root = Z₂.root := by
-    rintro D ⟨w, k, t, ht, hle, hw, hD⟩ hZ₁D hZ₂D
-    have hr := fg_reachable_at_from h ht hle hw
-    have mem : ∀ {Z : A.Blk}, Anc (tr.HonestBlocksAt H) Z D → Z ∈ (tr.state w k).fg.tree := by
-      intro Z hZ
-      by_cases he : Z = D
-      · exact he ▸ hD
-      · exact (Anc.mem (store_anc_of_honest_anc_at_from h hnc ht hle hw hZ hD) he).1
-    have e₁ := σ_eq_honest_at_from h hnc ht₁ hle₁ hy₁ ht hle hw hZ₁ (mem hZ₁D)
-    have e₂ := σ_eq_honest_at_from h hnc ht₂ hle₂ hy₂ ht hle hw hZ₂ (mem hZ₂D)
-    rw [e₁] at hh hT₁
-    rw [e₂] at hh hT₂
-    rcases Anc.total hU hZ₁D hZ₂D with h12 | h21
-    · have := Healing.Th_eq_of_anc hr
-        (store_anc_of_honest_anc_at_from h hnc ht hle hw h12 (mem hZ₂D)) hh.symm
-      rw [← hT₁, ← hT₂, this]
-    · have := Healing.Th_eq_of_anc hr
-        (store_anc_of_honest_anc_at_from h hnc ht hle hw h21 (mem hZ₁D)) hh
-      rw [← hT₁, ← hT₂, this]
-  -- The later of the two compatible blocks is held, unless all four blocks coincide.
-  have top : ∀ {D D' Y Y' : A.Blk}, Anc (tr.HonestBlocksAt H) D D' →
-      Anc (tr.HonestBlocksAt H) Y D → Anc (tr.HonestBlocksAt H) Y' D' →
-      (Y = D ∧ D = D' ∧ Y' = D') ∨ D' ∈ tr.HonestBlocksAt H := by
-    intro D D' Y Y' hDD' hY hY'
-    by_cases e₁ : Y' = D'
-    · by_cases e₂ : D = D'
-      · by_cases e₃ : Y = D
-        · exact Or.inl ⟨e₃, e₂, e₁⟩
-        · exact Or.inr (e₂ ▸ (Anc.mem hY e₃).2)
-      · exact Or.inr (Anc.mem hDD' e₂).2
-    · exact Or.inr (Anc.mem hY' e₁).2
-  rcases hBB' with hBB' | hB'B
-  · rcases top hBB' h₁ h₂ with ⟨rfl, rfl, rfl⟩ | hB'
-    · rfl
-    · exact key hB' (h₁.trans hBB') h₂
-  · rcases top hB'B h₂ h₁ with ⟨rfl, rfl, rfl⟩ | hB
-    · rfl
-    · exact key hB h₁ (h₂.trans hB'B)
-
-end HighEntry
 
 /-! ## Leaf 4 -/
 
