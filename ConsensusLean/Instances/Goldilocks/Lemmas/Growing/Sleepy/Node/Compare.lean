@@ -7,6 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
@@ -38,71 +40,6 @@ variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-/-- `u` has a slot-`s` vote whose head extends `D` (inside the blocks held while honest), which
-`X` sent or admitted while honest, at a time in `[t_s, t_s + 2Δ)`. -/
-private def Released (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (X : Fin sp.n)
-    (s : Nat) (D : AC.Blk sp.n (List (FG.Att sp.n))) : Set (Fin sp.n) :=
-  {u | ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧
-    (∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) D R) ∧
-    ∃ k, X ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧
-      tr.time k < sp.ts s + 2 * sp.Δ}
-
-/-- Lift a forwarded vote of the prefix through `d` to a release while honest. -/
-private theorem released_of_fwd {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
-    (hd : 0 ≤ d) {X : Fin sp.n} (hX : X ∈ H d) {s : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
-    {u : Fin sp.n} (hu : u ∈ AC.Fwd (tr.projAC.upTo d) ((tr.upTo d).HonestBlocks (H d)) X s D) :
-    u ∈ Released tr H X s D := by
-  obtain ⟨v, hvu, hvs, ⟨R, hR, hRr, hDR⟩, k, hsend, h1, h2⟩ := AC.fwd_iff.1 hu
-  obtain ⟨hkd, hsend⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).1 hsend
-  exact ⟨v, hvu, hvs, ⟨R, upTo_subset hrun hd hR, hRr, hDR.mono (upTo_subset hrun hd)⟩, k,
-    hrun.antitone hkd hX, hsend, h1, h2⟩
-
-/-- **A result's side**, at the update of slot `s` (at `t_s + 6Δ`) of a writer honest then: its
-restarts are at or before `t_s`; its counted validators `S` are more than half of its voters,
-released by it while honest, and each has a non-equivocating pool vote extending the result. -/
-private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {Y : Fin sp.n} {c s : Nat} (hY : Y ∈ H (tr.time c))
-    {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : AC.ResultAt tr.projAC Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksNode sp)) (S : Set (Fin sp.n)),
-      tr.projAC.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
-      (∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
-      (AC.voters {v | v ∈ (tr.projAC.state Y c).pool s}).ncard < 2 * S.ncard ∧
-      S ⊆ Released tr H Y s D ∧
-      ∀ u ∈ S, u ∉ AC.equivocators {v | v ∈ (tr.projAC.state Y c).pool s} ∧
-        ∃ v ∈ (tr.projAC.state Y c).pool s, v.val = u ∧
-          ∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) D R := by
-  have hd := hrun.time_nonneg c
-  have hr := acRun_upTo hrun hnc hd
-  have hst := projAC_upTo_state hrun (y := Y) (le_refl (tr.time c))
-  have hmaj := AC.result_majority hR
-  obtain ⟨ℓ, hu, -, rfl⟩ := hR
-  have hu' := (ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩
-  obtain ⟨-, hΦU⟩ := frameIn_at hrun hnc hY hu.1
-  refine ⟨ℓ, _, hu.1, hu.2.2.1, fun k hk hrk => ?_, hmaj, ?_, ?_⟩
-  · exact Compose.update_restarts hr.localRun hY hu' k hk
-      ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hrun.time_mono hk, hrk⟩)
-  · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
-    have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := AC.state_pool_slotU sp hr.localRun.toU hr.vstart hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := AC.admitted_of_heldU hr.localRun.toU hr.vstart hY hvs hvp' le_rfl
-      (fun k _ hstk => by
-        rw [hst] at hstk
-        have hst' : (tr.projAC.state Y c).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
-          unfold AC.resolutionTime at hres
-          split at hres
-          · exact absurd hres (by simp [AC.ETime.of])
-          · split_ifs at hres
-            · exact absurd hres (by simp [AC.ETime.of])
-            · exact lt_of_le_of_lt (le_max_left _ _) hres
-        rw [hstk] at hst'
-        exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst'))
-    obtain ⟨hkc, hsend⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).1 hsend
-    exact ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, k, hrun.antitone hkc hY, hsend,
-      h1, h2⟩
-  · rintro u ⟨v, ⟨hvp, hne, -, R, hR, hRr, hDR⟩, rfl⟩
-    exact ⟨hne, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
-
 /-- **An optimistic selection's seats**, at the check of a node honest then: three quarters of the
 committee size are optimistic voters of the selection, all members of the slot-`s` committee
 (P), released by the checker while honest; an optimistic voter honest at the check has its one
@@ -117,18 +54,18 @@ private theorem optimistic_side_at
       ℓ.frame.tree ⊆ tr.HonestBlocksAt H ∧
       3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ℓ.frame s D).ncard ∧
       AC.optimisticVoters sp A ℓ.frame s D ⊆ K.committee s ∧
-      AC.optimisticVoters sp A ℓ.frame s D ⊆ Released tr H X s D ∧
+      AC.optimisticVoters sp A ℓ.frame s D ⊆
+        AC.Growing.Relayed tr.projAC H (tr.HonestBlocksAt H) X s D ∧
       ∀ v ∈ A.pool s, v.val ∈ H (tr.time k) →
         v.slot = s ∧ ∃ j ≤ k, ∃ e, HVoteAt tr H v.val j e ∧ e.msg = v := by
-  have hd := hrun.time_nonneg k
-  have hr := acRun_upTo hrun hnc hd
-  obtain ⟨ℓ, A, hpt, hU, h34, hfwd⟩ := AC.optimistic_side hr hX
-    ((ac_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hfl⟩)
+  have hac := goldilocks_ac_projection_from hrun hnc
+  obtain ⟨ℓ, A, hpt, hU, h34, hfwd⟩ := AC.Growing.optimistic_seats hac hX hfl
+  have hp := (AC.upTo_optimisticPoint hrun.time_mono).2 ⟨le_rfl, hpt⟩
   have hPk := AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hP (tr.time k)
-  refine ⟨ℓ, A, fun B hB => upTo_subset hrun hd (hU hB), h34,
-    fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ hPk.2 X hX k ℓ A hpt s v hv,
-    fun u hu => released_of_fwd hrun hd hX (hfwd hu), fun v hv hvH => ?_⟩
-  obtain ⟨hvs, j, hj, e, hve, rfl⟩ := AC.optimisticPoint_pool_voteU hr.toU hX hpt hv hvH
+  refine ⟨ℓ, A, hU, h34, fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ hPk.2 X hX k ℓ A hp s v hv,
+    hfwd, fun v hv hvH => ?_⟩
+  obtain ⟨hvs, j, hj, e, hve, rfl⟩ :=
+    AC.optimisticPoint_pool_voteU (hac.upTo (hrun.time_nonneg k)).toU hX hp hv hvH
   obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
   exact ⟨hvs, j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, rfl⟩
 
@@ -141,34 +78,26 @@ private theorem released_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hcb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s)
-    {D : AC.Blk sp.n (List (FG.Att sp.n))} {u : Fin sp.n} (hu : u ∈ Released tr H X s D) :
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {u : Fin sp.n}
+    (hu : u ∈ AC.Growing.Relayed tr.projAC H (tr.HonestBlocksAt H) X s D) :
     ∃ v : Vote sp.n, v.val = u ∧
       (∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) D R) ∧
       (v ∈ (tr.projAC.state Y c).pool s ∨
         u ∈ AC.equivocators {w | w ∈ (tr.projAC.state Y c).pool s}) := by
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨v, rfl, hvs, hR, k, hX, hsend, h1, h2⟩ := hu
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨v, rfl, hvs, hR, k, hX, hsend, h1, h2⟩ := AC.Growing.relayed_iff.mp hu
   refine ⟨v, rfl, hR, ?_⟩
-  have hd := hrun.time_nonneg c
-  have hr := acRun_upTo hrun hnc hd
-  have hrs' : ∀ k' ≤ c, tr.projAC.RestartAt Y k' → tr.projAC.time k' ≤ tr.time k :=
-    fun k' hk' hr' => (hrs k' hk' hr').trans h1
-  have hdl := ac_deadline_le_of_restarts (T := tr.projAC) hrs' (tr.time k)
-  change tr.projAC.deadline Y c (tr.time k) ≤ max (tr.time k) (tr.time k) + sp.Δ at hdl
-  rw [max_self] at hdl
-  have hserv := hsync.message X k v hX hsend (ha.trans h1) Y c ℓ hY hc
-    (by linarith) (by linarith)
-  have hserv' := ac_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
-  have h := AC.held_of_deadline_serviceU hr.localRun.toU hY
-    (fun k' hk' hr' => hrs' k' hk' ((ACTrace.upTo_restartAt (tr := tr.projAC)).1 hr').2)
-    (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
-    (fun t ht₁ ht₂ => by
-      change tr.time k ≤ t at ht₁
+  have hac := goldilocks_ac_projection_from hrun hnc
+  have hsvc : AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) a b tr.projAC :=
+    ⟨hsync.message, hsync.acRelay⟩
+  change tr.time k < sp.ts s + 2 * sp.Δ at h2
+  have hdl : tr.time k + sp.Δ ≤ tr.time c := by linarith
+  have h := AC.Growing.sync_window_before_forward hac.localRun hsvc hX hsend (ha.trans h1)
+    (hdl.trans hcb) hY hc (fun j hj hjr => (hrs j hj hjr).trans h1) hdl fun t ht₁ ht₂ => by
       change t < tr.time k + sp.Δ at ht₂
       rw [AC.CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]
-      omega) hserv'
-  rw [projAC_upTo_state hrun le_rfl, hvs] at h
-  exact h
+      omega
+  rwa [hvs] at h
 
 /-- **Against an update**: at the update of slot `s` of a writer honest then, whose counted
 validators `S` support `DY` without equivocating, the validators `T` with votes for a block `D`
@@ -183,7 +112,8 @@ private theorem against_update_at {ini} (hrun : Growing.GoldilocksRun proposer d
     (hS : ∀ u ∈ S, u ∉ AC.equivocators {v | v ∈ (tr.projAC.state Y c).pool s} ∧
       ∃ v ∈ (tr.projAC.state Y c).pool s, v.val = u ∧
         ∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) DY R)
-    (hT : T ⊆ Released tr H X s D) (hncp : ¬ Compatible (tr.HonestBlocksAt H) D DY) :
+    (hT : T ⊆ AC.Growing.Relayed tr.projAC H (tr.HonestBlocksAt H) X s D)
+    (hncp : ¬ Compatible (tr.HonestBlocksAt H) D DY) :
     T.ncard + S.ncard ≤ (AC.voters {v | v ∈ (tr.projAC.state Y c).pool s}).ncard := by
   exact AC.side_count (honestBlocksAt_coherent hrun hnc) hS
     (fun u hu => released_held_at hrun hnc hsync ha hY hc ht hcb hrs (hT hu)) hncp
@@ -201,8 +131,9 @@ theorem result_optimistic_compatible_at
     (hO : AC.OptimisticLockAt tr.projAC x i' s C' CV') :
     Compatible (tr.HonestBlocksAt H) C C' := by
   by_contra hncp
-  obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := result_side_at hrun hnc hX hR
-  obtain ⟨ℓo, Ao, -, h34, -, hT, -⟩ := optimistic_side_at hrun hnc hKB.hP hx hO
+  have hac := goldilocks_ac_projection_from hrun hnc
+  obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := AC.Growing.result_side hac hX hR
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := AC.Growing.optimistic_seats hac hx hO
   have := against_update_at hrun hnc hsync ha hX hc ht hib hrs hS hT fun h => hncp (Or.symm h)
   have := Set.ncard_le_ncard (s := AC.voters {v | v ∈ (tr.projAC.state X i).pool s})
     (t := K.committee s) fun _ ⟨v, hv, hvu⟩ => hvu ▸
@@ -225,8 +156,9 @@ theorem same_label_compatible_at
     obtain ⟨X', i', CV', hX', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · -- RR: each side's counted validators reach the other writer, where none supports it
     by_contra hncp
-    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, hSF, hS⟩ := result_side_at hrun hnc hX hR
-    obtain ⟨ℓ', S', hc', ht', hrs', hmaj', hSF', hS'⟩ := result_side_at hrun hnc hX' hR'
+    have hac := goldilocks_ac_projection_from hrun hnc
+    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, hSF, hS⟩ := AC.Growing.result_side hac hX hR
+    obtain ⟨ℓ', S', hc', ht', hrs', hmaj', hSF', hS'⟩ := AC.Growing.result_side hac hX' hR'
     have h1 := against_update_at hrun hnc hsync ha hX hc ht hi hrs hS hSF'
       fun h => hncp (Or.symm h)
     have h2 := against_update_at hrun hnc hsync ha hX' hc' ht' hi' hrs' hS' hSF hncp
