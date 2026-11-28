@@ -774,7 +774,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
@@ -786,7 +785,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesGeom
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead

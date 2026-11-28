@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
@@ -150,7 +150,7 @@ private theorem reset_of_high_report_within_at {ini}
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
   have hy := hrun.antitone ((le_add_of_nonneg_right hD).trans (le_max_right _ _)) hyz
   obtain ⟨hc, hto, hres⟩ := hR
-  apply Generic.Shadow.reset_of_high_report_within_from hrun hlat hyz hq ?_ hh
+  apply Generic.reset_of_high_report_within_from hrun.toLocalRun hlat hyz hq ?_ hh
   refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
   change (AC.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
   rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at hrun hy]
@@ -339,7 +339,7 @@ theorem round_of_warm_within_at
       hsvc hawake hf hcatch hnr hm hwarm huN (max_le hmb (hTN.trans hmb)) hz hdes hP hPs hcal
       hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
-  refine Generic.Shadow.round_cross_at_from hrun
+  refine Generic.round_cross_at_from hrun.toLocalRun
     (fun y => Compose.requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok hnc
     hsvc.signedRow hsvc.hold_le hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -387,7 +387,7 @@ theorem round_of_warm_within_at
   have hkhi : tr.time k ≤ sp.ts N + 2 * sp.Δ := by linarith [hts hxN]
   have hM := hframe.M_eq y k hyk hklo hkhi
   have hkind := hframe.top_iff y k hyk hklo hkhi
-  obtain ⟨hPy, hCy, hor⟩ := Generic.Shadow.row_or_high_of_attest_at_from hrun hnc
+  obtain ⟨hPy, hCy, hor⟩ := Generic.row_or_high_of_attest_at_from hrun.toLocalRun hnc
     (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
     (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
       right
