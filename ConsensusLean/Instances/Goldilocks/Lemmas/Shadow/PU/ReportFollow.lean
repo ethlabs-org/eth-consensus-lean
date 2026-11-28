@@ -13,7 +13,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -145,7 +145,7 @@ private theorem frame_slot_le_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
-  AC.frame_slot_leU sp (Shadow.PU.acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun.toU hy
+  AC.frame_slot_leU sp (Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun.toU hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
 
 /-- **A later honest proposal head extends an actual report above a slot-`u` block**
@@ -184,12 +184,12 @@ theorem toFG_later_proposal_head_after_at
   swap
   · -- A deep source under a deep anchor whose live locks are slow (stock argument).
     have hi0 := hrun.time_nonneg i
-    have hr := Shadow.PU.acRun_upTo hrun hnc hi0
-    obtain ⟨hΦ, hΦU⟩ := Shadow.PU.frameIn_at hrun hnc hy hto.1
+    have hr := Compose.Growing.acRun_upTo hrun hnc hi0
+    obtain ⟨hΦ, hΦU⟩ := Compose.Growing.frameIn_at hrun hnc hy hto.1
     obtain ⟨hRv, hRA, -, -⟩ := hRdeep
     obtain ⟨hAt, l, hl, hlA⟩ := (AC.deepest_mem hanc).1
     have hlf := hslow l hl hlA
-    have hstate := Shadow.PU.projAC_upTo_state hrun (y := y) (le_refl (tr.time i))
+    have hstate := Compose.Growing.projAC_upTo_state hrun (y := y) (le_refl (tr.time i))
     have hwf : AC.LocksWF sp (tr.projAC.state y i).locks := by
       have h := AC.locksWF_state hr.localRun hr.vstart hy i
       rwa [hstate] at h
