@@ -10,7 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater

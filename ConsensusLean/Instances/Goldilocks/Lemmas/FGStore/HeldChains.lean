@@ -23,7 +23,7 @@ namespace Consensus.Goldilocks.Store
 
 /-- A target bit after counting is old or set by a counted non-timeout attestation on the
 entry. -/
-private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
+theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
     {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
     v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
   induction atts generalizing σ with
@@ -45,7 +45,7 @@ private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (
 
 /-- A justification `(h_j, J)` with `h_j ≥ 1` has a quorum of non-timeout attestations on the
 chain with height pair `(h_j, J)` (with each target bit's attestation, for the induction). -/
-private theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
+theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
     {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
     (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
       a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
