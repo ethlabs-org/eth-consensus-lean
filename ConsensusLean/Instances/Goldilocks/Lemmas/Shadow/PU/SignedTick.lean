@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
@@ -22,29 +23,6 @@ open AC (ACParams Payload)
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
-
-/-- An awake honest node has a signing tick when its calendar signs. -/
-theorem signTickAt_of_calendar_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    {y : Fin sp.n} {t : Time} (hy : y ∈ H t) (ht : 0 ≤ t)
-    (hpub : sp.toParams.IsPublic t) (hawake : tr.awake y t) (hsign : sign y t = true) :
-    ∃ j, tr.SignTickAt proposer dg y j t := by
-  obtain ⟨j, hj⟩ := hrun.tick_of_awake y t hy ht hpub hawake
-  obtain ⟨x, f, hg⟩ := (RunTrace.tickAt_iff ..).1 hj
-  have hf : f = true := ((RunTrace.signCalendarAt_iff tr).1 hcal y j t x f hy hg).trans hsign
-  subst hf
-  exact ⟨j, (RunTrace.signTickAt_iff ..).2 ⟨x, hg⟩⟩
-
-/-- A shadow node joins after every preceding restart is at least one slot old. -/
-theorem joined_of_restart_le_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {t : Time} {s : Nat} (hy : y ∈ H t)
-    (ht : sp.ts s + 4 * sp.Δ ≤ t)
-    (hres : ∀ r, tr.time r ≤ t → y ∈ H (tr.time r) → tr.RestartAt y r → tr.time r ≤ sp.ts s)
-    {i : Nat} (htime : tr.time i = t) :
-    AC.joined sp (tr.projAC.state y i) (tr.time i) :=
-  Healing.Growing.Core.joined_of_restart_le_at hrun.toCore hnc hy ht hres htime
 
 end Consensus.Goldilocks.Shadow.PU.Growing
 
@@ -73,7 +51,7 @@ theorem signing_tick_toFG_cuts_at {ini : Fin sp.n → (goldilocksNode sp).State}
   have ht0 : 0 ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
     have hΔ := sp.toParams.hΔ
     simp only [ACParams.ts]; positivity
-  obtain ⟨j, hj⟩ := signTickAt_of_calendar_at hrun hcal hy ht0
+  obtain ⟨j, hj⟩ := Healing.Growing.signTickAt_of_calendar_at hrun hcal hy ht0
     ⟨4 * (u : Int) + 6, by rw [hT]; simp only [ACParams.ts]; ring⟩ haw hsig
   obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff ..).1 hj
   have hnP : ¬ Proposes proposer y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := by
