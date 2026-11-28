@@ -157,7 +157,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   -- the attestation was signed at `d`, before `y` accepted `W`, before the vote
-  rcases Compose.tree_cases hp.run.toLocalRun hy hW with rfl | ⟨i, hik, hA⟩
+  rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨C, hcd⟩ := id hs
   have hav : att.val = v := (createAtt_spec (hp.run.cutLaw v hv d _ hcd).1).1
