@@ -27,6 +27,8 @@ Everything outside the trusted files is checked by Lean; `scripts/check.sh` chec
 14. **Rebuild canary (report; `--full`, or `--canary`, which CI passes when the build configuration changed):** a fixed proof-only edit of one module (`canary_*` in `scripts/boundaries.toml`) must leave its `.olean.hash` unchanged and every default target up to date; a regression is reported (a CI warning). Its control, a statement edit, must make the default targets stale, else the step fails.
 
 Checks with fixtures exercise the same code paths on positive and negative controls.
+The Goldilocks restart specification is covered by the protected-surface snapshot (step 4), and the
+restart regression theorems build and are axiom-audited with `ConsensusLeanTest` (steps 1 and 3b).
 Spec drift is guarded by the snapshot diffs (the Spec and the protected surface), committed with each change;
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
