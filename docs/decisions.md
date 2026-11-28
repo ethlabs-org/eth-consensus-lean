@@ -308,8 +308,11 @@ lines 147–152 give the frame returned to the available chain.
     `fgSlots`; this is not a theorem that removes all row assumptions.
   - heal `catchUp + M_f` (`contract_heal`), with `M_f = healMargin = 20 L_drain + 8k + 28δ_t + 28X + 56` and
     `L_drain = 2k + X` (expanded `48k + 28δ_t + 48X + 56`; heal `387` at `k = 2, X = 1, δ_t = 6`). It is the final
-    route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (`exists_reset_of_drain_rounds_awake_at`,
-    `resetBoundRounds`; the test `Obligations.Test.Contract.heal_val` checks the coefficient identity),
+    route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (the closed-form reset bound
+    `ready + healthyResetCoeff·Δ + 5d` of `final_reset_bounds_within`, which covers the four-attempt bound
+    `(16 L_drain + 24(δ_t + X − 1) + 52)Δ + 4(d + GΔ)` of `Generic.exists_reset_within`; the test
+    `Obligations.Test.Contract.heal_val` checks the identity
+    `(20 L_drain + 8k + 28δ_t + 28X + 46)·Δ + 5λ + 5GΔ − 2 = healMargin·Δ − 2`),
     which gives a lower heal than the earlier five-window frame route; the untrusted reset coefficient
     `healthyResetCoeff = 20 L_drain + 24(δ_t + X) + 40` moves with it, and
     `M_f` also covers the nonfinal reset envelope for `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). A
