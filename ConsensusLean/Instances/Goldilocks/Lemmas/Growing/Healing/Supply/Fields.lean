@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.CappedOrigins
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
@@ -28,9 +27,7 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 
 * `reportAt_iff_toFGAt`: an actual report of a node honest at it is an AC `ac_to_fg` call of the
   AC projection;
-* `goldilocks_proposal_floor`: the `proposal_floor` field;
-* `goldilocks_report_origin`: the `report_origin` field, with `Origin` the joined stored fast
-  lock of the Goldilocks data;
+* `goldilocks_proposal_height`: the `proposal_height` field;
 * `committeeHalf_of_committeeFaults`: the committee half bound at the run's slot committees, from
   the committee fault bound with `βK ≤ 1/2` and collision freedom;
 * `goldilocks_report_follow`: the `report_follow` field with report delay `G` and
@@ -149,11 +146,11 @@ private theorem warm_proposal_store_bounds_at {ini}
   exact ⟨hmax_pred_le_of_isViable hDv hσ',
     hj_lt_of_isViable hreach hDm hDv hatts hσ'⟩
 
-/-- **The `proposal_floor` field** at the Goldilocks run interface: an honest designated proposal,
+/-- **The `proposal_height` field** at the Goldilocks run interface: an honest designated proposal,
 under the FG fault bound at its slot, reaches the predecessor of its proposer's pre-proposal
 maximum height and exceeds its pre-proposal justification height
 (`warm_proposal_store_bounds_at`). -/
-theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
+theorem goldilocks_proposal_height {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
     {M u : Nat} {isTop : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (_hframe : FrameWindow tr H lo hi M isTop J)
@@ -169,42 +166,6 @@ theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Tim
   rw [hts] at hz hf
   exact warm_proposal_store_bounds_at ((goldilocksRunInterface_run_iff cm).mp hrun).1 hnc hz hdes
     hP hBs hf
-
-/-- **The `report_origin` field** at the Goldilocks run interface: a high report of a node honest
-at it extends the stored block of an earlier joined fast-lock write of the same node, held by it
-at the write. Only collision freedom is read from the premises. -/
-theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    {hold : Time} {g ΔF a b : Time}
-    {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
-    (_hr : IsReset tr H g a) (_hab : a ≤ b) (hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
-    (hcap : OriginInCap sp.toParams sp.deepDepth g (tr.time i))
-    (hR : ReportAt tr y i R) (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
-    ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧
-      (tr.JoinedAt y (tr.time r) ∧ ∃ CV, Compose.StoredFastLockAt tr y r j B CV) ∧
-      B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B := by
-  have hr := ((goldilocksRunInterface_run_iff cm).mp hrun).1
-  have hnc := hp.noColl
-  obtain ⟨ℓ, hto⟩ := (reportAt_iff_toFGAt hr hy).mp hR
-  obtain ⟨r, hri, j, ellw, D, CV, hyr, hcw, hD, hfl, hRB⟩ | hdeep
-    := Healing.Growing.toFG_fast_candidate_origin_at hr hnc hy hto
-  swap
-  · have hfast := high_report_fast_of_cap hr hp hy hto hh (goldilocks_origin_cap_bound hcap)
-    rw [← Compose.Growing.projAC_state_at hr hy] at hfast
-    obtain ⟨hΦ, -⟩ := Healing.Growing.frame_tree_subset_at hr hnc hy hto.1
-    obtain ⟨B, hB⟩ := AC.exists_deepest hΦ (fun C hC => hC.1.1) ⟨R, hfast⟩
-    obtain ⟨_, _, _, hn, -⟩ := hdeep
-    rw [hn] at hB
-    cases hB
-  have hj : tr.JoinedAt y (tr.time r) :=
-    (Healing.Growing.joinedAt_upTo_iff le_rfl).mp
-      (Healing.joinedAt_of_fastLockAt (hr.upTo (hr.time_nonneg r)) (hnc.upTo _) hyr
-        ((Healing.Growing.fastLockAt_upTo_iff hr.time_mono le_rfl).mpr hfl))
-  obtain ⟨hok, hsub⟩ := Healing.Growing.frame_tree_subset_at hr hnc hyr hcw
-  exact ⟨r, hri.le, j, ellw.frame.viableAncestor D, hyr, ⟨hj, CV, ellw, D, hcw, hfl, rfl⟩,
-    hsub (AC.viableAncestor_anc hok hD).1, hRB⟩
 
 /-- `committeeHalf_of_committeeFaults` from the committee size, positivity and facts alone, without
 the rest of the run interface (its calendar and release laws). -/
@@ -298,18 +259,13 @@ theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.
       reportDelay := G
       drain := 2 * sp.k + 5
       deepBudget := sp.deepDepth
-      Origin := fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
-        ∃ CV, Compose.StoredFastLockAt tr x i j B CV
       follow_le := fun _ _ => hδ
       report_in_frame := goldilocks_report_in_frame
-      proposal_floor := goldilocks_proposal_floor
+      proposal_height := goldilocks_proposal_height
       report_follow := goldilocks_report_follow
-      report_origin := goldilocks_report_origin
-      origins_comparable := goldilocks_origins_comparable
-      heal_after_reset := fun hβ hr hp hres hab hbudget _ =>
-        goldilocks_heal_after_reset hβ hr hp hres hab hbudget }
+      heal_after_reset := goldilocks_heal_after_reset }
   exact ⟨goldilocksRunInterface sp sign G, O, goldilocksRunInterface_data,
-    rfl, rfl, rfl, rfl, rfl, rfl⟩
+    rfl, rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic
 

@@ -16,7 +16,7 @@ every statement that reads them at the default keeps its meaning.
 
 The premises bundle `Premises`, the healing obligations `ACHealing`, the local record
 `ACCorrectLocal`, the healing contracts that read `Service` or `Premises`, `HealthyReadPoint` and
-the claim suppliers `DeadlinePremisesSupply`, `FinalReadTransport`, `HighCanonicalSupply` and
+the claim suppliers `DeadlinePremisesSupply`, `FinalReadTransport` and
 `PreparationPremisesSupply` take the same hold (and the suppliers an FG delay `ΔF`, default
 `E.ΔFG`). Each `…NoHold` below restates the corresponding contract without the release hold,
 using the same protocol rules. At the defaults each Prop agrees with it (`…_zero_iff`) and each
@@ -145,14 +145,14 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
   reportDelay : Nat
   drain : Nat
   deepBudget : Option Nat := none
-  Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
   follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b → follow ≤ P.δt
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R
-  /-- The proposal reaches the predecessor of the maximum height and exceeds justification. -/
-  proposal_floor : ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop}
+  /-- The proposed block's post-proposal state height is at least the proposer's pre-proposal
+  maximum height minus one and strictly above its pre-proposal justified height. -/
+  proposal_height : ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi M isTop J →
     z ∈ H (P.slotTime u) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
@@ -178,55 +178,24 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
         Anc (tr.HonestBlocksAt H) B R ∧
         ∀ x, u + follow ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = P.slotTime x → Anc (tr.HonestBlocksAt H) R d.head
-  /-- A high honest report after a reset has an earlier origin extending it.
-  Certificate: no open obligation recorded. -/
-  report_origin : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
-    {y : Fin P.n} {i : Nat} {R : A.Blk},
-    βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b →
-    OriginInCap P deepBudget g (tr.time i) → ReportAt tr y i R →
-    HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
-    ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
-      B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B
-  /-- High honest FG sources after a reset are compatible across all slots.
-  Certificate: cert obligation open: same-slot FG-source safety plus C1.1 across slots,
-  including the analogue excluding high sources before cutZ. -/
-  origins_comparable : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n}
-    {i j i' j' : Nat} {B B' : A.Blk},
-    βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b → OriginInCap P deepBudget g a →
-    x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
-    OriginInCap P deepBudget g (tr.time i) →
-    HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
-    x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
-    OriginInCap P deepBudget g (tr.time i') →
-    HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
-    Compatible (tr.HonestBlocksAt H) B B'
-  /-- Canonical high sources yield chained honest proposals after the AC's drain bound.
+  /-- Honest proposals chain after the AC's drain bound.
   Certificate: cert obligation open: the certificate healing bound. -/
   heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
     IsReset tr H g a → a ≤ b → ResetInBudget P deepBudget drain g a →
-    HighCanonical Origin tr H g (originCapTime P deepBudget g b) →
     HealedFrom tr H proposer (P.slotOf a + drain) b
 
 /-- **At hold `0`, `ACHealing` is the healing record before the hold.** -/
 def acHealingZeroEquiv (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) :
     ACHealing A sg runs ≃ ACHealingNoHold A sg runs where
-  toFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget, O.Origin,
-    fun hr hp => O.follow_le hr (premises_zero_iff.mpr hp), O.report_in_frame, O.proposal_floor,
+  toFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget,
+    fun hr hp => O.follow_le hr (premises_zero_iff.mpr hp), O.report_in_frame, O.proposal_height,
     fun hβ hr hp => O.report_follow hβ hr (premises_zero_iff.mpr hp),
-    fun hβ hr hp => O.report_origin hβ hr (premises_zero_iff.mpr hp),
-    fun hβ hr hp => O.origins_comparable hβ hr (premises_zero_iff.mpr hp),
     fun hβ hr hp => O.heal_after_reset hβ hr (premises_zero_iff.mpr hp)⟩
-  invFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget, O.Origin,
-    fun hr hp => O.follow_le hr (premises_zero_iff.mp hp), O.report_in_frame, O.proposal_floor,
+  invFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget,
+    fun hr hp => O.follow_le hr (premises_zero_iff.mp hp), O.report_in_frame, O.proposal_height,
     fun hβ hr hp => O.report_follow hβ hr (premises_zero_iff.mp hp),
-    fun hβ hr hp => O.report_origin hβ hr (premises_zero_iff.mp hp),
-    fun hβ hr hp => O.origins_comparable hβ hr (premises_zero_iff.mp hp),
     fun hβ hr hp => O.heal_after_reset hβ hr (premises_zero_iff.mp hp)⟩
   left_inv _ := rfl
   right_inv _ := rfl
@@ -286,47 +255,6 @@ def round_of_warm_atNoHold (O : ACHealing A sg runs) : Prop :=
     B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤ ((tr.state p (kX + 1)).fg.σ X.root).h
 
-/-- `high_row_source_at` as stated before the release hold. -/
-def high_row_source_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
-    {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
-    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    v ∈ H (max (cutZ P g) (tr.time d)) → tr.time d ≤ b →
-    OriginInCap P O.deepBudget g (tr.time d) →
-    tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
-    ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
-      ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E Og ∧
-        E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
-        ((tr.state v r).fg.σ E.root).Th = E.root
-
-/-- `no_high_contest_at` as stated before the release hold. -/
-def no_high_contest_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
-    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    OriginInCap P O.deepBudget g a →
-    p ∈ H (tr.time i) → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
-    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
-
-/-- `high_entry_eq_at` as stated before the release hold. -/
-def high_entry_eq_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
-    {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},
-    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    OriginInCap P O.deepBudget g a →
-    HighOrigin A sg O tr H g x i j B → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
-    HighOrigin A sg O tr H g x' i' j' B' → tr.time i' ≤ b →
-    OriginInCap P O.deepBudget g (tr.time i') →
-    Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →
-    0 ≤ t₁ → (∀ q < m₁, tr.time q ≤ t₁) → y₁ ∈ H t₁ →
-    0 ≤ t₂ → (∀ q < m₂, tr.time q ≤ t₂) → y₂ ∈ H t₂ →
-    Z₁ ∈ (tr.state y₁ m₁).fg.tree → Z₂ ∈ (tr.state y₂ m₂).fg.tree →
-    ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h →
-    ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root →
-    ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root → Z₁.root = Z₂.root
-
 /-- `rise_reset_rounds_at` as stated before the release hold. -/
 def rise_reset_rounds_atNoHold (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
@@ -357,14 +285,10 @@ def rise_reset_rounds_atNoHold (O : ACHealing A sg runs) : Prop :=
 theorem healing_contracts_zero_iff (O : ACHealing A sg runs) :
     (reset_of_high_proposal_at A sg O ↔ reset_of_high_proposal_atNoHold A sg O) ∧
     (round_of_warm_at A sg O ↔ round_of_warm_atNoHold A sg O) ∧
-    (high_row_source_at A sg O ↔ high_row_source_atNoHold A sg O) ∧
-    (no_high_contest_at A sg O ↔ no_high_contest_atNoHold A sg O) ∧
-    (high_entry_eq_at A sg O ↔ high_entry_eq_atNoHold A sg O) ∧
     (rise_reset_rounds_at A sg O ↔ rise_reset_rounds_atNoHold A sg O) := by
   simp only [reset_of_high_proposal_at, reset_of_high_proposal_atNoHold, round_of_warm_at,
-    round_of_warm_atNoHold, high_row_source_at, high_row_source_atNoHold, no_high_contest_at,
-    no_high_contest_atNoHold, high_entry_eq_at, high_entry_eq_atNoHold, rise_reset_rounds_at,
-    rise_reset_rounds_atNoHold, service_zero_iff, premises_zero_iff, and_self]
+    round_of_warm_atNoHold, rise_reset_rounds_at,
+    rise_reset_rounds_atNoHold, service_zero_iff, and_self]
 
 end Healing
 
@@ -525,19 +449,6 @@ structure FinalReadTransportNoHold (M : RunMap rho payload) (C : ACCorrectLocal 
     (M.honest t)ᶜ.ncard < 2 * P.q - P.n →
     Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
-/-- `HighCanonicalSupply` as stated before the release hold. -/
-def HighCanonicalSupplyNoHold (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
-  CommitteeHalfFit K → rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
-  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-  C.run.Run M.committee M.proposer M.digest M.honest M.trace →
-  PremisesNoHold M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
-    gst E.ΔFG rho.horizon →
-  Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
-  ResetInBudget P C.healing.deepBudget C.healing.drain gst a →
-  HighCanonical C.healing.Origin M.trace M.honest gst
-    (originCapTime P C.healing.deepBudget gst rho.horizon)
-
 /-- `PreparationPremisesSupply` as stated before the release hold. -/
 def PreparationPremisesSupplyNoHold (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   HealthyBetaFit K → rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
@@ -550,13 +461,11 @@ def PreparationPremisesSupplyNoHold (M : RunMap rho payload) (K : Contract Progr
     gst E.ΔFG rho.horizon
 
 /-- **At the default hold and FG delay, the claim suppliers are those before the hold.** -/
-theorem claim_suppliers_zero_iff (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) :
+theorem claim_suppliers_zero_iff (M : RunMap rho payload) (K : Contract ProgressReq) :
     (DeadlinePremisesSupply M K ↔ DeadlinePremisesSupplyNoHold M K) ∧
-    (HighCanonicalSupply M K C ↔ HighCanonicalSupplyNoHold M K C) ∧
     (PreparationPremisesSupply M K ↔ PreparationPremisesSupplyNoHold M K) := by
-  simp only [DeadlinePremisesSupply, DeadlinePremisesSupplyNoHold, HighCanonicalSupply,
-    HighCanonicalSupplyNoHold, PreparationPremisesSupply, PreparationPremisesSupplyNoHold,
+  simp only [DeadlinePremisesSupply, DeadlinePremisesSupplyNoHold, PreparationPremisesSupply,
+    PreparationPremisesSupplyNoHold,
     premises_zero_iff, and_self]
 
 /-- **At the default FG delay and hold `0`, `FinalReadTransport` is the transport before the

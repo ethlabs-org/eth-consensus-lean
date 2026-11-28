@@ -22,14 +22,12 @@ and carry the committee facts under collision freedom:
 
 * `report_in_frame`: `goldilocks_report_in_frame`, the report's finalized-root ancestry
   (`Shadow.PU.Growing.report_root_at` at the committee start);
-* `origins_comparable`: `goldilocks_origins_comparable`, at the joined stored-fast-lock origin of
-  `GoldilocksHealingData`, by `ResetPremisesUpTo.origins_compatible_at`;
 * `heal_after_reset`: `goldilocks_heal_after_reset`, at the drain `2k + 5` of
   `GoldilocksHealingData`, by `honest_proposal_below_next_upTo_at` and
   `honest_proposal_below_later_upTo_at`.
 
-The last two read the bundled premises through the finite reset record
-`resetPremisesUpTo_of_premises`. `follow_le` is the explicit timeout bound `3 ≤ δt` itself.
+`heal_after_reset` reads the bundled premises through the finite reset record
+`resetPremisesUpTo_of_premises_budget`. `follow_le` is the explicit timeout bound `3 ≤ δt` itself.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -91,50 +89,6 @@ private theorem slotTime_cutZ_add_le (g : Time) (m : Nat) :
     push_cast; ring
   linarith
 
-/-- The capped horizon is at most the horizon. -/
-private theorem originCapTime_le (g b : Time) :
-    originCapTime sp.toParams sp.deepDepth g b ≤ b := by
-  unfold originCapTime
-  cases sp.deepDepth with
-  | none => exact le_rfl
-  | some m => exact min_le_left _ _
-
-/-- A time by the horizon and within the origin cap is by the capped horizon. -/
-private theorem le_originCapTime {g t b : Time} (htb : t ≤ b)
-    (hc : OriginInCap sp.toParams sp.deepDepth g t) :
-    t ≤ originCapTime sp.toParams sp.deepDepth g b := by
-  unfold originCapTime
-  cases hD : sp.deepDepth with
-  | none => exact htb
-  | some m => exact le_min htb (hc m hD)
-
-/-- The capped horizon is inside the deep quarantine `c_z + 4DΔ`. -/
-private theorem originCapTime_quarantine (g b : Time) :
-    ∀ D, sp.deepDepth = some D →
-      originCapTime sp.toParams sp.deepDepth g b ≤ cutZ sp.toParams g + 4 * D * sp.Δ := by
-  intro D hD
-  unfold originCapTime
-  rw [hD]
-  exact (min_le_right _ _).trans (slotTime_cutZ_add_le g D)
-
-/-- The reset `a` is at or after the time of the first cut after `c_z` (its signing cut is after
-`c_z`). -/
-private theorem snapshot_le_reset {g a : Time} {hold ΔF b : Time} {cm : Time → Finset (Fin sp.n)}
-    {βK : ℚ}
-    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
-    (hr : Healing.Growing.IsReset tr H g a) :
-    ∃ k, Healing.FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ a := by
-  have hrun := ((goldilocksRunInterface_run_iff cm).mp hrun).1
-  obtain ⟨k, hk, -⟩ := hp.snapshot
-  have hza := Healing.Growing.cutZ_lt_reset_of_snapshot_at hrun hp.noColl ⟨k, hk⟩ hr
-  obtain ⟨⟨y, q, att, -, -, -, hqa⟩, -⟩ := hr
-  refine ⟨k, hk, ?_⟩
-  by_contra hlt
-  rcases lt_or_ge q k with hqk | hkq
-  · have := hk.1 q hqk; linarith
-  · have := hrun.time_mono hkq; linarith
-
 /-- The per-slot timeout delay of the bundled premises, on the four-`Δ` slot grid. -/
 private theorem timeoutDelay_scalar {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF b hold : Time}
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold) :
@@ -145,32 +99,6 @@ private theorem timeoutDelay_scalar {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   rw [← hδ]
   push_cast at h
   linarith
-
-/-- The bundled premises at the capped horizon: a reset within the origin cap gives the finite
-reset record through `originCapTime`, inside the deep quarantine. -/
-theorem resetPremisesUpTo_of_premises_cap {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
-    (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
-    (hac : OriginInCap sp.toParams sp.deepDepth g a) :
-    Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a
-      (originCapTime sp.toParams sp.deepDepth g b) cm βK hold := by
-  have hrun' := (goldilocksRunInterface_run_iff cm).mp hrun
-  have hcb := originCapTime_le (sp := sp) g b
-  have hac' := le_originCapTime hab hac
-  obtain ⟨k, hk, hka⟩ := snapshot_le_reset hrun hp hr
-  have hΔF := timeoutDelay_scalar hp
-  exact Healing.Growing.resetPremisesUpTo_of_reset_at hrun'.1 hp.noColl
-    ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay,
-      fun x i att hx hs hh y j hy hc hjT hd =>
-        hp.sync.signedRow x i att hx hs hh y j hy hc (hjT.trans hcb) hd, hp.sync.hold_le⟩
-    (fun y t hy hg ht => hp.awake y t hy hg (ht.trans hcb))
-    (fun t h0 ht => hp.faults t h0 (ht.trans hcb)) hr hac' ⟨k, hk, hka.trans hac'⟩ hp.catchUp
-    (Healing.Growing.noRestartUpTo_iff.2 fun y q hy hq _ => hp.noRestart y q hy hq) hΔF
-    (hp.nonempty.mono (hrun'.1.antitone hcb)) (hrun'.2.2.2.1 hp.noColl) hβ hrun'.2.1
-    (fun t d h1 h2 h3 h4 hne => hp.committee t d h1 (h2.trans hcb) h3 (h4.trans hcb) hne)
-    fun D hD => Or.inl (originCapTime_quarantine g b D hD)
 
 /-- **The bundled premises with a reset in the deep budget**: the finite reset record through the
 horizon, its deep cover built inside (`resetPremisesUpTo_of_reset_cover_at`): the quarantine arm
@@ -226,29 +154,6 @@ theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
     ⟨Compose.projAC_callAt.mpr hc, hto, ?_⟩
   rw [Compose.Growing.projAC_state_at hrun hy]
   exact hret
-
-/-- `origins_comparable` at the joined stored-fast-lock origin: two high honest origins by the
-horizon, after a reset by it, are compatible. -/
-theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time}
-    {g ΔF a b : Time} {x x' : Fin sp.n} {i j i' j' : Nat}
-    {B B' : AC.Blk sp.n (List (FG.Att sp.n))} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
-    (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
-    (hac : OriginInCap sp.toParams sp.deepDepth g a)
-    (hx : x ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    (ho : tr.JoinedAt x (tr.time i) ∧ ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
-    (hib : tr.time i ≤ b) (hic : OriginInCap sp.toParams sp.deepDepth g (tr.time i))
-    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
-    (hx' : x' ∈ H (max (cutZ sp.toParams g) (tr.time i')))
-    (ho' : tr.JoinedAt x' (tr.time i') ∧ ∃ CV, Compose.StoredFastLockAt tr x' i' j' B' CV)
-    (hi'b : tr.time i' ≤ b)
-    (hi'c : OriginInCap sp.toParams sp.deepDepth g (tr.time i'))
-    (hh' : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h) :
-    Compatible (tr.HonestBlocksAt H) B B' :=
-  (resetPremisesUpTo_of_premises_cap hβ hrun hp hr hab hac).origins_compatible_at
-    ⟨hx, ho.1, ho.2, hh⟩ (le_originCapTime hib hic) ⟨hx', ho'.1, ho'.2, hh'⟩
-    (le_originCapTime hi'b hi'c)
 
 /-- `heal_after_reset` at the drain `2k + 5`: honest proposals from `2k + 5` slots after the
 reset's slot are chained through the horizon, one slot on with the service reserve and two or

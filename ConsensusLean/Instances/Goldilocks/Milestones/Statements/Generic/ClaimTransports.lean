@@ -97,7 +97,7 @@ structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract Progr
       M.trace.time k + C.margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC ∧
       AdmissibleProposal M K C B k
 
-/-- Deadline premises assembled from `final_reset_premises_at` and healthy
+/-- Deadline premises assembled from `final_reset_premises_of_shared_within_at` and healthy
 service transport, on the honest sets truncated after this exact deadline
 (`premises_truncH`): restarts are bounded only through the deadline, so no whole-run
 `NoRestartAfter` is required of a finite healthy query. The chosen forwarding delay and
@@ -170,22 +170,6 @@ def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) 
         ∃ b ∈ BlockFinality.ChainAtts M.trace y i X ∪
           BlockFinality.ChainAtts M.trace z j Y,
           a.val = v ∧ FG.slashable a b
-
-/-- Canonical-high assembly from `high_row_source_at`, `no_high_contest_at`
-and `high_entry_eq_at`, with reset premises at the same horizon. This supplies
-prerequisites of `heal_after_reset`, never by invoking that field itself. The premises are at `C`'s
-release hold and FG delay `ΔF` (default `E.ΔFG`). -/
-def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq) {fgHold : Time}
-    (C : ACCorrectLocal A M.signer fgHold) (ΔF : Time := E.ΔFG) : Prop :=
-  CommitteeHalfFit K → rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
-  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-  C.run.Run M.committee M.proposer M.digest M.honest M.trace →
-  Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
-    gst ΔF rho.horizon fgHold →
-  Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
-  ResetInBudget P C.healing.deepBudget C.healing.drain gst a →
-  HighCanonical C.healing.Origin M.trace M.honest gst
-    (originCapTime P C.healing.deepBudget gst rho.horizon)
 
 /-- Full-horizon preparation from `healthy_preparation_service_at`,
 `healthy_preparation_awake_at`, `healthy_preparation_faults_at`,
