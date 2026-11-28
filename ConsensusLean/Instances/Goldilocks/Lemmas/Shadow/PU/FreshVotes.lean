@@ -2,7 +2,6 @@ module
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPath
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

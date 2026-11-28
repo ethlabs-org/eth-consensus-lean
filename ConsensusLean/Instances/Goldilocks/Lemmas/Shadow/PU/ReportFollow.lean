@@ -4,14 +4,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
@@ -38,15 +36,8 @@ The stock suppliers `proposal_report_follow_at` (`FollowEndpoint`) and
 `proposal_report_follow_delayed_at` (`FollowSigned`), restated over `Growing.GoldilocksRun'` and
 `Generic.FrameWindow … M isTop J`. Their proofs compose `CandidateReport` (`Deep`), the
 early-witness family (`WitnessFamily`) and the regular and optimistic later-head suppliers
-(`FollowHeads`, `FollowWrite`, `RegularLater`). The later-head pair
-(`toFG_later_proposal_head_after_at'`, `_within_at'`) is proved here from `RegularLater`'s
-`regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
-those are. The two endpoints are assembled from the stock proofs: the fresh lock and its report
-from lane N's `KernelProof.fresh_fast_lock_update_toFG_primed_at'`, and lane A's unanimous slot-`u`
-votes `Healing.Growing.Shadow.honest_vote_heads_eq_at'` over `Generic.FrameWindow`. The stock-window
-forms are retired with the stock chain (adoption A3).
-
-The signing calendar of a shadow run, `RunTrace.SignCalendarAt'`, is in `SignCalendar`. -/
+(`FollowHeads`, `FollowWrite`, `RegularLater`). The fresh report uses the adjacent update and
+signing calls, with the unanimous vote heads of the P-U window. -/
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
@@ -424,11 +415,24 @@ theorem proposal_report_follow_at
   have hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u := by
     have := hts (show s₀ ≤ u by omega)
     linarith only [hm, this, hΔ]
-  obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
-    Healing.Growing.KernelProof.fresh_fast_lock_update_toFG_primed_at' hrun hnc hsvc hawake hf
-      hcatch hnr hmargin hjoin (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
+  obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
+    Healing.Growing.update_toFG_calls_of_awake_at hrun hnc hawake hnr hmargin
+      (hT.trans hmb) hcal hy hsign
+  have hyk : y ∈ H (tr.time k) := by
+    have hku : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
+    rwa [hku, ← show sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ by
+      rw [AC.ts_succ]; ring]
+  obtain ⟨hvi, hconf, hfast, hva⟩ := Healing.Growing.Shadow.unanimous_update_selection_primed_at'
+    hshort hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin (hT.trans hmb)
+    hz hdes hP hPs hun hK hyk hu
+  have hnv := Healing.Growing.Shadow.unanimous_update_no_veto_primed_at' hshort hrun hnc
+    hsvc hawake hf hcatch hnr hmargin hjoin (hT.trans hmb) hz hdes hP hPs hun hK hyk hu
+  obtain ⟨e, he, hlock⟩ := Healing.Growing.fresh_fast_lock_of_selection_at hrun hnc hyk hu
+    hvi.1 hconf hnv hfast hva
+  have hl : (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
+    simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
-  have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
+  have hPc := Healing.fresh_lock_toFG_candidate (hframes.symm ▸ hvi) (hframes.symm ▸ hva) hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
     (hrun.time_nonneg (k + 1))
   have hj : AC.joined sp (tr.projAC.state y (k + 1)) (tr.time (k + 1)) := by
