@@ -162,62 +162,6 @@ theorem next_votes_extend_of_viable
       exact ⟨D, hΦU hD, hDr, hPF.trans (Anc.mono hΦU hroot)⟩
     · exact htransfer y i ell e hy hc hs hib hFP hV hearlier
 
-/-- Transfer of a unanimous batch at a next-slot proposal. The viability and delivery inputs
-refer to this proposal's own frame and the prefix through the proposal. -/
-theorem next_proposal_extends_of_votes
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    {K : AC.CommitteeDict sp.n} {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
-    (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell)
-    (hti : tr.time i = sp.ts (m + 1 : Nat))
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hPK : AC.CommitteePAt K tr.projAC H)
-    (hf : 2 * (K.committee m ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
-    (hhalf : sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e',
-      AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m}.ncard)
-    (hext : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e → tr.time j ≤ tr.time i →
-      e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
-    (hviable : Anc (tr.HonestBlocksAt H) P ell.frame.F ∨
-      (Anc (tr.HonestBlocksAt H) ell.frame.F P ∧ P ∈ ell.frame.tree ∧
-        (P ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc P ell.frame.F)))
-    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F P →
-      ∀ x ∈ H (tr.time i), ∀ j e, AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e →
-        e.msg.slot = m → AC.HeldAtProposal (tr.projAC.state y i) ell.frame m e.msg)
-    (hhigh : P ∈ ell.frame.tree →
-      AC.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state y i) (tr.time i) m P) :
-    Anc (tr.HonestBlocksAt H) P d.head := by
-  have hm := hrun.time_mono
-  have h0 := hrun.time_nonneg i
-  have hr := acRun_upTo hrun hnc h0
-  have hcp := (Trace.upTo_callAt_of_le _ le_rfl).2 hc
-  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm h0
-  have hst : (tr.projAC.upTo (tr.time i)).state y i = tr.projAC.state y i :=
-    Trace.upTo_state tr.projAC y fun _ hj => hm hj.le
-  rcases hviable with hPF | ⟨hFP, hV⟩
-  · obtain ⟨hΦ, hΦU⟩ := Compose.Growing.frameIn_at hrun hnc hy hc
-    rw [(AC.acProposal_head hd).2]
-    exact hPF.trans ((AC.anc_getHead_of_compat hΦ (Or.inr rfl)
-      (fun L hL => (AC.liveLockBlock_candidate hΦ hL).elim (fun h => Or.inr h.2.1) Or.inl)
-      (fun B (hB : B ∈ ell.frame.viableTree ell.frame.tree) => hB.1)
-      _ _ Relation.ReflTransGen.refl).mono hΦU)
-  refine (AC.batch_proposal hr (K := K) hf hhalf ?_ hy hcp
-    ((hPK.upTo hm hrun.antitone (tr.time i)).1 y hy i m) (AC.proposal_slot hti)
-    (by rwa [hst]) hV (by simpa only [hst] using hheld hFP) ?_).mono hsub
-  · intro x hx j e hv hs
-    obtain ⟨hj, hv'⟩ := AC.upTo_voteAt.mp hv
-    obtain ⟨D, hD, hDr, hPD⟩ := hext x j e (hrun.antitone hj hx) hv' hj hs
-    obtain ⟨ell', hcast⟩ := hv
-    obtain ⟨⟨W, hW, hWr, -⟩, -⟩ := Compose.cast_head_fcRoot hr.localRun hr.vstart hx hcast
-    have hWU := (AC.frameIn_of_callAt hr.localRun hx hcast.1).2 hW
-    have he : D = W := (Compose.Growing.honest_blocks_coherent hrun hnc).1 hD (hsub hWU)
-      (hDr.trans hWr.symm)
-    exact ⟨W, hWU, hWr, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hWU (he ▸ hPD)⟩
-  · rw [AC.highLocksCompatible_iff, hst]
-    intro l hl hlive hls L hL hLr
-    exact ((AC.highLocksCompatible_iff.mp (hhigh hV.1)) l hl hlive hls L (hsub hL) hLr).imp
-      (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 ((AC.frameIn_of_callAt
-        hr.localRun hy hcp).2 hV.1)) (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hL)
-
 /-- A base vote batch propagates through later slots; a proposal in the base slot itself is not
 needed. The successor callbacks can use the previous slot's votes to establish viability. -/
 theorem later_heads_of_step {s N : Nat}
