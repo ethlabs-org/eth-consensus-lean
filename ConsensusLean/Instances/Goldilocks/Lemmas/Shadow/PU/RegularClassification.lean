@@ -31,7 +31,7 @@ to a top contest. In particular, leaf 9 concerns reports, not arbitrary lock ori
 The existing early-witness argument admits a different geometric route. At each reader,
 keep Q viable and establish F ⪯ Q. Totality of D ⪯ Q and F ⪯ Q then puts D below F,
 or puts D on the viable path rooted at F. The second case is precisely the input used
-by `WitnessUnanimity.witness_frame_at`; no ancestry J ⪯ D is required.
+by `Healing.witness_frame_at` (WitnessFamily); no ancestry J ⪯ D is required.
 
 The theorem below proves that geometric step. Its coherent ambient tree is an explicit
 premise, not inferred from a stock run. Instantiation over a shadow run still requires
