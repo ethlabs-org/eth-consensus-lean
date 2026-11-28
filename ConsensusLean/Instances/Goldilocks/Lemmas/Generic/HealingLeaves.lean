@@ -143,7 +143,7 @@ theorem held_att_signed_at_from {P : Params} {A : NodeAC P} {proposer : Nat → 
     ∃ k < i, tr.SignAt a.val k a := by
   obtain ⟨X, hX, haX⟩ := ha
   have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by rw [Trace.upTo_state tr y hle]; exact hX
-  rcases Healing.tree_accepted (h.upTo ht) hy hXt with rfl | ⟨k, hk, hacc⟩
+  rcases Compose.tree_cases (h.upTo ht) hy hXt with rfl | ⟨k, hk, hacc⟩
   · cases haX
   · have hacc' := ((Trace.upTo_callAt tr).mp hacc).2
     obtain ⟨k', hk', hs'⟩ := h.att_unforgeable y k a
@@ -206,7 +206,7 @@ theorem hmax_le_of_noAdvance_at_from {P : Params} {A : NodeAC P}
     by_cases he : Y = X
     · exact he ▸ hX
     · exact (Anc.mem hYX he).1
-  rcases Healing.tree_accepted hr hy hY with rfl | ⟨k, hki, hA⟩
+  rcases Compose.tree_cases hr hy hY with rfl | ⟨k, hki, hA⟩
   · cases ha
   obtain ⟨j, hjk, hj⟩ := hr.att_unforgeable y hy k a
     (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) (hrun.antitone (le_max_right _ _) haH)
@@ -655,7 +655,7 @@ theorem held_of_relay_le_at_from
     rwa [hs m le_rfl] at this
   have hB' : B ∈ ((tr.upTo τ).state x i).fg.tree := by
     rwa [Trace.upTo_state tr x hτ]
-  rcases Healing.tree_accepted (h.upTo hτ0) hx hB' with he | ⟨k, hk, ha⟩
+  rcases Compose.tree_cases (h.upTo hτ0) hx hB' with he | ⟨k, hk, ha⟩
   · rw [he]
     exact Healing.Store.genesis_mem (fg_reachable_at_from h hm0 hm hz)
   have ha := ((RunTrace.upTo_acceptAt tr).mp ha).2
@@ -797,7 +797,7 @@ theorem rows_delivered_service_at_from
       tr.deadline p j τ ΔF ≤ max τ (gbar g) + ΔF := fun j hj τ =>
     Compose.deadline_le_of_restarts
       (fun k' hk' hr => hnr p k' (hrun.antitone (hrun.time_mono (hk'.trans hj)) hp) hr) τ ΔF
-  have hg : max (tr.time k) g ≤ v := max_le hk ((Healing.le_gbar g).trans hv)
+  have hg : max (tr.time k) g ≤ v := max_le hk ((AC.le_gbar g).trans hv)
   have hdl : ∀ j ≤ kX,
       tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := by
     intro j hj
