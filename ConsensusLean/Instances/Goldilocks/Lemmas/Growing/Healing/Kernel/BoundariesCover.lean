@@ -25,6 +25,15 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
 
+/-- The reset service through `b` is one through every `T ≤ b`. -/
+theorem ResetService.restrict {g ΔF b T : Time}
+    (h : ResetService tr H g ΔF b hold)
+    (hTb : T ≤ b) : ResetService tr H g ΔF T hold :=
+  ⟨h.deltaF, h.message, h.block, h.relay,
+    fun x i att hx hs hh y j hy hc hjT hd =>
+      h.signedRow x i att hx hs hh y j hy hc (hjT.trans hTb) hd,
+    h.hold_le⟩
+
 /-- **The finite reset record through `b` with the high-source cover.** The raw premises of
 `resetPremisesUpTo_of_reset_at`, the drain of `a` at least `4Δ` before the end `c_z + 4DΔ` of
 the deep quarantine, and a cover supplier: from a record up to
@@ -70,7 +79,7 @@ theorem resetPremisesUpTo_of_reset_cover_at
     linarith
   -- the snapshot at `T`: the first cut after `c_z`, within `Δ` of it (the honest nodes at `T` are
   -- awake on `[ḡ, T]`), not `b`'s snapshot bound
-  have hT0 : 0 ≤ T := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g]
+  have hT0 : 0 ≤ T := by linarith [Healing.lt_cutZ sp g, Healing.gbar_nonneg g]
   have hHT : (H T).Nonempty := hH.mono (hrun.antitone hqb.le)
   obtain ⟨k, hk, hkT⟩ := Healing.snapshot_of_awake (hrun.upTo hT0).toLocalRun
     (fun y hy t hg ht => ⟨hawake y t (hrun.antitone ht hy) hg (ht.trans hqb.le), ht⟩) hHT hZT

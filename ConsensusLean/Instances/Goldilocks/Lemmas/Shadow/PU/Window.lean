@@ -19,7 +19,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Goldiloc
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
@@ -42,14 +41,6 @@ namespace Consensus.Goldilocks.Healing
 open Consensus.Goldilocks.Generic (riseRounds)
 
 variable {P : Params} {A : NodeAC P}
-
-/-- The P-U floor, unlike the stock contest floor, is always `hmax - 1`. -/
-theorem le_pred_add_riseRounds (st : Store P A.Payload) {hz : Nat}
-    (hpos : 1 ≤ st.hmax) (hv : 2 * hz ≤ Generic.frameKey'' A st) :
-    hz + 1 ≤ st.hmax - 1 + riseRounds hz (Generic.frameKey'' A st) := by
-  classical
-  rw [riseRounds_eq, Generic.frameKey''_eq] at *
-  split_ifs at * <;> omega
 
 /-- A P-U viable held block is above finality. In the predecessor-height top case use
 `F ⪯ J ⪯ Q`; all other cases are strictly above `hj` and use the existing G1.2 proof. -/
@@ -216,57 +207,6 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State} {hold : Time}
 
-/-- Equal cached justification heights agree at independently honest observations. -/
-theorem J_eq_of_hj_eq_obs
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i m : Nat}
-    (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
-    (hf : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (he : (tr.state y i).fg.hj = (tr.state z m).fg.hj) :
-    (tr.state y i).fg.J = (tr.state z m).fg.J := by
-  have hi := hrun.time_nonneg i
-  have hm := hrun.time_nonneg m
-  have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
-  have hbm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
-  exact Store.J_eq_of_cache_hj_eq_of_safe_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun hi hy hbi).reachableWith
-    (Compose.Growing.reachable_at hrun hm hz hbm).reachableWith
-    (Coherence.honestBlocksAt_coherent hrun hnc)
-    (Compose.Growing.tree_held_at hi hy hbi) (Compose.Growing.tree_held_at hm hz hbm) hf
-    (fun a b ha hb hav => Shadow.held_atts_safe_at hrun hnc hi hbi hy hm hbm hz
-      (le_max_left _ _) (le_max_right _ _) a b ha hb hav) he
-
-/-- V-B2: the four-attempt window supplier, using service relay and J agreement at two
-independently honest shadow observations. -/
-theorem exists_frameWindow'_seq_of_service_proof_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : AC.gbar g + κ ≤ lo) (hTb : T ≤ b)
-    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i + lam ≤ tr.time m → tr.time m < T →
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
-    (hT : lo + ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) < T) :
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        Generic.frameKey'' (goldilocksNode sp) (tr.state y i).fg = v) ∧
-      ∃ M isTop J, Generic.FrameWindow tr H a (a + len v) M isTop J := by
-  apply Generic.exists_frameWindow_seq_of_mem len hlen hlam hrange
-  · intro x z i k hx hz hi _ hik hk
-    exact Generic.frameKey''_lag_obs_from hrun.toLocalRun hnc hf hsvc.toService hcatch hx hz
-      (by linarith)
-      (hk.le.trans hTb) (hcall z i k hz hi hik hk) (hlo.trans (by linarith))
-  · intro y z i m hy hz _ hi _ hm he
-    apply J_eq_of_hj_eq_obs hrun hnc hy hz _ he
-    exact hf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
-      (max_le (hi.le.trans hTb) (hm.le.trans hTb))
-  · exact hT
-
 /-- Pool membership and declared backing give committee membership for every counted vote
 on the shadow AC projection. -/
 theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
@@ -325,7 +265,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
       obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
       rw [ACTrace.upTo_deadline hm hjd] at ht hd
       obtain ⟨k, hkj, hik, hproc, hkt⟩ := hsync.1 x i m (hrun.antitone hid hx) hsend
-        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+        ((Healing.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
       have hkd : tr.time k ≤ d := (hm hkj).trans hjd
       exact ⟨k, hkj, hik, ACTrace.upTo_processAt.mpr ⟨hkd, hproc⟩,
         by rwa [ACTrace.upTo_deadline hm hkd]⟩
@@ -334,7 +274,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
       obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
       rw [ACTrace.upTo_deadline hm hjd] at ht hd
       obtain ⟨k, hkj, hak, hkt⟩ := hsync.2 x i B (hrun.antitone hid hx) hacc
-        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+        ((Healing.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
         (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
       have hkd : tr.time k ≤ d := (hm hkj).trans hjd
       exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨hkd, hak⟩,
