@@ -88,7 +88,7 @@ theorem liveLockBlocks_compatible_by (hinv : ∀ i, OutageLockInv D i) {y : Fin 
   obtain ⟨L, hL, hLr, hLP⟩ := (hinv m).locks y m t le_rfl ht0 hm hy l hl
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) (tree_held_at ht0 hy hm hL) (hB₀r.trans hLr.symm)
   exact compatible_of_anc_right hU hBP
-    (compatible_of_head_anc hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) hLP)
+    (compatible_of_anc_left hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) hLP)
 
 /-- **The lock invariant at a reader**, in the node's frame: the static `lockInv_state` on the
 prefix through the read time `t`. -/

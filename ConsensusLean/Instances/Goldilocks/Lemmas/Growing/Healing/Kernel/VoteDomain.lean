@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
@@ -55,9 +56,7 @@ private theorem held_target_vote_domain_of_row_bound_before_at
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
   have hle : ∀ c < i, tr.time c ≤ tr.time i := fun _ hc => hp.run.time_mono hc.le
-  have hR := fg_reachable_at hp.run ht hle hy
-  have hr := hR.reachableWith
-  have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
+  have hr := fg_reachable_at hp.run ht hle hy
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, i, tr.time i, ht, hle, hy, h⟩
@@ -85,7 +84,7 @@ private theorem held_target_vote_domain_of_row_bound_before_at
     · exact Or.inl (hroot ▸ h)
     · exact (vote_viable_of_root_at hp.run hp.noColl hy hcast (Or.inl (hroot ▸ hFB))
         (Or.inl ⟨D, hD, hBD, hvD⟩)).symm
-  have hjm := hj_lt_hmax_of_reachable_with hu hr
+  have hjm := Healing.Store.hj_lt_hmax_of_reachable hr
   have leftOrigin : ∀ {E C : AC.Blk sp.n (List (FG.Att sp.n))},
       E ∈ (tr.state y i).fg.tree → ((tr.state y i).fg.σ E.root).Th = E.root →
       HZ tr H g + 1 ≤ ((tr.state y i).fg.σ E.root).h → (tr.state y i).fg.Anc E C →
@@ -114,28 +113,31 @@ private theorem held_target_vote_domain_of_row_bound_before_at
       · exact Or.inr ⟨by omega, Or.inl hgap⟩
     by_cases hBh : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h
     · exact ⟨B, hheld (hFe ▸ hFB), .refl, viab hBt hBh⟩
-    obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := cache_invariants_with hu hr
+    obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := cache_invariants sp.toParams (Payload sp.n) _ _ hr
     obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-      entry_at_height_with hu hr hC (h := (tr.state y i).fg.hmax - 1) (by omega) (by omega)
+      Consensus.Goldilocks.Store.entry_at_height sp.toParams (Payload sp.n) hr hC
+        (h := (tr.state y i).fg.hmax - 1) (by omega) (by omega)
     obtain ⟨_, r', _, O, ho, hri, hrb', hl, hEO⟩ :=
       leftOrigin hE hET (by omega) hEC (by omega)
     have hBO : Anc (tr.HonestBlocksAt H) B O := by
       rcases hcompare _ r' _ O hri ho with h | h
       · exact h
       · exfalso
-        have := h_le_of_store_anc_with hu hr (hanc (hEO.trans h) hBt)
+        have := h_le_of_store_anc hr (hanc (hEO.trans h) hBt)
         omega
     obtain ⟨W, hW, hOW⟩ := frozen ho hrb' hl (hFB.trans hBO)
-    have hEW := h_le_of_store_anc_with hu hr (hanc (hEO.trans hOW) (hvt hW))
+    have hEW := h_le_of_store_anc hr (hanc (hEO.trans hOW) (hvt hW))
     exact ⟨W, hW, hBO.trans hOW, viab (hvt hW) (by omega)⟩
   by_cases hhigh : HZ tr H g + 1 ≤ (tr.state y i).fg.hj
-  · obtain ⟨_, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, _⟩ := cache_invariants_with hu hr
-    obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ := J_entry_hj_with hu hr hBj
+  · obtain ⟨_, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, _⟩ :=
+      cache_invariants sp.toParams (Payload sp.n) _ _ hr
+    obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ :=
+      Consensus.Goldilocks.Store.J_entry_hj sp.toParams (Payload sp.n) hr hBj
     obtain rfl : EJ = (tr.state y i).fg.J := hU.1 (hsub hEJ) (hsub hJm) (hEJr.trans hBjJ)
     rcases hcase with ⟨-, h0⟩ | ⟨hJh, hJT⟩
     · omega
     have hJlt : ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h <
-        ((tr.state y i).fg.σ Bj.root).h := by have := hj_lt_h_with hu hr hBj; omega
+        ((tr.state y i).fg.σ Bj.root).h := by have := Healing.Store.hj_lt_h hr hBj; omega
     obtain ⟨_, r', _, O, ho, hri, hrb', hl, hJO⟩ := leftOrigin hJm hJT (by omega) hEJB hJlt
     have hJB : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B := by
       rcases hcompare _ r' _ O hri ho with h | h
@@ -158,7 +160,7 @@ private theorem held_target_vote_domain_of_row_bound_before_at
     have viabJ : ∀ {W : AC.Blk sp.n (List (FG.Att sp.n))}, W ∈ (tr.state y i).fg.tree →
         (tr.state y i).fg.Anc (tr.state y i).fg.J W → (tr.state y i).fg.IsViable W := by
       intro W hW hJW
-      have := h_le_of_store_anc_with hu hr hJW
+      have := h_le_of_store_anc hr hJW
       change _ ∨ (_ ∧ _)
       by_cases hm' : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ W.root).h
       · exact Or.inl hm'

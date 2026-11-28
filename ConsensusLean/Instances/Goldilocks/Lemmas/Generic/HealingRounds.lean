@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
@@ -23,7 +22,7 @@ Prop over `O` (Milestones/Statements/Generic/Healing.lean). The proofs read the 
 Leaves 8 and 9 (`rounds_le_warm_proposal_at_of_healing`, `report_kind_of_warm_at_of_healing`)
 are proved over any `ACHealing`: its `proposal_floor` puts a warm honest proposal at or above the
 window floor. At a constant merged key `v ≥ 2HZ` the proposer's store has
-`HZ + 1 ≤ floor + r(v)` (`Healing.le_floor_add_riseRounds`); a report at the proposal's height
+`HZ + 1 ≤ floor + r(v)` (`pred_add_riseRounds_of_key`); a report at the proposal's height
 above it is at or above the reader's floor, so above `h_j`, or at it with `J` below the report
 (`ACHealing.report_in_frame`).
 

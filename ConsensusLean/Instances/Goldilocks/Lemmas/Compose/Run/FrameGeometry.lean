@@ -1,8 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
@@ -53,9 +52,9 @@ theorem honest_held_height {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     ((tr.state y i).fg.σ B.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ B.root).h →
         ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ B.root).Th) := by
-  have hR := (fg_reachable hr hy i).reachableWith
-  exact ⟨Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality hR h,
-    fun he => Store.Th_eq_of_anc_with Store.finalitySpec_updateFinality hR h he⟩
+  have hR := fg_reachable hr hy i
+  exact ⟨Healing.h_le_of_store_anc hR h,
+    fun he => Healing.Th_eq_of_anc hR h he⟩
 
 /-- Two entry blocks of one height below one held block coincide. -/
 theorem held_entry_unique {ini} (hr : Node.LocalRun proposer dg H sg tr ini)

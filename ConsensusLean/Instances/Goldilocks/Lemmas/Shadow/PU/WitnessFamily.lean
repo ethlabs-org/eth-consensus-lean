@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -1040,7 +1041,8 @@ theorem witness_voterBlockTree_at
     have hex : ∃ q ≤ i, tr.projAC.AcceptAt y q Q ∧ tr.time q < AC.freeze sp (s + 1) := by
       by_cases hkg : gbar g ≤ tr.time (k + 1)
       · obtain ⟨q, hqi, hq, hqt⟩ :=
-          (Healing.PU.service_syncACAt hrun hsvc (lo := g) (hi := tr.time (k + 1)) le_rfl).2
+          (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) (hi := tr.time (k + 1))
+              le_rfl).2
             w (k + 1) Q hwk' hacc ((Healing.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
             (by have := hdl i le_rfl _ hkt;
                 change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
