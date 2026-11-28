@@ -1,8 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 
 public section
 
