@@ -40,9 +40,8 @@ trace `simTraceAt`, with honesty read at the time each law reads it:
   (compromise only grows), which is where the L0 laws read it (`HonestAt w (dl a)`);
 * node-local run facts at a cut are the static ones on the prefix through that cut's time.
 
-Contents: `deadline_awake_interval_at`, `deadline_mono_cut_at`, `publication_held_psync_at`,
-`publication_held_syncUntil_at`, `signed_att_wellFormed_at`, `released_att_processAt_at`,
-`held_att_processed_before_at`, `signed_released_by_at`, the attestation service contract
+Contents: network holdings (`publication_held_psync_at`), releases by a deadline
+(`signed_released_by_at`), the attestation service contract
 `PSyncFGAttTransportAt` with its monotone lift, and its base supplier `signed_row_service_psync_at`
 at the release hold `R·Δ_AC` of a release schedule of gap `R`. -/
 
@@ -322,29 +321,6 @@ theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
   rw [← NodeAsChainShape.CanonicalTrace.mem_honestKeysAt_iff] at hy
   exact NodeAsChainShape.CanonicalTrace.not_faulty_of_mem_honestKeysAt hy hat hah
 
-/-- A recipient is awake from its effective send/wake start through its call. The recipient is
-honest at the call. -/
-private theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
-    (hj : (simTraceAt S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) :
-    ∃ a, τ ≤ a ∧
-      (simTraceAt S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ =
-        a + (S.params (Model.pubOf E) hn).Δ ∧
-      rho.point.AwakeOnClosed (rho.key y) a ((simTraceAt S rho hn).time j) := by
-  have htr := network_trace_eq S rho hn
-  rw [htr, network_honestKeysAt_eq] at hy
-  rw [htr] at hj ⊢
-  exact NodeAsChainShape.CanonicalTrace.deadline_awake_interval
-    (network_localRun S rho hn hv) hy hj hτ _
-
-/-- Later observation cuts can only increase a recipient's deadline. -/
-private theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (y : Fin (Fintype.card V)) (τ Δ : Time) :
-    Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) :=
-  (simTraceAt S rho hn).deadline_mono_cut_of_time_mono
-    (simTraceAt_goldilocksRun S rho hn hv).time_mono y τ Δ
-
 /-- Partial synchrony services an actual publication by an origin honest at its event strictly
 before the protocol endpoint, at a recipient honest at the holding time. -/
 theorem publication_held_psync_at (hn : 1 ≤ Fintype.card V) {g : Time}
@@ -367,28 +343,6 @@ theorem publication_held_psync_at (hn : 1 ≤ Fintype.card V) {g : Time}
   · change max a g + E.ΔAC - 1 < max a g + E.ΔAC
     exact sub_one_lt _
 
-/-- Before an outage, only qualifying recipient deadlines receive service. The origin is honest
-at its event, the recipient at the holding time. -/
-private theorem publication_held_syncUntil_at (hn : 1 ≤ Fintype.card V) {b : Time}
-    (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
-    (hr : (publisherExecution S rho).actual r)
-    (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
-    (hrow : ¬ rho.log.fgAtt r.object)
-    {y : V} {a : Time} (hy : y ∉ rho.faultyAt (a + E.ΔAC - 1))
-    (ha : (publisherExecution S rho).eventTime r.event ≤ a)
-    (hb : a + (S.params (Model.pubOf E) hn).Δ ≤ b)
-    (hh : a + E.ΔAC - 1 ≤ rho.horizon)
-    (hawake : rho.point.AwakeOnClosed y a (a + E.ΔAC - 1)) :
-    rho.log.Held rho.point y r.object (a + E.ΔAC - 1) ∧ a + E.ΔAC - 1 < b := by
-  have hlt : a + E.ΔAC - 1 < b := by
-    change a + E.ΔAC ≤ b at hb
-    exact (sub_one_lt _).trans_le hb
-  exact ⟨hnet.msgs _ _ _
-    ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩
-    hx hrow y a ha hlt.le hh hy hawake, hlt⟩
-
 /-- A signing cut of the trace is at or before the engine horizon. -/
 private theorem signAt_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat} {a : FG.Att (Fintype.card V)}
@@ -405,19 +359,6 @@ theorem isCall_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
   obtain ⟨c, hc⟩ := hj
   rw [simTraceAt_eq] at hc ⊢
   exact simTrace_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
-
-/-- Signatures of a node honest at the signing cut are well-formed attestations. -/
-private theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} {i : Nat}
-    (hy : y ∈ honestKeysAt S rho
-      ((simTraceAt S rho hn).time i))
-    {a : FG.Att (Fintype.card V)} (hs : (simTraceAt S rho hn).SignAt y i a) :
-    a.WellFormed := by
-  rw [network_trace_eq S rho hn, network_honestKeysAt_eq S rho] at hy
-  rw [network_trace_eq S rho hn] at hs
-  exact NodeAsChainShape.CanonicalTrace.signed_att_wellFormed (network_localRun S rho hn hv) hy hs
 
 /-- An actual canonical attestation release is backed by own processing no later than the release
 (`released_att_processAt`): at the releasing tick for an own admission, or earlier for an
@@ -458,22 +399,6 @@ private theorem own_att_process_by (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
   rw [network_trace_eq S rho hn, Model.Run.ownKey, Equiv.symm_apply_apply] at hk
   rw [network_trace_eq S rho hn] at ht
   exact ⟨k, hk, ht⟩
-
-/-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
-honesty premise: the processing is the holder's own release or its receipt. -/
-private theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)}
-    {a : FG.Att (Fintype.card V)} (hwf : a.WellFormed) {j : Nat} {d D : Time}
-    (hh : rho.log.Held rho.point (rho.key y) (attObj a) d)
-    (hd : d < D) (hj : D ≤ (simTraceAt S rho hn).time j) :
-    ∃ k ≤ j, (simTraceAt S rho hn).ProcessAttAt y k a ∧
-      (simTraceAt S rho hn).time
-        k < D := by
-  rw [network_trace_eq S rho hn] at hj ⊢
-  apply NodeAsChainShape.CanonicalTrace.held_att_processed_before (network_localRun S rho hn hv)
-    (decode_attObj S rho hn a hwf _) (fun _ => own_att_process_by S rho hn hv) hh hd hj
 
 /-- **A signing is released by its release-gap bound.** For a release schedule of gap `R`
 (`ReleaseGapAt`), a signing at `i` by `x` honest then is released at some `u` with
