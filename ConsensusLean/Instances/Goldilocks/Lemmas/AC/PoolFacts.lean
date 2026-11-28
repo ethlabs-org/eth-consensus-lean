@@ -15,15 +15,6 @@ namespace Consensus.Goldilocks.AC
 
 variable (sp : ACParams)
 
-/-- A vote is in the pool of an integer slot `s` iff `s ≥ 0` and it is in the pool of slot
-`s.toNat`; the pool of a negative slot is empty. -/
-theorem ACState.mem_poolAt {n : Nat} {A : ACState n} {s : Int} {v : Vote n} :
-    v ∈ A.poolAt s ↔ 0 ≤ s ∧ v ∈ A.pool s.toNat := by
-  unfold ACState.poolAt
-  split_ifs with hs
-  · exact ⟨fun h => (List.not_mem_nil h).elim, fun h => absurd h.1 (not_le.mpr hs)⟩
-  · exact ⟨fun h => ⟨not_lt.mp hs, h⟩, And.right⟩
-
 /-! ### Admission at a time
 
 `Admits A A' t`: every vote of the pools of `A'` is in the same pool of `A`, or is of slot
@@ -457,10 +448,6 @@ theorem VoteClosed.step {P : ACState sp.n → Prop} (hP : VoteClosed P)
       | with_reducible exact hv
       | with_reducible exact hu _ h
       | with_reducible exact hu _ hv
-
-/-- Pools only grow outside a restart. -/
-private theorem voteClosed_grows (A₀ : ACState sp.n) : VoteClosed (Grows A₀) :=
-  ⟨fun A t v h => h.trans (grows_admitVote A t v), fun _ _ hp _ h => h.trans (Grows.of_pool_eq hp)⟩
 
 end Stamps
 
