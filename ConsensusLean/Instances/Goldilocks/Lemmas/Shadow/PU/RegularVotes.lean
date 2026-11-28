@@ -139,7 +139,7 @@ private theorem slow_live_locks_service_at
       hsl' l.slot (by omega) hle
     obtain ⟨hkxc, hR⟩ := (AC.upTo_resultAt hrun.time_mono).mp hR
     have hxk := hrun.antitone hkxc hx
-    have hj : g ≤ sp.ts l.slot := (Healing.le_gbar g).trans
+    have hj : g ≤ sp.ts l.slot := (AC.le_gbar g).trans
       (hm.trans ((AC.ts_le_iff sp).mpr (by omega)))
     have hreset : ∀ {z q j CV B}, z ∈ H (tr.time q) →
         AC.ResultAt tr.projAC z q j B CV →

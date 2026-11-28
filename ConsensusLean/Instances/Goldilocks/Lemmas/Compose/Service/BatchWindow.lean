@@ -135,7 +135,7 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
       (T.state y k₀).voteStamp e.msg < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
     rcases (AC.messageServedBefore_iff _ _ _ _).mp hservice with hfresh | hretained
     · exact fresh hfresh
-    have hevidence := (hretained.evidence hr hy).weaken (hdl k₀ le_rfl _ htj)
+    have hevidence := AC.PoolEvidenceBefore.weaken (hretained.evidence hr hy) (hdl k₀ le_rfl _ htj)
     rcases (AC.poolEvidenceBefore_iff _ _ _).mp hevidence with
       hv | ⟨a, b, hab, hav, hbv, has, hbs, ha, hb⟩
     · exact ⟨hes ▸ hv.1, hv.2⟩

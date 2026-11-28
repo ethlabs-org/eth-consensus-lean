@@ -279,7 +279,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
       have h := Compose.projAC_state (hrun.upTo ht0).toLocalRun hŵ j
       rwa [RunTrace.upTo_projAC, hstp j le_rfl, Trace.upTo_state tr ŵ hjt] at h
     have hnr' : ∀ k, G.cut ≤ k → k < j → ¬ ACTrace.RestartAt (tr.projAC.upTo t) ŵ k :=
-      fun k h1 h2 hrk => hnr k h1 h2 ((Compose.Growing.ac_restartAt_upTo _).1 hrk).2
+      fun k h1 h2 hrk => hnr k h1 h2 ((ACTrace.upTo_restartAt (tr := _)).1 hrk).2
     -- every vote extending the tip, of a validator honest at `t`, is delivered to the read cut
     have hdeliv : ∀ x k e, Compose.Growing.HVoteAt tr H x k e → x ∈ H t →
         e.msg.slot = G.slot + 1 → AC.VoteExtends U e.msg B →

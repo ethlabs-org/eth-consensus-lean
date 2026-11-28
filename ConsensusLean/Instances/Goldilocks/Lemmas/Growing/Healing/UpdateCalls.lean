@@ -30,7 +30,7 @@ theorem ResetPremisesUpTo.update_call_of_awake
   have hr := hp.run.upTo hd
   have hm := hp.run.time_mono
   have hgu : gbar g ≤ sp.ts u := by
-    have hnext := (AC.ts_le_iff_le_slot sp (gbar_nonneg g)
+    have hnext := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
       ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
     exact (not_le.mp hnext).le.trans hu
   have ha : (tr.upTo d).awake y d :=

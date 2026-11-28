@@ -42,7 +42,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
 private theorem gbar_lt_slot_succ_le_cutZ (g : Time) :
     gbar g < P.slotTime (P.slotOf (gbar g) + 1) ∧
       P.slotTime (P.slotOf (gbar g) + 1) ≤ cutZ P g :=
-  ⟨((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (gbar_nonneg g)).2,
+  ⟨((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (le_max_right g 0)).2,
     P.slotTime_strictMono.monotone (by omega)⟩
 
 /-- An honest node awake at a public time `q ∈ [ḡ, b]` has a call at a cut of time `q`. -/
@@ -52,7 +52,7 @@ private theorem exists_call_of_public (hrun : Node.LocalRun proposer dg H sg tr 
     (hgq : gbar g ≤ q) (hqb : q ≤ b) :
     ∃ j, tr.IsCall z j ∧ tr.time j = q := by
   obtain ⟨j, _, fgDue, hne, hcs, -⟩ :=
-    hrun.tick_of_awake z hz q ((gbar_nonneg g).trans hgq) hq (hawake z hz q hgq hqb)
+    hrun.tick_of_awake z hz q ((le_max_right g 0).trans hgq) hq (hawake z hz q hgq hqb)
   obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
   simp only [Nat.add_zero] at hn ht hl
   exact ⟨j, ⟨_, hn, hl⟩, ht⟩
@@ -112,7 +112,7 @@ theorem callLag_of_awake (hrun : Node.LocalRun proposer dg H sg tr ini) {g b : T
   intro z hz i m hi him hmT
   have hΔ : 0 < P.Δ := P.hΔ
   have hcz := (gbar_lt_slot_succ_le_cutZ (P := P) g)
-  have hg := le_gbar g
+  have hg : g ≤ gbar g := le_max_left g 0
   rw [max_eq_left (by linarith)]
   -- `q = Δ·⌈(τ + Δ)/Δ⌉`, the first public time at or after `τ + Δ`
   set r := (tr.time i + 2 * P.Δ - 1) / P.Δ with hr
@@ -133,7 +133,7 @@ theorem snapshotCall_of_awake (hrun : Node.LocalRun proposer dg H sg tr ini) {g 
       tr.deadline z j (max (cutZ P g) g) P.Δ ≤ tr.time j := by
   intro z hz m hm hmT
   have hcz := (gbar_lt_slot_succ_le_cutZ (P := P) g)
-  rw [max_eq_left (by linarith [le_gbar g])]
+  rw [max_eq_left ((le_max_left g 0).trans (hcz.1.le.trans hcz.2))]
   exact call_before_of_public hrun hawake hz le_rfl (cutZ_add_public g) le_rfl (by linarith)
     (by linarith)
 

@@ -130,8 +130,9 @@ theorem proposal_call_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer d
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall
     (by rw [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl]; exact hd)
   intro c hci hrc
-  have := h c hci (by rw [RunTrace.upTo_projAC]; exact (ac_restartAt_upTo _).mpr ⟨hm hci, hrc⟩)
-  exact this
+  exact h c hci (by
+    rw [RunTrace.upTo_projAC]
+    exact (ACTrace.upTo_restartAt (tr := _)).mpr ⟨hm hci, hrc⟩)
 
 /-- **A message sent or admitted from `a` by a node honest then is held by a later caller**
 (forwarding, windowed): under the service from `a`, a slot-window message
@@ -154,7 +155,7 @@ theorem sync_from_forward_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     (ac_deadline_le_of_restarts hrs _).trans (by rw [max_self])
   have hserv := hsync.message y k v hy hsend ha X i ℓ hX hc (hdl'.trans hb) (hdl'.trans hdl)
   have h := AC.held_of_deadline_serviceU (acRun_upTo hrun hnc hd).localRun.toU (k := k) hX
-    (fun k' hk' hrk => hrs k' hk' ((ac_restartAt_upTo _).mp hrk).2) hdl hslot
+    (fun k' hk' hrk => hrs k' hk' ((ACTrace.upTo_restartAt (tr := _)).mp hrk).2) hdl hslot
     (ac_messageServedBefore_upTo hm le_rfl hserv)
   rwa [projAC_upTo_state hrun le_rfl] at h
 

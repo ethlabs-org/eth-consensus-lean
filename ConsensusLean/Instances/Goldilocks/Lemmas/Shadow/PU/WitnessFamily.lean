@@ -67,12 +67,12 @@ private theorem relayed_accept_before_at
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl' : ∀ c ≤ j, tr.deadline y c (max (tr.time k) g) sp.Δ ≤ tr.time k + sp.Δ := by
       intro c hc
-      rw [max_eq_left ((Healing.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+      rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
       have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
         (fun r hrc hrs => hnr r (hrc.trans hc) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
       change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
       rwa [max_eq_left hnew] at h
-    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((Healing.le_gbar g).trans hnew)
+    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((AC.le_gbar g).trans hnew)
       y j hy ⟨_, Compose.projAC_callAt.mp hcy⟩ ((hdl' j le_rfl).trans hkt) hF
     refine ⟨a, lt_of_le_of_ne haj ?_, ha,
       lt_max_of_lt_left (hat.trans_le (hdl' a haj))⟩
@@ -184,14 +184,14 @@ theorem frame_witness_readPoint_stamp_at
     have accepted : ∃ q < i, tr.AcceptAt y q Q ∧ tr.time q < AC.freeze sp (s + 1) := by
       by_cases hnew : gbar g ≤ tr.time k
       · have hdl : tr.deadline y i (max (tr.time k) g) sp.Δ ≤ tr.time i := by
-          rw [max_eq_left ((Healing.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+          rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
           have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := i)
             (fun r hri hrs => hnr y r (hrun.antitone (hrun.time_mono hri) hy)
               (Compose.projAC_restartAt.mp hrs)) (tr.time k)
           change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
           rw [max_eq_left hnew] at h
           exact h.trans (by linarith only [hkt, hti, hts, sp.toParams.hΔ])
-        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((Healing.le_gbar g).trans hnew)
+        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((AC.le_gbar g).trans hnew)
           y i hy ⟨_, Compose.projAC_callAt.mp hc.1⟩ hdl (hfr ▸ hFQ)
         have hqi' : q < i := by
           refine lt_of_le_of_ne hqi ?_
@@ -202,7 +202,7 @@ theorem frame_witness_readPoint_stamp_at
             (Compose.projAC_restartAt.mp hrs)) (tr.time k)
         change _ ≤ max (tr.time k) (gbar g) + sp.Δ at hdead
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
-        rw [max_eq_left ((Healing.le_gbar g).trans hnew)] at hqd
+        rw [max_eq_left ((AC.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
       · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk hk
           (not_le.mp hnew) hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
@@ -1054,7 +1054,7 @@ theorem witness_voterBlockTree_at
       · obtain ⟨q, hqi, hq, hqt⟩ :=
           (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) (hi := tr.time (k + 1))
               le_rfl).2
-            w (k + 1) Q hwk' hacc ((Healing.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
+            w (k + 1) Q hwk' hacc ((AC.le_gbar g).trans hkg) le_rfl y i ell hy hc.1
             (by have := hdl i le_rfl _ hkt;
                 change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
                 linarith only [this, hti, hts, hΔ]) hFQ

@@ -198,7 +198,7 @@ theorem faultBoundK_of_awake (hK : Compose.Growing.CommitteeFacts tr (fun _ => H
     AC.FaultBoundK K s tr.projAC H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
+  have ht0 : 0 ≤ t := (AC.gbar_nonneg g).trans hgt
   have hst : sp.slot (gbar g) + 3 ≤ sp.slot t := by
     have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)

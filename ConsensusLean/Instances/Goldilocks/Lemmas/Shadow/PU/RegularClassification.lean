@@ -283,7 +283,7 @@ private theorem prior_vote_call_before_freeze {K : AC.CommitteeDict sp.n} {b : T
       sp.ts s₀ ≤ tr.time a ∧ tr.time a < AC.freeze sp e.msg.slot := by
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
+  have hg0 := AC.gbar_nonneg g
   have hcast : ((e.msg.slot - 1 : Nat) : Int) = (e.msg.slot : Int) - 1 := by omega
   obtain ⟨a, ell₀, ha, -, ht⟩ := hS.driven.tick y hy
     (sp.ts ((e.msg.slot - 1 : Nat) : Int) + sp.Δ) (by linarith)

@@ -106,7 +106,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.origins_compati
   · have hgj : g ≤ sp.ts l := by
       have := hp.cutZ_le_ts_of_highOrigin_at ho
       have := Healing.lt_cutZ sp g
-      have := Healing.le_gbar g
+      have := AC.le_gbar g
       have := sp.toParams.hΔ
       linarith
     have hsync := hp.reset_syncACAt (hi := sp.ts (l + 1 : Nat) + sp.Δ) hgj
