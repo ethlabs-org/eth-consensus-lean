@@ -1,4 +1,6 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
@@ -77,10 +79,9 @@ theorem proposal_window_witness
     by_cases he : d.head = B
     · exact he ▸ hBm
     · exact (Anc.mem hDBs he).1
-  have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at hr.toLocalRun hzk ip).reachableWith
-    Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1)).reachableWith
+  have hσ := Healing.Store.σ_eq_of_mem
+    (Node.fg_reachable_at hr.toLocalRun hzk ip)
+    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1))
     (Coherence.honest_blocks_coherent hr.toLocalRun (hnc.upTo _)).1
     (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
   have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
@@ -151,8 +152,8 @@ theorem proposal_viable_at_call_with_early_at
   have hra := hac.upTo (hrun.time_nonneg ja)
   have hca'' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hca'⟩
   have hPt := (AC.accept_new sp hra.localRun hzja ⟨ella, hca'', hblock⟩).1 ella hca''
-  have hfa := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hzja hca'
-  have hfi := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc
+  have hfa := Compose.Growing.frame_of_projAC_at hrun hzja hca'
+  have hfi := Compose.Growing.frame_of_projAC_at hrun hy hc
   rw [hfa, Node.frame_eq, Store.toFrame_tree] at hPt
   have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) hzk hP').2.1

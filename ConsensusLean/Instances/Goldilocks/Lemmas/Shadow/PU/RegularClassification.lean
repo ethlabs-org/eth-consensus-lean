@@ -57,40 +57,6 @@ namespace Consensus.Goldilocks.Healing.PU
 
 open AC (Blk Frm)
 
-/-- The frame-level step of the existing witness argument when the root is F.
-The ambient coherence premise must come from the shadow run, not a stock-run cast. -/
-theorem regular_witness_frame_of_root_F
-    {n : Nat} {FGP : Type} {U : Set (Blk n FGP)} {Φ : Frm n FGP}
-    (hU : Coherent U) (hΦ : FrameOK Φ) (hsub : Φ.tree ⊆ U)
-    (hroot : Φ.fcRoot = Φ.F) {D Q : Blk n FGP}
-    (hvQ : Q ∈ Φ.viableHeads) (hDQ : Anc U D Q) :
-    Anc U D Φ.F ∨
-      (Anc U Φ.F D ∧ D ∈ Φ.tree ∧ Φ.Anc Φ.fcRoot D ∧
-        Q ∈ Φ.tree ∧ Q ∈ Φ.viableHeads ∧ Φ.Anc D Q) := by
-  have hQt := hΦ.viableHeads_subset hvQ
-  have hFQ := (hΦ.rooted.2 Q hQt).mono hsub
-  rcases AC.anc_total hU hFQ hDQ with hFD | hDF
-  · have hmiddle : ∀ {W}, Φ.Anc Φ.F W → Anc U D W → D ∈ Φ.tree := by
-      intro W hpath
-      induction hpath with
-      | refl =>
-        intro hDF
-        have he := Anc.antisymm hU hFD hDF
-        exact he ▸ hΦ.rooted.1
-      | @tail A B hFA hAB ih =>
-        intro hDB
-        rcases Relation.ReflTransGen.cases_tail hDB with he | ⟨C, hDC, hCB⟩
-        · exact he ▸ hAB.2.1
-        · have he : C = A := hU.1 hCB.1 (hsub hAB.1)
-            (Option.some.inj (hCB.2.2.symm.trans hAB.2.2))
-          subst C
-          exact ih hDC
-    have hDframe := hmiddle (hΦ.rooted.2 Q hQt) hDQ
-    have hFDf := AC.anc_tree_of_anc_U hU hΦ hsub hΦ.rooted.1 hFD hDframe
-    exact Or.inr ⟨hFD, hDframe, hroot ▸ hFDf, hQt, hvQ,
-      AC.anc_tree_of_anc_U hU hΦ hsub hDframe hDQ hQt⟩
-  · exact Or.inl hDF
-
 open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
@@ -347,49 +313,6 @@ end Static
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
-
-/- R2 interface handoff: these exact signatures belong in Shadow/PU/RegularVotes.lean.
-They are comments, not declarations in this file. The shared variables and namespace
-are those above. R2 also owns their next-supporter and early-base dependencies.
-
-theorem regular_fast_next_votes_at' {s₀ s M : Nat}
-    {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
-    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
-    (hmb : sp.ts s + 6 * sp.Δ ≤ b)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
-    (hfast : AC.FastUpdateAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X
-
-theorem regular_slow_next_votes_at' {s₀ s M : Nat}
-    {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
-    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (hsl : AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D
--/
 
 theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
