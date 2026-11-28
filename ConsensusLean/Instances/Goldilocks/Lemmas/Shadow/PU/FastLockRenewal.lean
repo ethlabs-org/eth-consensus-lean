@@ -179,22 +179,11 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
       hcatch hnr' (by linarith) hsr hjoinr hfin hPg (hext (s + 1) (by omega) (by omega))
       (hext (s + 2) (by omega) (by omega)) hyj hu (by rw [hjt]; linarith)
       (by rw [hjt]; linarith) hK
-    have hΦ := Compose.Growing.frameIn_at hrun hnc hyj hu.1
     have hFP : Anc (tr.HonestBlocksAt H) ellj.frame.F P := by
       rw [Compose.Growing.frame_of_projAC_at hrun hyj hu.1, Node.frame_eq, Store.toFrame_F]
       exact hfin y j hyj (by rw [hjt]; linarith) (by rw [hjt]; linarith)
         (by rw [hjt]; linarith)
-    have hDt := (AC.deepest_mem hfast).1.1.1
-    have hcoh := Compose.Growing.honestBlocksAt_coherent hrun hnc
-    have hPt := AC.frame_mem_of_between sp hcoh hΦ.1 hΦ.2 hDt hPD hFP
-    have hPDf := AC.anc_tree_of_anc_U hcoh hΦ.1 hΦ.2 hPt hPD hDt
-    have hPCf := AC.anc_tree_of_anc_U hcoh hΦ.1 hΦ.2 hPt hPC
-      (AC.deepest_mem hconf).1.1
-    exact ⟨j, fast_update_of_unvetoed_at hyj hrun hnc hu hconf hPt hPg hPCf
-      (no_veto_of_lock_roots_compatible_at hrun hnc hyj hu.1 hPt hlocks)
-      ((AC.deepest_mem hfast).1.2.trans (Nat.mul_le_mul_left 2
-        (Set.ncard_le_ncard (AC.supporters_antitone sp _ ellj.frame _ _ P D hPDf)
-          (Set.toFinite _))))⟩
+    exact ⟨j, fast_update_of_compatible_locks_at hrun hnc hyj hu hconf hfast hFP hPg hPC hPD hlocks⟩
   have hjt : tr.time j = sp.ts r + 6 * sp.Δ := by obtain ⟨ellj, C, hu, _⟩ := hfu; exact hu.2.2.1
   have hji : j < i := by
     by_contra hn

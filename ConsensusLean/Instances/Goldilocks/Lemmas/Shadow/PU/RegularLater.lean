@@ -120,7 +120,7 @@ theorem regular_later_heads_at
   have hEQ : Hd = Q := hcoh.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
   rcases hclass with hv | ho
-  · exact Shadow.PU.Growing.later_heads_of_early_witness_at hrun hnc hsvc hawake hf
+  · exact Shadow.PU.Growing.later_heads_of_frameWindow_at hrun hnc hsvc hawake hf
       hcatch hnr (by have := hts hs₀s; linarith) hmb (hsub (hts hs₀s) le_rfl)
       hz hqt (by linarith) hc hHd hv.2 hDQ hbase hK
   · obtain ⟨hA, l, hl, hls, a, hai, D', CV', hza, hop, -, -, -, hQD⟩ := ho
