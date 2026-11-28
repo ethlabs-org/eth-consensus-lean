@@ -57,7 +57,7 @@ theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
   acRun hnc := Compose.goldilocks_ac_projection_from hrun hnc
   coherent hnc := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   tree_mono y hy _ _ hki := Compose.tree_mono hrun.toLocalRun hy hki
-  tree_accepted y hy _ _ hW := Compose.tree_cases hrun.toLocalRun hy hW
+  tree_accepted y hy _ _ hW := Healing.tree_accepted hrun.toLocalRun hy hW
   hj_mono y hy _ _ hij := Healing.hj_mono hrun.toLocalRun hy hij
   ac_block_after y hy _ _ ha := Healing.ac_block_after hrun.toLocalRun hy ha
   attest_source y hy _ _ _ hc := Compose.attest_source hrun.toLocalRun hy hc
