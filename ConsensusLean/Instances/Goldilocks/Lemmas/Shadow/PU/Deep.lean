@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Goldiloc
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
@@ -256,8 +255,7 @@ theorem high_toFG_fast_at
     have hmono := Coherence.hmax_mono hrun'.toLocalRun hzz hkj
     simp only at hmono
     rw [hst _ hk1d, hst _ hjd] at hmono
-    have hσ := Store.σ_eq_of_mem_with (hreach _ hk1d).reachableWith
-      Store.finalitySpec_updateFinality (hreach r hrd).reachableWith hinj
+    have hσ := Healing.Store.σ_eq_of_mem (hreach _ hk1d) (hreach r hrd) hinj
       (fun B hB => ⟨z, hzz, k + 1, by rw [hst _ hk1d]; exact hB⟩)
       (fun B hB => ⟨z, hzz, r, by rw [hst r hrd]; exact hB⟩) hCk hCt
     have := (hge C hCk).trans (hmono.trans hHZ)

@@ -169,9 +169,8 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
   obtain rfl : acc = true := hacc.2 ⟨fg', hon⟩
   have hfgB : B ∈ (tr.state y (j + 2 + 1)).fg.tree := by
     have hb := ((cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy _ _ hcall)).2.1
-    rw [Store.onBlock_eq_onBlockWith] at hb
     rw [tr.state_succ_of_call hcall,
-      (Store.tree_grows_with Store.finalitySpec_updateFinality).1 B _ hb]
+      (Store.tree_grows P A.Payload _ _ (Node.fg_reachable_at h hy (j + 2))).1 B _ hb]
     exact Set.mem_insert _ _
   -- so the acceptance at `i` is that one
   obtain rfl : j + 2 = i := by
