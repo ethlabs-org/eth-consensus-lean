@@ -287,8 +287,8 @@ theorem healing_contracts_zero_iff (O : ACHealing A sg runs) :
     (round_of_warm_at A sg O ↔ round_of_warm_atNoHold A sg O) ∧
     (rise_reset_rounds_at A sg O ↔ rise_reset_rounds_atNoHold A sg O) := by
   simp only [reset_of_high_proposal_at, reset_of_high_proposal_atNoHold, round_of_warm_at,
-    round_of_warm_atNoHold, rise_reset_rounds_at,
-    rise_reset_rounds_atNoHold, service_zero_iff, and_self]
+    round_of_warm_atNoHold, rise_reset_rounds_at, rise_reset_rounds_atNoHold, service_zero_iff,
+    and_self]
 
 end Healing
 
@@ -465,8 +465,7 @@ theorem claim_suppliers_zero_iff (M : RunMap rho payload) (K : Contract Progress
     (DeadlinePremisesSupply M K ↔ DeadlinePremisesSupplyNoHold M K) ∧
     (PreparationPremisesSupply M K ↔ PreparationPremisesSupplyNoHold M K) := by
   simp only [DeadlinePremisesSupply, DeadlinePremisesSupplyNoHold, PreparationPremisesSupply,
-    PreparationPremisesSupplyNoHold,
-    premises_zero_iff, and_self]
+    PreparationPremisesSupplyNoHold, premises_zero_iff, and_self]
 
 /-- **At the default FG delay and hold `0`, `FinalReadTransport` is the transport before the
 hold.** -/

@@ -95,19 +95,6 @@ section Key
 
 variable {a b : Store P A.Payload}
 
-/-- Monotone store heights give a monotone key; at fixed `h_max`, top cannot become gap. -/
-theorem frameKey_mono (hm : a.hmax ≤ b.hmax) (hj : a.hj ≤ b.hj) (hb : b.hj < b.hmax) :
-    frameKey A a ≤ frameKey A b := by
-  classical
-  rw [frameKey_eq, frameKey_eq]
-  split_ifs <;> omega
-
-/-- The key along an honest node's cuts is monotone. -/
-theorem frameKey_monotone {st : Nat → Store P A.Payload}
-    (hm : Monotone fun i => (st i).hmax) (hj : Monotone fun i => (st i).hj)
-    (hlt : ∀ i, (st i).hj < (st i).hmax) : Monotone fun i => frameKey A (st i) :=
-  fun _ _ hij => frameKey_mono (hm hij) (hj hij) (hlt _)
-
 /-- On two consecutive maximum heights, the key takes one of four consecutive values. -/
 theorem frameKey_bounds {HZ : Nat} (hlo : HZ ≤ a.hmax) (hhi : a.hmax ≤ HZ + 1) :
     2 * HZ ≤ frameKey A a ∧ frameKey A a ≤ 2 * HZ + 3 := by
