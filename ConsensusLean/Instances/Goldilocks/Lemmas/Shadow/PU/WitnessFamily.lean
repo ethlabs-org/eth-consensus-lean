@@ -821,51 +821,68 @@ theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     rw [frame_of_projAC_at hrun hw hcw, Node.frame_eq, Store.toFrame_tree] at hQw
     exact hQw.1
-  intro r hrlo
-  induction r, hrlo using Nat.le_induction with
-  | base => exact fun _ => ⟨hbase, fun h => by omega⟩
-  | succ m hsm ih =>
-    intro hrN
-    have ht := hts hrN
-    have hms := hts hsm
-    have hwarm : gbar g + 4 * sp.Δ ≤ sp.ts m := by linarith only [hm, hms, hsstep]
-    have hprior := (ih (show m ≤ N by omega)).1
-    have hwin := hW.mono (hts (show s ≤ m by omega))
-      (show sp.ts (m + 1 : Nat) + sp.Δ ≤ sp.ts N + sp.Δ by linarith only [ht])
-    have hfinal {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-        (hlo : sp.ts s ≤ tr.time i) (hhi : tr.time i ≤ sp.ts N + sp.Δ) :
-        Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q := hfin y i hy hlo hhi
-    refine ⟨unanimous_next_votes_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith only [ht, hmb]) hwin hXQ ?_ hprior hK, ?_⟩
-    · intro y i e hy hv hes
-      obtain ⟨ell, hc⟩ := hv
-      have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
-        (hnc.upTo _)).localRun
-      rw [RunTrace.upTo_projAC] at hr
-      have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-      have hs : sp.slot (tr.time i) = m + 1 := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
-      have hlo : sp.ts s ≤ tr.time i :=
-        (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
-          rw [hs]; exact_mod_cast (by omega : s ≤ m + 1))
-      have hhi : tr.time i ≤ sp.ts N + sp.Δ := by
-        have h := AC.vote_time_leU hr.toU hy ⟨ell, hc'⟩
-        change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
-        rw [hs] at h
-        linarith only [h, ht]
-      exact frame_witness_readPoint_stamp_at hrun hnc hsvc hcatch hnr hw hy hcw hc hes hwarm
-        (by linarith only [hat, hms, hsstep, hΔ]) hQw ((hFst hy hc.1) ▸ hfinal hy hlo hhi)
-    · intro _ y i ell hy hc hcall hti d pay hd
-      have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
-      have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith only [ht, hΔ]
-      have hmstep := AC.ts_succ m (sp := sp)
-      have hQt := frame_relay_before_at hrun hnc hsvc hcatch hw hy
-        (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcw hc hQw
-        (by rw [hti]; linarith only [hwarm, hmstep, hΔ])
-        (by rw [hti]; linarith only [hat, hms, hsstep, hmstep, hΔ])
-        ((hFst hy hc) ▸ hfinal hy hlo hhi)
-      rw [frame_of_projAC_at hrun hy hc, Node.frame_eq, Store.toFrame_tree] at hQt
-      exact unanimous_next_proposal_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
-        (by linarith only [ht, hmb]) hwin hXQ hprior hy hc hcall hti hd hQt.1 hK
+  have hvt {y : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))}
+      (hy : y ∈ H (tr.time i)) (hv : AC.VoteAt tr.projAC y i e) :
+      tr.time i ≤ sp.ts e.msg.slot + sp.Δ := by
+    obtain ⟨ell, hc⟩ := hv
+    simpa only using (Compose.Growing.cast_head_fcRoot_at hrun hnc hy hc).2
+  have hstep := Healing.Growing.UnanimousStep.later_heads_of_step (s := s + 1) (N := N)
+    (b := sp.ts N + sp.Δ) (P := X) (fun y i e hy hv _ hs => hbase y i e hy hv hs)
+    (fun m hsm hmN hprior => by
+      have ht := hts (show m + 1 ≤ N by omega)
+      have hms := hts (show s ≤ m by omega)
+      have hwarm : gbar g + 4 * sp.Δ ≤ sp.ts m := by
+        have := hts (show s + 1 ≤ m by omega)
+        linarith only [hm, this, hsstep]
+      have hprior' : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+          e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X :=
+        fun y i e hy hv hs => hprior y i e hy hv
+          (by have h := hvt hy hv; rw [hs] at h; linarith only [h, hts (show m ≤ N by omega)])
+          hs
+      have hwin := hW.mono (hts (show s ≤ m by omega))
+        (show sp.ts (m + 1 : Nat) + sp.Δ ≤ sp.ts N + sp.Δ by linarith only [ht])
+      have hfinal {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+          (hlo : sp.ts s ≤ tr.time i) (hhi : tr.time i ≤ sp.ts N + sp.Δ) :
+          Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q := hfin y i hy hlo hhi
+      have hvotes := unanimous_next_votes_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr
+        hwarm (by linarith only [ht, hmb]) hwin hXQ ?_ hprior' hK
+      · refine ⟨fun y i e hy hv _ hs => hvotes y i e hy hv hs, ?_⟩
+        intro y i ell hy hc hcall hti _ d pay hd
+        have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
+        have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith only [ht, hΔ]
+        have hmstep := AC.ts_succ m (sp := sp)
+        have hQt := frame_relay_before_at hrun hnc hsvc hcatch hw hy
+          (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcw hc hQw
+          (by rw [hti]; linarith only [hwarm, hmstep, hΔ])
+          (by rw [hti]; linarith only [hat, hms, hsstep, hmstep, hΔ])
+          ((hFst hy hc) ▸ hfinal hy hlo hhi)
+        rw [frame_of_projAC_at hrun hy hc, Node.frame_eq, Store.toFrame_tree] at hQt
+        exact unanimous_next_proposal_of_windowWitness_at hrun hnc hsvc hawake hf hcatch hnr
+          hwarm (by linarith only [ht, hmb]) hwin hXQ hprior' hy hc hcall hti hd hQt.1 hK
+      · intro y i e hy hv hes
+        obtain ⟨ell, hc⟩ := hv
+        have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
+          (hnc.upTo _)).localRun
+        rw [RunTrace.upTo_projAC] at hr
+        have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+        have hs : sp.slot (tr.time i) = m + 1 :=
+          (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
+        have hlo : sp.ts s ≤ tr.time i :=
+          (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
+            rw [hs]; exact_mod_cast (by omega : s ≤ m + 1))
+        have hhi : tr.time i ≤ sp.ts N + sp.Δ := by
+          have h := hvt hy ⟨ell, hc⟩
+          rw [hes] at h
+          linarith only [h, ht]
+        exact frame_witness_readPoint_stamp_at hrun hnc hsvc hcatch hnr hw hy hcw hc hes hwarm
+          (by linarith only [hat, hms, hsstep, hΔ]) hQw ((hFst hy hc.1) ▸ hfinal hy hlo hhi))
+  intro r hr hrN
+  obtain ⟨hv, hp⟩ := hstep r hr hrN
+  refine ⟨fun y i e hy hve hs => hv y i e hy hve ?_ hs, fun h2 y i ell hy hc hcall hti d pay hd =>
+    hp (by omega) y i ell hy hc hcall hti (by rw [hti]; linarith only [hts hrN, hΔ]) d pay hd⟩
+  have h := hvt hy hve
+  rw [hs] at h
+  linarith only [h, hts hrN]
 
 /-- **A next-vote base propagates through later labels** from an early viable witness
 (`later_heads_of_early_witness_at` over the shadow run). The witness is a viable head of the
