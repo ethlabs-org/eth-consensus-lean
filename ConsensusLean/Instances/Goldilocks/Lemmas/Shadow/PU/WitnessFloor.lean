@@ -4,6 +4,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
@@ -14,12 +19,13 @@ public section
 
 The store-level bounds here support proposal viability over the fixed-maximum P-U window.
 
-The only P-U-new walk head is a block `W` of height `h_j` above `J` in a contest. An honest
+The only P-U-new walk head is a block `W` of height `h_j = h_max - 1` above `J` when
+`h_max = h_j + 1`. An honest
 proposal on it includes, from the proposer's pool, every attestation of `J`'s justification
 quorum that is not already on `W`'s chain (`proposal_attestations`), and at an entry whose
 previous height is justified every attestation of the finality quorum of the predecessor: both
 quorums lie on the chain of a held justification of `J` (`proposal_crosses`). So the proposal
-justifies `J`'s height and enters height `h_j + 1 = h_max`, the contest floor. The paper
+justifies `J`'s height and enters height `h_j + 1 = h_max`. The paper
 candidates assumed the proposal carries fewer than `q` attestations; the inclusion rule and the
 held justification exclude that.
 -/
@@ -195,15 +201,12 @@ theorem payload_mem_atts (hr : st.Reachable acp₀) :
     cases ha
   | @tail s s' _ hs ih =>
     rcases (Store.step_iff _ _).1 hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
-    · rw [Store.onBlock_eq_onBlockWith] at hB'
-      obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Store.onBlockWith_eq_some hB'
-      have hspec := (Store.finalitySpec_iff _).1
-        (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
+    · obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Goldilocks.Store.onBlock_eq_some hB'
       intro B hB a ha
       set st₁ : Store P ACP :=
         { s with blocks := Function.update s.blocks B'.root (some B'),
                  σ := Function.update s.σ B'.root σ' } with hst₁
-      obtain ⟨hb, -, hat, -⟩ := hspec st₁ σ'
+      obtain ⟨hb, -, hat, -⟩ := Goldilocks.Store.updateFinality_spec st₁ σ'
       obtain ⟨hb2, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B'.fgPayload
       have hB2 : (Function.update s.blocks B'.root (some B')) B.root = some B := by
         have : ((Store.updateFinality st₁ σ').addAtts B'.fgPayload).blocks B.root = some B := hB
@@ -235,9 +238,7 @@ theorem rows_at {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
         (r.timeout = false → r.val ∈ (st.σ W.root).target) ∧
         ∀ pr, r.fin = some pr → pr ∈ (st.σ W.root).pending →
           r.val ∈ (st.σ W.root).fin pr.1)) := by
-  have hR := hr.reachableWith
-  have hu' := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
-  have hg := (accepted_tree_with hu' hR).2.2.2 W hW
+  have hg := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 W hW
   clear hW
   induction hg with
   | refl =>
@@ -247,7 +248,7 @@ theorem rows_at {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
     · cases hZ
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨-, -, -, hst⟩ := step_σ_with hu' hR h2 hp
+    obtain ⟨-, -, -, hst⟩ := Healing.Store.step_σ hr h2 hp
     obtain ⟨hval, hshape⟩ := step_rows hst
     obtain ⟨bf, bt, brow⟩ :=
       Store.foldl_bits { st.σ W'.root with s := W.slot } W.fgView.atts
@@ -324,15 +325,13 @@ private theorem justify_finalizes_pair {gp : FGParams} {c : List (FGBlock gp.n)}
 private theorem hj_anc {A W : NodeBlock P ACP} (h : st.Anc A W) :
     ((st.σ W.root).hj = (st.σ A.root).hj ∧ (st.σ W.root).J = (st.σ A.root).J) ∨
       (st.σ A.root).h ≤ (st.σ W.root).hj := by
-  have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   induction h with
   | refl => exact Or.inl ⟨rfl, rfl⟩
   | @tail W' W hAW' hp ih =>
     obtain ⟨h1, h2, hpar⟩ := hp
-    obtain ⟨-, -, -, hst⟩ := step_σ_with hu hR h2 hpar
-    have hle := h_le_of_store_anc_with hu hR hAW'
-    have hjh := hj_lt_h_with hu hR h1
+    obtain ⟨-, -, -, hst⟩ := Healing.Store.step_σ hr h2 hpar
+    have hle := Healing.h_le_of_store_anc hr hAW'
+    have hjh := Healing.Store.hj_lt_h hr h1
     rcases step_hj hst with ⟨e1, e2⟩ | ⟨e1, -⟩
     · rcases ih with ⟨f1, f2⟩ | f
       · exact Or.inl ⟨e1.trans f1, e2.trans f2⟩
@@ -343,7 +342,7 @@ private theorem hj_anc {A W : NodeBlock P ACP} (h : st.Anc A W) :
 private theorem hj_eq_of_anc {A W : NodeBlock P ACP} (hW : W ∈ st.tree) (h : st.Anc A W)
     (hh : (st.σ W.root).h = (st.σ A.root).h) :
     (st.σ W.root).hj = (st.σ A.root).hj ∧ (st.σ W.root).J = (st.σ A.root).J := by
-  have hjh := hj_lt_h_with Store.finalitySpec_updateFinality hr.reachableWith hW
+  have hjh := Healing.Store.hj_lt_h hr hW
   rcases hj_anc hr h with h' | h'
   · exact h'
   · omega
@@ -358,23 +357,27 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
     {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations W) {σ' : ChainState P.n}
     (hσ : P.fg.stateTransition (st.σ W.root) B = some σ') : st.hj < σ'.h := by
   classical
-  have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
-  have hcoh := (accepted_tree_with hu hR).2.1
+  have hcoh := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1
   have hroot : ∀ {X Y : NodeBlock P ACP}, X ∈ st.tree → Y ∈ st.tree → X.root = Y.root →
       X = Y := fun hX hY he => hcoh.1 hX hY he
-  have hjh := hj_lt_h_with hu hR hW
+  have hjh := Healing.Store.hj_lt_h hr hW
   obtain ⟨-, hJm, -, ⟨X, hX, hXJ, hXj⟩, -⟩ := cache_invariants _ _ _ _ hr
-  obtain ⟨hJcase, -⟩ := store_J_entry_with hu hR
+  have hJcase : (st.J = P.genesisBlock acp₀ ∧ st.hj = 0) ∨
+      ((st.σ st.J.root).h = st.hj ∧ (st.σ st.J.root).Th = st.J.root) := by
+    obtain ⟨E, hE, hEr, -, hcase⟩ := Goldilocks.Store.J_entry_hj _ _ hr hX
+    obtain rfl : E = st.J := hroot hE hJm (hEr.trans hXJ)
+    rcases hcase with ⟨he, h0⟩ | ⟨h1, h2⟩
+    · exact Or.inl ⟨he, hXj ▸ h0⟩
+    · exact Or.inr ⟨h1.trans hXj, h2⟩
   have hJ : (st.σ st.J.root).h = st.hj ∧ (st.σ st.J.root).Th = st.J.root := by
     rcases hJcase with ⟨-, h0⟩ | h
     · omega
     · exact h
   have hWT : (st.σ W.root).Th = st.J.root :=
-    (Th_eq_of_anc_with hu hR hJW (by omega)).trans hJ.2
+    (Healing.Th_eq_of_anc hr hJW (by omega)).trans hJ.2
   have hpool := payload_mem_atts hr
   have hrowsW := rows_at hr hW
-  obtain ⟨cW, hcW, -, -⟩ := held_chain_with hu hR hW
+  obtain ⟨cW, hcW, -, -⟩ := Goldilocks.Store.held_chain hr hW
   obtain ⟨bf, bt, brow⟩ := Store.foldl_bits { st.σ W.root with s := B.slot } B.atts
   -- every pool attestation on `W`'s entry is counted by `B`
   have hcount : ∀ a, a ∈ st.atts → a.h = st.hj → a.T = st.J.root →
@@ -397,7 +400,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
         exact ⟨Or.inl ⟨by omega, haT.trans hWT.symm⟩, hon⟩
       exact brow a haB (by simp only; omega) (by simp only; rw [hWT]; exact haT)
   -- the target quorum of `J`'s justification
-  obtain ⟨cX, hcX, -, hattX⟩ := held_chain_with hu hR hX
+  obtain ⟨cX, hcX, -, hattX⟩ := Goldilocks.Store.held_chain hr hX
   obtain ⟨Qt, hQt, hvt⟩ := (justification_quorum P.fg hcX).2 (by omega)
   have htq : P.fg.q ≤
       (B.atts.foldl ChainState.processAtt { st.σ W.root with s := B.slot }).target.card := by
@@ -412,27 +415,31 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
         { st.σ W.root with s := B.slot }).fin (st.σ W.root).hj).card := by
     intro hb hpend
     obtain ⟨hb0, hb1⟩ := hb
-    have hXh := hj_lt_h_with hu hR hX
+    have hXh := Healing.Store.hj_lt_h hr hX
     obtain ⟨Y, hY, hYX, hYh, hYT⟩ :=
-      entry_at_height_with hu hR hX (h := st.hj + 1) (by omega) (by omega)
+      Goldilocks.Store.entry_at_height _ _ hr hX (h := st.hj + 1) (by omega) (by omega)
     obtain ⟨pr, hpr⟩ : ∃ pr, Y.parent = some pr := by
       cases hp : Y.parent with
       | none =>
-        have hg := (hR.good hu).parent_none Y hY hp
+        have hg : Y = P.genesisBlock acp₀ := by
+          rcases Relation.ReflTransGen.cases_tail
+              ((Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 Y hY) with he | ⟨C, -, hCY⟩
+          · exact he
+          · exact (Option.some_ne_none _ (hCY.2.2.symm.trans hp)).elim
         subst hg
-        have := σ_genesis_with hu hR
+        have := Healing.Store.σ_genesis hr
         rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, this] at hYh
         simp [ChainState.init] at hYh
         omega
       | some pr => exact ⟨pr, rfl⟩
-    obtain ⟨Yp, hYp, rfl, hstY⟩ := step_σ_with hu hR hY hpr
+    obtain ⟨Yp, hYp, rfl, hstY⟩ := Healing.Store.step_σ hr hY hpr
     -- `J ⪯ Yp` and `Yp` is at `J`'s height
-    obtain ⟨E, hE, hEr, hEX, -⟩ := J_entry_hj_with hu hR hX
+    obtain ⟨E, hE, hEr, hEX, -⟩ := Goldilocks.Store.J_entry_hj _ _ hr hX
     obtain rfl : E = st.J := hroot hE hJm (hEr.trans hXJ)
     have hJY : st.Anc st.J Y := by
       rcases Anc.total hcoh hEX hYX with h' | h'
       · exact h'
-      · have := h_le_of_store_anc_with hu hR h'
+      · have := Healing.h_le_of_store_anc hr h'
         omega
     have hJYp : st.Anc st.J Yp := by
       rcases anc_parent hYp hpr hJY with h' | h'
@@ -443,13 +450,14 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
       rcases (step_rows hstY).2 with h' | ⟨h1, h2, -⟩
       · omega
       · exfalso
-        obtain ⟨⟨E', hE', hE'r, hE'Yp, -⟩, -⟩ := entry_state_of_source_with hu hR Yp hYp
+        obtain ⟨⟨E', hE', hE'r, hE'Yp, -⟩, -⟩ :=
+          Goldilocks.Store.entry_state_of_source _ _ _ _ hr Yp hYp
         obtain rfl : E' = Y := hroot hE' hY (hE'r.trans (h2.symm.trans hYT))
         have := (hE'Yp.slot_le hcoh).1
         have := hcoh.2 Yp hYp E' hY hpr
         omega
     have hYpT : (st.σ Yp.root).Th = st.J.root :=
-      (Th_eq_of_anc_with hu hR hJYp (by omega)).trans hJ.2
+      (Healing.Th_eq_of_anc hr hJYp (by omega)).trans hJ.2
     obtain ⟨hYpj, hYpJ⟩ := hj_eq_of_anc hr hYp hJYp (by omega)
     obtain ⟨hWj, hWJ⟩ := hj_eq_of_anc hr hW hJW (by omega)
     have hYj : (st.σ Y.root).hj = (st.σ Yp.root).h := by
@@ -457,9 +465,9 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
       · omega
       · omega
     have hbYp : (st.σ Yp.root).previousHeightJustified := ⟨by omega, by omega⟩
-    obtain ⟨cYp, -, -, -, hcYp⟩ := chain_state_of_chain_with hu hR Yp hYp
+    obtain ⟨cYp, -, -, -, hcYp⟩ := Goldilocks.Store.chain_state_of_chain _ _ _ _ hr Yp hYp
     obtain ⟨hYF, hYhF⟩ := justify_finalizes_pair hcYp hstY hbYp hYj
-    obtain ⟨cY, hcY, -, hattY⟩ := held_chain_with hu hR hY
+    obtain ⟨cY, hcY, -, hattY⟩ := Goldilocks.Store.held_chain hr hY
     obtain ⟨Qf, hQf, hvf⟩ := FGParams.finalized_quorum P.fg hcY (by omega)
     refine hQf.trans (Finset.card_le_card fun v hv => ?_)
     obtain ⟨a, ha, rfl, hfa⟩ := hvf v hv
@@ -488,49 +496,31 @@ omit hr in
 /-- An accepted block's state is the transition of its parent's state. -/
 theorem onBlock_σ {st' : Store P ACP} {B : NodeBlock P ACP} (h : st.onBlock B = some st') :
     ∃ pr, B.parent = some pr ∧ P.fg.stateTransition (st.σ pr) B.fgView = some (st'.σ B.root) := by
-  rw [Store.onBlock_eq_onBlockWith] at h
-  obtain ⟨pr, σ', hp, -, -, -, ht, rfl⟩ := Store.onBlockWith_eq_some h
+  obtain ⟨pr, σ', hp, -, -, -, ht, rfl⟩ := Goldilocks.Store.onBlock_eq_some h
   refine ⟨pr, hp, ?_⟩
   set st₁ : Store P ACP :=
     { st with blocks := Function.update st.blocks B.root (some B),
               σ := Function.update st.σ B.root σ' } with hst₁
-  have hspec := (Store.finalitySpec_iff _).1
-    (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
-  obtain ⟨-, hσu, -⟩ := hspec st₁ σ'
+  obtain ⟨-, hσu, -⟩ := Goldilocks.Store.updateFinality_spec st₁ σ'
   obtain ⟨-, hσa, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B.fgPayload
   rw [hσa, hσu]
   simpa [st₁] using ht
 
-/-- **The proposal floor at one store.** A block on a held P-U viable `D` that carries the
-store's `proposal_attestations` for `D` reaches the stock head height floor. -/
-theorem floor_le_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable D)
-    {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
-    (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.headHeightFloor ≤ σ'.h := by
-  classical
+omit hr in
+/-- **The proposal floor at one store.** A block on a held P-U viable `D` lies at height at least
+`hmax - 1`. -/
+theorem hmax_pred_le_of_isViable {D : NodeBlock P ACP} (hv : st.IsViable D)
+    {B : FGBlock P.n} {σ' : ChainState P.n}
+    (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.hmax - 1 ≤ σ'.h := by
   have hmono : (st.σ D.root).h ≤ σ'.h := by
     rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
-  have hb := Store.headHeightFloor_bounds st
-  rcases (Store.isViable_iff st D).1 hv with h | ⟨h, hcase⟩
-  · omega
-  · by_cases hc : st.Contest
-    · have hfl : st.headHeightFloor = st.hmax := ite_eq_left hc
-      have hJD : st.Anc st.J D := by
-        rcases hcase with h' | h'
-        · have := hc.1
-          omega
-        · exact h'
-      have := proposal_crosses hr hD (by have := hc.1; omega) hJD hB hσ
-      have := hc.1
-      omega
-    · have hfl : st.headHeightFloor = st.hmax - 1 := ite_eq_right hc
-      omega
+  rcases (Store.isViable_iff st D).1 hv with h | ⟨h, -⟩ <;> omega
 
 /-- A proposal on a viable parent crosses the store's justified height. -/
 theorem hj_lt_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable D)
     {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
     (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.hj < σ'.h := by
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    hr.reachableWith
+  have hj := Healing.Store.hj_lt_hmax_of_reachable hr
   have hmono : (st.σ D.root).h ≤ σ'.h := by
     rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
   rcases (Store.isViable_iff st D).1 hv with h | ⟨h, hgap | hJD⟩

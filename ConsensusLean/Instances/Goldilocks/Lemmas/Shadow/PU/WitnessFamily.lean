@@ -1,10 +1,18 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -42,26 +50,6 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State} {hold : Time}
-
-/-- A block in an honest frame has an earlier honest FG acceptance, or is genesis
-(`frame_block_acceptance_at`). -/
-theorem frame_block_acceptance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {x : Fin sp.n} {q : Nat}
-    (hx : x ∈ H (tr.time q)) {ell : ACLabel (goldilocksNode sp)}
-    (hc : tr.projAC.CallAt x q ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ ell.frame.tree) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
-      ∃ k < q, x ∈ H (tr.time k) ∧ tr.AcceptAt x k B := by
-  have hd := hrun.time_nonneg q
-  have ht : B ∈ ((tr.upTo (tr.time q)).state x q).fg.tree := by
-    rw [RunTrace.upTo_state_of_le hrun.time_mono le_rfl]
-    rw [frame_of_projAC_at hrun hx hc, Node.frame_eq, Store.toFrame_tree] at hB
-    exact hB.1
-  rcases Coherence.tree_accepted (hrun.upTo hd).toLocalRun hx ht with hg | ⟨k, hk, ha⟩
-  · exact Or.inl hg
-  · exact Or.inr ⟨k, hk, hrun.antitone (hrun.time_mono hk.le) hx,
-      ((RunTrace.upTo_acceptAt _).mp ha).2⟩
 
 /-- An honest acceptance reaches a later honest caller, after GST by relay and before it by
 catch-up (`relayed_accept_before_at`). -/
@@ -118,7 +106,7 @@ theorem frame_relay_before_at
   have hPh := AC.frameIn_of_callAt hac.localRun hy hc'
   have hFstate : elly.frame.F = (tr.state y j).fg.F := by
     rw [frame_of_projAC_at hrun hy hcy, Node.frame_eq, Store.toFrame_F]
-  rcases frame_block_acceptance_at hrun hx hcx hB with hgB | ⟨k, hk, hxk, ha⟩
+  rcases Healing.Growing.frame_block_acceptance_at hrun hx hcx hB with hgB | ⟨k, hk, hxk, ha⟩
   · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hac.localRun.toU hy j elly hc'
     have hBU : B ∈ tr.HonestBlocksAt H := by
       have hq0 := hrun.time_nonneg q
@@ -186,7 +174,7 @@ theorem frame_witness_readPoint_stamp_at
     (by linarith only [ha, hti, hts, sp.toParams.hΔ]) hFQ
   have hacc : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q
       (AC.freeze sp (s + 1)) := by
-    rcases frame_block_acceptance_at hrun hx hcx hQ with hg | ⟨k, hka, hxk, hk⟩
+    rcases Healing.Growing.frame_block_acceptance_at hrun hx hcx hQ with hg | ⟨k, hka, hxk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
     have hkt := (hrun.time_mono hka.le).trans_lt ha
     have hfr : ell.frame.F = (tr.state y i).fg.F := by
@@ -249,28 +237,6 @@ variable {sp : ACParams}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {ini : Fin sp.n → (goldilocksNode sp).State}
 
-/-- A finalized tip of one honest observation is below a block held by another, strictly higher
-than its finalized height (`finalized_anc_obs` over the shadow run). -/
-theorem finalized_anc_obs'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
-    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
-    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
-    (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {X F W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y m).fg.tree)
-    (hFt : F ∈ (tr.state y m).fg.tree) (hFr : F.root = ((tr.state y m).fg.σ X.root).F)
-    (hW : W ∈ (tr.state x i).fg.tree)
-    (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
-    Anc (tr.HonestBlocksAt H) F W :=
-  (Store.finalized_anc_of_safe_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun hu hy hytime).reachableWith
-    (Compose.Growing.reachable_at hrun ht hx hxtime).reachableWith
-    (Coherence.honest_blocks_coherent_at hrun hnc)
-    (Compose.Growing.tree_held_at hu hy hytime) (Compose.Growing.tree_held_at ht hx hxtime) hf
-    (Consensus.Goldilocks.Healing.Growing.Shadow.held_atts_safe_at hrun hnc hu hytime hy ht
-      hxtime hx (le_max_left _ _) (le_max_right _ _))
-    hX hFt hFr hW hlt).mono (Compose.Growing.tree_held_at ht hx hxtime)
-
 /-- **The finalized tip of an honest observation is below every held block strictly above its
 justified height** (the quorum branch of `finalized_below_floor_held_at`, read off the justified
 height instead of the stock head-height floor). -/
@@ -293,49 +259,27 @@ theorem finalized_below_of_hj_lt_at
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ :=
     Store.cache_invariants _ _ _ _ hr
-  have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality hr.reachableWith
+  have hg := Healing.Store.genesis_mem hr
   have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F W := fun he => by
     rw [hcoh.1 hF hg he]
-    exact ((Store.accepted_tree_with Store.finalitySpec_updateFinality
-      hrz.reachableWith).2.2.2 W hW).mono (Compose.Growing.tree_held_at htm hz hbm)
-  rcases Store.fin_pair_entry_with Store.finalitySpec_updateFinality hr.reachableWith hX with
+    exact ((Goldilocks.Store.accepted_tree _ _ _ _ hrz).2.2.2 W hW)
+      |>.mono (Compose.Growing.tree_held_at htm hz hbm)
+  rcases Healing.Store.fin_pair_entry hr hX with
     he | ⟨E, hE, hEr, _⟩
   · exact hgen (hXF.symm.trans he)
   obtain rfl : E = (tr.state y i).fg.F := hcoh.1 hE hF (hEr.trans hXF)
   obtain ⟨J, hJt, hJr, -, hcase⟩ :=
-    Store.J_entry_with Store.finalitySpec_updateFinality hr.reachableWith hBj
+    Goldilocks.Store.J_entry_hj _ _ hr hBj
   obtain rfl : J = (tr.state y i).fg.J := hcoh.1 hJt hJm (hJr.trans hBjJ)
-  rcases hcase with he | ⟨hJh, -⟩
-  · have hgF := (Store.accepted_tree_with Store.finalitySpec_updateFinality
-      hr.reachableWith).2.2.2 _ hF
+  rcases hcase with ⟨he, -⟩ | ⟨hJh, -⟩
+  · have hgF := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 _ hF
     rw [he] at hFJ
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have hFh := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
-    hr.reachableWith hFJ
+  have hFh := Healing.h_le_of_store_anc hr hFJ
   have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
     omega
-  exact finalized_anc_obs' hrun hnc ht hb hy htm hbm hz hf hX hF hXF.symm hW hstrict
-
-/-- A height bound on an honest witness carries to an honestly held descendant
-(`floor_le_of_honest_ancestor_at` over the shadow run). -/
-theorem le_height_of_honest_ancestor_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i c : Nat}
-    (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
-    {X W : AC.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
-    (hX : X ∈ (tr.state z c).fg.tree) (hh : n ≤ ((tr.state z c).fg.σ X.root).h)
-    (hW : W ∈ (tr.state x i).fg.tree) (hXW : Anc (tr.HonestBlocksAt H) X W) :
-    n ≤ ((tr.state x i).fg.σ W.root).h := by
-  have hti := hrun.time_nonneg i
-  have hbi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hXt := mem_of_honest_anc_at hrun hnc hti hbi hx hXW hW
-  have ha := store_anc_of_honest_anc_at hrun hnc hti hbi hx hXW hW
-  have hle := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun hti hx hbi).reachableWith ha
-  rw [← σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
-    (fun q hq => hrun.time_mono hq.le) hz hti hbi hx hX hXt] at hle
-  exact hh.trans hle
+  exact Healing.Growing.finalized_anc_obs hrun hnc ht hb hy htm hbm hz hf hX hF hXF.symm hW hstrict
 
 end Consensus.Goldilocks.Healing.Growing
 
@@ -369,8 +313,8 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descenda
   have hbj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrun.time_mono hq.le
   have hM := hframe.M_eq y j hy hjlo hjhi
   have htop := hframe.top_iff y j hy hjlo hjhi
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun hjt hy hbj).reachableWith
+  have hjm := Healing.Store.hj_lt_hmax_of_reachable
+    (Compose.Growing.reachable_at hrun hjt hy hbj)
   by_cases hcase : isTop ∧ ((tr.state z c).fg.σ X.root).h = M - 1
   · obtain ⟨ht, he⟩ := hcase
     have hJX := hwit.2 ht he
@@ -378,7 +322,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descenda
       (Store.cache_invariants _ _ _ _ (Compose.Growing.reachable_at hrun hjt hy hbj)).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi ht] at hFJ
     exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans (hJX.trans hXW)
-  · have hWh := Growing.le_height_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
+  · have hWh := Healing.Growing.floor_le_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
     refine Growing.finalized_below_of_hj_lt_at hrun hnc hy hx hf hW ?_
     by_cases ht : isTop
     · have hX' : M ≤ ((tr.state z c).fg.σ X.root).h := by
@@ -411,7 +355,7 @@ theorem witness_frame_of_held
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
-  rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc]
+  rw [Compose.Growing.frame_of_projAC_at hrun hy hc]
   rcases AC.anc_total hU hFQ hXQ with hFX | hXF
   swap
   · exact Or.inl (by rwa [Node.frame_eq, Store.toFrame_F])
@@ -453,8 +397,7 @@ private theorem isViable_of_frameWindow
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
   rw [Store.isViable_iff, hframe.M_eq y i hy hlo hhi]
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    hr.reachableWith
+  have hjm := Healing.Store.hj_lt_hmax_of_reachable hr
   have hM := hframe.M_eq y i hy hlo hhi
   have htop := hframe.top_iff y i hy hlo hhi
   rcases Nat.lt_or_ge ((tr.state y i).fg.σ Q.root).h M with hlt | hge
@@ -578,21 +521,6 @@ private theorem narrow_vote
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)
   exact ⟨W, hHdU, hWr, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdU hBW⟩
 
-/-- The witness clause carries to another honest holder of the witness (`witness_height`). -/
-private theorem witness_clause_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {z y : Fin sp.n} {c i M : Nat} {isTop : Prop}
-    {J Q : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time c))
-    (hy : y ∈ H (tr.time i)) (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hQy : Q ∈ (tr.state y i).fg.tree)
-    (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
-      (isTop → ((tr.state z c).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q)) :
-    M - 1 ≤ ((tr.state y i).fg.σ Q.root).h ∧
-      (isTop → ((tr.state y i).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-  rwa [← Healing.Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
-    (fun _ hq => hrun.time_mono hq.le) hz (hrun.time_nonneg i)
-    (fun _ hq => hrun.time_mono hq.le) hy hQ hQy]
-
 /-- Prior votes extending a prefix propagate through a window witness: the window-free core of
 `unanimous_next_votes_of_witness_at'` and `unanimous_next_votes_of_stock_witness_at'`. -/
 theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
@@ -705,7 +633,8 @@ theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     omega
   have hfault : AC.FaultBoundK K m (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) :=
     Healing.Growing.KernelProof.faultBoundK_upTo le_rfl
-      (Healing.PU.faultBoundK_of_service_at hK hrun hawake hnr hgm (by linarith) ht0 (by
+      (Healing.Growing.KernelProof.faultBoundK_of_service_at hK hrun hawake hnr hgm (by linarith)
+        ht0 (by
         rw [hslot]
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
         rw [heq]; exact hgm) hib)
@@ -1098,7 +1027,7 @@ theorem witness_voterBlockTree_at
     change tr.projAC.deadline y k t ≤ max t (sp.ts s) + sp.Δ at h
     linarith only [hm', h]
   have ha : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (AC.freeze sp (s + 1)) := by
-    rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
+    rcases Healing.Growing.frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
     obtain ⟨hk', htk, -⟩ := Healing.ac_block_after (hrun.upTo (hrun.time_nonneg a)).toLocalRun hw
       ((RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono hka.le, hk⟩)
@@ -1244,7 +1173,6 @@ theorem next_votes_of_windowWitness_at
     exact htransfer y i ell e hy hcast hs hhi
       (by rw [Node.frame_eq, Store.toFrame_F]; exact hFX) hviab
       (fun z k ev hki hz hv hes => ih k hki z ev hz hv hes)
-
 
 /-- Common early-witness induction with the lock-specific transfer supplied by the caller
 (`next_votes_of_early_witness_at` over the shadow run, witness `hvQ` read inside the window). -/

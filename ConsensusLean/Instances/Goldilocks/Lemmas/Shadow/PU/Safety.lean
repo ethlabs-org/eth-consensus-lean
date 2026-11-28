@@ -3,8 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 
 public section
 
@@ -21,13 +22,11 @@ variable {P : Params} {ACP : Type} {st : Store P ACP}
 private theorem entry_input {acp₀ : ACP} (hr : st.Reachable acp₀) (r : Nat) :
     1 ≤ (st.σ r).h ∧ (st.σ r).hj < (st.σ r).h ∧
       ∀ p ∈ (st.σ r).pending, p.1 < (st.σ r).h := by
-  have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   obtain ⟨c, hc⟩ : ∃ c, P.fg.chainState c = some (st.σ r) := by
     rcases hb : st.blocks r with _ | X
-    · exact ⟨[], by rw [Store.σ_of_blocks_none_with hu hR hb]; rfl⟩
-    · have hX := Store.blocks_root_with hu hR hb
-      obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain_with hu hR X (by
+    · exact ⟨[], by rw [Store.σ_of_blocks_none hr hb]; rfl⟩
+    · have hX := hr.blocks_root hb
+      obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain P ACP _ _ hr X (by
         change st.blocks X.root = some X
         rwa [hX])
       exact ⟨_, hX ▸ hc⟩
