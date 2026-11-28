@@ -3,7 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticService
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial

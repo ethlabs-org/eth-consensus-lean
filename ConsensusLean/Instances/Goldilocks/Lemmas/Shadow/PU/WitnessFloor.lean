@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
