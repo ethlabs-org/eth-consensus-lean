@@ -7,7 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Quer
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -24,7 +26,7 @@ are healthy ones.
   proposal of a slot `p ≥ r + k + 1` released at `τ ≥ t₁ + 8Δ` by a proposer ready then and
   honest through its hold is in the confirmed read of every node ready at `t ∈ [τ + 6Δ, b]`, for
   `T ≤ b`, `t_{r+k} ≤ t₁` and conviction below a third on held chains. Slots `p ≤ σ` are healthy
-  ones (`operational_update_selection_at`); later slots go through the seeded walk, votes and
+  ones (`operational_update_selection_proof_at`); later slots go through the seeded walk, votes and
   adoption (`Continuation/LiveWalk`, `LiveReader`, `LiveVotes`, `LiveAdopt`).
 * `handover_query_regime`: the hand-over premise of `Continues` gives the hand-over disjunct of
   `ConfirmedQueryAt.regime`, which restates the regime conjuncts of `System.Handover`;
@@ -94,7 +96,7 @@ private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H
 `t_p ≥ t_{r+k+1}` and `t_p ≥ t₁ + 8Δ`, released at `τ = t_p` by a proposer ready at `τ` and honest
 through its hold, is in the confirmed read of every node ready at `t ∈ [τ + 6Δ, b]`, after all
 events at `t`. Every honest update of slot `p` returns `P`, not vetoed: in the healthy prefix for
-`p ≤ σ` (`operational_update_selection_at`), by the seeded sleepy argument otherwise
+`p ≤ σ` (`operational_update_selection_proof_at`), by the seeded sleepy argument otherwise
 (`seeded_adopt_result`); so `P` is a member of the healed family. The reader's update of the slot
 `m = slot(t − 6Δ) ≥ p` adopts `P` (`update_adopts_of` at `m = p`; for `m > p`,
 `update_adopts_extended_from` with S1 and S2 for the member `P`), the effective record only
@@ -145,7 +147,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
         omega
       have hσT := hseed.timing.1
       have htσ : sp.ts p ≤ sp.ts σ := ts_le_ts hpσ
-      obtain ⟨-, hconf, hnv, -⟩ := Healing.Growing.operational_update_selection_at hpr
+      obtain ⟨-, hconf, hnv, -⟩ := Healing.Growing.operational_update_selection_proof_at hpr
         hp (Obligations.Growing.proposesAt_designated_at hrun hpk hPa) hPa rfl
         (by rw [hdrain]; exact hdt₁.trans ht₁p) (by linarith) (by linarith) hz hu
       rw [projAC_state_at hrun hz] at hconf hnv
