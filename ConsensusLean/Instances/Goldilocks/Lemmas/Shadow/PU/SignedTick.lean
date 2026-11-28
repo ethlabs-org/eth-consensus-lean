@@ -35,49 +35,6 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
-/-- At an update deadline, a signing tick's report immediately follows its AC tick,
-with the same frame because the AC tick leaves the finality store unchanged. -/
-theorem signing_tick_toFG_cuts_at {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign) {T : Time}
-    (hT : ∃ u : Nat, T = sp.ts (u + 1 : Nat) + 2 * sp.Δ) {y : Fin sp.n} (hy : y ∈ H T)
-    (haw : tr.awake y T) (hsig : sign y T = true) :
-    ∃ k ell ell', tr.projAC.CallAt y k ell ∧ ell.call = .tick ∧ tr.time k = T ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧ tr.time (k + 1) = T ∧
-      ell'.frame = ell.frame := by
-  obtain ⟨u, rfl⟩ := hT
-  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
-  have ht0 : 0 ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    have hΔ := sp.toParams.hΔ
-    simp only [ACParams.ts]; positivity
-  obtain ⟨j, hj⟩ := Healing.Growing.signTickAt_of_calendar_at hrun hcal hy ht0
-    ⟨4 * (u : Int) + 6, by rw [hT]; simp only [ACParams.ts]; ring⟩ haw hsig
-  obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff ..).1 hj
-  have hnP : ¬ Proposes proposer y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := by
-    rw [hT]
-    exact Healing.not_proposes_update_time y u
-  obtain ⟨hcj, htj⟩ := Healing.tick_first_cut hg
-  have h1 : (exec proposer dg y (tr.state y j) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
-      (.tick x true)).2[1]? = some
-      (acToFG (tickStep proposer dg y (tr.state y j)
-        (sp.ts (u + 1 : Nat) + 2 * sp.Δ) x .acTick).1
-        (sp.ts (u + 1 : Nat) + 2 * sp.Δ)).2.1 := by
-    rw [exec_eq, Healing.onTick_cuts]
-    simp only [tickStep_eq, hnP, ↓reduceIte]
-    split <;> simp [acToFG_eq, acCall_eq]
-  obtain ⟨hcj1, htj1⟩ := Compose.group_cut hg h1
-  simp only [acToFG_eq] at hcj1
-  simp only [acCall_eq] at hcj
-  have hl0 := (cutStep_ac _ _ _ _ _).1
-    (hrun.cutLaw y j _ hcj (by rw [htj]; exact hy))
-  have hl1 := (cutStep_ac _ _ _ _ _).1
-    (hrun.cutLaw y (j + 1) _ hcj1 (by rw [htj1]; exact hy))
-  refine ⟨j, _, _, Compose.projAC_callAt.2 hcj, rfl, htj,
-    Compose.projAC_callAt.2 hcj1, rfl, htj1, ?_⟩
-  rw [hl1.1, hl0.1, tr.state_succ_of_call hcj, Node.frame_eq, hl0.2.2.1]
-  exact (Node.frame_eq _).symm
-
 end Consensus.Goldilocks.Shadow.PU.Growing
 
 end

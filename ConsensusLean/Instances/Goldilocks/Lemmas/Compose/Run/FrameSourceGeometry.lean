@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.StepBits
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
@@ -79,14 +79,13 @@ private theorem prog_rows (hR : st.Reachable acp₀)
   induction hg with
   | refl =>
     rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl,
-      Store.σ_genesis_with Store.finalitySpec_updateFinality hR.reachableWith]
+      hR.σ_genesis]
     intro v hv
     exact absurd hv (Finset.notMem_empty v)
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
     obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _ hR W' h1
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ_with Store.finalitySpec_updateFinality
-      hR.reachableWith h2 hp
+    obtain ⟨-, -, -, ht⟩ := hR.step_σ h2 hp
     obtain ⟨-, p, hpv, hcase⟩ := Store.step_prog ht
       (FG.chain_invariants P.fg _ _ hc).2.2.2.2.2.2.2.2.2
     rcases hcase with ⟨-, hT, hpe⟩ | ⟨-, he⟩
@@ -112,13 +111,12 @@ private theorem crossing_quorum (hR : st.Reachable acp₀)
   | refl =>
     intro j h1 h2
     rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl,
-      Store.σ_genesis_with Store.finalitySpec_updateFinality hR.reachableWith] at h2
+      hR.σ_genesis] at h2
     simp [FG.ChainState.init] at h2
     omega
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨-, -, -, hst⟩ := Store.step_σ_with Store.finalitySpec_updateFinality
-      hR.reachableWith h2 hp
+    obtain ⟨-, -, -, hst⟩ := hR.step_σ h2 hp
     obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _ hR W' h1
     obtain ⟨hstep, -⟩ := FG.height_step P.fg _ _ _ _ hc hst
     have lift : ∀ X, st.Anc X W' → st.Anc X W :=

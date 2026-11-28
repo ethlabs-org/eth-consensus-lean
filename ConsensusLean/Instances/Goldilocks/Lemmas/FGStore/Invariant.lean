@@ -547,6 +547,47 @@ theorem entry_kept {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀)
     · exact ⟨hh.trans ihh, hTh.trans ihT⟩
     · exact absurd hq' (not_le.2 (hcard p hpn))
 
+variable {P ACP}
+
+/-- Genesis has the initial state in every reachable store. -/
+theorem Reachable.σ_genesis {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀) :
+    st.σ P.genesisRoot = FG.ChainState.init P.fg :=
+  (good hr).σ_genesis
+
+/-- A held block's state is its parent's state transition. -/
+theorem Reachable.step_σ {acp₀ : ACP} {st : Store P ACP} (hr : st.Reachable acp₀)
+    {W : NodeBlock P ACP} (hW : W ∈ st.tree) {pr : Nat} (hp : W.parent = some pr) :
+    ∃ X ∈ st.tree, X.root = pr ∧
+      P.fg.stateTransition (st.σ pr) W.fgView = some (st.σ W.root) :=
+  (good hr).step W hW pr hp
+
 end Consensus.Goldilocks.Store
+
+namespace Consensus.Goldilocks.Healing
+
+variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+
+/-- Along ancestry in a reachable store the state height does not decrease. -/
+theorem h_le_of_store_anc (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W) :
+    (st.σ A.root).h ≤ (st.σ W.root).h := by
+  induction h with
+  | refl => exact le_rfl
+  | tail _ hYW ih =>
+    obtain ⟨-, -, -, ht⟩ := hr.step_σ hYW.2.1 hYW.2.2
+    rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> omega
+
+/-- **Entry constancy** (G0.2 (i)): while the height stays along ancestry, the entry stays. -/
+theorem Th_eq_of_anc (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
+    (hh : (st.σ W.root).h = (st.σ A.root).h) : (st.σ W.root).Th = (st.σ A.root).Th := by
+  induction h with
+  | refl => rfl
+  | tail hAY hYW ih =>
+    obtain ⟨-, -, -, ht⟩ := hr.step_σ hYW.2.1 hYW.2.2
+    have h₁ := h_le_of_store_anc hr hAY
+    rcases (Goldilocks.Store.step_fields ht).1 with ⟨he, hT⟩ | ⟨he, -⟩
+    · rw [hT]; exact ih (by omega)
+    · omega
+
+end Consensus.Goldilocks.Healing
 
 end

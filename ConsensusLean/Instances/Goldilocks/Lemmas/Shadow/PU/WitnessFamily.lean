@@ -1,4 +1,9 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
@@ -254,26 +259,24 @@ theorem finalized_below_of_hj_lt_at
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ :=
     Store.cache_invariants _ _ _ _ hr
-  have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality hr.reachableWith
+  have hg := Healing.Store.genesis_mem hr
   have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F W := fun he => by
     rw [hcoh.1 hF hg he]
-    exact ((Store.accepted_tree_with Store.finalitySpec_updateFinality
-      hrz.reachableWith).2.2.2 W hW).mono (Compose.Growing.tree_held_at htm hz hbm)
-  rcases Store.fin_pair_entry_with Store.finalitySpec_updateFinality hr.reachableWith hX with
+    exact ((Goldilocks.Store.accepted_tree _ _ _ _ hrz).2.2.2 W hW)
+      |>.mono (Compose.Growing.tree_held_at htm hz hbm)
+  rcases Healing.Store.fin_pair_entry hr hX with
     he | ⟨E, hE, hEr, _⟩
   · exact hgen (hXF.symm.trans he)
   obtain rfl : E = (tr.state y i).fg.F := hcoh.1 hE hF (hEr.trans hXF)
   obtain ⟨J, hJt, hJr, -, hcase⟩ :=
-    Store.J_entry_with Store.finalitySpec_updateFinality hr.reachableWith hBj
+    Goldilocks.Store.J_entry_hj _ _ hr hBj
   obtain rfl : J = (tr.state y i).fg.J := hcoh.1 hJt hJm (hJr.trans hBjJ)
-  rcases hcase with he | ⟨hJh, -⟩
-  · have hgF := (Store.accepted_tree_with Store.finalitySpec_updateFinality
-      hr.reachableWith).2.2.2 _ hF
+  rcases hcase with ⟨he, -⟩ | ⟨hJh, -⟩
+  · have hgF := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 _ hF
     rw [he] at hFJ
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have hFh := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
-    hr.reachableWith hFJ
+  have hFh := Healing.h_le_of_store_anc hr hFJ
   have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
     omega
   exact Healing.Growing.finalized_anc_obs hrun hnc ht hb hy htm hbm hz hf hX hF hXF.symm hW hstrict
@@ -310,8 +313,8 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descenda
   have hbj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrun.time_mono hq.le
   have hM := hframe.M_eq y j hy hjlo hjhi
   have htop := hframe.top_iff y j hy hjlo hjhi
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun hjt hy hbj).reachableWith
+  have hjm := Healing.Store.hj_lt_hmax_of_reachable
+    (Compose.Growing.reachable_at hrun hjt hy hbj)
   by_cases hcase : isTop ∧ ((tr.state z c).fg.σ X.root).h = M - 1
   · obtain ⟨ht, he⟩ := hcase
     have hJX := hwit.2 ht he
@@ -352,7 +355,7 @@ theorem witness_frame_of_held
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
-  rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc]
+  rw [Compose.Growing.frame_of_projAC_at hrun hy hc]
   rcases AC.anc_total hU hFQ hXQ with hFX | hXF
   swap
   · exact Or.inl (by rwa [Node.frame_eq, Store.toFrame_F])
@@ -394,8 +397,7 @@ private theorem isViable_of_frameWindow
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hr := Compose.Growing.reachable_at hrun ht hy hb
   rw [Store.isViable_iff, hframe.M_eq y i hy hlo hhi]
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    hr.reachableWith
+  have hjm := Healing.Store.hj_lt_hmax_of_reachable hr
   have hM := hframe.M_eq y i hy hlo hhi
   have htop := hframe.top_iff y i hy hlo hhi
   rcases Nat.lt_or_ge ((tr.state y i).fg.σ Q.root).h M with hlt | hge
@@ -518,21 +520,6 @@ private theorem narrow_vote
   obtain ⟨W, hW, hWr, hBW⟩ := hext
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)
   exact ⟨W, hHdU, hWr, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdU hBW⟩
-
-/-- The witness clause carries to another honest holder of the witness (`witness_height`). -/
-private theorem witness_clause_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {z y : Fin sp.n} {c i M : Nat} {isTop : Prop}
-    {J Q : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time c))
-    (hy : y ∈ H (tr.time i)) (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hQy : Q ∈ (tr.state y i).fg.tree)
-    (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
-      (isTop → ((tr.state z c).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q)) :
-    M - 1 ≤ ((tr.state y i).fg.σ Q.root).h ∧
-      (isTop → ((tr.state y i).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-  rwa [← Healing.Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
-    (fun _ hq => hrun.time_mono hq.le) hz (hrun.time_nonneg i)
-    (fun _ hq => hrun.time_mono hq.le) hy hQ hQy]
 
 /-- Prior votes extending a prefix propagate through a window witness: the window-free core of
 `unanimous_next_votes_of_witness_at'` and `unanimous_next_votes_of_stock_witness_at'`. -/
