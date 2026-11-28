@@ -28,8 +28,8 @@ private theorem observed_high_row_source_before
     hO, hOh, E0, hE0, hEO, hEr.trans haT, hh, hTh⟩
 
 /-- An incompatible high entry has no surviving honest row, so the existing quorum core
-compares J; reachable-store ancestry compares F and the actual fork-choice root as well. -/
-private theorem high_roots_before (acp₀ : ACP)
+compares `J`; reachable-store ancestry compares `F` as well. -/
+theorem high_roots_before (acp₀ : ACP)
     (st : Fin P.n → Nat → Store P ACP) (time : Nat → Time)
     (H : Time → Set (Fin P.n)) (Sign : Fin P.n → Nat → FG.Att P.n → Prop)
     (Origin : Fin P.n → Nat → Nat → NodeBlock P ACP → Prop)
@@ -55,18 +55,6 @@ private theorem high_roots_before (acp₀ : ACP)
     · exact Or.inl ((hFJ.mono (hsub _ _ hy hkb)).trans hJB)
     · exact Anc.total hU (hFJ.mono (hsub _ _ hy hkb)) hBJ
   exact ⟨hJ, hF⟩
-
-/-- The call-facing result uses equality with the store's actual frame. -/
-theorem high_frame_root_before (acp₀ : ACP)
-    (st : Fin P.n → Nat → Store P ACP) (time : Nat → Time)
-    (H : Time → Set (Fin P.n)) (Sign : Fin P.n → Nat → FG.Att P.n → Prop)
-    (Origin : Fin P.n → Nat → Nat → NodeBlock P ACP → Prop)
-    (Joined : Fin P.n → Time → Prop) (U : Set (NodeBlock P ACP)) (Hz : Nat) (b : Time) :
-    HighFrameRootBefore acp₀ st time H Sign Origin Joined U Hz b := by
-  intro hU hmono hsub hobs hsource y k B frame hy hkb hreach hgen hq hhigh hprior hframe
-  rw [hframe]
-  exact (high_roots_before acp₀ st time H Sign Origin Joined U Hz b
-    hU hmono hsub hobs hsource y k B hy hkb hreach hgen hq hhigh hprior).2
 
 end Consensus.Goldilocks.LocalSources
 
