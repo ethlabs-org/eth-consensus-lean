@@ -9,10 +9,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Gol
 /-! # Goldilocks milestone Healing: the run-level healing statements (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level
-statements" (HR.1, HR.2, `HighOrigin` and `T_heal`) and §"Healing: phase service" (the
+statements" (HR.1, `HighOrigin` and `T_heal`) and §"Healing: phase service" (the
 HS shared premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
-(`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3
-including its bridge vocabulary, HR.3 and HR.4, H.4 and the phase-service statements HS.0–HS.5 are
+(`Spec/Run`, `GoldilocksRun`). The run bundle, H.3 including its bridge vocabulary, HR.2–HR.4,
+H.4 and the phase-service statements HS.0–HS.5 are
 retired as milestone statements; the statements here are the types of the lemmas the recovery
 proofs read.
 
@@ -37,12 +37,6 @@ proofs read.
   one node's `Σ.F`, so an advance of an honest `Σ.F` changes no phase by definition (HR.2's last
   sentence). Over a run it is read on the FG projection (`projFG`), cut by cut.
   `SettledAt` is the HS settled predicate, `PhaseChanged` a change of the frontier or the case.
-
-**HR.2 is stated over FG traces** (`FGLocalRun`), not over runs: the claims make it an FG store
-node over the FG component trace, the phase reads only the honest `Σ` (which an FG trace carries,
-with the honest records, unforgeability and serialized clients in `FGLocalRun`), and so it sits
-with G1.4 (`Store.FinalizedSafety`), whose premise `f < 2q − n` it shares. A run reaches it through
-C0.5 (c) (`Compose.FGProjection`).
 
 "The state at `t`" is the state before the first cut at a time `≥ t` (`FirstCutFrom`); "after
 all events at `t`" is the state before the first cut at a time `> t` (`FirstCutAfter`).
@@ -318,25 +312,6 @@ def CutAndReset : Prop :=
       ∀ E ∈ HighEntries tr H (HZ tr H g),
         (Store.namers sp.toParams (Payload sp.n) H tr.projFG (a - sp.Δ) E).ncard <
           sp.toParams.fg.q
-
-/-- **HR.2, phase count** (an FG store node over FG traces). In an FG trace (unforgeable honest
-signatures, durable and serialized honest clients, `NoColl` as the coherence of `U`:
-`FGLocalRun`) with `f < 2q − n`:
-(a) on the honest accepted chains at most one entry is justified at each height: two honest
-accepted states with the same `h_j` have the same `J`;
-(b) while the frontier `m` stays fixed, the effective phase moves only forward through gap, top
-`J`, contest (a contest ends only when `m` rises), with one `J`; so there are at most two effective
-phase changes (between consecutive cuts) per value of `m`. (An advance of an honest `Σ.F` below
-`m` changes no phase: the phase does not read `Σ.F`.) -/
-def PhaseCount (P : Params) (ACP : Type) : Prop :=
-  ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
-    FGLocalRun acp₀ H U tr → Hᶜ.ncard < 2 * P.fg.q - P.n →
-    (∀ y ∈ H, ∀ z ∈ H, ∀ i j, ∀ B ∈ (tr.store y i).tree, ∀ B' ∈ (tr.store z j).tree,
-      ((tr.store y i).σ B.root).hj = ((tr.store z j).σ B'.root).hj →
-        ((tr.store y i).σ B.root).J = ((tr.store z j).σ B'.root).J) ∧
-    (∀ m i j c c', i ≤ j → PhaseAt tr H i m c → PhaseAt tr H j m c' →
-      c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
-    ∀ m, {i | ∃ c c', PhaseAt tr H i m c ∧ PhaseAt tr H (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
 
 section Top
 

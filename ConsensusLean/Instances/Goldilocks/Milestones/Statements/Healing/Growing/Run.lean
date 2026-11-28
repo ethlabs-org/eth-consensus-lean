@@ -7,10 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 
 /-! # Goldilocks milestone Healing under growing faults: the run-level statements (statements)
 
-The run-level healing vocabulary, HR.2 (`Statements/Healing/Run`) and G1.9 (b) (`CacheAcceptance`,
-the growing form of HR.5) for a time-indexed honest set `H` (antitone), over
-`Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`): the definitions the growing
-healing proofs read. HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4 are not
+The run-level healing vocabulary and G1.9 (b) (`CacheAcceptance`, the growing form of HR.5) for a
+time-indexed honest set `H` (antitone), over `Growing.GoldilocksRun`: the definitions the growing
+healing proofs read. HR.1–HR.4, H.2 (run), H.3 and H.4 are not
 stated under growing faults. The definitions read the honest set as follows:
 
 * **who is honest where**: a node at a cut is honest at the time of the cut; a signer at its
@@ -21,16 +20,11 @@ stated under growing faults. The definitions read the honest set as follows:
 * **counts are charged where they are consumed**: `Healthy(g)` is `HealthyRunAt` (`3 f_t ≤ n − 1`
   at every `t`), and the (K1) clause of HR.1 (c) holds for the namers at every consumption
   horizon `d ≥ a_z − Δ` (`Store.Growing.namers`);
-* **the effective phase** is read over a cohort: HR.2's monotonicity and count over the
-  validators honest at a horizon `d`, at cuts up to `d`; a phase change is read at both cuts over
-  the cohort `H d` of one fixed `d`, so the steps of the count do not cross a change of cohort (a
-  compromise, which removes a node's blocks from the honest reads, is not a phase change);
 * **the proposer** of a healed slot `s` is honest through `t_s + hold`
   (`Regimes.Growing.hold`).
 
-The vocabulary that binds no honest set (`FirstCutAfter`, `cutZ`, the constants, the phase case,
-`T_heal`) is the static one; the phase predicates `FrontierAt`, `JustifiedAt`,
-`ContestAt`, `PhaseAt` and `PhaseChanged` are the static ones applied to `H t`.
+The vocabulary that binds no honest set (`FirstCutAfter`, `cutZ`, the constants, `T_heal`) is the
+static one.
 
 Statements only: no proofs here. -/
 
@@ -86,23 +80,6 @@ def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : AC.Blk sp.n (List (FG.
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
 end Goldilocks
-
-/-- **HR.2 under growing faults, phase count** (an FG store node over FG traces). (a) is read at
-the two nodes' cuts, with `f < 2q − n` at the later one. (b) and (c) read the phase over the
-validators honest at a horizon `d`, at cuts up to `d`, with `f_d < 2q − n`. -/
-def PhaseCount (P : Params) (ACP : Type) : Prop :=
-  ∀ (acp₀ : ACP) (H : Time → Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
-    Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr →
-    (∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
-      (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.fg.q - P.n →
-      ∀ B ∈ (tr.store y i).tree, ∀ B' ∈ (tr.store z j).tree,
-        ((tr.store y i).σ B.root).hj = ((tr.store z j).σ B'.root).hj →
-          ((tr.store y i).σ B.root).J = ((tr.store z j).σ B'.root).J) ∧
-    ∀ d, (H d)ᶜ.ncard < 2 * P.fg.q - P.n →
-      (∀ m i j c c', i ≤ j → tr.time j ≤ d → PhaseAt tr (H d) i m c →
-        PhaseAt tr (H d) j m c' → c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
-      ∀ m, {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
-        PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
 
 /-- **G1.9 (b) under growing faults, cache acceptance.** In a Goldilocks run under growing
 faults, from any starts, under `NoColl`: at every acceptance of a block `B` by a node honest at
