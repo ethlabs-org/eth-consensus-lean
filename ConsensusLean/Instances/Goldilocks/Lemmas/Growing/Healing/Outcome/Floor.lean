@@ -21,11 +21,10 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
-/-- `fastLock_time_lt_at` over the run-facts bundle. -/
-theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.fastLock_time_lt_at
-    {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))} {ini}
-    (rc : GoldilocksRunCore uf frameOf proposer dg H tr ini)
+/-- An older fast-lock label written by the late-vote deadline was written before the slot. -/
+theorem fastLock_time_lt_at
+    {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
     (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
@@ -40,17 +39,8 @@ theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.fastLock_time_lt_at
     linarith only [mul_le_mul_of_nonneg_left htwo (show (0 : Time) ≤ 4 * sp.Δ by linarith), hDelta]
   · change sp.slot (tr.time r) = m at hsl
     by_contra h
-    have := (AC.ts_le_iff_le_slot sp (rc.time_nonneg r) u).mp (not_lt.mp h)
+    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) u).mp (not_lt.mp h)
     omega
-
-/-- An older fast-lock label written by the late-vote deadline was written before the slot. -/
-theorem fastLock_time_lt_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
-    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
-  hrun.toCore.fastLock_time_lt_at hfl hmu htr
 
 /-- An older lock written by the late-vote deadline was written before the slot, whether the
 write was fast or slow. Slow locks use their update time, never a supporter count. -/

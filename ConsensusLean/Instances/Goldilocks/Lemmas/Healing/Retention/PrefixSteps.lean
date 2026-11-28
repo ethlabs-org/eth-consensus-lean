@@ -3,8 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -131,11 +132,8 @@ variable {sp : ACParams}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- An honest client's sent contents only grow. -/
-private theorem sent_succ_core {ini : Fin sp.n → (goldilocksNode sp).State}
-    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-      Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-    (hrun : StaticRunCore u frameOf proposer dg H tr ini)
+private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
     (c : Nat) {b : FG.Content} (hb : b ∈ (tr.state v c).record.sent) :
     b ∈ (tr.state v (c + 1)).record.sent := by
@@ -145,28 +143,22 @@ private theorem sent_succ_core {ini : Fin sp.n → (goldilocksNode sp).State}
     rw [tr.state_succ_of_call hc]
     cases cut with
     | ac ell =>
-      rw [cutStepWith_ac] at hlaw
       rw [hlaw.2.2.2]; exact hb
     | fg ell =>
       cases ell with
       | block B acc =>
         cases acc with
         | true =>
-          rw [cutStepWith_block_true] at hlaw
           rw [hlaw.2.2.2]; exact hb
         | false =>
-          rw [cutStepWith_block_false] at hlaw
           rw [hlaw.2]; exact hb
       | attestation a' =>
-        rw [cutStepWith_attestation] at hlaw
         rw [hlaw.2.2]; exact hb
       | attest C s =>
         cases s with
         | none =>
-          rw [cutStepWith_attest_none] at hlaw
           rw [hlaw.2]; exact hb
         | some a' =>
-          rw [cutStepWith_attest_some] at hlaw
           rw [(createAtt_spec hlaw.1).2.1]
           exact List.mem_append_left _ hb
   · rw [tr.state_succ_of_not fun cut hc' => hc ⟨cut, hc'⟩]
@@ -174,11 +166,8 @@ private theorem sent_succ_core {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **An honest validator signs an attestation at most once**: after signing, its content is in
 the client's sent list, and `create_attestation` refuses it. -/
-theorem sign_unique_core {ini : Fin sp.n → (goldilocksNode sp).State}
-    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-      Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-    (hrun : StaticRunCore u frameOf proposer dg H tr ini)
+theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
     {d d' : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hs' : tr.SignAt v d' att) :
     d = d' := by
@@ -188,7 +177,6 @@ theorem sign_unique_core {ini : Fin sp.n → (goldilocksNode sp).State}
     obtain ⟨C', hc'⟩ := hs'
     have hcut := hrun.cutLaw v hv d _ hc
     have hcut' := hrun.cutLaw v hv d' _ hc'
-    rw [cutStepWith_attest_some] at hcut hcut'
     have h₀ : att.content ∈ (tr.state v (d + 1)).record.sent := by
       rw [tr.state_succ_of_call hc, (createAtt_spec hcut.1).2.1]
       exact List.mem_append_right _ (List.mem_singleton_self _)
@@ -196,20 +184,12 @@ theorem sign_unique_core {ini : Fin sp.n → (goldilocksNode sp).State}
       intro c hc
       induction c, hc using Nat.le_induction with
       | base => exact h₀
-      | succ c _ ih => exact sent_succ_core hrun hv c ih
+      | succ c _ ih => exact sent_succ hrun hv c ih
     exact (createAtt_spec hcut'.1).2.2 _ (hmem d' hlt) ⟨rfl, rfl⟩
   rcases lt_trichotomy d d' with h | h | h
   · exact (key hs hs' h).elim
   · exact h
   · exact (key hs' hs h).elim
-
-/-- An honest stock client signs each attestation at most once. -/
-theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRun proposer dg H tr ini)
-    {v : Fin sp.n} (hv : v ∈ H)
-    {d d' : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hs' : tr.SignAt v d' att) :
-    d = d' :=
-  sign_unique_core hrun.toStaticCore hv hs hs'
 
 /-! ### The slot-start write and the late tick -/
 
@@ -234,18 +214,15 @@ of earlier slots, and no vote is delivered inside a tick): the pool of the optim
 slot-`m` votes of the signer only, so three quarters of the committee size is at most one
 validator, the committee size is at most one, and the signer's own slot-`m` vote is at or before
 the write. -/
-theorem slot_start_optimistic_core {ini}
-    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-      Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-    (hrun : StaticRunCore u frameOf proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+theorem slot_start_optimistic {ini}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) {m : Nat} (hdt : tr.time d = sp.ts m)
     {r : Nat} (hrd : r < d) {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hopt : AC.OptimisticLockAt tr.projAC v r m D CV)
     (hcs : 0 < sp.committeeSize) :
     sp.committeeSize ≤ 1 ∧ ∃ j' ≤ r, ∃ e', AC.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m := by
-  have hrun' := hrun.acRun hnc
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ellv, A, hpt, hsl, hsel, -⟩ := hopt
@@ -255,15 +232,29 @@ theorem slot_start_optimistic_core {ini}
     refine le_antisymm (hdt ▸ hrun.time_mono hrd.le) ?_
     exact (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) (m : Int)).2 (by rw [hsl])
   obtain ⟨C, hcd⟩ := hs
-  obtain ⟨j, _, hsegment, hbefore⟩ := hrun.signed_tick v hv hcd
+  obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Compose.call_in_group hrun.toLocalRun hv hcd
+  obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp)
+    proposer dg v _ _ _ C att (List.mem_of_getElem? hk)
+  have hkk : kk < (Node.exec proposer dg v (tr.state v j) (tr.time d)
+      (.tick x true)).2.length := by
+    by_contra h
+    rw [List.getElem?_eq_none (not_lt.mp h)] at hk
+    cases hk
   have hnomsg : ∀ i, j ≤ i → i ≤ d → ∀ ell, tr.projAC.CallAt v i ell →
       ∀ mm, ell.call ≠ .message mm := by
-    intro i h1 h2 ell hc
-    exact (hsegment i h1 h2).2 ell (Compose.projAC_callAt.mp hc)
+    intro i h1 h2 ell hc mm hm
+    have hl := (hg.2.1 (i - j) (by omega)).2.2.2.2
+    rw [Nat.add_sub_cancel' h1, (Compose.projAC_callAt.mp hc).2] at hl
+    have hmem := List.getElem_mem
+      (l := (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x true)).2)
+      (n := i - j) (by omega)
+    rw [← Option.some.inj hl] at hmem
+    cases (exec_ac_call v _ _ _ hmem).2 mm hm
   have hpre : ∀ i < j, ∀ ell, tr.projAC.CallAt v i ell →
       tr.time i = sp.ts m → ell.call = .restart := by
     intro i hi ell hc ht
-    obtain ⟨ell', he, hr'⟩ := hbefore i hi _ (Compose.projAC_callAt.mp hc)
+    obtain ⟨ell', he, hr'⟩ := Compose.before_tick hrun.toLocalRun hv ⟨x, true, hg⟩
+      (Compose.projAC_callAt.mp hc) hi
       (by rw [ht, hdt])
     cases he
     exact hr'
@@ -349,33 +340,19 @@ theorem slot_start_optimistic_core {ini}
       hv)
   exact ⟨j', hj', e', hwv ▸ hve', by rw [he', hws]⟩
 
-/-- The stock instance of the optimistic slot-start write bound. -/
-theorem slot_start_optimistic {ini}
-    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
-    (hs : tr.SignAt v d att) {m : Nat} (hdt : tr.time d = sp.ts m)
-    {r : Nat} (hrd : r < d) {D : AC.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (AC.Vote sp.n)} (hopt : AC.OptimisticLockAt tr.projAC v r m D CV)
-    (hcs : 0 < sp.committeeSize) :
-    sp.committeeSize ≤ 1 ∧ ∃ j' ≤ r, ∃ e', AC.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m :=
-  slot_start_optimistic_core hrun.toStaticCore hnc hv hs hdt hrd hopt hcs
-
 /-- **A delivery at `t_m + Δ` comes after the slot-`m` vote** (the
 signing at `t_m + Δ`). At a public time a node's deliveries follow its tick, and its tick at
 `t_m + Δ` casts its slot-`m` vote unless it voted in slot `m` already; so an honest voter of slot
 `m` accepts no block at `t_m + Δ` before its vote. -/
-theorem vote_before_late_delivery_core
+theorem vote_before_late_delivery
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    {update : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n →
-      Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
-    (hrun : StaticRunCore update frameOf proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {i : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : tr.AcceptAt y i W) (hik : i < k) (ht : tr.time i = sp.ts e.msg.slot + sp.Δ) :
     False := by
-  have hrun' := hrun.acRun hnc
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   set u := sp.ts e.msg.slot + sp.Δ with hu
@@ -393,10 +370,25 @@ theorem vote_before_late_delivery_core
     have : u = sp.ts e.msg.slot + sp.Δ := hu
     simp only [ACParams.ts] at this
     linarith only [hΔ, hP2, this]
-  obtain ⟨jt, ellt, hct', hcall, htt, hfirst⟩ := hrun.late_tick y hy
+  obtain ⟨jt, x, fgDue, hgt⟩ := hrun.tick_of_awake y hy u
     (by linarith only [hΔ, hm0]) hpub
     (htk ▸ hrun.awake_of_call y hy k ⟨_, Compose.projAC_callAt.mp hc.1⟩)
-  have hjti : jt < i := hfirst i W hA ht hnprop
+  obtain ⟨hct', htt⟩ := tick_first_cut hgt
+  let ellt : ACLabel (goldilocksNode sp) :=
+    ⟨.tick, Node.frame (tr.state y jt),
+      ((goldilocksNode sp).step y (tr.state y jt).ac (Node.frame (tr.state y jt)) u .tick).2⟩
+  change tr.CallAt y jt (.ac ellt) at hct'
+  have hcall : ellt.call = .tick := rfl
+  have hjti : jt < i := by
+    rcases Compose.blockCall_cases hrun.toLocalRun hy hA with hgW | ⟨j, x', f', -, -, hP, -⟩
+    · rw [ht] at hgW
+      rcases lt_trichotomy jt i with h | rfl | h
+      · exact h
+      · have := hct'.2.symm.trans hA.2
+        simp at this
+      · have := hrun.phase_order y hy y hy i jt u (.block W) (.tick x fgDue) hgW hgt h (.inl rfl)
+        simp [Node.Event.phase] at this
+    · exact absurd (ht ▸ hP) hnprop
   have hnrk : ell.call ≠ .restart := fun hcl => by
     have := hc.2
     rw [restart_emits hr hy hc.1 hcl] at this
@@ -419,8 +411,9 @@ theorem vote_before_late_delivery_core
     subst h
     exact hnrk hr'
   have hJ : tr.JoinedAt y u :=
-      (hrun.joined_at_call y hy k u ⟨_, Compose.projAC_callAt.mp hc.1⟩ hnr_k htk).mpr (by
-    rw [← hrun.projAC_state y hy k]
+      ((Compose.joined_projection_from hrun hy u).2.1 k
+        ⟨_, Compose.projAC_callAt.mp hc.1⟩ hnr_k htk).mpr (by
+    rw [← Compose.projAC_state hrun.toLocalRun hy k]
     exact hjk)
   have hpt : tr.projAC.CallAt y jt ellt := Compose.projAC_callAt.mpr hct'
   have hnrt : ¬ tr.RestartAt y jt := fun ⟨ell', hc', hr'⟩ => by
@@ -430,8 +423,8 @@ theorem vote_before_late_delivery_core
     rw [hcall] at hr'
     cases hr'
   have hjt : AC.joined sp (tr.projAC.state y jt) u := by
-    rw [hrun.projAC_state y hy]
-    exact (hrun.joined_at_call y hy jt u ⟨_, hct'⟩ hnrt htt).mp hJ
+    rw [Compose.projAC_state hrun.toLocalRun hy]
+    exact ((Compose.joined_projection_from hrun hy u).2.1 jt ⟨_, hct'⟩ hnrt htt).mp hJ
   have hve : AC.VoteAt tr.projAC y k e := ⟨ell, hc.1, hc.2⟩
   have hmay : (tr.projAC.state y jt).mayVote e.msg.slot = true := by
     rw [(AC.trace_mayVote hr hy jt).trans (AC.trace_mayVote hr hy k).symm]
@@ -450,20 +443,9 @@ theorem vote_before_late_delivery_core
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne
     have hsl' := (AC.castAt_specU hr.toU hy ⟨hpt, he'⟩).2.1
-    have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
+    have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy jt k e' e ⟨_, hpt, he'⟩ hve
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
     omega
-
-/-- The stock instance of the late-delivery vote bound. -/
-theorem vote_before_late_delivery
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) {i : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hA : tr.AcceptAt y i W) (hik : i < k) (ht : tr.time i = sp.ts e.msg.slot + sp.Δ) :
-    False :=
-  vote_before_late_delivery_core hrun.toStaticCore hnc hy hc hA hik ht
 
 end Consensus.Goldilocks.Healing
 
