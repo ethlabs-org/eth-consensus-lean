@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientEquivalence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
@@ -48,23 +48,6 @@ theorem record_step_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H
       · exact Or.inl (by rw [hsucc, hlaw.2])
       · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ createAtt_record hlaw.1⟩
   · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
-
-/-- The compact client record at every honest cut is the projection of a reachable old record. -/
-theorem client_record_legacy_reachable (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) :
-    ∀ i, ∃ sent, FG.LegacyClient.Reachable (tr.state y i).record sent
-  | 0 => by
-    rw [Trace.state, hrun.init y hy]
-    exact ⟨[], FG.LegacyClient.Reachable.empty⟩
-  | i + 1 => by
-    obtain ⟨sent, hr⟩ := client_record_legacy_reachable hrun hy i
-    rcases record_step_from hrun hy i with he | ⟨a, ⟨src, hc⟩, _⟩
-    · exact ⟨sent, he ▸ hr⟩
-    · have hs := (hrun.cutLaw y hy i _ hc).1
-      rw [← tr.state_succ_of_call hc] at hs
-      change (tr.state y i).record.createAtt y ((tr.state y i).fg.σ
-        ((tr.state y i).fg.σ src.root).Th) = some (a, (tr.state y (i + 1)).record) at hs
-      exact ⟨sent ++ [a.content], hr.sign ((FG.LegacyClient.createAtt_some_iff hr y _ a).2
-        ⟨hs, rfl⟩)⟩
 
 /-- Target, timeout and lock records have their actual earlier signing witnesses. -/
 theorem client_record_origin_from (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)

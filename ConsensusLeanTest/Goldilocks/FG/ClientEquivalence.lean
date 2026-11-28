@@ -1,10 +1,58 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 
 /-! # Erasing the validator client's sent history
 
 The previous rule is expressed here only to compare input/output traces. Its record consists
 of the three retained fields and the list of sent contents. -/
+
+namespace Consensus.Goldilocks.FG.Record
+
+public section
+
+/-- A timeout at a height follows a target and names a different entry. -/
+def TimeoutAfterTarget (Λ : Record) : Prop :=
+  ∀ h, Λ.timeout h ≠ ∅ → ∃ T, Λ.target h = some T ∧ T ∉ Λ.timeout h
+
+theorem timeoutAfterTarget_iff {Λ : Record} : TimeoutAfterTarget Λ ↔
+    ∀ h, Λ.timeout h ≠ ∅ → ∃ T, Λ.target h = some T ∧ T ∉ Λ.timeout h := by rfl
+
+theorem timeoutAfterTarget_empty : TimeoutAfterTarget empty :=
+  timeoutAfterTarget_iff.2 (by simp [empty])
+
+theorem timeoutAfterTarget_createAtt {n : Nat} {Λ Λ' : Record} {v : Fin n} {σ : ChainState n}
+    {a : Att n} (hinv : Λ.TimeoutAfterTarget) (ha : Λ.createAtt v σ = some (a, Λ')) :
+    Λ'.TimeoutAfterTarget := by
+  obtain ⟨-, rfl, -, -, -, -, hne, -, ht⟩ := createAtt_some ha
+  apply timeoutAfterTarget_iff.2
+  intro h
+  by_cases hh : h = a.h
+  · subst h
+    cases hτ : a.timeout
+    · have hnone := ht.mp hτ
+      have he : Λ.timeout a.h = ∅ := by
+        by_contra h
+        obtain ⟨T, hT, -⟩ := timeoutAfterTarget_iff.1 hinv _ h
+        simp [hnone] at hT
+      simp [recordAtt, hτ, he]
+    · have hn : Λ.target a.h ≠ none := by
+        intro h
+        simp [hτ] at ht
+        exact ht h
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.1 hn
+      have hTa : T ≠ a.T := fun e => hne (e ▸ hT)
+      have hm : T ∉ Λ.timeout a.h := by
+        intro h
+        obtain ⟨R, hR, hnR⟩ := timeoutAfterTarget_iff.1 hinv _ (Finset.ne_empty_of_mem h)
+        exact hnR (Option.some.inj (hT.symm.trans hR) ▸ h)
+      simp [recordAtt, hτ, hT, hTa, hm]
+  · simpa only [recordAtt, ite_apply, Function.update_of_ne hh, ite_self] using
+      timeoutAfterTarget_iff.1 hinv h
+
+end
+
+end Consensus.Goldilocks.FG.Record
 
 namespace Consensus.Goldilocks.FG.LegacyClient
 
@@ -219,3 +267,34 @@ theorem trace_eq {n : Nat} {Λ : Record} {sent : List Content} (hr : Reachable �
 end
 
 end Consensus.Goldilocks.FG.LegacyClient
+
+namespace Consensus.Goldilocks.Healing
+
+public section
+
+open Node
+
+variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+  {tr : RunTrace A} {ini : Fin P.n → A.State} {y : Fin P.n}
+
+/-- The compact client record at every honest cut is the projection of a reachable old record. -/
+theorem client_record_legacy_reachable (hrun : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) :
+    ∀ i, ∃ sent, FG.LegacyClient.Reachable (tr.state y i).record sent
+  | 0 => by
+    rw [Trace.state, hrun.init y hy]
+    exact ⟨[], FG.LegacyClient.Reachable.empty⟩
+  | i + 1 => by
+    obtain ⟨sent, hr⟩ := client_record_legacy_reachable hrun hy i
+    rcases record_step_from hrun hy i with he | ⟨a, ⟨src, hc⟩, _⟩
+    · exact ⟨sent, he ▸ hr⟩
+    · have hs := (hrun.cutLaw y hy i _ hc).1
+      rw [← tr.state_succ_of_call hc] at hs
+      change (tr.state y i).record.createAtt y ((tr.state y i).fg.σ
+        ((tr.state y i).fg.σ src.root).Th) = some (a, (tr.state y (i + 1)).record) at hs
+      exact ⟨sent ++ [a.content], hr.sign ((FG.LegacyClient.createAtt_some_iff hr y _ a).2
+        ⟨hs, rfl⟩)⟩
+
+end
+
+end Consensus.Goldilocks.Healing
