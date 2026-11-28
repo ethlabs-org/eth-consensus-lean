@@ -116,7 +116,7 @@ theorem optimisticSelect_eq_proposal {ini} (hrun : Growing.GoldilocksRun propose
     (hlock : ¬ AC.conflictsWithLock sp A.locks ℓ.frame (tr.time i) P) :
     AC.optimisticSelect sp A ℓ.frame (tr.time i) = some P := by
   have hs : sp.slot (tr.time i) = p :=
-    slot_eq_of_window hti₀ (by linarith [sp.toParams.hΔ])
+    AC.CompatibleSides.slot_of_lt hti₀ (by linarith [sp.toParams.hΔ])
   unfold AC.optimisticSelect
   dsimp only
   have hc : ¬ (¬ AC.joined sp A (tr.time i) ∨ p = 0 ∨ sp.ts p + 2 * sp.Δ ≤ tr.time i ∨

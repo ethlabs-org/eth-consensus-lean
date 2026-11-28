@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -17,16 +18,12 @@ open AC (ACParams gbar)
 
 variable (sp : ACParams)
 
-theorem gbar_nonneg (g : Time) : 0 ≤ gbar g := le_max_right g 0
-
-theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
-
 theorem cutZ_eq (g : Time) : cutZ sp.toParams g = sp.ts (sp.slot (gbar g) + 3 : Nat) :=
   sp.slotTime_eq _
 
 /-- `c_z ≤ ḡ + 12Δ` (HR.1). -/
 theorem cutZ_le (g : Time) : cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ := by
-  have h := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) (sp.slot (gbar g))).mpr le_rfl
+  have h := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (gbar g))).mpr le_rfl
   rw [cutZ_eq]
   simp only [ACParams.ts] at h ⊢
   push_cast
@@ -43,7 +40,7 @@ theorem cutZ_add_lt_ready_add (g c : Time) (hc : 9 * sp.Δ ≤ c) :
 /-- `ḡ + 8Δ < c_z` (HR.3 (a)). -/
 theorem lt_cutZ (g : Time) : gbar g + 8 * sp.Δ < cutZ sp.toParams g := by
   have h : ¬ sp.ts (sp.slot (gbar g) + 1 : Int) ≤ gbar g := fun h => by
-    have := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) _).mp h
+    have := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) _).mp h
     omega
   rw [cutZ_eq]
   simp only [ACParams.ts, not_le] at h ⊢

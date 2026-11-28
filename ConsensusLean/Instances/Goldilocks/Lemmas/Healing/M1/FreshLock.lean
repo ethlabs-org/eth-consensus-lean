@@ -43,7 +43,7 @@ theorem honest_vote_branches_of_joined_before {K : AC.CommitteeDict sp.n}
       tr.time j ≤ sp.ts u + sp.Δ := by
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
+  have hg0 := AC.gbar_nonneg g
   intro x hx
   have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
     apply slot_of_mem sp u (by linarith)

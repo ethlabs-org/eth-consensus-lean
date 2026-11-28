@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
@@ -72,7 +73,7 @@ private theorem relay_source_at_proposal_at
     by_cases hqg : gbar g ≤ tr.time q
     · obtain ⟨k, hki, hk, hkt⟩ := (Healing.Growing.KernelProof.service_syncACAt hrun hsvc
         (lo := g) (hi := tr.time q) le_rfl).2 z q Q hz hq
-        ((Healing.le_gbar g).trans hqg) le_rfl y i ell hy hc
+        ((AC.le_gbar g).trans hqg) le_rfl y i ell hy hc
         (by have := hdl i le_rfl _ hqt
             change tr.projAC.deadline y i (tr.time q) ≤ tr.time i
             linarith) hFQ
@@ -344,7 +345,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     obtain ⟨hvs, ⟨k, hk, hsend, hklo, hkhi⟩, Hv, hHvU, hHvr, hDHv, hacc⟩ :=
       Compose.Growing.optimistic_writer_votes_at hrun hnc hx hopt v hv
     have hvheld := AC.Growing.sync_window_before_forward hacG.localRun hsw hk hsend
-      ((Healing.le_gbar g).trans (hm.trans hklo))
+      ((AC.le_gbar g).trans (hm.trans hklo))
       (by change tr.time k + sp.Δ ≤ tr.time i; linarith) hy hc
       (fun k' hk' hrk => (hrs k' hk' hrk).trans hklo)
       (by change tr.time k + sp.Δ ≤ tr.time i; linarith)

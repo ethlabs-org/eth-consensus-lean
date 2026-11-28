@@ -111,31 +111,31 @@ theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hcarry := carryAt_of_delivered hr hra.vstart hy hc' hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
-    · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
+    · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
       exact ac_messageServedBefore_upTo hm le_rfl (hsync.message w k v hwk hsend
         (ha.trans hk1) y i ℓ hy hc.1 (hdl.trans hi) hdl)
     rcases hacc with hg | ⟨kw, hwkw, hkw, hkwt⟩
     · exact Or.inr (Or.inl hg)
     by_cases hakw : a ≤ tr.time kw
     · refine Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩
-      rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
+      rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
       obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.acRelay w kw Hv hwkw hkw hakw y i ℓ
         hy hc.1 (hdl.trans hi) hdl hFHv
       have hkyd : tr.time ky ≤ tr.time i := hm hky
-      exact ⟨ky, hky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩,
-        by rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm hkyd]; exact hkyt⟩
+      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkyd, hacc'⟩,
+        by rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) hm hkyd]; exact hkyt⟩
     · -- a head accepted before `a`: caught up by the voter before `a + κ ≤ t_s`
       obtain ⟨ky, -, hacc', hkyt⟩ := hsync.acOld w kw Hv hwkw hkw (lt_of_not_ge hakw) y i ℓ
         hy hc.1 (hsa.trans hti) hFHv
       have hkyd : tr.time ky ≤ tr.time i := (hkyt.trans_le (hsa.trans hti)).le
-      refine Or.inr (Or.inr ⟨ky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩, ?_⟩)
+      refine Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkyd, hacc'⟩, ?_⟩)
       change tr.time ky < sp.ts s + 3 * sp.Δ
       linarith
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
   refine ⟨Hv, hsub hHv, hHvr, fun X hX => ?_⟩
   exact (hacc X (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHv hX)).imp_right
-    fun ⟨k, hk, hkt⟩ => ⟨k, ((ac_acceptAt_upTo _).mp hk).2, hkt⟩
+    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (tr := _)).mp hk).2, hkt⟩
 
 /-- **What a result's writer did with its counted votes**, for a writer honest at its update:
 each was sent or admitted by it while honest at a time in `[t_s, t_s + 2Δ)`, and its head, held
@@ -157,10 +157,10 @@ theorem result_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
     result_writer (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hX
       ((ac_resultAt_upTo hrun.time_mono).mpr ⟨le_rfl, hR⟩) v hv
-  obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
+  obtain ⟨hkd, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hX, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
     hacc.imp_right fun ⟨k', hk', hk't⟩ => ?_⟩
-  obtain ⟨hk'd, hk'⟩ := (ac_acceptAt_upTo _).mp hk'
+  obtain ⟨hk'd, hk'⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hk'
   exact ⟨k', hrun.antitone hk'd hX, hk', hk't⟩
 
 /-- **A result's counted votes reach the next voters** (`Carry_y`) under growing faults: the
@@ -225,7 +225,7 @@ private theorem served_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (by linarith) (by linarith)
   have hserv' := ac_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
   have h := AC.held_of_deadline_serviceU hr.localRun.toU hX
-    (fun k' hk' hr' => hrs' k' hk' ((ac_restartAt_upTo tr.projAC).1 hr').2)
+    (fun k' hk' hr' => hrs' k' hk' ((ACTrace.upTo_restartAt (tr := tr.projAC)).1 hr').2)
     (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
     (fun t ht₁ ht₂ => by
       change tr.time k ≤ t at ht₁
@@ -265,7 +265,7 @@ theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
   have hrX := (acRun_upTo hrun hnc hd₀).localRun
   have hrsX : ∀ k ≤ i₀, tr.projAC.RestartAt X k → tr.time k ≤ sp.ts s := fun k hk hrk =>
     Compose.update_restarts hrX hX ((ac_updateAt_upTo hm).2 ⟨le_rfl, hupd⟩) k hk
-      ((ac_restartAt_upTo tr.projAC).2 ⟨hm hk, hrk⟩)
+      ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hm hk, hrk⟩)
   have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hupd.2.2.1
   -- the voter's side, on the prefix through its vote
   have hd := hrun.time_nonneg i
@@ -300,7 +300,7 @@ theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     · have hsk : sp.ts s ≤ tr.time k' :=
         (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)
       have hki : tr.time k' ≤ tr.time i := hm ((Nat.le_of_lt_succ hk').trans hk)
-      obtain ⟨-, hsend⟩ := (ac_sendOrAdmit_upTo hm).mp hsend
+      obtain ⟨-, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
       exact served_held_at hrun hnc hsync ha hX hupd.1 ht₀ hi₀ hrsX hvs (hrun.antitone hki hy)
         hsend hsk (hki.trans hti)
     · -- a restart's vote is of a block of slot at most `slot(t_{k'})`, so of slot below `s`

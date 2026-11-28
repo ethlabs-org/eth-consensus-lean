@@ -97,7 +97,7 @@ theorem ResetPremisesUpTo.gbar_le_ts_of_clean_at
   have hca := hp.cutZ_lt_reset_at
   have hlc := lt_cutZ sp g
   have hΔ := sp.toParams.hΔ
-  have ha0 : 0 ≤ a := by linarith [gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
   rw [cleanLabel_eq] at hs
   by_contra h
   have hsa := (AC.ts_le_iff_le_slot sp ha0 s).mp (le_trans (not_le.mp h).le (by linarith))

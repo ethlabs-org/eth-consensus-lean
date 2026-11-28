@@ -324,7 +324,7 @@ theorem unanimous_early_pool_of_acceptance_at
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith [sp.toParams.hΔ]
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by
-      linarith [Healing.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb)
+      linarith [AC.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb)
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   exact unanimous_early_pool_of_blockStamp_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hy hc ht hjb hPt

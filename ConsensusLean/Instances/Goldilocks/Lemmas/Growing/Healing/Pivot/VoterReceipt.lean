@@ -42,7 +42,7 @@ theorem raw_writer_voterBlockTree_before_at
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
-  have hsvc := hp.sync.ac_service_at hp.run (lo := AC.gbar g) (hi := tr.time i) (le_gbar g)
+  have hsvc := hp.sync.ac_service_at hp.run (lo := AC.gbar g) (hi := tr.time i) (AC.le_gbar g)
   have hΔ := sp.toParams.hΔ
   have hcatchAC : ∀ x q D, x ∈ H (tr.time q) → tr.projAC.AcceptAt x q D →
       tr.time q < AC.gbar g → ∀ y j ell, y ∈ H (tr.time j) →

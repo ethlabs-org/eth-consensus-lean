@@ -10,13 +10,9 @@ namespace Consensus.Goldilocks.AC.FamilyFacts
 
 variable {sp : ACParams} {FGP : Type}
 
-theorem poolEvidenceBefore_iff_old (st : ACState sp.n) (v : Vote sp.n) (T : Time) :
-    PoolEvidenceBefore st v T ↔ AC.PoolEvidenceBefore st v T := by
-  rw [AC.poolEvidenceBefore_iff]; rfl
-
 theorem retainedBefore_iff_old (o : GTrace sp FGP) (y : Fin sp.n) (j : Nat)
     (v : Vote sp.n) (T : Time) : RetainedBefore o y j v T ↔ AC.RetainedBefore o y j v T := by
-  simp only [RetainedBefore, AC.retainedBefore_iff, poolEvidenceBefore_iff_old]
+  rw [AC.retainedBefore_iff]; rfl
 
 theorem messageServedBefore_iff_old (o : GTrace sp FGP) (y : Fin sp.n) (j : Nat)
     (τ : Time) (v : Vote sp.n) :

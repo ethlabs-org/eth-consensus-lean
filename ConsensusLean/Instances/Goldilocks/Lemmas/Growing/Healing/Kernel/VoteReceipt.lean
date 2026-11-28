@@ -91,7 +91,7 @@ theorem high_origin_frozen_head_at
   have hgc : g ≤ tr.time c := by
     have hcZ := cutZ_lt_of_anc_at hp ho hzc hWc hOW
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     have := sp.toParams.hΔ
     linarith
   have hWT := relay_mem_voterBlockTree_at (s := l) hp hzc₀ hacc₀ hgc
