@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassif
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
@@ -116,7 +116,7 @@ theorem regular_later_heads_at
       linarith) hK
   have hPhi := AC.frameIn_of_callU (hAC.upTo (hrun.time_nonneg q)).localRun.toU hz
     ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
-  have hcoh := Coherence.honestBlocksAt_coherent hrun hnc
+  have hcoh := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hEQ : Hd = Q := hcoh.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
   rcases hclass with hv | ho

@@ -3,11 +3,15 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
@@ -100,7 +104,6 @@ private theorem mem_addAtts {a : FG.Att P.n} {l : List (FG.Att P.n)}
 /-- Every attestation carried by a held block is in the pool. -/
 theorem payload_mem_atts (hr : st.Reachable acp₀) :
     ∀ B ∈ st.tree, ∀ a ∈ B.fgPayload, a ∈ st.atts := by
-  rw [Store.reachable_eq] at hr
   induction hr with
   | refl =>
     intro B hB a ha
@@ -110,7 +113,7 @@ theorem payload_mem_atts (hr : st.Reachable acp₀) :
     cases hB
     cases ha
   | @tail s s' _ hs ih =>
-    rcases (Store.step_iff _ _).1 hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
+    rcases hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
     · obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Goldilocks.Store.onBlock_eq_some hB'
       intro B hB a ha
       set st₁ : Store P ACP :=
@@ -454,7 +457,7 @@ theorem proposal_window_witness
     exact (hrun.time_mono hq.le).trans (by rw [hip, htime])
   have hleB : ∀ q < kB + 1, tr.time q ≤ tr.time kB :=
     fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at hr.toLocalRun hzk hc
+  have hfr := Compose.frame_of_projAC hr hzk hc
   have hfr' : ell.frame = Node.frame (tr.state z ip) := by
     rw [Trace.upTo_state tr z hleip] at hfr
     exact hfr
@@ -474,17 +477,17 @@ theorem proposal_window_witness
     ⟨z, hzk, kB + 1, hBm⟩
   have hDB : Anc ((tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB))) d.head B :=
     .single ⟨hDhist, hBhist, hpar⟩
-  have hDBs := Coherence.honest_held_anc' hr (hnc.upTo _) hzk hDB hBm
+  have hDBs := Compose.honest_held_anc hr (hnc.upTo _) hzk hDB hBm
   have hDpost : d.head ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree := by
     by_cases he : d.head = B
     · exact he ▸ hBm
     · exact (Anc.mem hDBs he).1
   have hσ := Healing.Store.σ_eq_of_mem
-    (Node.fg_reachable_at hr.toLocalRun hzk ip)
-    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1))
-    (Coherence.honest_blocks_coherent hr.toLocalRun (hnc.upTo _)).1
+    (Compose.fg_reachable hr.toLocalRun hzk ip)
+    (Compose.fg_reachable hr.toLocalRun hzk (kB + 1))
+    (Compose.honest_blocks_coherent hr.toLocalRun (hnc.upTo _)).1
     (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
-  have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
+  have hh := (Compose.honest_held_height hr (hnc.upTo _) hzk hDBs).1
   rw [← hσ] at hh
   have hM : ((tr.upTo (tr.time kB)).state z ip).fg.hmax = M := by
     rw [Trace.upTo_state tr z hleip]

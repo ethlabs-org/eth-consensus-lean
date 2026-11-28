@@ -10,10 +10,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRe
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -82,12 +84,10 @@ private theorem warm_proposal_store_bounds_at {ini}
     fun q hq => hrun.time_mono (by omega)
   obtain ⟨hacc, -, -⟩ := Healing.accept_of_proposesAt hr (hnc.upTo _) hzk hP'
   obtain ⟨⟨⟨-, -⟩, hpos⟩, -, -⟩ := hP'
-  rcases Coherence.blockCall_cases h hzk hacc with hg |
+  rcases Compose.blockCall_cases h hzk hacc with hg |
     ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, hacc', ⟨ℓ₀, h₀⟩, -, hst2⟩
-  · rw [RunTrace.groupAt_iff] at hg
-    exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call h hzk hg hpr
-  simp only [Node.acProposal_eq] at hc1
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  obtain ⟨hc1, ht1, hst1⟩ := Healing.tick_proposal_call h hzk hg hpr
   set tu := tr.upTo (tr.time (j + 2)) with htu
   have hc := Compose.projAC_callAt.2 hc1
   have hj1 : tu.time (j + 1) = sp.ts u := by
@@ -99,7 +99,7 @@ private theorem warm_proposal_store_bounds_at {ini}
     exact hz
   have hle1 : ∀ q < j + 1, tr.time q ≤ tr.time (j + 2) :=
     fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at h hzk hc
+  have hfr := Compose.frame_of_projAC hr hzk hc
   rw [Trace.upTo_state tr z hle1] at hfr
   have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   obtain ⟨Q, hQ, hv, hroot⟩ :=
@@ -113,7 +113,7 @@ private theorem warm_proposal_store_bounds_at {ini}
         .acTick).1) (tu.projAC.time (j + 1))).2 = some (d, pay) := by
     have ht1' : tu.projAC.time (j + 1) = tu.time (j + 2) := ht1
     rw [Compose.projAC_state h hzk, hst1, ht1']
-    simpa only [Node.acProposal_eq] using hdp
+    exact hdp
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc rfl
     (by rw [sp.slotTime_eq]; exact hj1) hd
     ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
@@ -122,10 +122,10 @@ private theorem warm_proposal_store_bounds_at {ini}
   -- the proposal's store, block and state
   have hfgj : (tr.state z (j + 1)).fg = (tu.state z j).fg := by
     rw [← Trace.upTo_state tr z hle1, tu.state_succ_of_call h₀,
-      ((Node.cutStep_ac _ _ _ _ _).1 (h.cutLaw z hzk _ _ h₀)).2.2.1]
+      (h.cutLaw z hzk _ _ h₀).2.2.1]
   obtain ⟨fg', hfg'⟩ := hacc'.1 rfl
   have hpost : (tu.state z (j + 2 + 1)).fg = fg' := by
-    have hcl := ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw z hzk _ _ hacc)).2.1
+    have hcl := (h.cutLaw z hzk _ _ hacc).2.1
     rw [tu.state_succ_of_call hacc]
     rw [hst2, hfg'] at hcl
     exact (Option.some.inj hcl).symm
@@ -140,7 +140,7 @@ private theorem warm_proposal_store_bounds_at {ini}
   have hatts : P.fgView.atts = (tu.state z j).fg.proposalAttestations d.head := by
     rw [hB]
     rfl
-  have hreach := Node.fg_reachable_at h hzk j
+  have hreach := Compose.fg_reachable h hzk j
   have hkP : (tr.state z (j + 2)).fg = (tu.state z j).fg := by
     have hle2 : ∀ q < j + 2, tr.time q ≤ tr.time (j + 2) :=
       fun q hq => hrun.time_mono (by omega)

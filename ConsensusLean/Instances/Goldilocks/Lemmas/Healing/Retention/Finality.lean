@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 
 public section
@@ -311,9 +311,9 @@ theorem viable_head_of_height (hrun : GoldilocksRun proposer dg H tr ini)
     (tr.state y i).fg.Anc (tr.state y i).fg.F X ∧
       X ∈ (tr.state y i).fg.toFrame.tree ∧ X ∈ (tr.state y i).fg.toFrame.viableHeads := by
   have hr := Compose.fg_reachable hrun.toLocalRun hy i
-  have hu := Goldilocks.Store.finalitySpec_updateFinality
-    (P := sp.toParams) (ACP := (goldilocksNode sp).Payload)
-  have hj := Goldilocks.Store.hj_lt_hmax_of_reachable_with hu hr.reachableWith
+  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ :=
+    Goldilocks.Store.cache_invariants _ _ _ _ hr
+  have hj := hBjhj ▸ (Store.hj_lt_h hr hBj).trans_le (hge Bj hBj)
   have hFX : (tr.state y i).fg.Anc (tr.state y i).fg.F X := by
     by_cases h : ((tr.state y i).fg.σ X.root).h ≤ (tr.state y i).fg.hj
     · exact (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.2.1.trans (hJ h)
@@ -325,8 +325,28 @@ theorem viable_head_of_height (hrun : GoldilocksRun proposer dg H tr ini)
     have hsafe := held_atts_safe hfg hy hy i i
     rw [hs] at hsafe
     have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
-    exact Goldilocks.Store.F_anc_of_hj_lt_of_safe_with hu hr.reachableWith hr.reachableWith
-      (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hsub hsub hf hsafe hX (by omega)
+    have hcoh := (Compose.honest_blocks_coherent hrun.toLocalRun hnc).mono hsub
+    have hg := Store.genesis_mem hr
+    obtain ⟨hFm, -, hFJ, ⟨B, hB, hBJ, hBhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
+      Goldilocks.Store.cache_invariants _ _ _ _ hr
+    have hgF := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
+    have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
+        (tr.state y i).fg.Anc (tr.state y i).fg.F X := fun he => by
+      rw [hcoh.1 hFm hg he]
+      exact (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 X hX
+    rcases Store.fin_pair_entry hr hBf with he | ⟨W, hW, hWr, hWh⟩
+    · exact hgen (hBfF.symm.trans he)
+    obtain rfl : W = (tr.state y i).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
+    obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hr hB
+    obtain rfl : E = (tr.state y i).fg.J :=
+      hcoh.1 hE (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.1 (hEr.trans hBJ)
+    rcases hcase with hEg | ⟨hEh, -⟩
+    · rw [hEg] at hFJ
+      exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
+    have h₁ := Healing.h_le_of_store_anc hr hFJ
+    exact Goldilocks.Store.finalized_anc_of_safe hr hr
+      (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hsub hsub hf hsafe
+      hBf hFm hBfF.symm hX (by omega)
   have hv : (tr.state y i).fg.IsViable X := by
     change _ ∨ (_ ∧ _)
     by_cases hm : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ X.root).h
