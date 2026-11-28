@@ -20,8 +20,8 @@ Under growing faults:
 * `held_forward_blockCall_lt_at`: a held forwarding wrapper of a
   signer honest at its stamp is processed before the holding bound;
 * `carrier_processed_of_honest_at`, the premise `hcarrier` of
-  `final_window_extract_of_gap_at`: every node ready at the deadline processes an honest proposal
-  of a slot `s` by the deadline, when `query < t_s` and `t_s + Δ ≤ deadline`. -/
+  `final_window_extract_of_gap_delayed_at`: every node ready at the deadline processes an honest
+  proposal of a slot `s` by the deadline, when `query < t_s` and `t_s + Δ ≤ deadline`. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations

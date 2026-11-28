@@ -7,10 +7,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Win
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -22,8 +22,8 @@ public section
 On the canonical growing trace, an honest seed proposal `Q` at a slot `u` after the
 drain, and an honest proposal `P₀` at a slot `s₀ ≥ u + δt` by the horizon `b`, give
 `H_z + 2 ≤ σ[P₀].h` at every holder of `P₀` honest at an observation time after the holder's
-earlier cuts (`seed_height_at`), and at the proposer of `P₀` just after its proposal cut
-(`seed_height_held_at`, the height witness of `anchorSteps_gap_at`). -/
+earlier cuts (`seed_height_delayed_at`), and at the proposer of `P₀` just after its proposal cut
+(`seed_height_held_delayed_at`, the height witness of `anchorSteps_gap_delayed_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -105,7 +105,7 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF hold : Time}
     linarith [mul_le_mul_of_nonneg_left h2δ (mul_nonneg zero_le_four sp.toParams.hΔ.le)]
   have hus2 : u + 2 ≤ s₀ := by omega
   have hub : sp.ts u + 6 * sp.Δ ≤ b := by linarith
-  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [AC.gbar_nonneg g]
+  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [Healing.gbar_nonneg g]
   have hubG : sp.ts u + 6 * sp.Δ + G * sp.Δ ≤ b := by linarith [hs.sync.deltaF]
   -- Step 1: H0 at the seed
   obtain ⟨v, r, l, O, ho, -, -, hrt⟩ := hp.reset_seed_before_slot_at hR
@@ -291,53 +291,6 @@ theorem seed_height_delayed_at {g ΔR a b gS ΔF hold : Time}
     (fun hQH hQs hu hQg hun hgu hR hb =>
       Healing.Growing.report_cover_delayed_of_unanimous_at hp hcal hgap
         hQH hQs hu hQg hun hgu hR hb) htd hcr hQ hu hR hgu hP₀ hus hb hgS
-
-/-- The responsive seed-height statement, with its original assumptions. -/
-theorem seed_height_at {g ΔR a b gS ΔF hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
-    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
-    (hP₀ : Healing.Growing.HonestProposalRun tr H proposer s₀ P₀)
-    (hus : u + sp.toParams.fg.δt ≤ s₀) (hb : sp.ts s₀ ≤ b)
-    (hgS : gbar gS ≤ sp.ts u + 6 * sp.Δ) :
-    ∀ y k t, 0 ≤ t → (∀ q < k, tr.time q ≤ t) → y ∈ H t → P₀ ∈ (tr.state y k).fg.tree →
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
-  have hδ' : (2 : Time) ≤ sp.toParams.fg.δt := by exact_mod_cast hδ
-  have hΔ := sp.toParams.hΔ
-  apply seed_height_of_reports_at hp hs hhold hδ (G := 0) _
-    (by simpa [Params.fg] using hs.timeoutDelay)
-    (by simp only [Nat.cast_zero, zero_mul, add_zero]; nlinarith) hQ hu hR hgu hP₀ hus hb hgS
-  intro hQH hQs hu hQg hun hgu hR hb
-  simpa only [Nat.cast_zero, zero_mul, add_zero] using
-    Healing.Growing.report_cover_of_unanimous_at hp hsign hQH hQs hu hQg hun hgu hR
-      (by simpa using hb)
-
-/-- `seed_height_at` in the form of the height premise of `anchorSteps_gap_at`: the proposer of
-`P₀` holds `P₀` just after its proposal cut, honest at that cut, at height at least `H_z + 2`. -/
-theorem seed_height_held_at {g ΔR a b gS ΔF hold : Time}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
-    (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
-    (hhold : 0 ≤ hold)
-    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
-    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
-    (hP₀ : Healing.Growing.HonestProposalRun tr H proposer s₀ P₀)
-    (hus : u + sp.toParams.fg.δt ≤ s₀) (hb : sp.ts s₀ ≤ b)
-    (hgS : gbar gS ≤ sp.ts u + 6 * sp.Δ) :
-    ∃ y k, y ∈ H (tr.time k) ∧ P₀ ∈ (tr.state y k).fg.tree ∧
-      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
-  obtain ⟨kX, -, hm, ht, hXm⟩ := proposal_held_at hp.run hp.noColl hP₀
-  refine ⟨_, kX + 1, ht ▸ hm, hXm,
-    seed_height_at hp hsign hs hhold hδ hQ hu hR hgu hP₀ hus hb hgS _
-    (kX + 1) (tr.time kX) (hp.run.time_nonneg kX)
-    (fun _ hq => hp.run.time_mono (by omega)) hm hXm⟩
 
 /-- The delayed seed-height bound at an honest holder just after its proposal cut. -/
 theorem seed_height_held_delayed_at {g ΔR a b gS ΔF hold : Time}
