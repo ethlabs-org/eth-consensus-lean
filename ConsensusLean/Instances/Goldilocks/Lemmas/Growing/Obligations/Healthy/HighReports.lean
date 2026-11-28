@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
