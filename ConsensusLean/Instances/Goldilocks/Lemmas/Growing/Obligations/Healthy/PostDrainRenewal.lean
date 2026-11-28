@@ -332,10 +332,8 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg j
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hstep {s : Nat} : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
+  have hts := @Compose.ts_le_ts sp
+  have hstep := AC.ts_succ (sp := sp)
   have hum1 := hts (show u + 1 ≤ m + 1 by omega)
   obtain ⟨hjlo, hjhi⟩ := castAt_time_bounds hp.run hp.noColl hy hc
   rw [hs] at hjlo hjhi
@@ -392,19 +390,8 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
       hp.catchUp hP hslot hu hun (by linarith [Healing.le_gbar g]) hy hc.1
       (by have := @hstep u; linarith) hjb hnr (exists_honest_slot_vote_at hp hgu hR hub)
       hFP'
-    have hr := (acRun_upTo_time hrun hp.noColl j).localRun
-    have hc' := castAt_upTo_of_le le_rfl hc
-    have ha'' : (tr.upTo (tr.time j)).projAC.AcceptAt y k' P := by
-      rw [RunTrace.upTo_projAC]
-      exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hm hk'j, ha'⟩
-    have hPp : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
-      obtain ⟨ella, hca, hba⟩ := ha''
-      exact (AC.frameIn_of_callAt hr hy hca).2
-        ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
-    have hFPp := RunTrace.anc_upTo_of_right hrun.toLocalRun hp.noColl hd hPp hFP'
-    have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y P (sp.ts m + 3 * sp.Δ) :=
-      Or.inr ⟨k', ha'', by change tr.time k' < _; linarith [hts (show u ≤ m by omega)]⟩
-    exact Compose.accepted_voter_tree (hrun.upTo hd) (hp.noColl.upTo _) hy hc' hs hPp hacc hFPp
+    exact accepted_voter_tree_of_accept_at hrun hp.noColl hy hc hs hk'j ha'
+      (by linarith [hts (show u ≤ m by omega)]) hFP'
   have hPt : P ∈ (Node.frame (tr.state y j)).tree := hfr ▸ hPv.1
   obtain ⟨v, q, l, S, hseed, hqb, -, hqt⟩ := hp.reset_seed_before_slot_at hR
   have hSP := high_origins_before_next_slot_below_at hp hP hun hgu hR hub hseed hqt hqb
@@ -450,10 +437,8 @@ theorem post_drain_votes_extend_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   · exact Or.inl hesc
   right
   have hΔ := sp.toParams.hΔ
-  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hstep {m : Nat} : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
+  have hts := @Compose.ts_le_ts sp
+  have hstep := AC.ts_succ (sp := sp)
   -- the induction carries every slot from `u + 1` through `r`
   suffices hall : ∀ r, u + 1 ≤ r → r ≤ N → ∀ s, u + 1 ≤ s → s ≤ r → ∀ y j e,
       y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ T → e.msg.slot = s →
@@ -535,10 +520,8 @@ theorem fast_lock_renewal_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   right
   intro y hy
   have hΔ := sp.toParams.hΔ
-  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hstep {m : Nat} : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
+  have hts := @Compose.ts_le_ts sp
+  have hstep := AC.ts_succ (sp := sp)
   have hur' := hts hur
   have hrNt := hts hrN
   have hTb : sp.ts r + 6 * sp.Δ ≤ b := by linarith

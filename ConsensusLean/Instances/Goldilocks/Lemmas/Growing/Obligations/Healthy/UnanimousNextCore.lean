@@ -18,6 +18,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -71,6 +72,27 @@ theorem castAt_upTo_of_le {d : Time} {y : Fin sp.n} {j : Nat}
     (hc : AC.CastAt tr.projAC y j ell e) : AC.CastAt (tr.upTo d).projAC y j ell e := by
   rw [RunTrace.upTo_projAC]
   exact ⟨(Trace.upTo_callAt_of_le tr.projAC hjd).mpr hc.1, hc.2⟩
+
+/-- A block accepted before the freeze and above the voter’s finality is in the frozen tree. -/
+theorem accepted_voter_tree_of_accept_at {ini : Fin sp.n → (goldilocksNode sp).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k j s : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hs : e.msg.slot = s + 1) (hkj : k ≤ j)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt y k P)
+    (ht : tr.time k < sp.ts s + 3 * sp.Δ) (hFP : Anc (tr.HonestBlocksAt H) ell.frame.F P) :
+    P ∈ AC.voterBlockTree sp e.readPoint ell.frame (s + 1) := by
+  have hd := hrun.time_nonneg j
+  have hr := (acRun_upTo_time hrun hnc j).localRun
+  have ha' : (tr.upTo (tr.time j)).projAC.AcceptAt y k P := by
+    rw [RunTrace.upTo_projAC]
+    exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hrun.time_mono hkj, ha⟩
+  have hP : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
+    obtain ⟨ella, hca, _⟩ := id ha'
+    exact (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy ha').1 ella hca)
+  exact Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy
+    (castAt_upTo_of_le le_rfl hc) hs hP (Or.inr ⟨k, ha', ht⟩)
+    (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hP hFP)
 
 /-! ### Service and catch-up at the voter, with each sender honest at its own cut -/
 
@@ -229,51 +251,27 @@ theorem unanimous_next_vote_viable_core_at
       (tr.state y j).fg.IsViable P) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
-  have hm := hrun.time_mono
-  have hd := hrun.time_nonneg j
   have hΔ := sp.toParams.hΔ
-  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hr := (acRun_upTo_time hrun hnc j).localRun
-  have hc' := castAt_upTo_of_le le_rfl hcast
-  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
-  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
-    rw [Outcome.frame_of_call hrun hy hcast.1]
-    exact hroot
+  obtain ⟨hPhi, hPhiU⟩ := Compose.Growing.frameIn_at hrun hnc hy hcast.1
+  have hfr := Outcome.frame_of_call hrun hy hcast.1
+  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := hfr.symm ▸ hroot
   -- the cast is at `t_{u+1}` or later
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time j := by
-    have h := (AC.castAt_specU hr.toU hy hc').2.1
+    have h := (Compose.Growing.castAt_spec_at hrun hnc hy hcast).2.1
     change e.msg.slot = sp.slot (tr.time j) at h
-    exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
-  have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
+    exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega)
   have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
-    (((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hrootFrame)
+    (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootFrame
   -- the caster accepts `P` before the freeze
   obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hrun hnc hsvc hc hP hslot hu
-    hun hg hy hcast.1 (by linarith) hjb hnr hvote hanc
-  have ha'' : (tr.upTo (tr.time j)).projAC.AcceptAt y k' P := by
-    rw [RunTrace.upTo_projAC]
-    exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hm hk'j, ha'⟩
-  have hHdp : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
-    obtain ⟨ella, hca, hba⟩ := ha''
-    exact (AC.frameIn_of_callAt hr hy hca).2
-      ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
-  have hrootp := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hrootFrame
-  have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootp
-  have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y P (sp.ts u + 3 * sp.Δ) :=
-    Or.inr ⟨k', ha'', hk't⟩
-  have hPt := Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy hc' hs hHdp hacc hFP
-  have hfr := Compose.frame_of_projAC (hrun.upTo hd) hy hc'.1
-  have hst := RunTrace.upTo_state_of_le (y := y) hm (le_refl (tr.time j))
-  have hstore : P ∈ (tr.state y j).fg.tree := by
-    have hmem := hPt.1
-    rw [hfr, hst] at hmem
-    exact hmem.1
-  have hroot' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hrootp hPt.1
-  refine ⟨Anc.mono hsub hFP, hPt, hroot', P, hPt, ?_, .refl⟩
+    hun hg hy hcast.1 (by linarith [AC.ts_succ (sp := sp) u]) hjb hnr hvote hanc
+  have hPt := accepted_voter_tree_of_accept_at hrun hnc hy hcast hs hk'j ha' hk't hanc
+  have hroot' := AC.anc_tree_of_anc_U (Compose.Growing.honest_blocks_coherent hrun hnc)
+    hPhi hPhiU hPhi.fcRoot_mem hrootFrame hPt.1
+  refine ⟨hanc, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
-  rw [hfr, hst] at hmem ⊢
-  exact ⟨hmem.1, hmem.2, hviable hstore⟩
+  rw [hfr] at hmem ⊢
+  exact ⟨hmem.1, hmem.2, hviable hmem.1⟩
 
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/
