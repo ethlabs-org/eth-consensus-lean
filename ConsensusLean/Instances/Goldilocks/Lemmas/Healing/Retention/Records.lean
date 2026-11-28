@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.ClientSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
@@ -14,10 +15,10 @@ public section
 An honest client record changes only when the node signs
 (`record_attestation`, the only writer; the record is durable over restarts): its target and
 timeout entries at `h` name the height pair of an attestation it signed at `h`, its lock entry at
-`h` the finality pair `(h, ·)` of one (`client_record_origin`). A signed height pair of height
+`h` the finality pair `(h, ·)` of one (`client_record_origin_of_run`). A height pair of height
 `≥ H_z + 1` is signed at or after `a` (HR.1 (c)), so by (R1)'s attestations it names the entry at
 its height of a high origin's chain; a finality pair names the entry at its height of an ancestor of
-the source's entry (`signed_fin_pair_entry`, `chain_pairs_entry`), which is then on a high
+the source's entry (`signed_fin_pair_entry_of_run`, `chain_pairs_entry`), which is then on a high
 origin's chain too (`high_record_entry`). Two entries at one height of comparable chains are one
 block (entry constancy, `entry_root_eq`). -/
 
@@ -36,28 +37,6 @@ theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P A
   rcases Anc.total hcoh hXY hJY with h | h
   · exact hXT.symm.trans ((Th_eq_of_anc hr h hh.symm).symm.trans hJT)
   · exact hXT.symm.trans ((Th_eq_of_anc hr h hh).trans hJT)
-
-/-- `create_attestation`'s finality pair is the record's `finality_pair` of the entry state. -/
-private theorem createAtt_fin {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
-    {σe : FG.ChainState n} {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
-    a.fin = Λ.finalityPair σe := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    rfl
-
-/-- The newest-pair fold returns its start or a member of the list. -/
-private theorem foldl_newest_mem {l : List (Nat × Nat)} {acc : Option (Nat × Nat)}
-    {p : Nat × Nat}
-    (h : l.foldl (fun acc p => match acc with
-      | none => some p
-      | some r => if r.1 < p.1 then some p else some r) acc = some p) :
-    acc = some p ∨ p ∈ l := by
-  exact FG.Record.foldl_newest_mem_or_initial h
 
 /-- One accepted block: its justification is the parent's, or the parent's entry at the parent's
 height; its pending pairs are the parent's or the parent's `(h, T_h)`. -/
@@ -134,15 +113,6 @@ theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp).Stat
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) :=
   client_record_origin_from hrun.toLocalRun hy h r
 
-/-- Whole-run reset specialization of actual record provenance. -/
-private theorem client_record_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) (h r i : Nat) :
-    ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
-    ((tr.state y i).record.lock h = some r →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) :=
-  client_record_origin_of_run hp.run hy h r i
-
 /-- An honest record changes only when the node signs, by recording the signed attestation. -/
 theorem record_step_of_run {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -168,8 +138,7 @@ theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H t
   have hr := Compose.fg_reachable hrun.toLocalRun hy k
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  have hT := (Store.createAtt_eq hcl).2
-  have hfp := createAtt_fin hcl
+  obtain ⟨-, -, hT, hfp, -, -⟩ := createAtt_fields hcl
   rw [hfin] at hfp
   rcases hs' : (tr.state y k).fg.blocks src.root with _ | X
   · have hg : ((tr.state y k).fg.σ src.root).Th = sp.genesisRoot := by
@@ -189,20 +158,10 @@ theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H t
     obtain ⟨rfl, rfl⟩ := hfp
     obtain ⟨Z, hZ, hZE, hZr, hZh, hZT⟩ := hJ hb.1
     exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
-  · rcases foldl_newest_mem hfp.symm with h' | h'
+  · rcases FG.Record.foldl_newest_mem_or_initial hfp.symm with h' | h'
     · cases h'
     · obtain ⟨Z, hZ, hZE, hZr, hZh, hZT⟩ := hpend _ (List.mem_filter.1 h').1
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
-
-/-- Reset-premise specialization of the run-only signed finality-pair provenance. -/
-private theorem signed_fin_pair_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
-    (hfin : att.fin = some (h, r)) :
-    ∃ J ∈ (tr.state y k).fg.tree, ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧
-      (tr.state y k).fg.Anc J E ∧ J.root = r ∧ ((tr.state y k).fg.σ J.root).h = h ∧
-      ((tr.state y k).fg.σ J.root).Th = J.root :=
-  signed_fin_pair_entry_of_run hp.run hy hs hfin
 
 /-- Finalizing a strict descendant is witnessed by an actual earlier honest report.
 The height comparison is in the reporter's store at the report cut. -/
@@ -295,30 +254,6 @@ theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
     Goldilocks.Store.cache_invariants _ _ _ _ hr
   exact Or.inr (hp.finalized_descendant_report hy hW hF hWF.symm h he)
 
-/-- A signed attestation naming a held entry above the target produces an actual earlier
-higher report. The signing witness is retained explicitly; a covering origin alone
-does not supply this fact. Heights are compared at the resulting reporter's cut. -/
-theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
-    {P E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
-    {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
-    (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocks H) P E)
-    (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
-    ∃ r ell C, r < i ∧ AC.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  obtain ⟨r, hrd, -, ell, C, E', hto, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
-    signAt_report_entry hp.run hz hs
-  obtain rfl : E' = E := hp.honest_coherent.1 ⟨z, hz, r, hE'⟩ ⟨y, hy, i, hE⟩
-    (hEr.trans hT)
-  have hPC := hPE.trans (hEC.mono (tree_subset_honest hz))
-  have hPr := hp.mem_tree_of_anc hz hPC hC
-  refine ⟨r, ell, C, by omega, hto, hPC, ?_⟩
-  rw [← hEh, hp.σ_eq_run hz hy hPr hP, hp.σ_eq_run hz hy hE' hE]
-  exact hlt
-
 /-- Whole-run specialization of the finite finality/report alternative. -/
 theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -348,17 +283,15 @@ theorem high_record_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
         (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
         ((tr.state x i).fg.σ E.root).Th = E.root := fun hs hatt =>
     hrows y hy _ _ hs (reset_le_of_high hp.run hp.healthy hp.reset hy hs hatt) hatt
-  rcases hr with hr | hr | hr
-  · obtain ⟨k, -, att, hs, rfl, rfl⟩ := (client_record_origin hp hy h r i).1 (Or.inl hr)
+  obtain ⟨hheight, hlock⟩ := client_record_origin_of_run hp.run hy h r i
+  rcases or_assoc.mpr hr with hr | hr
+  · obtain ⟨k, -, att, hs, rfl, rfl⟩ := hheight hr
     obtain ⟨x, i', j, B, ho, E, hE, hEB, hEr, hEh, hET⟩ := hrow hs hh
     exact ⟨x, i', j, B, ho, E, Anc.mono (tree_subset_honest ho.1) hEB, hEr, x, ho.1, i',
       hE, hEh, hET⟩
-  · obtain ⟨k, -, att, hs, rfl, rfl⟩ := (client_record_origin hp hy h r i).1 (Or.inr hr)
-    obtain ⟨x, i', j, B, ho, E, hE, hEB, hEr, hEh, hET⟩ := hrow hs hh
-    exact ⟨x, i', j, B, ho, E, Anc.mono (tree_subset_honest ho.1) hEB, hEr, x, ho.1, i',
-      hE, hEh, hET⟩
-  · obtain ⟨k, -, att, hs, hfin⟩ := (client_record_origin hp hy h r i).2 hr
-    obtain ⟨J, hJ, E, hE, hEr, hJE, hJr, hJh, hJT⟩ := signed_fin_pair_entry hp hy hs hfin
+  · obtain ⟨k, -, att, hs, hfin⟩ := hlock hr
+    obtain ⟨J, hJ, E, hE, hEr, hJE, hJr, hJh, hJT⟩ :=
+      signed_fin_pair_entry_of_run hp.run hy hs hfin
     obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run hy hs
     obtain rfl : E' = E :=
       (honest_coherent hp).1 ⟨y, hy, k, hE'⟩ ⟨y, hy, k, hE⟩ (hE'r.trans hEr.symm)
