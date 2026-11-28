@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
 public section
 
@@ -59,14 +60,20 @@ theorem floor_ancestor_mem_frame_at
     exact hh
   have hs := Trace.upTo_state tr y hb
   have hXt' : X ∈ ((tr.upTo (tr.time j)).state y j).fg.tree := by rwa [hs]
-  have hh'' : ((tr.upTo (tr.time j)).state y j).fg.headHeightFloor ≤
-      (((tr.upTo (tr.time j)).state y j).fg.σ X.root).h := by rwa [hs]
-  obtain ⟨hroot, htree, -, -, hv⟩ := Healing.viable_head_of_floor (hrun.upTo ht)
-    (hnc.upTo _) hf hy hXt' hh'' (fun hm hc => by
-      rw [hs] at hm hc ⊢
-      exact store_anc_of_honest_anc_at hrun hnc ht hb hy (hJ hm hc) hXt)
+  have hr := fg_reachable_at hrun ht hb hy
+  have hj := Healing.Store.hj_lt_hmax_of_reachable hr
+  have hpred : (tr.state y j).fg.hmax - 1 ≤ ((tr.state y j).fg.σ X.root).h := by
+    unfold Goldilocks.Store.headHeightFloor at hh'
+    split_ifs at hh' <;> omega
+  obtain ⟨hroot, htree, hv⟩ := Healing.viable_head_of_height (hrun.upTo ht)
+    (hnc.upTo _) hf hy hXt' (hs.symm ▸ hpred)
+    (fun h => by
+      rw [hs] at h ⊢
+      exact store_anc_of_honest_anc_at hrun hnc ht hb hy (hJ (by omega) (fun hc => by
+        simp only [Goldilocks.Store.headHeightFloor, ite_eq_left hc] at hh'
+        omega)) hXt)
   rw [hs] at htree hroot hv
-  have hΦ := (Store.frame_realization _ _ _ _ (fg_reachable_at hrun ht hb hy)).1
+  have hΦ := (Store.frame_realization _ _ _ _ hr).1
   have hsub : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, j, tr.time j, ht, hb, hy, h.1⟩
   exact ⟨htree, AC.anc_tree_of_anc_U (Compose.Growing.honest_blocks_coherent hrun hnc)

@@ -320,16 +320,16 @@ and pre-state `hj <` that height. The report field retains tree membership and
 uses `Anc F R` rather than `Anc fcRoot R`. The protocol frame and viable-head
 rules are in `specs/goldilocks/tex/shared/fg.tex`, lines 71–77 and 136–152.
 
-OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,
-`exists_reset` and `generic_healing` require
+Instance obligation: `round_of_warm_at` and `rise_reset_rounds_at` require
 `∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)`.
 They are proved over any `ACHealing` with this inequality as a premise
 (`round_of_warm_at_of_healing` in Lemmas/Generic/HealingRounds.lean;
-`rise_reset_rounds_at_of`, `exists_reset` and `generic_healing` in
-Lemmas/Generic/HealingEdges.lean), so the obligation is only its supply.
-The first healthy-reduction consumer must supply this inequality; the old
-`Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
-The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
+`rise_reset_rounds_at_of` and `rise_reset_rounds_within_of` in
+Lemmas/Generic/HealingEdges.lean). The real-time reset `exists_reset_within`
+(Lemmas/Generic/HealingEdges.lean) supplies it on the four-delay grid from
+`6Δ + (D + GΔ) + ΔF ≤ 4Δ·δt`; its callers are the healthy preparation and final
+reset premises. The leaves also require `slotLen`; the assemblies obtain it from
+`Premises`.
 On the four-Δ grid, substituting slotTime(s) = 4sΔ reduces the delay condition to
 6Δ + ΔF ≤ 4Δ·δt. The generic instance obligation for an arbitrary schedule is not
 discharged here.

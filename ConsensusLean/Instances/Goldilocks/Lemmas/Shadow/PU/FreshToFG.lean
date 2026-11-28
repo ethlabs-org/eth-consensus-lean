@@ -61,7 +61,7 @@ theorem fresh_fast_lock_update_toFG_primed_at' {K : AC.CommitteeDict sp.n}
     hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
   have hnv := Shadow.unanimous_update_no_veto_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
-  obtain ⟨e, he, hlock⟩ := Core.fresh_fast_lock_of_selection_at hrun.toCore hnc hyk hu hvi.1
+  obtain ⟨e, he, hlock⟩ := Healing.Growing.fresh_fast_lock_of_selection_at hrun hnc hyk hu hvi.1
     hconf hnv hfast hva
   refine ⟨k, ell, ell', hu, hc, hto, ht, hframes, hconf, hnv, hfast,
     hframes.symm ▸ hva, hframes.symm ▸ hvi, e, he, hlock, ?_⟩
