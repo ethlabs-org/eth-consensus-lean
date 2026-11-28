@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentLock
 import ConsensusLean.Lemmas.Tactic.Linarith
 
