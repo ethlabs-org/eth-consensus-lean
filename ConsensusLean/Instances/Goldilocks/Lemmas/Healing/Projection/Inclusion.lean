@@ -65,13 +65,6 @@ variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
-/-- The finalized tip of the frame of an honest AC cut is the node's `Σ.F`. -/
-private theorem frame_F (hrun : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ℓ) :
-    ℓ.frame.F = (tr.state y j).fg.F := by
-  rw [(hrun.cutLaw y hy j _ (Compose.projAC_callAt.1 hc)).1]; rfl
-
 /-- **The proposal of an honest proposer's tick is its honest proposal** in the AC projection:
 the `ac_proposal` cut after the tick's `ac_on_tick` returns the payload, and the own block is
 accepted at once (C0.3), at `t_s`. -/
@@ -254,19 +247,6 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp).State}
       rcases hobj with ⟨m, hm⟩ | ⟨B, hB⟩
       · cases hm
       · cases hB
-
-/-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
-theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
-    (hc : CatchRun tr H g (2 * sp.Δ)) :
-    AC.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
-  have h := hrun.toLocalRun
-  intro x hx i B ha hi y hy j ℓ hcj hj hanc
-  obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
-  obtain ⟨k, hk, hak, hkt⟩ := accept_before_snapshot hj fun q hq hfirst =>
-    hc x hx i' B ha' (hti ▸ hi) y hy q hfirst
-      ((run_F_mono h hy hq).trans (frame_F hrun hy hcj ▸ hanc))
-  obtain ⟨hak', htk, -⟩ := ac_block_after h hy hak
-  exact ⟨k + 1, hk, hak', htk.symm ▸ hkt⟩
 
 end Consensus.Goldilocks.Healing
 

@@ -7,7 +7,7 @@ public section
 /-! # Goldilocks Healing, HR.4: honest ancestry, stored fast locks and joined writes
 
 Run facts read by the retention and growing-fault source arguments: honest ancestry in a node's
-store (`store_anc_of_honest_anc`, `mem_of_honest_anc`, `σ_eq_honest`), a frame's tree in the
+store (`store_anc_of_honest_anc`, `σ_eq_honest`), a frame's tree in the
 caller's store (`mem_tree_of_frame`), the stored block of a fast lock (`storedFastLock_mem`) and a
 joined fast-lock write (`joinedAt_of_fastLockAt`). -/
 
@@ -31,27 +31,6 @@ theorem store_anc_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc A C :=
   store_anc_of_honest_anc_from hrun.toLocalRun hnc hy h hC
-
-/-- A block below (inside the honest blocks) a block of an honest tree is in that tree. -/
-theorem mem_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
-    A ∈ (tr.state y k).fg.tree := by
-  by_cases he : A = C
-  · exact he ▸ hC
-  · exact (Anc.mem (store_anc_of_honest_anc hrun hnc hy h hC) he).1
-
-/-- One state per block across the honest stores of a run. -/
-theorem σ_eq_honest {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
-    (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
-  Store.σ_eq_of_mem (Compose.fg_reachable hrun.toLocalRun hy i)
-    (Compose.fg_reachable hrun.toLocalRun hz j)
-    (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1 (fun _ hX => ⟨y, hy, i, hX⟩)
-    (fun _ hX => ⟨z, hz, j, hX⟩) hBy hBz
 
 /-- The block of a frame of an honest call is in the node's FG tree. -/
 theorem mem_tree_of_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -92,8 +71,6 @@ theorem joinedAt_of_fastLockAt {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     ⟨_, Compose.projAC_callAt.mp hc⟩ hnr' rfl).mpr ?_
   rw [← Compose.projAC_state hrun.toLocalRun hx]
   exact hj
-
-/-! ## The source of an honest attestation -/
 
 end Consensus.Goldilocks.Healing
 

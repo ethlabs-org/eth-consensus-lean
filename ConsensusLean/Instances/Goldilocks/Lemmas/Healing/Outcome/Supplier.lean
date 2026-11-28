@@ -43,67 +43,6 @@ theorem update_call_of_awake {ini}
   obtain ⟨hc, ht⟩ := tick_first_cut hg
   exact ⟨j, _, Compose.projAC_callAt.2 hc, rfl, ht, hjoin j ht⟩
 
-/-- Every honest node executes the joined update and immediately following joined to-FG call
-at the coverage deadline. This supplies calls, not a nonempty returned report. -/
-theorem toFG_call_after_update_of_sign {ini}
-    (hrun : GoldilocksRun proposer dg H tr ini)
-    (hsign : tr.AllTicksSign proposer dg H)
-    {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
-    (hawake : tr.awake y (sp.ts u + 6 * sp.Δ))
-    (hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
-      AC.joined sp (tr.projAC.state y i) (tr.time i)) :
-    ∃ j ell ell', AC.UpdateAt tr.projAC y j u ell ∧
-      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
-  have hDelta := sp.toParams.hΔ
-  have hts : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
-  obtain ⟨j, x, fgDue, hg⟩ := hrun.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
-    (by linarith) ⟨4 * (u : Int) + 6, by simp only [ACParams.ts]; ring⟩ hawake
-  obtain ⟨x, hg⟩ := hsign y hy j _ ⟨x, fgDue, hg⟩
-  obtain ⟨ell, ell', hcj, hcall, htj, hcj1, hcall', htj1, hfr⟩ :=
-    toFG_second_cut_of_signing_tick hg (not_proposes_update_time y u)
-      fun i c hc _ => hrun.cutLaw y hy i c hc
-  exact ⟨j, ell, ell', ⟨hcj, hcall, htj, hjoin j htj⟩, hcj1, hcall', htj1, hfr,
-    hjoin (j + 1) htj1⟩
-
-/-- Bounded wakefulness and the causal restart bound supply the actual adjacent
-update and report call. The slot bound follows from the ready-slot initial margin;
-no Catch or service premise is needed to produce these calls. -/
-theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    (hsign : tr.AllTicksSign proposer dg H)
-    {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
-    (hu : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u)
-    (hub : sp.ts u + 6 * sp.Δ ≤ b) :
-    ∃ j ell ell', AC.UpdateAt tr.projAC y j u ell ∧
-      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
-  have hgu : AC.gbar g ≤ sp.ts u := by
-    have hnext := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
-      ((sp.slot (AC.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
-    exact (not_le.mp hnext).le.trans hu
-  apply toFG_call_after_update_of_sign hp.run hsign hy
-    (hp.awake y hy _ (by linarith [sp.toParams.hΔ]) hub)
-  intro i hi
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  unfold AC.joined
-  rcases AC.restartTime_stateU hr.toU hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
-  · rw [h]; exact bot_le
-  · rw [h]
-    apply WithBot.coe_le_coe.mpr
-    have hrestart := restart_le_before hp hy (Compose.projAC_restartAt.1 hrs)
-      ((hp.run.time_mono hri.le).trans (hi ▸ hub))
-    have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-      AC.slot_of_mem sp (u + 1) (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-        (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-    change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-    rw [hi, hslot]
-    simpa using hrestart.trans hu
-
 /-- With a fast-lock candidate, `ac_to_fg` considers the deepest one, deep sources on or off. -/
 private theorem fgSource_of_fast {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
     {t : Time} {C : AC.Blk sp.n FGP}

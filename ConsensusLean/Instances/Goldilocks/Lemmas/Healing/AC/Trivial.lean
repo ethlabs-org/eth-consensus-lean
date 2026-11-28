@@ -10,7 +10,8 @@ public section
 Over the healthy setting, with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly when `ḡ + 4Δ ≤ t_j`):
 
 * **stamps of held votes** (`stamp_lt_of_held_of_runU`, `heldBefore_readPointU`);
-* **the honest batch** (`honest_voters_halfU`): in a slot `≥ r` every honest node votes;
+* **the honest batch** (`honest_votes_in_slot_before`, `honest_voters_half_before`): every honest
+  committee member votes by the bounded slot deadline, at least half the committee size;
 * **a fast lock's honest vote** (`fastLock_honest_voteU`). -/
 
 namespace Consensus.Goldilocks.AC
@@ -36,8 +37,6 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
     · rcases lastWake_cases y c with h' | ⟨k, hk, hrk, h'⟩
       · exact Or.inl h'
       · exact Or.inr ⟨k, hk.trans (Nat.le_succ c), hrk, h'⟩
-
-/-! ## Trivial frames: viability and `Carry` -/
 
 /-! ## Trivial frames: blocks, stamps, relay and held votes -/
 
@@ -193,63 +192,6 @@ theorem honest_voters_half_before {K : AC.CommitteeDict sp.n} {b : Time}
   have hf := hS.cs2 m (by linarith) (by linarith)
   omega
 
-/-- `honest_votes_in_slot` with the unlock given. -/
-theorem honest_votes_in_slotU
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
-  have hr := hS.run.localRun
-  have hΔ := sp.toParams.hΔ
-  have hg0 := AC.gbar_nonneg g
-  intro x hx
-  have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
-    refine slot_of_mem sp m (by linarith) ?_
-    rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [ACParams.ts]; push_cast; ring]
-    linarith
-  obtain ⟨c, ℓ, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
-    ⟨4 * m + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake hx (by linarith))
-  have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
-  by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, -, e, he, hes⟩ :=
-      (cast_of_votedSlotU hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
-        (by rw [traceWithM_mayVote hr hx c]; decide)
-    exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
-  · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
-    rw [hc.1, hcall] at he
-    have h2 : (acOnTickWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
-      congrArg Prod.snd he
-    have h3 : (acOnTickWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 =
-        (tryVoteWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 := by
-      unfold acOnTickWithM
-      dsimp only
-      split_ifs
-      all_goals first | rfl | exact absurd hj ‹_›
-    exact ⟨c, e, ⟨ℓ, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot]⟩
-
-/-- **Every honest node votes** in a slot `m ≥ r` (the honest batch): it is awake and
-joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
-`m` already. -/
-theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m :=
-  honest_votes_in_slotU (hS := hS.toU) (m := m) (hm := hm)
-
-/-- **The honest batch** (it has `n − f > n/2` seats): in a slot `m ≥ r` every honest node votes (it
-is awake and joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it
-voted in slot `m` already), so the honest voters of slot `m` are at least half of the committee.
-With the unlock given. -/
-theorem honest_voters_halfU
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
-    sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
-  have hall := honest_votes_in_slotU hS hm
-  have hle := Set.ncard_le_ncard (s := H)
-    (t := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}) fun x hx => ⟨hx, hall x hx⟩
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := hS.two_faulty_lt
-  omega
-
 /-- `fastLock_honest_vote` with the unlock given. -/
 theorem fastLock_honest_voteU
     {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) (K : CommitteeDict sp.n)
@@ -303,8 +245,6 @@ theorem fastLock_honest_vote {ini}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg B :=
   fastLock_honest_voteU hrun.toU K hP hx hfl hf
-
-/-! ## A fast origin of label `≥ r` transfers -/
 
 end Consensus.Goldilocks.AC
 
