@@ -16,8 +16,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
@@ -214,7 +213,7 @@ theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
     {K : AC.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) : AC.CommitteeTAt K tr.projAC H :=
-  hrun.toCore.committeeTAt hK hnc
+  hK.committeeTAt hrun hnc
 
 /-- The stock healthy AC base supplier, with the same prefix interface for window callers. -/
 theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
