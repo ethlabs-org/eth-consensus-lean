@@ -145,6 +145,11 @@ theorem frame_realization : FrameRealization P ACP := by
   split_ifs
   exacts [Or.inl rfl, Or.inr rfl]
 
+/-- A block at maximum state height is viable without a root condition. -/
+theorem isViable_of_hmax_le {P : Params} {ACP : Type} {st : Store P ACP}
+    {B : NodeBlock P ACP} (h : st.hmax ≤ (st.σ B.root).h) : st.IsViable B :=
+  Or.inl h
+
 end Consensus.Goldilocks.Store
 
 end
