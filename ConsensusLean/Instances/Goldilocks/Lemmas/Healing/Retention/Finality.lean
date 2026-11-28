@@ -5,17 +5,18 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 
 public section
 
-/-! # Goldilocks Healing, HR.4: a low `Σ.F` is below every high origin
+/-! # Goldilocks Healing: finalized ancestry and viable frame heads
 
 G1.2 at strict height (for a low finalized height `d ≤ H`): the cut
 step's conclusion for `Σ.F` when `Σ.J` is low. The finalized pair of a state names the entry of
 its height (`fin_pair_entry`: a pending pair is a past justification, whose block is the entry of
-the justified height), so a store's `Σ.F ⪯ Σ.J` is finalized at a height `≤ Σ.h_j`
-(`ResetPremisesUpTo.low_finalized_below_origin`); G1.2 over the run
-(`finalized_anc_of_height_lt_of_run`) puts it below every honest block of greater state height. -/
+the justified height), so `Σ.F ⪯ Σ.J` is finalized at a height `≤ Σ.h_j`.
+By `finalized_anc_of_height_lt_of_run`, it is below every honest block of greater state height. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -298,156 +299,43 @@ theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt
 
-/-- **G1.2 at strict height: a low `Σ.F` is below an honest-held high block** (for a low finalized
-height `d ≤ H`, `B`'s accepted chain has height `> d`; claims G1.2). When an honest node's
-`Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
-`d = σ[Σ.F].h ≤ σ[Σ.J].h = Σ.h_j ≤ H_z < σ[B].h` (`fin_pair_entry`; a genesis `Σ.J` makes `Σ.F`
-genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt_of_run`). -/
-theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
-    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
-    (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
-    (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
-    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
-  have hreach := Compose.fg_reachable hrun.toLocalRun hy m
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
-  have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
-  have hg := Store.genesis_mem hreach
-  have hgB : Anc (tr.HonestBlocks H)
-      (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B :=
-    ((Goldilocks.Store.accepted_tree _ _ _ _
-      (Compose.fg_reachable hrun.toLocalRun hx i)).2.2.2 B hBt).mono
-        (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
-  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hreach
-  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)
-      (tr.state y m).fg.F := (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFm
-  -- a genesis `Σ.F` is below `B`
-  have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
-      Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := fun he => by
-    rw [hcoh.1 hFm hg he]
-    exact hgB
-  rcases Store.fin_pair_entry hreach hBf with he | ⟨W, hW, hWr, hWh⟩
-  · exact hgen (hBfF.symm.trans he)
-  obtain rfl : W = (tr.state y m).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
-  obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hreach hBj
-  obtain rfl : E = (tr.state y m).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
-  rcases hcase with hEg | ⟨hEh, -⟩
-  · -- `Σ.J` is genesis, so is `Σ.F ⪯ Σ.J`
-    rw [hEg] at hFJ
-    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have h₁ := h_le_of_store_anc hreach hFJ
-  refine finalized_anc_of_height_lt_of_run hrun hnc hf hy hx hBf hFm hBfF.symm hBt ?_
-  omega
-
-/-- A block held anywhere honestly extends the target's finalized block if it meets the
-target's floor and, in the J-root case, extends the target's J. No target acceptance is needed. -/
-private theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
-    {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state z m).fg.tree)
-    (hheight : (tr.state y i).fg.headHeightFloor ≤ ((tr.state z m).fg.σ W.root).h)
-    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
-      ¬(tr.state y i).fg.Contest → Anc (tr.HonestBlocks H) (tr.state y i).fg.J W) :
-    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
-  have hr := Compose.fg_reachable hrun.toLocalRun hy i
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
-  have hcoh := hU.mono hsub
-  obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, hmax, -, X, hX, hXF⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hr
-  by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-      ¬(tr.state y i).fg.Contest
-  · exact (hFJ.mono hsub).trans (hJ hk.1 hk.2)
-  have hg := Store.genesis_mem hr
-  have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
-      Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := fun he => by
-    rw [hcoh.1 hF hg he]
-    exact ((Goldilocks.Store.accepted_tree _ _ _ _
-      (Compose.fg_reachable hrun.toLocalRun hz m)).2.2.2 W hW).mono
-      (fun B hB => ⟨z, hz, m, hB⟩)
-  rcases Store.fin_pair_entry hr hX with he | ⟨E, hE, hEr, hEh⟩
-  · exact hgen (hXF.symm.trans he)
-  obtain rfl : E = (tr.state y i).fg.F := hcoh.1 hE hF (hEr.trans hXF)
-  obtain ⟨J, hJt, hJr, -, hcase⟩ := Store.J_entry_of_reachable hr hBj
-  obtain rfl : J = (tr.state y i).fg.J := hcoh.1 hJt hJm (hJr.trans hBjJ)
-  rcases hcase with he | ⟨hJh, -⟩
-  · have hgF := (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.2.2 _ hF
-    rw [he] at hFJ
-    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have hFh := h_le_of_store_anc hr hFJ
-  obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain _ _ _ _ hr Bj hBj
-  have hjlt := (FG.chain_invariants _ _ _ hc).2.2.1
-  have hmaxBj := hmax Bj hBj
-  have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
-    by_cases hcon : (tr.state y i).fg.Contest
-    · simp only [Goldilocks.Store.headHeightFloor, ite_eq_left hcon] at hheight
-      omega
-    · have hne : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
-        fun he => hk ⟨he, hcon⟩
-      simp only [Goldilocks.Store.headHeightFloor, ite_eq_right hcon] at hheight
-      omega
-  have hfg := Compose.fg_projection_from
-    (fun y _ => Compose.requirements_from sp (hrun.vstart y))
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have hst : ∀ {v : Fin sp.n}, v ∈ H → ∀ j, tr.projFG.store v j = (tr.state v j).fg :=
-    fun hv j => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hv j]
-  have h := finalized_anc_of_lt_fg hfg hf hy hz (k := i) (m := m)
-    (X := X) (F := (tr.state y i).fg.F) (W := W)
-  rw [hst hy, hst hz] at h
-  exact h hX hF hXF.symm hW hstrict
-
-/-- A locally held floor-viable block satisfying the J-root condition is a viable frame head.
-This is local: no agreement between different frames is assumed. -/
-theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
+/-- A held block at or above `hmax - 1` is a viable frame head if it extends `J` when its
+height is not above `hj`. In that case `F ⪯ J ⪯ X`; otherwise strict height gives `F ⪯ X`. -/
+theorem viable_head_of_height (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
-    (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ X.root).h)
-    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
-      ¬(tr.state y i).fg.Contest → (tr.state y i).fg.Anc (tr.state y i).fg.J X) :
+    (hh : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ X.root).h)
+    (hJ : ((tr.state y i).fg.σ X.root).h ≤ (tr.state y i).fg.hj →
+      (tr.state y i).fg.Anc (tr.state y i).fg.J X) :
     (tr.state y i).fg.Anc (tr.state y i).fg.F X ∧
-      X ∈ (tr.state y i).fg.toFrame.tree ∧
-      (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot X ∧
-      (tr.state y i).fg.IsViable X ∧ X ∈ (tr.state y i).fg.toFrame.viableHeads := by
-  have hFX := Compose.honest_held_anc hrun hnc hy
-    (finalized_below_floor_held hrun hnc hf hy hy hX hh
-      (fun hm hc => (hJ hm hc).mono (fun B hB => ⟨y, hy, i, hB⟩))) hX
-  have hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot X := by
-    by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-        ¬(tr.state y i).fg.Contest
-    · simpa [Goldilocks.Store.fcRoot, hk] using hJ hk.1 hk.2
-    · simpa [Goldilocks.Store.fcRoot, hk] using hFX
-  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy i)
-  have hjlt : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
-    hBjhj ▸ (Store.hj_lt_h (Compose.fg_reachable hrun.toLocalRun hy i) hBj).trans_le (hge Bj hBj)
+      X ∈ (tr.state y i).fg.toFrame.tree ∧ X ∈ (tr.state y i).fg.toFrame.viableHeads := by
+  have hr := Compose.fg_reachable hrun.toLocalRun hy i
+  have hu := Goldilocks.Store.finalitySpec_updateFinality
+    (P := sp.toParams) (ACP := (goldilocksNode sp).Payload)
+  have hj := Goldilocks.Store.hj_lt_hmax_of_reachable_with hu hr.reachableWith
+  have hFX : (tr.state y i).fg.Anc (tr.state y i).fg.F X := by
+    by_cases h : ((tr.state y i).fg.σ X.root).h ≤ (tr.state y i).fg.hj
+    · exact (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.2.1.trans (hJ h)
+    have hfg := Compose.fg_projection_from
+      (fun y _ => Compose.requirements_from sp (hrun.vstart y))
+      hrun.genesis_root_ok hrun.toLocalRun hnc
+    have hs : tr.projFG.store y i = (tr.state y i).fg := by
+      simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
+    have hsafe := held_atts_safe hfg hy hy i i
+    rw [hs] at hsafe
+    have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
+    exact Goldilocks.Store.F_anc_of_hj_lt_of_safe_with hu hr.reachableWith hr.reachableWith
+      (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hsub hsub hf hsafe hX (by omega)
   have hv : (tr.state y i).fg.IsViable X := by
-    unfold Goldilocks.Store.IsViable
-    by_cases hcon : (tr.state y i).fg.Contest
-    · left
-      simpa only [Goldilocks.Store.headHeightFloor, ite_eq_left hcon] using hh
-    · simp only [Goldilocks.Store.headHeightFloor, ite_eq_right hcon] at hh
-      by_cases hmx : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ X.root).h
-      · exact Or.inl hmx
-      · refine Or.inr ⟨by omega, ?_⟩
-        by_cases htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1
-        · exact Or.inr (hJ htop hcon)
-        · exact Or.inl (by omega)
-  exact ⟨hFX, ⟨hX, hFX⟩, hroot, hv, ⟨hX, hFX, hv⟩⟩
-
-/-- The origin-specialized form of strict-height finalized ancestry. -/
-theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n}
-    (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
-    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
-  obtain ⟨CV, hst⟩ := ho.2.2.1
-  exact low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults hy ho.1
-    (storedFastLock_mem hp.run hp.noColl ho.1 hst).1 ho.2.2.2 hlow
+    change _ ∨ (_ ∧ _)
+    by_cases hm : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ X.root).h
+    · exact Or.inl hm
+    refine Or.inr ⟨by omega, ?_⟩
+    by_cases hg : (tr.state y i).fg.hj + 1 < (tr.state y i).fg.hmax
+    · exact Or.inl hg
+    exact Or.inr (hJ (by omega))
+  exact ⟨hFX, ⟨hX, hFX⟩, ⟨hX, hFX, hv⟩⟩
 
 end Consensus.Goldilocks.Healing
 
