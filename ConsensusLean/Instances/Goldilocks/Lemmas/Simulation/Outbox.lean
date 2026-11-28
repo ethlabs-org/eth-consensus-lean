@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.CommitteeSelection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
+import ConsensusLean.Lemmas.Model.DutyFold
 public import Mathlib.Tactic.LinearCombination
 
 public section
@@ -1269,45 +1270,31 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
-/-- Unsigned gossip does not alter pending signed publications. -/
-private theorem gossip_forwards (k : Fin (Fintype.card V))
+/-- Recording unsigned gossip preserves both forwarding queues. -/
+private theorem gossip_forwarding (k : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
-    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).1).forwards
-          =
-      (shapeOf S hn nd).forwards := by
-  suffices h : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object), (∀ c ∈ cs, c.auth = .none)
-          →
-      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd'
-        cs).1).forwards = (shapeOf S hn nd').forwards from
-    h _ _ fun c hc => by
-      obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
-      rfl
-  intro nd' cs
-  induction cs generalizing nd' with
-  | nil => intro _; rfl
-  | cons c cs ih =>
-    intro hc
-    unfold Model.releaseAll
-    split
-    · rw [ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)]
-      obtain ⟨a, m, cs'⟩ := c
-      have : a = .none := hc _ List.mem_cons_self
-      subst this
-      change (recordOwn (shapeOf S hn nd') (.mk .none m cs') _).forwards = _
-      cases m with
-      | item h => rfl
-      | data b => cases b <;> rfl
-    · exact ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)
+    let r := (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).1
+    (shapeOf S hn r).forwards = (shapeOf S hn nd).forwards ∧
+      (shapeOf S hn r).voteForwards = (shapeOf S hn nd).voteForwards := by
+  refine Model.releaseAll_pres_node rho.hash k (fun n =>
+    (shapeOf S hn n).forwards = (shapeOf S hn nd).forwards ∧
+      (shapeOf S hn n).voteForwards = (shapeOf S hn nd).voteForwards) nd _ ?_ ⟨rfl, rfl⟩
+  rintro n ⟨a, m, cs⟩ hc h
+  have ha : a = .none := by
+    obtain ⟨mc, -, hm⟩ := Model.mem_gossipCandidates.mp hc
+    exact congrArg Model.Obj.auth hm
+  subst a
+  cases m with
+  | item h' => exact h
+  | data b => cases b <;> exact h
 
-/-- Every honest event drains the forwarding queue; restarts retain an already empty queue.
-This is a queue fact, not a claim that every candidate passed its release guard. -/
-theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
-    ∀ i, (stateAt S rho hn v i).forwards = []
-  | 0 => by rw [stateAt_zero]; rfl
+/-- The final poll clears both forwarding queues; restarting emits no new vote. -/
+private theorem forwarding_empty (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, (stateAt S rho hn v i).forwards = [] ∧ (stateAt S rho hn v i).voteForwards = []
+  | 0 => by rw [stateAt_zero]; exact ⟨rfl, rfl⟩
   | i + 1 => by
-    have ih := forwards_empty hv v i
+    have ih := forwarding_empty hv v i
     cases he : rho.events[i]? with
     | none => rw [stateAt_succ_none S rho hn v he]; exact ih
     | some ev =>
@@ -1319,101 +1306,47 @@ theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
           subst w
           rw [stateAt_tick S rho hn v he]
           rw [tick_of_awake S rho v _ t (hv.tick_awake v t (List.mem_of_getElem? he)),
-            gossip_forwards, duties_eq S t ht, runDuties_fst_append]
-          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).forwards = []
+            (gossip_forwarding S rho hn _ _ _).1, (gossip_forwarding S rho hn _ _ _).2,
+            duties_eq S t ht, runDuties_fst_append]
+          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).forwards = [] ∧
+            (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).voteForwards = []
           rw [dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
-          exact poll_forwards _ _
+          exact ⟨poll_forwards _ _, poll_voteForwards _ _⟩
         | deliver w o t =>
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_deliver S rho hn v he]
           unfold Model.Run.deliver
-          rw [gossip_forwards, deliverDuties_eq S t ht]
-          erw [runDuties_fst_cons, runDuties_fst_nil,
-            dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
-          exact poll_forwards _ _
-        | restart w t =>
-          simp only [Model.Event.node] at hnode
-          subst w
-          rw [stateAt_restart S rho hn v he]
-          exact ih
-      · rw [state_of_other S rho hn v i ev he hnode]; exact ih
-
-omit [DecidableEq V] in
-/-- Unsigned gossip preserves the vote publication queue. -/
-private theorem gossip_voteForwards (k : Fin (Fintype.card V))
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
-    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st
-          t)).1).voteForwards =
-      (shapeOf S hn nd).voteForwards := by
-  suffices h : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object), (∀ c ∈ cs, c.auth = .none)
-          →
-      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd'
-        cs).1).voteForwards = (shapeOf S hn nd').voteForwards from
-    h _ _ fun c hc => by
-      obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
-      rfl
-  intro nd' cs
-  induction cs generalizing nd' with
-  | nil => intro _; rfl
-  | cons c cs ih =>
-    intro hc
-    unfold Model.releaseAll
-    split
-    · rw [ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)]
-      obtain ⟨a, m, cs'⟩ := c
-      have : a = .none := hc _ List.mem_cons_self
-      subst this
-      change (recordOwn (shapeOf S hn nd') (.mk .none m cs') _).voteForwards = _
-      cases m with
-      | item h => rfl
-      | data b => cases b <;> rfl
-    · exact ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)
-
-/-- Every event drains pending vote publications; a restart produces no vote at its clock.
-Queue emptiness does not assert successful release. -/
-theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
-    ∀ i, (stateAt S rho hn v i).voteForwards = []
-  | 0 => by rw [stateAt_zero]; rfl
-  | i + 1 => by
-    have ih := voteForwards_empty hv v i
-    cases he : rho.events[i]? with
-    | none => rw [stateAt_succ_none S rho hn v he]; exact ih
-    | some ev =>
-      by_cases hnode : ev.node = v
-      · have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-        cases ev with
-        | tick w t =>
-          simp only [Model.Event.node] at hnode
-          subst w
-          rw [stateAt_tick S rho hn v he]
-          rw [tick_of_awake S rho v _ t (hv.tick_awake v t (List.mem_of_getElem? he)),
-            gossip_voteForwards, duties_eq S t ht, runDuties_fst_append]
-          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).voteForwards = []
+          rw [(gossip_forwarding S rho hn _ _ _).1, (gossip_forwarding S rho hn _ _ _).2,
+            deliverDuties_eq S t ht]
+          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).forwards = [] ∧
+            (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).voteForwards = []
           rw [dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
-          exact poll_voteForwards _ _
-        | deliver w o t =>
-          simp only [Model.Event.node] at hnode
-          subst w
-          rw [stateAt_deliver S rho hn v he]
-          unfold Model.Run.deliver
-          rw [gossip_voteForwards, deliverDuties_eq S t ht]
-          erw [runDuties_fst_cons, runDuties_fst_nil,
-            dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
-          exact poll_voteForwards _ _
+          exact ⟨poll_forwards _ _, poll_voteForwards _ _⟩
         | restart w t =>
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_restart S rho hn v he]
+          refine ⟨ih.1, ?_⟩
           have hnil := restart_emits_nil (rho.ownKey v)
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t ht
           rw [restore_eq]
           simp only [apply, Node.restart, acCall, hnil, List.map_nil,
-            List.flatMap_cons, List.flatMap_nil, List.append_nil,
-            List.dedup_nil, List.filter_nil, ih, List.filterMap_nil]
+            List.flatMap_cons, List.flatMap_nil, List.append_nil, List.dedup_nil,
+            List.filter_nil, ih.2, List.filterMap_nil]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
+
+/-- Every honest event drains the forwarding queue; restarts retain an already empty queue.
+This is a queue fact, not a claim that every candidate passed its release guard. -/
+theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, (stateAt S rho hn v i).forwards = [] :=
+  fun i => (forwarding_empty S rho hn hv v i).1
+
+/-- Every event drains pending vote publications; a restart produces no vote at its clock.
+Queue emptiness does not assert successful release. -/
+theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, (stateAt S rho hn v i).voteForwards = [] :=
+  fun i => (forwarding_empty S rho hn hv v i).2
 
 end ForwardingQueue
 
