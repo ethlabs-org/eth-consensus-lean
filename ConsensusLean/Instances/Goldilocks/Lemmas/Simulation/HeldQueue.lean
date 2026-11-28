@@ -238,11 +238,10 @@ theorem fgSigned_heldDrain (st : State sp binding) : fgSigned (heldDrain st) = f
   obtain ⟨atts, h⟩ := heldDrain_eq st
   rw [h, fgSigned_atts]
 
-/-- The flush keeps the key, the clock, the FG-due flag, the tick flag and the queues. -/
+/-- The flush keeps the key, the clock, the FG-due flag and the queues. -/
 theorem heldDrain_self (st : State sp binding) : (heldDrain st).self = st.self := by rfl
 theorem heldDrain_now (st : State sp binding) : (heldDrain st).now = st.now := by rfl
 theorem heldDrain_fgDue (st : State sp binding) : (heldDrain st).fgDue = st.fgDue := by rfl
-theorem heldDrain_ticked (st : State sp binding) : (heldDrain st).ticked = st.ticked := by rfl
 theorem heldDrain_outbox (st : State sp binding) : (heldDrain st).outbox = st.outbox := by rfl
 theorem heldDrain_relayBuf (st : State sp binding) : (heldDrain st).relayBuf = st.relayBuf := by
   rfl

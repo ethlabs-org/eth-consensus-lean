@@ -37,15 +37,6 @@ noncomputable def beforeTrailing (v : V) (i : Nat) (t : Time) :
       List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
     ((skeleton (pubOf E) S.vote).proposeAt t)).1
 
-/-- `beforeTrailing` unfolded. -/
-theorem beforeTrailing_eq (v : V) (i : Nat) (t : Time) : beforeTrailing S rho v i t =
-    (rho.runDuties v (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-        List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
-      ((skeleton (pubOf E) S.vote).proposeAt t)).1 := by rfl
-
 /-- The first trailing poll of a tick releases a flush and the attestation its FG update signs
 (`pollBatch_node_eq`), stated at the generic canonical trace. -/
 theorem trailing_rel {i : Nat} {v : V} {t : Time} :

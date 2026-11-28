@@ -158,15 +158,6 @@ theorem OwnAdmitCut.label {i : Nat}
     {r : CutRec (S.params (pubOf E) hn)} (h : OwnAdmitCut S rho hn i ev r) :
     ∃ a, r.label = .fg (.attestation a) := h.2.1
 
-omit [DecidableEq V] in
-/-- `OwnAdmitCut` unfolded. -/
-theorem ownAdmitCut_iff {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    {r : CutRec (S.params (pubOf E) hn)} : OwnAdmitCut S rho hn i ev r ↔
-      (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
-        ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
-          ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s := Iff.rfl
-
 /-- A cut of engine event `i` is at the event's time and node (its own key), under an event id
 `Nat.pair i s` (a tick's own admissions included). -/
 theorem mem_eventCuts {i : Nat}

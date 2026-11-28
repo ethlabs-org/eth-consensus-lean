@@ -314,26 +314,6 @@ theorem mem_admitsAt_rel [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalR
   exact mem_growth (N := A) _ _ ha
 
 open Classical in
-/-- When the first trailing poll of a tick releases at most one attestation, the tick admits it
-exactly when it is not already in the pool. -/
-theorem admitsAt_of_rel_toList [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady)
-    (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v t}
-    (he : rho.events[i]? = some (.tick v t)) (o : Option (FG.Att (Fintype.card V)))
-    (hl : let pre := (rho.runDuties v (afterClock rho (rho.stateBefore i v) v t)
-      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
-      let post := envelope e (rho.runDuties v pre ((e.skel.proposeAt t).map (engineDuty e))).1
-      e.adapter.node ((e.ops hn).pollBatch post t.toNat).1 =
-        o.toList.foldl (fun n a => (Node.onAttestation n a).1) (if due post then
-          (tickStep (runProposer rho hn) (digestOf e rho) (e.adapter.self post)
-            (e.adapter.node post) (e.adapter.now post)
-            (encodeTxs (Model.mempool rho.inbox v t)) .fgUpdate).1
-        else e.adapter.node post)) :
-    admitsAt e rho v i =
-      o.toList.filter (fun a => a ∉ (e.adapter.node (stateAt e rho v i)).fg.atts) := by
-  rw [admitsAt_eq, tick_node_rel L ready rho hv he _ hl, ← postTick_atts rho v i t]
-  exact growth_toList (N := A) o _
-
-open Classical in
 /-- Derive the frozen replay equations from local observations and the instance's two guards
 for its actual proposal candidate. -/
 theorem toLawful [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady)
