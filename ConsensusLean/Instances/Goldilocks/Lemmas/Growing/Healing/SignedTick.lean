@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTickCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
