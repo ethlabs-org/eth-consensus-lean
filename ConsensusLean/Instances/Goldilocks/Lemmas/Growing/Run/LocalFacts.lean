@@ -123,7 +123,9 @@ theorem signAt_wellFormed {y k} {att : FG.Att P.n} (hy : y ∈ H (tr.time k))
   Healing.signAt_wellFormed_from (hrun.upTo (hrun.time_nonneg k)) hy
     ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
 
-private theorem held_att_signed {y i t} (ht : 0 ≤ t)
+/-- An attestation held at an honest observation was signed before the observed cut, provided
+its signer is honest at the observation horizon. -/
+theorem held_att_signed {y i t} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) {a : FG.Att P.n}
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H t) :
     ∃ k < i, tr.SignAt a.val k a := by

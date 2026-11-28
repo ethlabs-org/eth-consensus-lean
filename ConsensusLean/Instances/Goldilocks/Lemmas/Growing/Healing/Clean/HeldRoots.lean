@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LocalSo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -73,13 +74,9 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     by_cases he : Y = X
     · exact he ▸ hX
     · exact (Anc.mem hYX he).1
-  have hY' : Y ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases Healing.tree_accepted (hp.run.upTo ht).toLocalRun hy hY' with rfl | ⟨i', hi', hA⟩
-  · cases hatt
-  obtain ⟨d, hdi, hs⟩ := hp.run.toLocalRun.att_unforgeable y i' att
-    (hp.run.antitone (hle i' hi') hy) (Or.inr ⟨Y, ⟨true, ((RunTrace.upTo_acceptAt tr).mp hA).2⟩,
-      hatt⟩) (hp.run.antitone ((hle i' hi').trans htZ) hattH)
-  have hdt : tr.time d ≤ t := (hp.run.time_mono hdi.le).trans (hle i' hi')
+  obtain ⟨d, hdk, hs⟩ := hp.run.toLocalRun.held_att_signed ht hle hy ⟨Y, hY, hatt⟩
+    (hp.run.antitone htZ hattH)
+  have hdt := hle d hdk
   have hdZ : max (cutZ sp.toParams g) (tr.time d) = cutZ sp.toParams g :=
     max_eq_left (hdt.trans htZ)
   have ha := hp.reset.2 att.val d att (by rw [hdZ]; exact hattH) hs hatth
@@ -129,20 +126,9 @@ theorem high_J_root_J_compatible_quarantine_at {cm : Time → Finset (Fin sp.n)}
       ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
         att.val ∉ H t := by
     intro E hE hEh _ hncE W hW att ha haT haH
-    have he := Trace.upTo_state tr y hle
-    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
-    · cases ha
-    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
-    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
-      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
-      (hrun.antitone (hle i' hi') haH)
-    have hdk : d < k := hdi.trans hi'
+    obtain ⟨d, hdk, hs⟩ := hrun.toLocalRun.held_att_signed ht hle hy ⟨W, hW, ha⟩ haH
     have hv := hrun.antitone (hle d hdk) haH
-    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
-      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
-    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
-    rw [he'] at hE' hE'h
+    obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.toLocalRun.signAt_entry hv hs
     have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
       fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
         fun q hq => hrun.time_mono hq.le, hv, h⟩
@@ -194,20 +180,9 @@ theorem high_J_root_J_compatible_cover_at {cm : Time → Finset (Fin sp.n)} {βK
       ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
         att.val ∉ H t := by
     intro E hE hEh _ hncE W hW att ha haT haH
-    have he := Trace.upTo_state tr y hle
-    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
-    · cases ha
-    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
-    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
-      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
-      (hrun.antitone (hle i' hi') haH)
-    have hdk : d < k := hdi.trans hi'
+    obtain ⟨d, hdk, hs⟩ := hrun.toLocalRun.held_att_signed ht hle hy ⟨W, hW, ha⟩ haH
     have hv := hrun.antitone (hle d hdk) haH
-    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
-      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
-    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
-    rw [he'] at hE' hE'h
+    obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.toLocalRun.signAt_entry hv hs
     have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
       fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
         fun q hq => hrun.time_mono hq.le, hv, h⟩
@@ -277,20 +252,9 @@ theorem high_J_root_of_held_cover_at {cm : Time → Finset (Fin sp.n)} {βK : �
       ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
         att.val ∉ H t := by
     intro E hE hEh _ hncE W hW att ha haT haH
-    have he := Trace.upTo_state tr y hle
-    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
-    · cases ha
-    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
-    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
-      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
-      (hrun.antitone (hle i' hi') haH)
-    have hdk : d < k := hdi.trans hi'
+    obtain ⟨d, hdk, hs⟩ := hrun.toLocalRun.held_att_signed ht hle hy ⟨W, hW, ha⟩ haH
     have hv := hrun.antitone (hle d hdk) haH
-    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
-      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
-    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
-    rw [he'] at hE' hE'h
+    obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.toLocalRun.signAt_entry hv hs
     have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
       fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
         fun q hq => hrun.time_mono hq.le, hv, h⟩

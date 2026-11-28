@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -46,26 +47,6 @@ variable {sp : ACParams}
 
 /-! ## Prefix transports of the node-local record facts -/
 
-/-- The record origin of a node honest at `t`, after every earlier cut
-(`client_record_origin_of_run` on the prefix through `t`). -/
-private theorem client_record_origin_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) (h r : Nat) :
-    ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
-    ((tr.state y i).record.lock h = some r →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) := by
-  have hst := Trace.upTo_state tr y hle
-  obtain ⟨h1, h2⟩ := Healing.client_record_origin_of_run (hrun.upTo ht0) hy h r i
-  rw [hst] at h1 h2
-  refine ⟨fun hx => ?_, fun hx => ?_⟩
-  · obtain ⟨k, hk, att, hs, hh⟩ := h1 hx
-    exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, hh⟩
-  · obtain ⟨k, hk, att, hs, hh⟩ := h2 hx
-    exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, hh⟩
-
 /-- One record step of a node honest at the step. -/
 private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -80,26 +61,6 @@ private theorem record_step_at {ini : Fin sp.n → (goldilocksNode sp).State}
   rcases h with h | ⟨att, hs, h⟩
   · exact Or.inl h
   · exact Or.inr ⟨att, ((RunTrace.upTo_signAt _).mp hs).2, h⟩
-
-/-- A sent content of a node honest at `t`, after every earlier cut, was signed earlier. -/
-private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) {b : FG.Content} (hb : b ∈ (tr.state y i).record.sent) :
-    ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b := by
-  obtain ⟨k, hk, att, hs, he⟩ := Healing.sent_origin_from (hrun.upTo ht0).toLocalRun hy i
-    (by rw [Trace.upTo_state tr y hle]; exact hb)
-  exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, he⟩
-
-/-- The entry of a signature of a node honest at its signing. -/
-private theorem signAt_entry_at {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
-    (hs : tr.SignAt y k att) :
-    ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h := by
-  have h := Healing.signAt_entry (hrun.upTo (hrun.time_nonneg k)) hy
-    ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hs⟩)
-  rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
 /-- The finality pair of a signature of a node honest at its signing names a held entry below the
 signed entry. -/
@@ -276,7 +237,7 @@ theorem record_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     exact har.symm.trans (hXr.symm.trans (source_entry_eq_at hp hchainX ho
       .refl hEB (hrun.time_nonneg k) (leC k) hyk hu hlez hz hX hE
       (hXh.trans (hah.trans hEh.symm)) hXT hET))
-  have horig := client_record_origin_at hrun ht0 hle hy h r
+  have horig := hrun.toLocalRun.client_record_origin ht0 hle hy h r
   rcases or_assoc.symm.mp hr with htarget | hl
   · obtain ⟨k, hki, att, hs, hah, har⟩ := horig.1 htarget
     exact target k hki att hs hah har
@@ -285,7 +246,7 @@ theorem record_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hyk : y ∈ H (tr.time k) := hrun.antitone hkt hy
     have hk0 := hrun.time_nonneg k
     obtain ⟨J, hJ, X, hX, hXr, hJX, hJr, hJh, hJT⟩ := signed_fin_pair_entry_at hrun hyk hs hfin
-    obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry_at hrun hyk hs
+    obtain ⟨X', hX', hX'r, hX'h⟩ := hrun.toLocalRun.signAt_entry hyk hs
     have hXX' : X' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX'⟩ ⟨y, k, _, hk0, leC k, hyk, hX⟩
       (hX'r.trans hXr.symm)
     have hle' := Healing.h_le_of_store_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
@@ -499,7 +460,7 @@ theorem sign_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       have := hp.record_entry_eq_at h0 leR1 hzz hrb hhT (Or.inr (Or.inr hr'))
         ho hB hTB ht hle hy hT rfl hTe
       exact absurd (by rw [hr', this, hTe]) hl'
-    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin_at hrun h0 leR1 hz hc
+    · obtain ⟨k, hk, att, hsk, rfl⟩ := hrun.toLocalRun.sent_origin h0 leR1 hz hc
       exact ⟨k, att, hsk, (hrun.time_mono hk.le).trans hts'.le, by assumption⟩
 
 /-- A bounded same-height report of a node honest at the report and at `c_z` supplies the exact
