@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality

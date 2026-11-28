@@ -15,8 +15,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Hig
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -172,7 +170,7 @@ theorem toFG_later_proposal_head_after_at
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
   have hk := sp.two_le_k
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ | ⟨Dd, A, -, -, hanc, hRdeep, hslow⟩
     := toFG_fast_candidate_origin_at hrun hnc hy hto
   swap
@@ -341,7 +339,7 @@ theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp).State}
     have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
     linarith
   obtain ⟨j, hj⟩ := Healing.Growing.signTickAt_of_calendar_at hrun hcal hy ht0 hpub hawake hsign
-  obtain ⟨x, hg⟩ := (RunTrace.signTickAt_iff tr proposer dg y j t).1 hj
+  obtain ⟨x, hg⟩ := hj
   obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick hg
   exact ⟨j + k, ell, hc, hcall, htime,
     Healing.Growing.joined_of_restart_le_at hrun hnc hy (by linarith)
@@ -364,7 +362,7 @@ private theorem root_ne_genesis_of_anc {ini : Fin sp.n → (goldilocksNode sp).S
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy _ _ hc'
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg i)
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
+  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hBU : B ∈ tr.HonestBlocksAt H := hsub ((AC.frameIn_of_callAt hr hy hc').2 hB)
   obtain rfl : B = G := hU.1 hBU (hsub hGU) (hg.trans hGr.symm)
   rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hPB with h | ⟨c, -, hcG⟩

@@ -4,11 +4,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
@@ -131,12 +132,12 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
   · exfalso
     apply hstrict
     have hroot := Healing.fcRoot_mono hrun hy hai.le
-    rw [← Node.frame_of_projAC_at hrun.toLocalRun hy ha,
-      ← Node.frame_of_projAC_at hrun.toLocalRun hy hc.1] at hroot
+    rw [← Compose.frame_of_projAC hrun hy ha,
+      ← Compose.frame_of_projAC hrun hy hc.1] at hroot
     exact hBA.trans ((hbelow.mono hPhi₀.2).trans hroot)
   · obtain ⟨hQt, -, hvQ⟩ :=
       hframe.viableHead_persists' hrun hnc hf hy hai.le htime.1 hihi ha hv
-    rw [← Node.frame_of_projAC_at hrun.toLocalRun hy hc.1] at hQt hvQ
+    rw [← Compose.frame_of_projAC hrun hy hc.1] at hQt hvQ
     refine ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
       hBA.trans (hAQ.mono hPhi₀.2), hvQ, hQt, Or.inl ?_⟩
     apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQ hQt htime.2
@@ -397,21 +398,21 @@ theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     dsimp only at hsel
     split_ifs at hsel
     have hDw := (AC.deepest_mem hsel).1.1
-    rw [Node.frame_of_projAC_at hr.toLocalRun hy hp.1,
+    rw [Compose.frame_of_projAC hr hy hp.1,
       Node.frame_eq, Store.toFrame_tree] at hDw
     have hDi := Compose.tree_mono hr.toLocalRun hy hci hDw.1
     have hHD := (hHL.mono hPhi.2).trans hLD
     have hHdi := hHd
-    rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
+    rw [Compose.frame_of_projAC hr hy hc'.1,
       Node.frame_eq, Store.toFrame_tree] at hHdi
     have hFD : Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
         ((tr.upTo (tr.time i)).state y i).fg.F D :=
       (Anc.mono (show ((tr.upTo (tr.time i)).state y i).fg.tree ⊆
         (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) from
         fun B hB => ⟨y, hy, i, hB⟩) hHdi.2).trans hHD
-    rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
+    rw [Compose.frame_of_projAC hr hy hc'.1,
       Node.frame_eq, Store.toFrame_tree]
-    exact ⟨hDi, Coherence.honest_held_anc' hr (hnc.upTo _) hy hFD hDi⟩
+    exact ⟨hDi, Compose.honest_held_anc hr (hnc.upTo _) hy hFD hDi⟩
   have hLt : L ∈ ell.frame.tree := by
     by_cases he : Hd = L
     · exact he ▸ hHd
