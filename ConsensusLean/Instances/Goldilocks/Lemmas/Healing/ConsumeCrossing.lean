@@ -102,13 +102,7 @@ theorem signAt_val (h : Node.LocalRun proposer dg H sg tr ini)
     {att : FG.Att P.n} (hs : tr.SignAt y k att) : att.val = y := by
   obtain ⟨src, hc⟩ := hs
   have h := (h.cutLaw y hy k _ hc).1
-  unfold _root_.Consensus.Goldilocks.Store.attest FG.Record.createAtt at h
-  split at h
-  · cases h
-  · split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    rfl
+  exact (FG.Record.createAtt_some h).1
 
 end Pool
 

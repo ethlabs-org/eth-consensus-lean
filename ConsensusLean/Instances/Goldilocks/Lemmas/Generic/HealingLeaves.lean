@@ -96,9 +96,9 @@ node AC and any slot schedule).
 Leaf 4 (`row_or_high_of_report_at_from`): a held report, before any height advance, either
 supplies a row of a lower block of the same height signed while honest, or is strictly higher.
 Its `fg_attest` call follows in the same tick with the same store; the lock at the height is
-free (no advance) or names the entry (the client record's provenance, `Healing.record_facts`,
-and its signed finality pairs, `Healing.signed_fin_justified`), so the client signs the row now or
-signed it before (`Healing.client_progress_of_lock`).
+free (no advance) or names the entry (the client record's provenance,
+`Healing.client_record_origin_from`, and its signed finality pairs, `Healing.signed_fin_justified`),
+so the client signs the row now or signed it before (`Healing.client_progress_of_lock`).
 
 Truncation after a horizon (`truncH_eq_of_le`, `truncH_antitone`, `honestBlocksAt_truncH_subset`,
 `catchRun_truncH`, `HZ_truncH`, `isReset_truncH_iff`): the honest sets truncated after `b` agree
@@ -352,18 +352,6 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     have hw := (hrun.signAt_wellFormed (hrun.antitone (hrun.time_mono hj.le) hy) hs).2
       (((tr.state y k).fg.σ C.root).h, r) (by simp [hfin])
     exact hprev ⟨j, hj, att, hs, by omega⟩
-  have hsent : ∀ b ∈ (tr.state y k).record.sent,
-      b.1 ≠ ((tr.state y k).fg.σ C.root).h := by
-    intro b hb hbh
-    obtain ⟨j, hj, att, hs, heq⟩ := hrun.sent_origin (hrun.time_nonneg k) hle hy hb
-    have hah : att.h = b.1 := congrArg Prod.fst heq
-    exact hprev ⟨j, hj, att, hs, by omega⟩
-  have hany (τ : Bool) : (tr.state y k).record.sent.any (fun b =>
-      b.1 = ((tr.state y k).fg.σ C.root).h ∧ (!τ ∨ b.2.1 =
-        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)) = false := by
-    apply List.any_eq_false.2
-    intro b hb
-    simp [hsent b hb]
   cases s with
   | some att =>
     have hcl := (hrun.attest_some hc hy).1
@@ -375,19 +363,13 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     exfalso
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = none at hcl
-    have hτ : ∃ τ, (tr.state y k).record.heightPair ((tr.state y k).fg.σ C.root).h
-        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th =
-        some (((tr.state y k).fg.σ C.root).h,
-          ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th, τ) := by
-      unfold FG.Record.heightPair
-      simp only [hlock, ne_eq, not_true_eq_false, false_and, ↓reduceIte]
-      split_ifs <;> exact ⟨_, rfl⟩
-    obtain ⟨τ, hτ⟩ := hτ
-    unfold FG.Record.createAtt at hcl
-    rw [he, hτ] at hcl
-    dsimp only at hcl
-    rw [hany τ] at hcl
-    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
+    have hc' := FG.Record.createAtt_eq_none.1 hcl
+    rw [he] at hc'
+    rcases hc' with hl | hb
+    · exact hl.1 hlock
+    · obtain ⟨j, hj, att, hs, hah, -⟩ :=
+        (hrun.client_record_origin (hrun.time_nonneg k) hle hy _ _).1 hb
+      exact hprev ⟨j, hj, att, hs, hah.symm ▸ hh⟩
 
 /-! ## Leaf 6 -/
 
@@ -1023,13 +1005,7 @@ theorem round_cross_at_from
       have hval : att.val = y := by
         obtain ⟨src, hc⟩ := hsig
         have hc' := (hrun.attest_some hc hyk).1
-        unfold Store.attest FG.Record.createAtt at hc'
-        split at hc'
-        · cases hc'
-        · split_ifs at hc'
-          simp only [Option.some.injEq, Prod.mk.injEq] at hc'
-          obtain ⟨rfl, -⟩ := hc'
-          rfl
+        exact (FG.Record.createAtt_some hc').1
       rw [← hσD']
       refine ⟨att, hval, hah.trans hDh.symm, haT.trans hDTh.symm, ?_⟩
       exact hplace att hproc (hah.trans hDh.symm) (haT.trans hDTh.symm)
@@ -1135,7 +1111,7 @@ private theorem signed_fin_justified_at
     (fun q hq => hrun.time_mono hq.le) hy
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨-, -, -, hfp, -⟩ := Healing.Client.createAtt_some hcl
+  obtain ⟨-, -, -, -, hfp, -⟩ := FG.Record.createAtt_some hcl
   have hentry : ∃ W ∈ (tr.state y k).fg.tree,
       (tr.state y k).fg.σ ((tr.state y k).fg.σ src.root).Th =
         (tr.state y k).fg.σ W.root := by
@@ -1319,34 +1295,20 @@ private theorem client_progress_of_lock_at
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = some (a, _) at hcl
     rw [hσe] at hcl
-    obtain ⟨-, hah, haT, -⟩ := Healing.Client.createAtt_some hcl
+    obtain ⟨-, -, hah, haT, -⟩ := FG.Record.createAtt_some hcl
     exact Or.inl ⟨a, rfl, hah.trans hEh, haT.trans hETh⟩
   | none =>
     have hcl := (hrun.attest_none hc hyk).1
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = none at hcl
     rw [hσe] at hcl
-    rcases Healing.Client.createAtt_none hcl with ⟨h1, h2⟩ | ⟨b, hb, hbh, hbT⟩
+    rcases FG.Record.createAtt_eq_none.1 hcl with ⟨h1, h2⟩ | hb
     · simp only [hEh, hETh] at h1 h2
       rcases hlock with hl | hl
       · exact absurd hl h1
       · exact absurd hl h2
-    simp only [hEh, hETh] at hbh hbT
-    have hbT' : b.2.1 = E.root := by
-      rcases hbT with hbT | ⟨hto, htg⟩
-      · exact hbT
-      obtain ⟨h1, h2⟩ := hrun.record_sentOK ht hle hy b hb
-      cases hτ : b.2.2.1
-      · have := h2 hτ
-        rw [hbh] at this
-        rcases htg with htg | htg <;> rw [htg] at this
-        · cases this
-        · exact (Option.some.inj this).symm
-      · have := h1 hτ
-        rw [hbh, hto] at this
-        simp at this
-    obtain ⟨k', hk', att, hsa, rfl⟩ := hrun.sent_origin ht hle hy hb
-    exact Or.inr ⟨k', hk', att, hsa, hbh, hbT'⟩
+    rw [hEh, hETh] at hb
+    exact Or.inr ((hrun.client_record_origin ht hle hy _ _).1 hb)
 
 /-- **Row or high, at an `fg_attest` call**: an attest call at cut `k` on a held source `C`
 above `B`, by a caller honest at it and at `c_z` before any height advance, with `B`'s kind at

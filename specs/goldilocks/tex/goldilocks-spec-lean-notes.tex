@@ -297,7 +297,7 @@ claims covers these changes.
   at~$h$, for a timeout as for a target vote: a timeout $(h,T,\mathsf{true})$
   and a finality pair $(h,T)$ are not slashable.  The client record keeps
   at $\mathsf{timeout}[h]$ the set of the blocks that its timeouts at~$h$
-  name, $\Call{permits}{}$ allows $(j,T)$ when that set is within~$\{T\}$,
+  name, $\Call{permits}{}$ requires that set to be empty at~$j$,
   and $\Call{height\_pair}{}$ tests the lock before the timeout.  The Lean
   evidence predicate (\texttt{conflictsWithFinality}) makes every timeout at~$h$ conflict
   with every finality pair at~$h$; it needs the root test on its timeout

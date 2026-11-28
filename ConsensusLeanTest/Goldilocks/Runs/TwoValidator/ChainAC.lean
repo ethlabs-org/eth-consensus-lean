@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.ClientStep
 @[expose] public section
 
 /-! # The healthy two-validator run: the client record and the AC on the chain
@@ -23,14 +24,10 @@ structure RecGood (Λ : FG.Record) (n : Nat) : Prop where
   target : ∀ h, Λ.target h = if 1 ≤ h ∧ h ≤ n then some (blk (ent h)).root else none
   timeout : ∀ h, Λ.timeout h = ∅
   lock : ∀ h, Λ.lock h = if 1 ≤ h ∧ h + 1 ≤ n then some (blk (ent h)).root else none
-  sent : ∀ c ∈ Λ.sent, c.1 ≤ n
-  sent_top : 1 ≤ n → ∃ c ∈ Λ.sent, c.1 = n
-  sent_height : ∀ h, 1 ≤ h → h ≤ n → ∃ c ∈ Λ.sent, c.1 = h
 
 theorem recGood_empty : RecGood FG.Record.empty 0 :=
   ⟨fun _ => by simp [FG.Record.empty]; omega, fun _ => rfl,
-    fun _ => by simp [FG.Record.empty], fun _ h => by simp [FG.Record.empty] at h,
-    fun h => absurd h (by omega), fun _ h1 h2 => by omega⟩
+    fun _ => by simp [FG.Record.empty]⟩
 
 theorem ent_ent_hgt {q : Nat} (hq : 1 ≤ q) : ent (hgt (ent q)) = ent q := by rw [hgt_ent hq]
 
@@ -66,29 +63,20 @@ theorem attest_new {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
         unfold FG.ChainState.previousHeightJustified; rw [he_hj, he_h]; omega
       have hperm : Λ.permits (csN (ent q)).hj (csN (ent q)).J := by
         rw [he_hj, he_J]
-        refine ⟨Or.inr ?_, by rw [hΛ.timeout]; simp, Or.inl ?_⟩
+        refine ⟨Or.inr ?_, hΛ.timeout _, Or.inl ?_⟩
         · rw [hΛ.target, ite_eq_left ⟨by omega, le_rfl⟩]
         · rw [hΛ.lock, ite_eq_right (by omega)]
       rw [ite_eq_left hb, ite_eq_left hperm, he_hj, he_J, ite_eq_right (by omega)]
   have hhp : Λ.heightPair q (blk (ent q)).root = some (q, (blk (ent q)).root, false) := by
-    unfold FG.Record.heightPair
-    rw [ite_eq_right (by rw [hΛ.lock, ite_eq_right (by omega)]; simp),
-      ite_eq_right (by rw [hΛ.timeout]; simp),
-      ite_eq_left (Or.inl (by rw [hΛ.target, ite_eq_right (by omega)]))]
-  have hsent : ¬ (Λ.sent.any fun b =>
-      decide (b.1 = q ∧ ((!false) = true ∨ b.2.1 = (blk (ent q)).root))) = true := by
-    rw [List.any_eq_true]
-    rintro ⟨b, hb, hb'⟩
-    have := hΛ.sent b hb
-    simp at hb'; omega
+    have hl : Λ.lock q = none := by rw [hΛ.lock, ite_eq_right (by omega)]
+    have ht : Λ.target q = none := by rw [hΛ.target, ite_eq_right (by omega)]
+    simp [FG.Record.heightPair, hl, ht, hΛ.timeout]
   refine ⟨Λ.recordAtt (row y q), ?_, ?_⟩
   · unfold Store.attest FG.Record.createAtt
     rw [hent, he_h, he_Th, hhp]
-    dsimp only
-    rw [ite_eq_right hsent, hfin]
+    rw [hfin]
     rfl
-  · refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_, fun c hc => ?_, fun _ => ?_,
-      fun h' h1 h2 => ?_⟩
+  · refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_⟩
     · unfold FG.Record.recordAtt
       dsimp only
       rw [ite_eq_left ⟨by simp [row_timeout], by rw [row_h, hΛ.target, ite_eq_right (by omega)]⟩,
@@ -110,19 +98,6 @@ theorem attest_new {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
         dsimp only
         rw [Function.update_apply, hΛ.lock]
         split_ifs with h1 h3 h4 <;> (try subst h1) <;> first | rfl | omega
-    · unfold FG.Record.recordAtt at hc
-      dsimp only at hc
-      rcases List.mem_append.1 hc with hc | hc
-      · have := hΛ.sent c hc; omega
-      · rw [List.mem_singleton] at hc; subst hc
-        change (row y q).h ≤ q
-        rw [row_h]
-    · exact ⟨(row y q).content, by unfold FG.Record.recordAtt; simp, rfl⟩
-    · by_cases he : h' = q
-      · subst he
-        exact ⟨(row y q).content, by unfold FG.Record.recordAtt; simp, rfl⟩
-      · obtain ⟨c, hc, hh⟩ := hΛ.sent_height h' h1 (by omega)
-        exact ⟨c, List.mem_append_left _ hc, hh⟩
 
 /-- All previously signed entry heights are refused, not only the most recent one. -/
 theorem attest_signed {fg : Store sp.toParams N.Payload} {τ s nr : Nat} (h : FGGood fg τ)
@@ -134,42 +109,17 @@ theorem attest_signed {fg : Store sp.toParams N.Payload} {τ s nr : Nat} (h : FG
   rw [← hqd] at hent
   have he_h : (csN (ent q)).h = q := by rw [csN_eq, cs_h, hgt_ent hq]
   have he_Th : (csN (ent q)).Th = (blk (ent q)).root := by rw [csN_eq, cs_Th, hgt_ent hq]
-  unfold Store.attest FG.Record.createAtt
+  unfold Store.attest
+  apply FG.Record.createAtt_eq_none.2
   rw [hent, he_h, he_Th]
-  unfold FG.Record.heightPair
-  by_cases hl : Λ.lock q ≠ none ∧ Λ.lock q ≠ some (blk (ent q)).root
-  · rw [ite_eq_left hl]
-  · rw [ite_eq_right hl, ite_eq_right (by rw [hΛ.timeout]; simp),
-      ite_eq_left (Or.inr (by rw [hΛ.target, ite_eq_left ⟨hq, hh⟩]))]
-    dsimp only
-    rw [ite_eq_left (by
-      obtain ⟨c, hc, he⟩ := hΛ.sent_height q hq hh
-      exact List.any_eq_true.2 ⟨c, hc, by simp [he]⟩)]
+  exact Or.inr (Or.inl (by rw [hΛ.target, ite_eq_left ⟨hq, hh⟩]))
 
 /-- **An old row**: once the row of the height of its source is signed, the node signs
 nothing. -/
 theorem attest_old {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood fg τ)
     (hs : s ≤ τ) (y : Fin sp.n) {Λ : FG.Record} (hΛ : RecGood Λ (hgt s)) :
     fg.attest Λ y (blk s) = none := by
-  have hq := hgt_pos s
-  set q := hgt s with hqd
-  have hent := entry_state h hs
-  rw [← hqd] at hent
-  have he_h : (csN (ent q)).h = q := by rw [csN_eq, cs_h, hgt_ent hq]
-  have he_Th : (csN (ent q)).Th = (blk (ent q)).root := by rw [csN_eq, cs_Th, hgt_ent hq]
-  have hhp : Λ.heightPair q (blk (ent q)).root = some (q, (blk (ent q)).root, false) := by
-    unfold FG.Record.heightPair
-    rw [ite_eq_right (by rw [hΛ.lock, ite_eq_right (by omega)]; simp),
-      ite_eq_right (by rw [hΛ.timeout]; simp),
-      ite_eq_left (Or.inr (by rw [hΛ.target, ite_eq_left ⟨hq, le_rfl⟩]))]
-  obtain ⟨c, hc, hc1⟩ := hΛ.sent_top hq
-  have hsent : (Λ.sent.any fun b =>
-      decide (b.1 = q ∧ ((!false) = true ∨ b.2.1 = (blk (ent q)).root))) = true :=
-    List.any_eq_true.2 ⟨c, hc, by simp [hc1]⟩
-  unfold Store.attest FG.Record.createAtt
-  rw [hent, he_h, he_Th, hhp]
-  dsimp only
-  rw [ite_eq_left hsent]
+  exact attest_signed h hs y hΛ le_rfl
 
 /-! ## The AC on a chain frame -/
 

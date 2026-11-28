@@ -86,7 +86,6 @@ attestations of chain A's blocks `2` and `3`, and the record holds targets `1, 2
 theorem insP_run :
     EntryInputs gp4 insP ∧
       (Record.run 0 Record.empty insP).2 = [tv 0 2 1 (some (1, 0)), tv 0 3 2 (some (2, 1))] ∧
-      Λp.sent = [(2, 1, false, some (1, 0)), (3, 2, false, some (2, 1))] ∧
       Λp.target 2 = some 1 ∧ Λp.target 3 = some 2 ∧ Λp.lock 1 = some 0 ∧ Λp.lock 2 = some 1 ∧
       Λp.lock 3 = none ∧ Λp.timeout 2 = ∅ ∧ Λp.timeout 3 = ∅ := by
   unfold EntryInputs
@@ -96,7 +95,7 @@ theorem insP_run :
 predecessor `(h_j, J) = (3, 2)`. -/
 theorem permitting_premises :
     σe.previousHeightJustified ∧ (Λp.lock σe.h = none ∨ Λp.lock σe.h = some σe.Th) ∧
-      Λp.timeout σe.h = ∅ ∧ Λp.target σe.h = none ∧ (∀ b ∈ Λp.sent, b.1 ≠ σe.h) ∧
+      Λp.timeout σe.h = ∅ ∧ Λp.target σe.h = none ∧
       Λp.permits σe.hj σe.J := by
   decide +kernel
 
@@ -111,8 +110,8 @@ theorem permitting_createAtt :
 /-- `aggregation` at `σe` and `Λp`, its `if` reduced: the content `(4, 3, target; (3, 2))`. -/
 theorem permitting_aggregation :
     ∃ a Λ', Λp.createAtt 0 σe = some (a, Λ') ∧ a.content = (4, 3, false, some (3, 2)) := by
-  obtain ⟨hb, hl, hto, htg, hs, hp⟩ := permitting_premises
-  obtain ⟨a, Λ', hc, ha⟩ := aggregation gp4 σe Λp 0 hb hl hto htg hs
+  obtain ⟨hb, hl, hto, htg, hp⟩ := permitting_premises
+  obtain ⟨a, Λ', hc, ha⟩ := aggregation gp4 σe Λp 0 hb hl hto htg
   rw [ite_eq_left hp] at ha
   obtain ⟨hh, hTh, hhj, hJ, -⟩ := σe_eq
   exact ⟨a, Λ', hc, by rw [ha, hh, hTh, hhj, hJ]⟩
@@ -130,7 +129,6 @@ heights `2, 3` and locks `0, 1` at heights `1, 2`, no timeout. -/
 theorem insN_run :
     EntryInputs gp4 insN ∧
       (Record.run 3 Record.empty insN).2 = [tv 3 2 1 (some (1, 0)), tv 3 3 22 (some (2, 1))] ∧
-      Λn.sent = [(2, 1, false, some (1, 0)), (3, 22, false, some (2, 1))] ∧
       Λn.target 2 = some 1 ∧ Λn.target 3 = some 22 ∧ Λn.lock 1 = some 0 ∧ Λn.lock 2 = some 1 ∧
       Λn.lock 3 = none ∧ Λn.timeout 2 = ∅ ∧ Λn.timeout 3 = ∅ := by
   unfold EntryInputs
@@ -140,7 +138,7 @@ theorem insN_run :
 the predecessor `(h_j, J) = (3, 2)`: its target at height `3` names `22`. -/
 theorem nonpermitting_premises :
     σe.previousHeightJustified ∧ (Λn.lock σe.h = none ∨ Λn.lock σe.h = some σe.Th) ∧
-      Λn.timeout σe.h = ∅ ∧ Λn.target σe.h = none ∧ (∀ b ∈ Λn.sent, b.1 ≠ σe.h) ∧
+      Λn.timeout σe.h = ∅ ∧ Λn.target σe.h = none ∧
       ¬ Λn.permits σe.hj σe.J := by
   decide +kernel
 
@@ -154,8 +152,8 @@ theorem nonpermitting_createAtt :
 /-- `aggregation` at `σe` and `Λn`, its `if` reduced: the content `(4, 3, target; none)`. -/
 theorem nonpermitting_aggregation :
     ∃ a Λ', Λn.createAtt 3 σe = some (a, Λ') ∧ a.content = (4, 3, false, none) := by
-  obtain ⟨hb, hl, hto, htg, hs, hp⟩ := nonpermitting_premises
-  obtain ⟨a, Λ', hc, ha⟩ := aggregation gp4 σe Λn 3 hb hl hto htg hs
+  obtain ⟨hb, hl, hto, htg, hp⟩ := nonpermitting_premises
+  obtain ⟨a, Λ', hc, ha⟩ := aggregation gp4 σe Λn 3 hb hl hto htg
   rw [ite_eq_right hp] at ha
   obtain ⟨hh, hTh, -⟩ := σe_eq
   exact ⟨a, Λ', hc, by rw [ha, hh, hTh]⟩

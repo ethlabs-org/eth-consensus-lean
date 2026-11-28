@@ -15,120 +15,18 @@ the lemmas here, which its proof used, remain. At an honest
 or timeout), or it signed one at an earlier cut:
 
 * `height_pair` does not refuse. A lock at `h` naming `X ≠ E` was written by an earlier honest
-  signing whose finality pair is `(h, X)` (`record_facts`, the record's only writer is
+  signing whose finality pair is `(h, X)` (`client_record_origin_from`, the record's only writer is
   `record_attestation`); that pair is a justification `(h, X)` of a state held by the signer
   (`finalityPair_justified`), so the node holds a block of state height `> h`: `h ≤ m − 1`, and
   with `h ≥ ℓ` the phase is not a contest and `h = m − 1`. A gap has no justification at `m − 1`;
   in the top-`J` case `J = X` (HR.2 (a)) and the allowed `C` extends `J`, so `X` and `E` are the
   entries of `C`'s chain at `h`: `X = E`.
-* If `create_attestation` refuses the pair, an earlier sent content at `h` names `E` (a timeout
-  refusal) or the target record is free or `E` with no timeout at `h` (a target refusal), and the
-  record tracks every sent content (`SentOK`), so the sent content names `E`; it was signed at an
-  earlier cut (`record_facts`). -/
+* If `create_attestation` refuses without a conflicting lock, the target or timeout entry already
+  names `E`. Its origin is an earlier signing (`client_record_origin_from`). -/
 
 namespace Consensus.Goldilocks.Healing
 
 open AC (ACParams Payload gbar)
-
-/-! ## The client record -/
-
-namespace Client
-
-variable {n : Nat}
-
-/-- The record tracks the contents sent: a sent timeout's root is in the timeout set of its
-height, a sent target is the target record of its height. -/
-def SentOK (Λ : FG.Record) : Prop :=
-  ∀ b ∈ Λ.sent, (b.2.2.1 = true → b.2.1 ∈ Λ.timeout b.1) ∧
-    (b.2.2.1 = false → Λ.target b.1 = some b.2.1)
-
-theorem sentOK_iff (Λ : FG.Record) : SentOK Λ ↔ ∀ b ∈ Λ.sent,
-    (b.2.2.1 = true → b.2.1 ∈ Λ.timeout b.1) ∧ (b.2.2.1 = false → Λ.target b.1 = some b.2.1) :=
-  Iff.rfl
-
-/-- The height pair of `height_pair`: it names the entry, and a target finds no timeout and a free
-or equal target at its height. -/
-private theorem heightPair_some {Λ : FG.Record} {h T h' T' : Nat} {τ : Bool}
-    (hp : Λ.heightPair h T = some (h', T', τ)) :
-    h' = h ∧ T' = T ∧
-      (τ = false → Λ.timeout h = ∅ ∧ (Λ.target h = none ∨ Λ.target h = some T)) := by
-  unfold FG.Record.heightPair at hp
-  split_ifs at hp with h1 h2 h3 <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
-    obtain ⟨rfl, rfl, rfl⟩ := hp <;> simp_all
-
-/-- `height_pair` refuses only for a lock at the height that names another block. -/
-private theorem heightPair_none {Λ : FG.Record} {h T : Nat} (hp : Λ.heightPair h T = none) :
-    Λ.lock h ≠ none ∧ Λ.lock h ≠ some T := by
-  unfold FG.Record.heightPair at hp
-  split_ifs at hp with h1
-  exact h1
-
-/-- What `create_attestation` signs. -/
-theorem createAtt_some {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n} {a : FG.Att n}
-    (h : Λ.createAtt v σe = some (a, Λ')) :
-    Λ' = Λ.recordAtt a ∧ a.h = σe.h ∧ a.T = σe.Th ∧ a.fin = Λ.finalityPair σe ∧
-      (a.timeout = false →
-        Λ.timeout a.h = ∅ ∧ (Λ.target a.h = none ∨ Λ.target a.h = some a.T)) := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, rfl⟩ := h
-    obtain ⟨rfl, rfl, ht⟩ := heightPair_some hp
-    exact ⟨rfl, rfl, rfl, rfl, ht⟩
-
-/-- When `create_attestation` refuses a pair that `height_pair` accepts, an earlier sent content
-at its height names its entry, or (a target refusal) the target record is free or equal and no
-timeout is recorded at its height. -/
-theorem createAtt_none {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    (h : Λ.createAtt v σe = none) :
-    (Λ.lock σe.h ≠ none ∧ Λ.lock σe.h ≠ some σe.Th) ∨
-      ∃ b ∈ Λ.sent, b.1 = σe.h ∧ (b.2.1 = σe.Th ∨ (Λ.timeout σe.h = ∅ ∧
-        (Λ.target σe.h = none ∨ Λ.target σe.h = some σe.Th))) := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · exact Or.inl (heightPair_none hp)
-  · dsimp only at h
-    split_ifs at h with hany
-    obtain ⟨rfl, rfl, ht⟩ := heightPair_some hp
-    obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
-    simp only [Bool.not_eq_true', decide_eq_true_eq] at hb'
-    refine Or.inr ⟨b, hb, hb'.1, ?_⟩
-    rcases hb'.2 with hτ | hT
-    · exact Or.inr (ht (by simpa using hτ))
-    · exact Or.inl hT
-
-/-- Recording an attestation that `create_attestation` signs keeps the record tracking its sent
-contents. -/
-theorem sentOK_recordAtt {Λ : FG.Record} (hΛ : SentOK Λ) {a : FG.Att n}
-    (ht : a.timeout = false → Λ.target a.h = none ∨ Λ.target a.h = some a.T) :
-    SentOK (Λ.recordAtt a) := by
-  intro b hb
-  simp only [FG.Record.recordAtt, List.mem_append, List.mem_singleton] at hb
-  rcases hb with hb | rfl
-  · obtain ⟨h1, h2⟩ := hΛ b hb
-    refine ⟨fun hτ => ?_, fun hτ => ?_⟩
-    · simp only [FG.Record.recordAtt]
-      split_ifs
-      · rw [Function.update_apply]
-        split_ifs with he
-        · exact Finset.mem_insert_of_mem (by rw [← he]; exact h1 hτ)
-        · exact h1 hτ
-      · exact h1 hτ
-    · simp only [FG.Record.recordAtt]
-      split_ifs with hc
-      · rw [Function.update_of_ne fun he => by rw [← he, h2 hτ] at hc; simp at hc]
-        exact h2 hτ
-      · exact h2 hτ
-  · refine ⟨fun hτ => ?_, fun hτ => ?_⟩
-    · simp only [FG.Att.content] at hτ ⊢
-      simp [FG.Record.recordAtt, hτ]
-    · simp only [FG.Att.content] at hτ ⊢
-      rcases ht hτ with h0 | h0 <;> simp [FG.Record.recordAtt, hτ, h0]
-
-end Client
 
 /-! ## Justifications and finality pairs of a reachable store -/
 
@@ -223,76 +121,6 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
   {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- An honest node's record changes only at a cut where it signs, by `create_attestation`. -/
-private theorem record_step (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) (i : Nat) :
-    (tr.state y (i + 1)).record = (tr.state y i).record ∨
-      ∃ C a, tr.CallAt y i (.fg (.attest C (some a))) ∧
-        (tr.state y i).fg.attest (tr.state y i).record y C =
-          some (a, (tr.state y (i + 1)).record) := by
-  by_cases hc : ∃ c, tr.CallAt y i c
-  · obtain ⟨c, hc⟩ := hc
-    have hlaw := hrun.cutLaw y hy i c hc
-    rw [tr.state_succ_of_call hc]
-    cases c with
-    | ac ℓ => exact Or.inl hlaw.2.2.2
-    | fg ℓ =>
-      cases ℓ with
-      | block B acc =>
-        cases acc with
-        | true => exact Or.inl hlaw.2.2.2
-        | false => exact Or.inl (by rw [hlaw.2])
-      | attestation a' => exact Or.inl hlaw.2.2
-      | attest C s =>
-        cases s with
-        | none => exact Or.inl (by rw [hlaw.2])
-        | some a' => exact Or.inr ⟨C, a', hc, hlaw.1⟩
-  · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
-
-/-- **The honest client record** (the record's only writer is `record_attestation`, durable over
-restarts): it tracks its sent contents, each sent content was signed at an earlier cut, and each
-lock entry `(h, r)` is the finality pair of an attestation signed at an earlier cut. -/
-theorem record_facts (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) :
-    ∀ i,
-    Client.SentOK (tr.state y i).record ∧
-    (∀ b ∈ (tr.state y i).record.sent, ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
-    ∀ h r, (tr.state y i).record.lock h = some r →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)
-  | 0 => by
-    rw [Trace.state, hrun.init y hy]
-    refine ⟨fun b hb => ?_, fun b hb => ?_, fun h r hx => ?_⟩
-    · simp [Node.initWith, FG.Record.empty] at hb
-    · simp [Node.initWith, FG.Record.empty] at hb
-    · simp [Node.initWith, FG.Record.empty] at hx
-  | i + 1 => by
-    obtain ⟨ih₁, ih₂, ih₃⟩ := record_facts hrun hy i
-    rcases record_step hrun hy i with he | ⟨C, a, hc, hca⟩
-    · rw [he]
-      exact ⟨ih₁, fun b hb => let ⟨k, hk, h'⟩ := ih₂ b hb; ⟨k, by omega, h'⟩,
-        fun h r hx => let ⟨k, hk, h'⟩ := ih₃ h r hx; ⟨k, by omega, h'⟩⟩
-    · obtain ⟨hrec, -, -, -, ht⟩ := Client.createAtt_some hca
-      rw [hrec]
-      have hs : tr.SignAt y i a := ⟨C, hc⟩
-      refine ⟨Client.sentOK_recordAtt ih₁ fun hτ => (ht hτ).2, fun b hb => ?_, fun h r hx => ?_⟩
-      · simp only [FG.Record.recordAtt, List.mem_append, List.mem_singleton] at hb
-        rcases hb with hb | rfl
-        · obtain ⟨k, hk, h'⟩ := ih₂ b hb
-          exact ⟨k, by omega, h'⟩
-        · exact ⟨i, by omega, a, hs, rfl⟩
-      · simp only [FG.Record.recordAtt] at hx
-        rcases hf : a.fin with _ | ⟨p₁, p₂⟩
-        · rw [hf] at hx
-          obtain ⟨k, hk, h'⟩ := ih₃ h r hx
-          exact ⟨k, by omega, h'⟩
-        · rw [hf] at hx
-          dsimp only at hx
-          rw [Function.update_apply] at hx
-          split_ifs at hx with hh
-          · cases Option.some.inj hx
-            exact ⟨i, by omega, a, hs, by rw [hf, hh]⟩
-          · obtain ⟨k, hk, h'⟩ := ih₃ h r hx
-            exact ⟨k, by omega, h'⟩
-
 /-- **A finality pair `(h, X)` signed by an honest node is a justification it holds**: the node
 holds, from the signing on, a block whose state justifies `X` at `h`. -/
 theorem signed_fin_justified (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
@@ -306,7 +134,7 @@ theorem signed_fin_justified (hrun : Node.LocalRun proposer dg H sg tr ini) {y :
   have hr := Compose.fg_reachable hrun hy k
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨-, -, -, hfp, -⟩ := Client.createAtt_some hcl
+  obtain ⟨-, -, -, -, hfp, -⟩ := FG.Record.createAtt_some hcl
   obtain ⟨W, hW, hWσ⟩ := Store.entry_state_held hr src.root
   rw [hWσ, hfin] at hfp
   exact Store.finalityPair_justified hr hW hfp.symm

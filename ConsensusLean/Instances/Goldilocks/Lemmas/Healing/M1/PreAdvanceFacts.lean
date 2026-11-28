@@ -45,35 +45,20 @@ theorem client_progress_of_lock (hrun : Node.LocalRun proposer dg H sg tr ini) {
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = some (a, _) at hcl
     rw [hσe] at hcl
-    obtain ⟨-, hah, haT, -⟩ := Client.createAtt_some hcl
+    obtain ⟨-, -, hah, haT, -⟩ := FG.Record.createAtt_some hcl
     exact Or.inl ⟨a, rfl, hah.trans he₁, haT.trans he₂⟩
   | none =>
     have hcl := hlaw.1
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = none at hcl
     rw [hσe] at hcl
-    rcases Client.createAtt_none hcl with ⟨h1, h2⟩ | ⟨b, hb, hbh, hbT⟩
+    rcases FG.Record.createAtt_eq_none.1 hcl with ⟨h1, h2⟩ | hb
     · simp only [he₁, he₂] at h1 h2
       rcases hlock with hl | hl
       · exact absurd hl h1
       · exact absurd hl h2
-    simp only [he₁, he₂] at hbh hbT
-    obtain ⟨hok, hsent, -⟩ := record_facts hrun hy k
-    have hbT' : b.2.1 = E.root := by
-      rcases hbT with hbT | ⟨hto, htg⟩
-      · exact hbT
-      obtain ⟨h1, h2⟩ := (Client.sentOK_iff _).1 hok b hb
-      cases hτ : b.2.2.1
-      · have := h2 hτ
-        rw [hbh] at this
-        rcases htg with htg | htg <;> rw [htg] at this
-        · cases this
-        · exact (Option.some.inj this).symm
-      · have := h1 hτ
-        rw [hbh, hto] at this
-        simp at this
-    obtain ⟨k', hk', att, hsa, rfl⟩ := hsent b hb
-    exact Or.inr ⟨k', hk', att, hsa, hbh, hbT'⟩
+    rw [he₁, he₂] at hb
+    exact Or.inr ((client_record_origin_from hrun hy _ _ k).1 hb)
 
 end Consensus.Goldilocks.Healing
 
