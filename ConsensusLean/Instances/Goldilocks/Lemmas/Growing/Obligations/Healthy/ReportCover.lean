@@ -99,7 +99,7 @@ theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : 
   have hub : sp.ts u + sp.Δ ≤ b := by linarith
   -- an honest member of the slot-`u` committee votes for `P` by `t_u + Δ`
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-    (by linarith) (by linarith [Healing.gbar_nonneg g]) hub
+    (by linarith) (by linarith [AC.gbar_nonneg g]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
   have hwq : w ∈ H (tr.time q) := hrun.antitone hq hw
   have hd := hrun.time_nonneg q
@@ -233,7 +233,7 @@ theorem unanimous_viable_or_higher_report_at
   have hjb : tr.time j ≤ b := ht ▸ hTb
   have hcz : cutZ sp.toParams g ≤ tr.time j := by
     have hca := hp.cutZ_lt_reset_at
-    have ha : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, Healing.gbar_nonneg g, sp.toParams.hΔ]
+    have ha : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g, sp.toParams.hΔ]
     have hj : sp.ts (u + 1 : Nat) ≤ tr.time j := by
       rw [ht]
       simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
@@ -353,7 +353,7 @@ theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK 
     linarith only [hR, hd]
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
-    linarith only [Healing.lt_cutZ sp g, Healing.gbar_nonneg g, hca, hd]
+    linarith only [Healing.lt_cutZ sp g, AC.gbar_nonneg g, hca, hd]
   have haT := (Healing.lt_drainTime (sp := sp) ha0).le.trans hRT
   rcases finality_alternative_before_update_at hp hP hslot hu hun hgu hR hTb hyj
       (hjtime ▸ haT) hjtime.le with hFP | ⟨x, r, e, C, hx, _, hto, ht, hPC, hh⟩
@@ -373,7 +373,7 @@ theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK 
     omega
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u)
     (by linarith [sp.toParams.hΔ]) (by linarith [sp.toParams.hΔ])
-    (by linarith [Healing.gbar_nonneg g, sp.toParams.hΔ]) hub
+    (by linarith [AC.gbar_nonneg g, sp.toParams.hΔ]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
   have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ AC.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u :=
@@ -416,7 +416,7 @@ theorem report_of_signTick_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK :
       tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
   have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
-    have hbase := (AC.ts_le_iff_le_slot sp (Healing.gbar_nonneg g) (sp.slot (AC.gbar g))).2 le_rfl
+    have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (AC.gbar g))).2 le_rfl
     simp only [AC.ACParams.ts] at hbase ⊢
     simp only [AC.ACParams.ts] at hgu
     push_cast at hbase hgu ⊢

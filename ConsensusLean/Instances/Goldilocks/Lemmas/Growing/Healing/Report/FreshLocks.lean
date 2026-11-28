@@ -220,7 +220,7 @@ theorem older_locks_compatible_at_update_at
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts (u + 1 : Nat) + sp.Δ by
       have ht : sp.ts u ≤ sp.ts (u + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
-      linarith [Healing.gbar_nonneg g]) (hnext.trans hkb)
+      linarith [AC.gbar_nonneg g]) (hnext.trans hkb)
   have hslot : sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) = u + 1 := by
     apply AC.slot_of_mem sp (u + 1)
     all_goals simp only [ACParams.ts]; push_cast; linarith
@@ -250,7 +250,7 @@ theorem older_locks_compatible_at_update_at
   have hyj := hrun.antitone (hrun.time_mono hjk.le) hy
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith
   have hS0 := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
-    (show 0 ≤ sp.ts u + sp.Δ by linarith [Healing.gbar_nonneg g])
+    (show 0 ≤ sp.ts u + sp.Δ by linarith [AC.gbar_nonneg g])
     (hshort.trans (hrun.time_mono hjk.le |>.trans hkb))
   have hvotes := honest_votes_of_joined_before_at hS0 hgu hjoin
   have hvi := hviable hyj hb.callAt hjlate hjfinite
