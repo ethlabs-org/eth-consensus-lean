@@ -138,7 +138,7 @@ theorem honest_votes_in_slot_before {K : AC.CommitteeDict sp.n} {b : Time}
       ∃ j e, VoteAt tr x j e ∧ e.msg.slot = m ∧ tr.time j ≤ sp.ts m + sp.Δ := by
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
+  have hg0 := AC.gbar_nonneg g
   intro x hx hxK
   have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
     apply slot_of_mem sp m (by linarith)
@@ -199,7 +199,7 @@ theorem honest_votes_in_slotU
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
+  have hg0 := AC.gbar_nonneg g
   intro x hx
   have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
     refine slot_of_mem sp m (by linarith) ?_

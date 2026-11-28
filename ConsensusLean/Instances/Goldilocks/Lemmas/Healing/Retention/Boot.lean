@@ -158,7 +158,7 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
   have hkwg : g ≤ tr.projAC.time kw := by
     have := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hkw) hBHv).1
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     change g ≤ tr.time kw
     linarith
@@ -295,7 +295,7 @@ theorem ResetPremisesUpTo.first_carry_of_finalized_anc {b : Time}
   have hgj : g ≤ sp.ts j := by
     have := hp.cutZ_le_ts_of_highOrigin ho
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     have := sp.toParams.hΔ
     linarith
   refine carryAt_of_writer_window hr hp.run.vstart (hp.sync.syncAC hp.run le_rfl) hgj
@@ -309,7 +309,7 @@ theorem ResetPremisesUpTo.first_carry_of_finalized_anc {b : Time}
   refine ⟨kw, hkw, ?_, hkwt⟩
   have := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hkw) hBHv).1
   have := lt_cutZ sp g
-  have := le_gbar g
+  have := AC.le_gbar g
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   change g ≤ tr.time kw
   linarith
@@ -363,7 +363,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     have hgm : g ≤ sp.ts m' := by
       have := hp.cutZ_le_ts_of_highOrigin ho
       have := lt_cutZ sp g
-      have := le_gbar g
+      have := AC.le_gbar g
       have := (AC.ts_le_iff sp).mpr (show (j : Int) ≤ m' by clear * - hjm; omega)
       linarith
     refine carryAt_of_writer_window hr hp.run.vstart (hp.sync.syncAC hp.run le_rfl)
@@ -378,7 +378,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     refine Or.inr ⟨k'', hacc, ?_, lt_of_le_of_lt (hr.time_mono hk'') hkt'⟩
     have := (hp.cutZ_lt_of_anc ho hz (hp.acceptAt_mem hz hacc) hBHv).1
     have := lt_cutZ sp g
-    have := le_gbar g
+    have := AC.le_gbar g
     change g ≤ tr.time k''
     linarith
   exact ⟨hr.awake_of_call y hy k ℓ hc.1, (AC.castAt_specU hr.toU hy hc).2.2.1,
@@ -405,7 +405,7 @@ theorem ResetPremisesUpTo.half_committee {b : Time}
       2 * {z | z ∈ H ∧ ∃ q e, AC.VoteAt tr.projAC z q e ∧ e.msg.slot = m}.ncard := by
   have hΔ := sp.toParams.hΔ
   have hgt : AC.gbar g ≤ sp.ts m + sp.Δ := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ sp.ts m + sp.Δ := (gbar_nonneg g).trans hgt
+  have ht0 : 0 ≤ sp.ts m + sp.Δ := (AC.gbar_nonneg g).trans hgt
   have hsl : sp.slot (sp.ts m + sp.Δ) = m :=
     AC.slot_of_mem sp m (by linarith) (by simp only [ACParams.ts]; push_cast; linarith)
   have hm3 : sp.slot (AC.gbar g) + 3 ≤ m := by

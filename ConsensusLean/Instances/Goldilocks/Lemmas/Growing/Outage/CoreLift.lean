@@ -107,20 +107,20 @@ theorem sleepyServiceBefore_upTo {ΔF b : Time} (h : SleepyServiceBefore tr H Δ
   rw [RunTrace.upTo_projAC]
   refine ⟨fun x hx i v hv h0 y hy j ℓ hc hdb hdj => ?_,
     fun x hx i B hB h0 y hy j ℓ hc hdb hdj ha => ?_⟩
-  · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
+  · obtain ⟨hid, hv⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hv
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     exact ac_messageServedBefore_upTo hm hjd
       (h.message x i v (anti hid hx) hv h0 y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
         hdj)
-  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+  · obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    rw [ACTrace.upTo_deadline hm hjd] at hdb hdj
     obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB h0 y j ℓ (anti hjd hy) hc
       (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
     have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
-      by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
+    exact ⟨k, hkj, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨hkd, hk⟩,
+      by rw [ACTrace.upTo_deadline hm hkd]; exact hkt⟩
 
 /-- Ancestry among the blocks held while honest, ending in a block of the prefix through `d`, is
 ancestry in the prefix (`RunTrace.anc_upTo_of_right`). -/

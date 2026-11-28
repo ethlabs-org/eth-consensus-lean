@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
@@ -379,21 +380,6 @@ theorem unanimous_next_vote_viable_core_at
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/
 
-/-- A cast of a node honest at it is no earlier than the start of its slot and at most `Δ` after
-it. -/
-theorem castAt_time_bounds {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcast : AC.CastAt tr.projAC y j ell e) :
-    sp.ts e.msg.slot ≤ tr.time j ∧ tr.time j ≤ sp.ts e.msg.slot + sp.Δ := by
-  have hr := (acRun_upTo_time hrun hnc j).localRun
-  have hc' := castAt_upTo_of_le le_rfl hcast
-  have h := (AC.castAt_specU hr.toU hy hc').2.1
-  change e.msg.slot = sp.slot (tr.time j) at h
-  refine ⟨(AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega), ?_⟩
-  exact (Compose.cast_head_fcRoot hr (acRun_upTo_time hrun hnc j).vstart hy hc').2
-
 /-- **Every slot-`(u+1)` vote of a node honest at it extends the unanimous proposal `P`**, by
 strong induction on the vote's cut. The batch is counted at the voter's cut among the slot-`u`
 committee: its members honest at `t_{u+1}` voted in slot `u` by `t_u + Δ` (`hvotes`), and CS at the
@@ -441,7 +427,7 @@ theorem unanimous_next_votes_extend_core_at
     | h j ih =>
       rintro hjb y e hy ⟨ell, hcast⟩ hs
       have htime : sp.ts (u + 1 : Nat) ≤ tr.time j := by
-        have := (castAt_time_bounds hrun hnc hy hcast).1
+        have := (Compose.Growing.cast_time_at hrun hnc hy hcast).1
         rwa [hs] at this
       obtain ⟨hFP, hvi⟩ := unanimous_next_vote_viable_core_at hrun hnc hsvc hc hP hslot hu hun
         hg hy hcast hs hjb
@@ -469,7 +455,7 @@ theorem unanimous_next_votes_extend_core_at
       refine AC.Growing.next_transfer_from hacr K hPK hTK hsize hy hcast hs ?_ hhalf hcarry hf
         (hcs2 j htime hjb) (Or.inl hvi) ?_
       · intro x q e' hx hv hvs
-        have hq := (castAt_time_bounds hrun hnc hx hv.choose_spec).2
+        have hq := (Compose.Growing.cast_time_at hrun hnc hx hv.choose_spec).2
         rw [hvs] at hq
         exact ⟨P, hP, (hun x q e' hx hv (by linarith) hvs).symm, .refl⟩
       · intro x q hq hx e' hv hvs

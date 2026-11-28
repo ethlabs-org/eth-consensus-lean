@@ -11,7 +11,7 @@ public section
 Under growing faults a node honest at `d ≥ 0`, read before a cut whose predecessors are all at
 times `≤ d`, is read on the prefix through `d`, which is a static run for the keys honest at `d`:
 
-* `reachable_upTo`, `held_upTo`: its store is reachable and its tree is held while honest;
+* `reachable_upTo`: its store is reachable;
 * `fgRun_upTo`, `projFG_store_upTo`: the FG projection of that prefix is a static FG run over the
   blocks held while honest in the whole run, and its store is the node's FG state. Readers on
   different prefixes so share one coherent universe. -/
@@ -32,13 +32,6 @@ theorem reachable_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     (hw : w ∈ H d) : (tr.state w m).fg.Reachable (goldilocksNode sp).genesisPayload := by
   rw [← Trace.upTo_state tr w hb]
   exact Compose.fg_reachable (hrun.upTo hd).toLocalRun hw m
-
-/-- The tree of a node honest at `d ≥ 0`, before a cut whose predecessors are at times `≤ d`, is
-held while honest. -/
-theorem held_upTo {w : Fin sp.n} {m : Nat} {d : Time} (hd : 0 ≤ d)
-    (hb : ∀ k < m, tr.time k ≤ d) (hw : w ∈ H d) :
-    (tr.state w m).fg.tree ⊆ tr.HonestBlocksAt H :=
-  fun _ hX => ⟨w, m, d, hd, hb, hw, hX⟩
 
 /-- The FG projection of the prefix through `d ≥ 0` is a static FG run for the keys honest at `d`,
 over the blocks held while honest in the whole run. -/

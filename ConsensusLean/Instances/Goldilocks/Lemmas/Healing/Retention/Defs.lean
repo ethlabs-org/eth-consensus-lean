@@ -205,13 +205,14 @@ theorem restart_le_before {b : Time} (hp : ResetPremisesUpTo tr H K proposer dg 
   by_contra hlt
   obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y hy k hk
   have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    have h := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr
+    have h := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+      ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr
       (by push_cast; omega)
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
   · exact hu (hp.awake y hy u hgu (huk.le.trans hkb))
   · obtain ⟨j, _x, _fgDue, hne, hcs, -⟩ :=
-      hp.run.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
+      hp.run.tick_of_awake y hy _ ((AC.gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hp.awake y hy _ hp₀ ((lt_of_not_ge hlt).le.trans hkb))
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
@@ -237,7 +238,7 @@ private theorem fault_bound_late_before {b : Time}
     (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
+  have ht0 : 0 ≤ t := (AC.gbar_nonneg g).trans hgt
   have hs : sp.slot (gbar g) + 3 ≤ sp.slot t := by
     have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)

@@ -898,7 +898,7 @@ theorem rows_delivered_service_at_core
       tr.deadline p j τ ΔF ≤ max τ (gbar g) + ΔF := fun j hj τ =>
     Compose.deadline_le_of_restarts
       (fun k' hk' hr => hnr p k' (hrun.antitone (hrun.time_mono (hk'.trans hj)) hp) hr) τ ΔF
-  have hg : max (tr.time k) g ≤ v := max_le hk ((Healing.le_gbar g).trans hv)
+  have hg : max (tr.time k) g ≤ v := max_le hk ((le_max_left g 0).trans hv)
   have hdl : ∀ j ≤ kX,
       tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := by
     intro j hj

@@ -32,7 +32,7 @@ theorem le_ts_of_highOrigin (hp : ResetPremises tr H K proposer dg g ΔF a) {x :
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) : g ≤ sp.ts j := by
   have h₁ := cutZ_le_ts_of_highOrigin hp ho
   have h₂ := lt_cutZ sp g
-  have h₃ := le_gbar g
+  have h₃ := AC.le_gbar g
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   linarith
 

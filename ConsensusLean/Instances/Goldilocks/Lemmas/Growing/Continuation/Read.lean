@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HealedMembers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
@@ -84,18 +85,6 @@ theorem healed_record_cover_at {rL rO : Nat} {t₁ b : Time}
         (tr.state y n).fg.F) :=
   hinv.record y n t ht₁ htb hy hrp
 
-/-- Two blocks on the healed chain are compatible when the family members are pairwise
-compatible. -/
-theorem OnHealedChain.compatible_chain (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {rL rO : Nat} {b : Time}
-    (hP : ∀ C s C' s', HealedOrigin tr H g rL rO C s b → HealedOrigin tr H g rL rO C' s' b →
-      Compatible (tr.HonestBlocksAt H) C C')
-    {X Y : AC.Blk sp.n (List (FG.Att sp.n))} (hX : OnHealedChain tr H g rL rO X b)
-    (hY : OnHealedChain tr H g rL rO Y b) : Compatible (tr.HonestBlocksAt H) X Y := by
-  obtain ⟨C, s, hC, hYC⟩ := onHealedChain_iff.1 hY
-  exact (compatible_of_anc_left (honestBlocksAt_coherent hrun hnc) hYC
-    (hX.compatible hrun hnc hP hC).symm).symm
-
 /-- **The effective record is on the healed chain**: for a reader honest at a read point
 `t ∈ [t₁, b]` that has called from `t_{rL−k−3}` on before it, its `Σ.F` is on the healed chain
 by the cache facts, and an origin of label `≥ rO`
@@ -132,7 +121,7 @@ theorem seeded_records_compatible_at (hrun : Growing.GoldilocksRun proposer dg H
         (tr.state y i).fg.F)
       ((AC.lookup (Node.frame (tr.state z j)) (tr.state z j).ac.latestConfirmed).getD
         (tr.state z j).fg.F) :=
-  OnHealedChain.compatible_chain hrun hnc hinv.origins_compatible
+  healed_sources_compatible_at hrun hnc hinv.origins_compatible
     (effective_record_on_healed_chain_at hinv ht₁ htb hy hi hci)
     (effective_record_on_healed_chain_at hinv ht₁' htb' hz hj hcj)
 
@@ -202,7 +191,7 @@ theorem seeded_effective_record_mono_at (hrun : Growing.GoldilocksRun proposer d
         (originWithin_iff.2 ⟨y, q, CV, hyq, hqt'.trans ht'b, hD⟩)
     exact hO.compatible hrun hnc hinv.origins_compatible hDm
   · have hq1 : ∀ k < q + 1, tr.time k ≤ t' := fun k hk => hj.1 k (by omega)
-    exact OnHealedChain.compatible_chain hrun hnc hinv.origins_compatible
+    exact healed_sources_compatible_at hrun hnc hinv.origins_compatible
       (hinv.caches y (q + 1) t' (ht₁.trans (ht₀.trans htt)) hq1 ht'b hy'
         (let ⟨c, hc, h⟩ := hcall; ⟨c, by omega, h⟩)).1 hO
 
@@ -425,7 +414,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       Y ∈ (Node.frame (tr.state y j)).tree → OnHealedChain tr H g r (r + sp.k - 1) X b →
       OnHealedChain tr H g r (r + sp.k - 1) Y b →
       Compatible (Node.frame (tr.state y j)).tree X Y := fun X Y hX hY hXc hYc =>
-    (OnHealedChain.compatible_chain hrun hnc hinv.origins_compatible hXc hYc).imp
+    (healed_sources_compatible_at hrun hnc hinv.origins_compatible hXc hYc).imp
       (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
       (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hY h hX)
   have hlocks := hinv.locks y j t ht₁ hrp.1 htb hy

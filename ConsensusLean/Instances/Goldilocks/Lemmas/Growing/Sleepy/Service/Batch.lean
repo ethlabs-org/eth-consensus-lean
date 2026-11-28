@@ -38,7 +38,7 @@ theorem update_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
   have hd := hrun.time_nonneg k₀
   exact Compose.update_restarts (acRun_upTo hrun hnc hd).localRun hy
     ((ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) k hk
-    ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
+    ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hrun.time_mono hk, hrk⟩)
 
 /-- **Transport of the catch-up from `a`** to the prefix through `d ≥ 0`: an AC acceptance of a
 node honest then, before `a`, is accepted before `a + κ` at every call from `a + κ` through `d` of
@@ -51,11 +51,11 @@ private theorem SleepyServiceFrom.acCatch_upTo {ini}
   have hsub := upTo_subset hrun hd
   rw [RunTrace.upTo_projAC]
   refine ⟨fun x hx i B hB hia y hy j ℓ hc hj hjd' hF => ?_⟩
-  obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+  obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
   obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
   obtain ⟨k, hkj, hk, hkt⟩ := h.acOld x i B (hrun.antitone hid hx) hB hia y j ℓ
     (hrun.antitone hjd hy) hc hj (hF.mono hsub)
-  exact ⟨k, hkj.le, (ac_acceptAt_upTo _).mpr ⟨(hm hkj.le).trans hjd, hk⟩, hkt⟩
+  exact ⟨k, hkj.le, (ACTrace.upTo_acceptAt (tr := _)).mpr ⟨(hm hkj.le).trans hjd, hk⟩, hkt⟩
 
 /-- **The honest batch at an update, under service from `a`** (`SleepyServiceFrom`, with
 `a ≤ t_s` and `a + κ ≤ t_s + 2Δ`): at the update of slot `s` of a node honest then, through `b`,

@@ -53,7 +53,7 @@ private theorem released_of_fwd {ini} (hrun : Growing.GoldilocksRun proposer dg 
     {u : Fin sp.n} (hu : u ∈ AC.Fwd (tr.projAC.upTo d) ((tr.upTo d).HonestBlocks (H d)) X s D) :
     u ∈ Released tr H X s D := by
   obtain ⟨v, hvu, hvs, ⟨R, hR, hRr, hDR⟩, k, hsend, h1, h2⟩ := AC.fwd_iff.1 hu
-  obtain ⟨hkd, hsend⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).1 hsend
+  obtain ⟨hkd, hsend⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).1 hsend
   exact ⟨v, hvu, hvs, ⟨R, upTo_subset hrun hd hR, hRr, hDR.mono (upTo_subset hrun hd)⟩, k,
     hrun.antitone hkd hX, hsend, h1, h2⟩
 
@@ -81,7 +81,7 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
   obtain ⟨-, hΦU⟩ := frameIn_at hrun hnc hY hu.1
   refine ⟨ℓ, _, hu.1, hu.2.2.1, fun k hk hrk => ?_, hmaj, ?_, ?_⟩
   · exact Compose.update_restarts hr.localRun hY hu' k hk
-      ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
+      ((ACTrace.upTo_restartAt (tr := tr.projAC)).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
     have hvs := AC.state_pool_slotU sp hr.localRun.toU hr.vstart hY c s v hvp'
@@ -97,7 +97,7 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
             · exact lt_of_le_of_lt (le_max_left _ _) hres
         rw [hstk] at hst'
         exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst'))
-    obtain ⟨hkc, hsend⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).1 hsend
+    obtain ⟨hkc, hsend⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).1 hsend
     exact ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, k, hrun.antitone hkc hY, hsend,
       h1, h2⟩
   · rintro u ⟨v, ⟨hvp, hne, -, R, hR, hRr, hDR⟩, rfl⟩
@@ -160,7 +160,7 @@ private theorem released_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (by linarith) (by linarith)
   have hserv' := ac_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
   have h := AC.held_of_deadline_serviceU hr.localRun.toU hY
-    (fun k' hk' hr' => hrs' k' hk' ((ac_restartAt_upTo tr.projAC).1 hr').2)
+    (fun k' hk' hr' => hrs' k' hk' ((ACTrace.upTo_restartAt (tr := tr.projAC)).1 hr').2)
     (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
     (fun t ht₁ ht₂ => by
       change tr.time k ≤ t at ht₁

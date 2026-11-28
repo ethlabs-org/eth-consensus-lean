@@ -117,7 +117,7 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
   have hU := hrl.coherent
   have hjs := slot_gbar_lt_of_cutZ_le hz
   have hg : g ≤ sp.ts j := by
-    have := lt_cutZ sp g; have := le_gbar g; have := sp.toParams.hΔ; linarith
+    have := lt_cutZ sp g; have := AC.le_gbar g; have := sp.toParams.hΔ; linarith
   obtain ⟨CV, hst⟩ := ho.2.2.1
   obtain ⟨CV', hst'⟩ := ho'.2.2.1
   obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst

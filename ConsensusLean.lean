@@ -568,7 +568,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedAttestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedVotes
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
@@ -587,7 +586,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Simulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.VoteForward
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.VoteForwardRelease

@@ -1,7 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 
 public section
