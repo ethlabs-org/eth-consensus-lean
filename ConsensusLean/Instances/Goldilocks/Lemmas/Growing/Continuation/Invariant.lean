@@ -37,8 +37,8 @@ is then not compared with the family. A reader honest at a read point from `t_{r
 vote cut after the split slot, has such a call (`seeded_reader_called_at`).
 `seeded_chain_candidate_at` reads `viable` as a viable-ancestor candidate.
 
-`seeded_invariant_at` assembles them from the seed, the reset service and the counts through
-`b ≥ T`, and conviction below a third, with `t₁ ≥ t_{r+k}` the later of the seed's cover start and
+`seeded_invariant_of_cover_at` assembles them from the seed, record cover, reset service, counts
+through `b ≥ T` and conviction below a third, with `t₁` the later of the cover start and
 the drain `t_{r+k}`. Every field is proved: the record cover after `T` (`Continuation/Record`), the
 held seed after `T` (`Continuation/SeedHeld`), and the cache facts and the full-read viability
 (`Healing/Frontier/Rows`). -/
@@ -335,31 +335,6 @@ theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H
     fun y i t ht₁ hi htb hy hcall =>
       seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall hK hKB,
     seed_held_past_at hrun hnc hseed hTb⟩
-
-/-- **The seeded invariant through `b`**: from the hand-over seed, the reset service and the slot
-counts from `r` through `b ≥ T`, and conviction below a third, the seeded invariant at the floors
-`(r, r + k − 1)` holds from a time `t₁ ∈ [t_{r+k}, T]`: the later of the seed's cover start and
-the drain `t_{r+k}` (`seeded_invariant_of_cover_at`). -/
-theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
-      (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
-    (hcv : ChainConvictedBelow tr H)
-    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
-    (hKB : CommitteeBoundsFrom tr H K r b) :
-    ∃ t₁, t₁ ≤ T ∧ sp.ts (r + sp.k : Nat) ≤ t₁ ∧ SeededInvariant tr H g r (r + sp.k - 1) t₁ b := by
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨hσT, hrσ, -⟩ := hseed.timing
-  obtain ⟨tc, htcT, hcov⟩ := hseed.covered
-  have hDT : sp.ts (r + sp.k : Nat) ≤ T := by
-    have := ts_le_ts (sp := sp) (show r + sp.k ≤ σ + 1 by omega)
-    have hts : sp.ts ((σ + 1 : Nat) : Int) = sp.ts σ + 4 * sp.Δ := by
-      simp only [ACParams.ts]; push_cast; ring
-    linarith
-  exact ⟨_, max_le htcT hDT, le_max_right _ _,
-    seeded_invariant_of_cover_at hrun hnc hseed hTb hsvc hB hcv hcov hK hKB⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

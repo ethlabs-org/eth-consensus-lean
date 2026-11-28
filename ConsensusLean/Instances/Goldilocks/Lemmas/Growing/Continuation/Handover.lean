@@ -10,8 +10,7 @@ Facts about `System.Handover` that the continuation proof reads: a hand-over at 
 horizon is the healthy regime (`Handover.healthy`); full participation on `[max g 0, T]` extends
 the sleepy budget at `T` back to `ready g` (`Handover.sleepyOn_from_ready`), and with the
 cross-boundary committee bound the committee budget too
-(`Handover.committeeSleepyOn_from_ready`); at `θ = ½` and `β ≤ ½`, fewer than half of the
-validators are compromised at every time up to the horizon (`Handover.two_faults_lt`). -/
+(`Handover.committeeSleepyOn_from_ready`). -/
 
 namespace Consensus
 
@@ -168,38 +167,6 @@ theorem Handover.committeeSleepyOn_from_ready {K : Contract Prog} {g T : Time} {
   push_cast
   nlinarith [mul_le_mul_of_nonneg_right hθ (by positivity :
     (0 : ℚ) ≤ ((C \ p.faultyAt L).card : ℚ) + ((p.faultyAt L ∩ C).card : ℚ))]
-
-/-- At `θ = ½` and `β ≤ ½`, fewer than half of the validators are compromised at every time up to
-the horizon: up to `T` by the healthy fault bound (faults only grow), after `T` because the faults
-charged by the sleepy budget are fewer than the ready validators, which they are disjoint from. -/
-theorem Handover.two_faults_lt {K : Contract Prog} {g T : Time} {r : S.Run}
-    (h : S.Handover X K g T r) (hθ : K.params.θ = 1 / 2) (hβ : K.params.β ≤ 1 / 2) :
-    ∀ d, d ≤ (S.pt r).horizon → 2 * (S.pt r).faultCount d < Fintype.card V := by
-  obtain ⟨-, ⟨hf, -⟩, -, hsl, -⟩ := h
-  intro d hd
-  rcases le_or_gt d T with hdT | hTd
-  · have hdT' : ((S.pt r).faultCount d : ℚ) ≤ (S.pt r).faultCount T := by
-      exact_mod_cast Finset.card_le_card ((S.pt r).faultyAt_mono hdT)
-    have hβn : K.params.β * Fintype.card V ≤ 1 / 2 * Fintype.card V :=
-      mul_le_mul_of_nonneg_right hβ (Nat.cast_nonneg _)
-    have : (2 * (S.pt r).faultCount d : ℚ) < Fintype.card V := by linarith only [hdT', hf, hβn]
-    exact_mod_cast this
-  · have hD : d ≤ (S.pt r).lookAhead (S.aheadDur K r) d :=
-      le_min (le_add_of_nonneg_right (aheadDur_nonneg K r)) hd
-    have hle := EnvPoint.card_readyAt_retain_add_le (p := S.pt r) (S.cDur K r) d
-      ((S.pt r).lookAhead (S.aheadDur K r) d)
-    have hF := Finset.card_le_card ((S.pt r).faultyAt_mono hD)
-    have hs := hsl d hTd.le hd
-    unfold EnvPoint.ReadyAbove EnvPoint.faultCount at hs
-    rw [hθ] at hs
-    unfold EnvPoint.faultCount
-    set R := ((S.pt r).retain ((S.pt r).lookAhead (S.aheadDur K r) d)).readyAt (S.cDur K r) d
-    set F := (S.pt r).faultyAt ((S.pt r).lookAhead (S.aheadDur K r) d)
-    change 1 / 2 * ((R.card : ℚ) + F.card) < R.card at hs
-    have hRF : F.card < R.card := by
-      have : (F.card : ℚ) < R.card := by linarith only [hs]
-      exact_mod_cast this
-    omega
 
 end System
 
