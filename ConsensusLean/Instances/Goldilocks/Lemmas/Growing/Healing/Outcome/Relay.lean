@@ -1,7 +1,7 @@
 module
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
@@ -47,7 +47,7 @@ theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hmem : B ∈ (tr.state y j).fg.tree := by
     by_cases hnew : g ≤ tr.time q
     · have hdl := Compose.deadline_le_of_restarts (tr := tr)
-        (fun k hkj hk => restart_le_at hp (hp.run.antitone (hp.run.time_mono hkj) hy) hk
+        (fun k hkj hk => hp.restart_le_before_at (hp.run.antitone (hp.run.time_mono hkj) hy) hk
           ((hp.run.time_mono hkj).trans hjb)) (max (tr.time q) g) sp.Δ
       have hdl' : tr.deadline y j (max (tr.time q) g) sp.Δ ≤ tr.time j := by
         apply hdl.trans

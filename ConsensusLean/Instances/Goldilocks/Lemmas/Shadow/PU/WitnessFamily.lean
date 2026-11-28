@@ -645,7 +645,8 @@ theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     omega
   have hfault : AC.FaultBoundK K m (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) :=
     Healing.Growing.KernelProof.faultBoundK_upTo le_rfl
-      (Healing.Growing.KernelProof.faultBoundK_of_service_at hK hrun hawake hnr hgm (by linarith) ht0 (by
+      (Healing.Growing.KernelProof.faultBoundK_of_service_at hK hrun hawake hnr hgm (by linarith)
+        ht0 (by
         rw [hslot]
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
         rw [heq]; exact hgm) hib)

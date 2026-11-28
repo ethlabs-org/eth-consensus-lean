@@ -3,7 +3,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CutTips
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.AncestorCandidate
@@ -101,7 +103,7 @@ theorem operational_update_read_after_at
     have h := Compose.projAC_state hrT.toLocalRun hy e
     rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (hle e he), hst e he] at h
   obtain ⟨hPt, hconf, -, -, -, hrecordEq⟩ :=
-    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
+    operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
   have hRaw : AC.ResultAt tr.projAC y j u P
       (AC.fastCounted sp (tr.projAC.state y j) ell.frame u P) :=
     ⟨ell, hup, hconf, rfl⟩
@@ -128,7 +130,7 @@ theorem operational_update_read_after_at
           have := (AC.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
           omega
         subst s
-        have hP := (operational_update_selection_at hp hhold hdesignated hactual hPs
+        have hP := (operational_update_selection_proof_at hp hhold hdesignated hactual hPs
           hR hgu hTb hyq hu').2.1
         have : D = P := Option.some.inj (hD.symm.trans hP)
         subst D

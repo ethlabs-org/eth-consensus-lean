@@ -1,7 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
@@ -274,7 +276,7 @@ theorem UpTo.operational_proposal_below_later_parent_of_source_cover_at
     swap
     · exact escape z r ellr C hz hr ht hPC
     obtain ⟨hPt, hconf, hnv, hfast, _, _⟩ :=
-      Healing.Growing.operational_update_selection_at hp hpH hdesignated hactual hPs hR hgu
+      Healing.Growing.operational_update_selection_proof_at hp hpH hdesignated hactual hPs hR hgu
         hTb hwj hup
     have hPhi := (Healing.Growing.frame_tree_subset_at hrun hnc hwj hup.1).1
     have hD := Obligations.UpTo.deepest_of_subset

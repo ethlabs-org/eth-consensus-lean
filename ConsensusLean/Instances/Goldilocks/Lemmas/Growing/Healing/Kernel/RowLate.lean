@@ -35,17 +35,6 @@ theorem vote_before_late_delivery_at_core
     ((RunTrace.upTo_acceptAt tr).mpr ⟨rc.time_mono hik.le, hA⟩) hik
   exact ht
 
-/-- A block delivered at `t_m + Δ` cannot precede the recipient's slot-`m` vote. -/
-theorem vote_before_late_delivery
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) {i : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hA : tr.AcceptAt y i W) (hik : i < k) (ht : tr.time i = sp.ts e.msg.slot + sp.Δ) :
-    False :=
-  Healing.vote_before_late_delivery hrun hnc hy hc hA hik ht
-
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
