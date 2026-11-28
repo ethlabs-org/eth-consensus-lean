@@ -662,7 +662,6 @@ example := ``Consensus.Goldilocks.Healing.HoldsEvidence
 example := ``Consensus.Goldilocks.Healing.SettledAt
 example := ``Consensus.Goldilocks.Healing.HighOrigin
 example := ``Consensus.Goldilocks.Healing.CutAndReset
-example := ``Consensus.Goldilocks.Healing.PhaseCount
 example := ``Consensus.Goldilocks.AC.gbar
 example := ``Consensus.Goldilocks.AC.Θ
 example := ``Consensus.Goldilocks.AC.HealthyAC

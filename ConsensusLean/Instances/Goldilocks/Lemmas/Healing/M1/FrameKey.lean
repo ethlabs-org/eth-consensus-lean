@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
