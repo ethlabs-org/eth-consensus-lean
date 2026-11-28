@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
@@ -26,26 +26,30 @@ at `T`.
 have no high contest (leaf 13), high signings come from high origins (leaf 12), and self-entries of
 equal height below two high origins are equal (leaf 14, `high_entry_eq_at_of_healing`).
 
-`rise_reset_rounds_at_of` proves the rise contract `rise_reset_rounds_at` over any `ACHealing`, by
-induction on the remaining rounds: a warm high proposal gives the reset (leaf 10); a lower one is
-crossed by the next honest proposal `δt` to `δt + G - 1` slots later (leaf 11), which is one round
-closer.
-
-`exists_reset` proves the slot-budget reset over any `ACHealing` on any slot schedule with
-`t_{s+1} ≥ t_s + 4Δ`. The schedule has no upper bound on slot lengths, so leaf 3 is run in slot
-space (`exists_slotWindow_seq`): the pigeonhole over the slots of honest cuts, with a lag of two
-slots, gives a slot window at a constant key `frameKey''`, and the four attempts fit in
-`resetSlots`. A
-proposal from the gap in that window is at most `riseRounds` rounds below `HZ + 1` (leaf 8), and
-the rise resets before the budget's end.
-
-`generic_healing` chains honest proposals after that reset: `exists_reset`, then `highCanonical`
-and `ACHealing.heal_after_reset`.
+`rise_reset_rounds_within_of` proves the rise under vote latency `D` over any `ACHealing`, by
+induction on the remaining rounds: a warm high proposal gives the reset (leaf 10 under latency);
+a lower one is crossed by the next honest proposal `δt` to `δt + G - 1` slots later (leaf 11),
+which is one round closer. `rise_reset_rounds_at_of`, the rise contract `rise_reset_rounds_at`,
+is its latency-`0` case. It runs in the real-time reset `exists_reset_within`.
 
 `premises_truncH` assembles the bundled premises on the honest sets truncated after `b` from the
 premises for `H` with restarts bounded only up to `b` (`NoRestartUpTo`). With
 `ACRun.run_truncH`, `HZ_truncH` and `isReset_truncH_iff` (`HealingLeaves`) it lets a finite-horizon
 consumer apply the bundled leaves on the truncation.
+
+`exists_reset_within`: a premised run whose honest sets are truncated after the horizon `b`
+resets by `r + (16 L + 24ρ + 52)Δ + 4(D + GΔ)`, from any real start `r` past `c_z`, under vote
+latency `D`, report delay `G = O.reportDelay`, proposal gap `Gp`, drain length `L` with
+`W + Gp ≤ L + 1` (`W = O.warmup`) and rise round `ρ = δt + Gp - 1`, on the four-delay slot grid.
+
+Without an advance before the bound there is no high signing (`reset_or_noAdvance`), so honest
+`h_max` is in `[HZ, HZ + 1]` from `r + 4Δ` (leaf 2) and the key `frameKey''` takes at most four
+values. The sequential pigeonhole (`Healing.exists_const_window_seq_of_mem`, lag `2Δ` by the relay
+calls) gives a window at a constant key `v` of real length
+`len v = 4Δ(L + 2) + r(v)·4Δρ + 2Δ - 1 + D + GΔ`. The first slot `s₀` in the window starts the
+proposal gap: a warm proposal `u ≤ s₀ + L` is at most `r(v)` rounds below `HZ + 1` (leaf 8), and
+the rise under latency (`rise_reset_rounds_within_of`) resets by
+`t_{u + r(v)ρ + 1} + 2Δ + GΔ + D`, which is in the window. The four attempts sum to the bound.
 -/
 
 namespace Consensus.Goldilocks.Healing
@@ -54,15 +58,9 @@ namespace Consensus.Goldilocks.Healing
 
 The rise round count is the milestone `riseRounds`: from `h_max − 1` a warm proposal needs
 `r(v) = 2 − ⌊(v − 2HZ)/2⌋` rounds (`2, 2, 1, 1` on `v = 2HZ + j`). The window length is
-`len(v) = d + r(v)·ρ + s` (`riseLen`), with `∑_{j<5} (len(2HZ + j) + λ) = 5(d + s + λ) + 6ρ`
-(`sum_riseLen`). The store-level key lag is `Healing.key_le_of_relay`. -/
+`len(v) = d + r(v)·ρ + s` (`riseLen`). The store-level key lag is `Healing.key_le_of_relay`. -/
 
 open Consensus.Goldilocks.Generic (riseRounds)
-
-/-- Unfolding equation of the milestone `riseRounds`. -/
-theorem riseRounds_eq (HZ v : Nat) : riseRounds HZ v = 2 - (v - 2 * HZ) / 2 := by
-  unfold riseRounds
-  rfl
 
 /-- The window length of key value `v`: the drain `d`, `r(v)` rounds of length `ρ`, slack `s`. -/
 def riseLen (d ρ s : Time) (HZ v : Nat) : Time := d + (riseRounds HZ v : Time) * ρ + s
@@ -79,15 +77,6 @@ theorem riseLen_nonneg {d ρ s : Time} (hd : 0 ≤ d) (hρ : 0 ≤ ρ) (hs : 0 �
   have : (0 : Time) ≤ (riseRounds HZ v : Time) := Nat.cast_nonneg _
   positivity
 
-/-- The cumulative length of the five attempts: `5(d + s + λ) + 6ρ`. -/
-theorem sum_riseLen (d ρ s lam : Time) (HZ : Nat) :
-    ∑ j ∈ Finset.range 5, (riseLen d ρ s HZ (2 * HZ + j) + lam) =
-      5 * (d + s + lam) + 6 * ρ := by
-  simp only [Finset.sum_range_succ, Finset.sum_range_zero, riseLen, riseRounds,
-    Nat.add_sub_cancel_left]
-  norm_num
-  ring
-
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Generic
@@ -96,12 +85,10 @@ open AC (gbar)
 open Healing (cutZ FirstCutAfter riseLen)
 open Healing.Growing (HZ IsReset CatchRun)
 
-/-! ## The milestone frame key and window production
+/-! ## The milestone frame key
 
 The arithmetic of `frameKey''` (twice `h_max`, plus one in a top frame), restriction of a
-`FrameWindow`, and the run-independent production: four attempts of the sequential pigeonhole give
-a window from a height range, a key lag and `J` agreement. `sum_riseLen_four'`: four attempts fit
-the six rise rounds of the five-attempt budget. -/
+`FrameWindow`, and a frame window from a constant key. -/
 
 section FrameWindowKey
 
@@ -190,55 +177,6 @@ theorem frameData_of_frameKey''_eq {α : Type*} (mem : α → Nat → Prop)
     exact ⟨0, True, dflt, fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl)),
       fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl)),
       fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl))⟩
-
-/-- **Window production.** Four attempts of the sequential pigeonhole give a frame window, once
-the run supplies the height range, the key lag and `J` agreement at equal `h_j`. -/
-theorem exists_frameWindow_seq_of_mem {tr : RunTrace A} {H : Time → Set (Fin P.n)}
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam)
-    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (hlag : ∀ x z i k, x ∈ H (tr.time i) → z ∈ H (tr.time k) →
-      lo ≤ tr.time i → tr.time i < T → tr.time i + lam ≤ tr.time k → tr.time k < T →
-      frameKey'' A (tr.state x i).fg ≤ frameKey'' A (tr.state z k).fg)
-    (hJ : ∀ y z i m, y ∈ H (tr.time i) → z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i < T → lo ≤ tr.time m → tr.time m < T →
-      (tr.state y i).fg.hj = (tr.state z m).fg.hj →
-      (tr.state y i).fg.J = (tr.state z m).fg.J)
-    (hT : lo + ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) < T) :
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey'' A (tr.state y i).fg = v) ∧
-      ∃ M isTop J, FrameWindow tr H a (a + len v) M isTop J := by
-  obtain ⟨v, hv₁, hv₂, a, ha, hb, hK⟩ := Healing.exists_const_window_seq_of_mem
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => frameKey'' A (tr.state y i).fg)
-    (2 * hz) 3 len hlen hlam
-    (fun y i hy hl hh => frameKey''_bounds (hrange y i hy hl hh).1
-      (hrange y i hy hl hh).2) hlag hT
-  have hpart : (∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam)) ≤
-      ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) :=
-    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
-      (fun j _ _ => add_nonneg (hlen _) hlam)
-  have hend : a + len v < T := lt_of_le_of_lt (hb.trans (add_le_add_right hpart lo)) hT
-  obtain ⟨M, isTop, J, hM, ht, hj⟩ := frameData_of_frameKey''_eq
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
-    (P.genesisBlock A.genesisPayload)
-    (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ =>
-      (hK y i hy hi₁ hi₂).trans (hK z m hz hm₁ hm₂).symm)
-    (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ => hJ y z i m hy hz
-      ((le_add_of_nonneg_right hlam).trans (ha.trans hi₁)) (hi₂.trans_lt hend)
-      ((le_add_of_nonneg_right hlam).trans (ha.trans hm₁)) (hm₂.trans_lt hend))
-  exact ⟨v, hv₁, hv₂, a, ha, hb, hK, M, isTop, J, hM, ht, hj⟩
-
-/-- Four attempts retain the six rise rounds of the five-attempt budget. -/
-theorem sum_riseLen_four' (d ρ s lam : Time) (HZ : Nat) :
-    ∑ j ∈ Finset.range 4, (Healing.riseLen d ρ s HZ (2 * HZ + j) + lam) =
-      4 * (d + s + lam) + 6 * ρ := by
-  simp only [Finset.sum_range_succ, Finset.sum_range_zero, Healing.riseLen_eq,
-    Healing.riseRounds_eq, Nat.add_sub_cancel_left]
-  norm_num
-  ring
 
 end FrameWindowKey
 
@@ -338,41 +276,39 @@ theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
       (le_originCapTime hi'b).1 (le_originCapTime hi'b).2
       h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
-/-- The rise contract over the supplier `O`, by induction on the remaining rounds `r`. A warm
-proposal at or above `HZ + 1` gives the reset by leaf 10. Otherwise the proposal gap gives an
-honest proposal `x` in `[u + δt, u + δt + G - 1]`; leaf 11 puts it one height above the warm
-proposal in its proposer's store, which has the warm proposal's replay state
-(`proposal_mem_at_from`, `σ_eq_honest_at_from`), and the induction hypothesis applies at `x`.
-The spacing gives `δt ≥ 2` with `ΔF > 0`, and every slot time is read from `ProposesAt`. -/
-theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
-    ∀ {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T : Time}
-      {s₀ N Gp M : Nat} {isTop : Prop} {J : A.Blk},
-    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b hold →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
-    CatchRun tr H g (2 * P.Δ) → Healing.Growing.NoRestartAfter tr H (gbar g) →
-    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
-    (∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
-      P.slotTime (s + P.δt)) →
-    (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
-    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → O.follow ≤ P.δt → 1 ≤ Gp →
-    (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
-    ProposalGap tr H proposer Gp s₀ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
-    (H b).Nonempty → T ≤ b → NoAdvance tr H g T →
+/-- **The rise under vote latency `D`** over the supplier `O`, by induction on the remaining
+rounds `r`. A warm proposal at or above `HZ + 1` gives the reset by leaf 10 under latency
+(`reset_of_high_proposal_within_of_healing`). Otherwise the proposal gap gives an honest proposal
+`x` in `[u + δt, u + δt + G - 1]`; leaf 11 puts it one height above the warm proposal in its
+proposer's store, which has the warm proposal's replay state (`proposal_mem_at_from`,
+`σ_eq_honest_at_from`), and the induction hypothesis applies at `x`. The spacing gives `δt ≥ 2`
+with `ΔF > 0`, and every slot time is read from `ProposesAt`. -/
+theorem rise_reset_rounds_within_of {hold : Time} (O : ACHealing A sg runs hold)
+    {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T D : Time}
+    {s₀ N Gp M : Nat} {isTop : Prop} {J : A.Blk}
+    (hβ : βK ≤ 1 / 2) (hframe : SlotWindowWithin tr H O.reportDelay s₀ N M isTop J)
+    (hrun : runs.Run cm proposer dg H tr) (hP : Premises tr H cm βK proposer dg sg g ΔF b hold)
+    (hlat : VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hsp : ∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt))
+    (hm : gbar g + 4 * P.Δ ≤ P.slotTime s₀) (hfol : O.follow ≤ P.δt) (hG : 1 ≤ Gp)
+    (hgp : ProposalGap tr H proposer Gp s₀ N)
+    (hmb : shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b)
+    (hTb : T ≤ b) (hna : NoAdvance tr H g T) :
     ∀ (r : Nat) {u : Nat} {z : Fin P.n} {kB : Nat} {B : A.Blk},
       s₀ ≤ u → s₀ + O.warmup ≤ u → u + r * (P.δt + Gp - 1) + 1 ≤ N →
       shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) ≤ T →
+      shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) + D ≤ b →
       z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
       HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + r →
       ∃ a, IsReset tr H g a ∧
-        a ≤ shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) := by
-  intro cm proposer dg H tr βK g ΔF b T s₀ N G M isTop J hβ hcom hframe hrun hnc hsvc
-    hawake hf hcatch hnr hsl hsp hsnap hm hfol hG htd hgp hmb hHb hTb hna r
+        a ≤ shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) +
+          D := by
+  intro r
   have hrl := runs.run_local hrun
+  have hnc := hP.noColl
   have hΔ := P.hΔ
-  have hdF := hsvc.deltaF
+  have hdF := hP.sync.deltaF
   have hmono := P.slotTime_strictMono.monotone
   have hδ2 : 2 ≤ P.δt := by
     by_contra h1
@@ -383,30 +319,33 @@ theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
     linarith
   induction r with
   | zero =>
-    intro u z kB B hs₀u hwarm hN hT hz hdes hB hBs hrise
+    intro u z kB B hs₀u hwarm hN hT hTD hz hdes hB hBs hrise
     simpa only [Nat.zero_mul, Nat.add_zero] using
-      reset_of_high_proposal_at_of_healing O hβ hcom hframe hrun hnc hsvc hawake hf hcatch hnr
-        hsl htd hsnap hm hs₀u hwarm (by simpa using hN) hmb hHb hz hdes hB hBs
-        (by simpa using hrise)
+      reset_of_high_proposal_within_of_healing O hβ hframe hrun hP hlat hD hm hwarm
+        (by simpa using hN) hmb (by simpa using hTD) hz hdes hB hBs (by simpa using hrise)
   | succ r ih =>
-    intro u z kB B hs₀u hwarm hN hT hz hdes hB hBs hrise
-    have hmul : (r + 1) * (P.δt + G - 1) = r * (P.δt + G - 1) + (P.δt + G - 1) :=
+    intro u z kB B hs₀u hwarm hN hT hTD hz hdes hB hBs hrise
+    have hmul : (r + 1) * (P.δt + Gp - 1) = r * (P.δt + Gp - 1) + (P.δt + Gp - 1) :=
       Nat.succ_mul r _
+    have hu1 : shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) ≤
+        shiftDelay P O.reportDelay
+          (P.slotTime (u + (r + 1) * (P.δt + Gp - 1) + 1) + 2 * P.Δ) := by
+      apply shiftDelay_le
+      linarith [hmono (show u + 1 ≤ u + (r + 1) * (P.δt + Gp - 1) + 1 by omega)]
     by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h
-    · obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_at_of_healing O hβ hcom hframe hrun hnc hsvc
-        hawake hf hcatch hnr hsl htd hsnap hm hs₀u hwarm (by omega) hmb hHb hz hdes hB hBs hh
-      exact ⟨a, ha, hat.trans (by
-        apply shiftDelay_le
-        linarith [hmono (show u + 1 ≤ u + (r + 1) * (P.δt + G - 1) + 1 by omega)])⟩
+    · obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_within_of_healing O hβ hframe hrun hP hlat
+        hD hm hwarm (by omega) hmb (by linarith) hz hdes hB hBs hh
+      exact ⟨a, ha, by linarith⟩
     obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := hgp (u + P.δt) (by omega) (by omega)
     have htX : tr.time kX = P.slotTime x := by rw [hX.2.2, hXs]
     have hpx0 : proposer x ∈ H (tr.time kX) := hrl.antitone (by rw [htX]; linarith) hpx
     have hstrict : shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) < T := by
-      have := P.slotTime_strictMono (show u + 1 < u + (r + 1) * (P.δt + G - 1) + 1 by omega)
+      have := P.slotTime_strictMono (show u + 1 < u + (r + 1) * (P.δt + Gp - 1) + 1 by omega)
       rw [shiftDelay_eq_add] at hT ⊢
       linarith
-    obtain ⟨hBp, -, hcross⟩ := round_of_warm_at_of_healing O hβ hcom hframe hrun hnc hsvc
-      hawake hf hcatch hnr hsl hsp hsnap hm hs₀u hwarm hfol htd hxl (by omega) hmb hHb hTb hna
+    obtain ⟨hBp, -, hcross⟩ := round_of_warm_at_of_healing O hβ hP.committee hframe hrun hnc
+      hP.sync hP.awake hP.faults hP.catchUp hP.noRestart hP.slotLen hsp hP.snapshot hm hs₀u
+      hwarm hfol hP.timeoutDelay hxl (by omega) hmb hP.nonempty hTb hna
       hstrict hz hdes hB hBs hpx0 rfl hX hXs
     have htB : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
     have hz0 : z ∈ H (tr.time kB) := hrl.antitone (by rw [htB]; linarith) hz
@@ -416,10 +355,27 @@ theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
       (fun q hq => hrl.time_mono (by omega)) hz0 (hrl.time_nonneg kX)
       (fun q hq => hrl.time_mono (by omega)) hpx0 hBm hBp
     rw [← hσ] at hcross
-    have hnext : x + r * (P.δt + G - 1) + 1 ≤ u + (r + 1) * (P.δt + G - 1) + 1 := by omega
+    have hnext : x + r * (P.δt + Gp - 1) + 1 ≤ u + (r + 1) * (P.δt + Gp - 1) + 1 := by omega
+    have hsx : shiftDelay P O.reportDelay
+          (P.slotTime (x + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) ≤
+        shiftDelay P O.reportDelay
+          (P.slotTime (u + (r + 1) * (P.δt + Gp - 1) + 1) + 2 * P.Δ) :=
+      shiftDelay_le _ (by linarith [hmono hnext])
     obtain ⟨a, ha, hat⟩ := ih (u := x) (by omega) (by omega) (hnext.trans hN)
-      ((shiftDelay_le _ (by linarith [hmono hnext])).trans hT) hpx rfl hX hXs (by omega)
-    exact ⟨a, ha, hat.trans (shiftDelay_le _ (by linarith [hmono hnext]))⟩
+      (hsx.trans hT) (by linarith) hpx rfl hX hXs (by omega)
+    exact ⟨a, ha, by linarith⟩
+
+/-- The rise contract over the supplier `O`: the latency-`0` case of
+`rise_reset_rounds_within_of` (`voteLatency_zero_from`). -/
+theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
+    rise_reset_rounds_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b T s₀ N G M isTop J hβ hcom hframe hrun hnc hsvc
+    hawake hf hcatch hnr hsl hsp hsnap hm hfol hG htd hgp hmb hHb hTb hna r u z kB B hs₀u hwarm
+    hN hT hz hdes hB hBs hrise
+  simpa only [add_zero] using rise_reset_rounds_within_of O hβ hframe hrun
+    ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, hHb⟩
+    (voteLatency_zero_from (runs.run_local hrun)) le_rfl hsp hm hfol hG hgp hmb hTb hna r
+    hs₀u hwarm hN hT (by rw [add_zero]; exact hT.trans hTb) hz hdes hB hBs hrise
 
 /-- **The milestone key lag** between independently honest observations, after a call of `z` at or
 after the relay deadline of `i` (`Healing.key_le_of_relay` at the two observations). -/
@@ -480,238 +436,6 @@ theorem frameWindow_of_frameKey''_eq_obs_from {proposer : Nat → Fin P.n}
           (le_max_left _ _) (le_max_right _ _))
         he)
   exact ⟨M, isTop, J, ⟨h1, h2, h3⟩⟩
-
-/-- Leaf 3 in slot space, on any schedule with `t_{s+1} ≥ t_s + 4Δ`: the sequential pigeonhole
-(`Healing.exists_const_window_seq_of_mem`) run over the slots `slot(t_i)` of the cuts of nodes
-honest at them, from slot `s + 1` to `S`, with a lag of two slots and window lengths `len v` in
-slots. Before `t_S` there is no advance, so the key `frameKey''` is in `[2HZ, 2HZ + 3]` (leaf 2,
-both bounds) and four attempts suffice; two slots apart, a later cut is more than `4Δ` after an
-earlier one (relay calls, `frameKey''_lag_obs_from`). A constant slot window `[s₀, s₀ + len v]`
-covers the time window
-`[t_{s₀}, t_{s₀ + len v} + 2Δ]`, which is a `SlotWindow`. -/
-private theorem exists_slotWindow_seq {cm βK tr H proposer dg g ΔF b hold}
-    (hrun : runs.Run cm proposer dg H tr) (hP : Premises tr H cm βK proposer dg sg g ΔF b hold)
-    {s S : Nat} (hgs : gbar g ≤ P.slotTime s) (hcs : cutZ P g ≤ P.slotTime s)
-    (hSb : P.slotTime S ≤ b) (hna : NoAdvance tr H g (P.slotTime S)) (len : Nat → Nat)
-    (hS : s + 1 + ∑ j ∈ Finset.range 5, (len (2 * HZ tr H g + j) + 2) < S) :
-    ∃ v, 2 * HZ tr H g ≤ v ∧ ∃ s₀, s + 3 ≤ s₀ ∧ s₀ + len v < S ∧
-      (∀ y i, y ∈ H (tr.time i) → P.slotTime s₀ ≤ tr.time i →
-        tr.time i ≤ P.slotTime (s₀ + len v) + 2 * P.Δ → frameKey'' A (tr.state y i).fg = v) ∧
-      ∃ M isTop J, SlotWindow tr H s₀ (s₀ + len v) M isTop J := by
-  classical
-  have hrl := runs.run_local hrun
-  have hΔ : (1 : Time) ≤ P.Δ := P.hΔ
-  have hmono := P.slotTime_strictMono.monotone
-  have hspec := (slotOfSpec_iff.mp slotOf_spec) P
-  have hsl := hP.slotLen
-  have hf2 : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n := fun t h0 htb =>
-    P.fg.faults_lt_quorum_margin (hP.faults t h0 htb)
-  have hlt : ∀ i, P.slotOf (tr.time i) < S → tr.time i < P.slotTime S := fun i hi =>
-    (hspec _ (hrl.time_nonneg i)).2.trans_le (hmono (by omega))
-  have hge : ∀ i n, n ≤ P.slotOf (tr.time i) → P.slotTime n ≤ tr.time i := fun i n hn =>
-    (hmono hn).trans (hspec _ (hrl.time_nonneg i)).1
-  have hs1 := hsl s
-  have hcb : cutZ P g ≤ b := hcs.trans ((hmono (show s ≤ S by omega)).trans hSb)
-  have hH : (H (cutZ P g)).Nonempty := hP.nonempty.mono (hrl.antitone hcb)
-  have hST : ((s + 1 : Nat) : Time) +
-      ∑ j ∈ Finset.range 4, ((len (2 * HZ tr H g + j) : Time) + 2) < (S : Time) := by
-    rw [Finset.sum_range_succ] at hS
-    have h4 : s + 1 + ∑ j ∈ Finset.range 4, (len (2 * HZ tr H g + j) + 2) < S := by omega
-    have := (show ((s + 1 + ∑ j ∈ Finset.range 4, (len (2 * HZ tr H g + j) + 2) : Nat) : Time) <
-      (S : Time) by exact_mod_cast h4)
-    push_cast at this
-    exact this
-  obtain ⟨v, hv1, hv2, a, ha, hav, hK⟩ := Healing.exists_const_window_seq_of_mem
-    (fun y i => y ∈ H (tr.time i)) (fun i => (P.slotOf (tr.time i) : Time))
-    (fun y i => frameKey'' A (tr.state y i).fg) (2 * HZ tr H g) 3
-    (fun v => (len v : Time)) (lo := ((s + 1 : Nat) : Time)) (T := (S : Time))
-    (fun _ => Nat.cast_nonneg _) (show (0 : Time) ≤ 2 by norm_num)
-    (fun y i hy h1 h2 => by
-      have h1' : s + 1 ≤ P.slotOf (tr.time i) := by exact_mod_cast h1
-      have h2' : P.slotOf (tr.time i) < S := by exact_mod_cast h2
-      have hti := hge i _ h1'
-      have hiT := hlt i h2'
-      have hib : tr.time i ≤ b := hiT.le.trans hSb
-      have hczi : cutZ P g ≤ tr.time i := by linarith
-      have hmx : max (cutZ P g) (tr.time i) = tr.time i := max_eq_right hczi
-      obtain ⟨hsnap, hcall⟩ := snapshotCall_of_awake_at_from hrl hP.awake hy (by linarith) hib
-      exact frameKey''_bounds
-        (HZ_le_hmax_at_from hrl hP.noColl hP.sync hP.catchUp hH hsnap hy
-          (by rw [hmx]; exact hf2 _ (hrl.time_nonneg i) hib) hcall (by linarith))
-        (hmax_le_of_noAdvance_at_from hrl hna hy
-          (by rw [hmx]; exact faults_lt_q hP.faults (hrl.time_nonneg i) hib) hiT))
-    (fun x z i k hx hz h1 _ hik hk => by
-      have h1' : s + 1 ≤ P.slotOf (tr.time i) := by exact_mod_cast h1
-      have hik' : P.slotOf (tr.time i) + 2 ≤ P.slotOf (tr.time k) := by exact_mod_cast hik
-      have hk' : P.slotOf (tr.time k) < S := by exact_mod_cast hk
-      have hti := hge i _ h1'
-      have hi1 := (hspec _ (hrl.time_nonneg i)).2
-      have hk2 := hge k _ hik'
-      have hs2 := hsl (P.slotOf (tr.time i) + 1)
-      have hkb : tr.time k ≤ b := (hlt k hk').le.trans hSb
-      have him : tr.time i + 2 * P.Δ ≤ tr.time k := by linarith
-      exact frameKey''_lag_obs_from hrl hP.noColl hf2 hP.sync hP.catchUp hx hz (by linarith) hkb
-        (callLag_of_awake_at_from hrl hP.awake hcs hz (by linarith) him hkb) (by linarith))
-    hST
-  have ha0 : (0 : Time) ≤ a := by
-    have : (0 : Time) ≤ ((s + 1 : Nat) : Time) := Nat.cast_nonneg _
-    linarith
-  obtain ⟨s₀, rfl⟩ : ∃ s₀ : Nat, a = (s₀ : Time) := ⟨a.toNat, (Int.toNat_of_nonneg ha0).symm⟩
-  have hs₀ : s + 3 ≤ s₀ := by
-    have : ((s + 3 : Nat) : Time) ≤ (s₀ : Time) := by push_cast at ha ⊢; linarith
-    exact_mod_cast this
-  have hpart : ∑ j ∈ Finset.range (v - 2 * HZ tr H g + 1), ((len (2 * HZ tr H g + j) : Time) + 2)
-      ≤ ∑ j ∈ Finset.range 4, ((len (2 * HZ tr H g + j) : Time) + 2) :=
-    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
-      fun _ _ _ => by positivity
-  have hN : s₀ + len v < S := by
-    push_cast at hav hST
-    have : ((s₀ + len v : Nat) : Time) < (S : Time) := by push_cast; linarith
-    exact_mod_cast this
-  have hNS := hsl (s₀ + len v)
-  have hN1 : P.slotTime (s₀ + len v + 1) ≤ P.slotTime S := hmono (by omega)
-  have hhi : P.slotTime (s₀ + len v) + 2 * P.Δ ≤ b := by linarith
-  have hKt : ∀ y i, y ∈ H (tr.time i) → P.slotTime s₀ ≤ tr.time i →
-      tr.time i ≤ P.slotTime (s₀ + len v) + 2 * P.Δ → frameKey'' A (tr.state y i).fg = v := by
-    intro y i hy h1 h2
-    have hi0 := hspec _ (hrl.time_nonneg i)
-    apply hK y i hy
-    · have : s₀ ≤ P.slotOf (tr.time i) := by
-        by_contra h
-        have := hmono (show P.slotOf (tr.time i) + 1 ≤ s₀ by omega)
-        linarith
-      exact_mod_cast this
-    · have : P.slotOf (tr.time i) ≤ s₀ + len v := by
-        by_contra h
-        have := hmono (show s₀ + len v + 1 ≤ P.slotOf (tr.time i) by omega)
-        linarith
-      exact_mod_cast this
-  refine ⟨v, hv1, s₀, hs₀, hN, hKt, frameWindow_of_frameKey''_eq_obs_from hrl hP.noColl hf2 hhi ?_⟩
-  intro y z i m hy hz hi1 hi2 hm1 hm2
-  rw [hKt y i hy hi1 hi2, hKt z m hz hm1 hm2]
-
-private theorem reportDeadline_le_paddedSlot {P : Params}
-    (hsl : ∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) (N d : Nat) :
-    shiftDelay P d (P.slotTime N + 2 * P.Δ) ≤ P.slotTime (N + (d + 3) / 4) + 2 * P.Δ := by
-  have hspan (e : Nat) : P.slotTime N + (4 * (e : Time)) * P.Δ ≤ P.slotTime (N + e) := by
-    induction e with
-    | zero => simp
-    | succ e ih =>
-      rw [Nat.add_succ]
-      calc
-        P.slotTime N + (4 * ((e + 1 : Nat) : Time)) * P.Δ =
-            (P.slotTime N + (4 * (e : Time)) * P.Δ) + 4 * P.Δ := by push_cast; ring
-        _ ≤ P.slotTime (N + e) + 4 * P.Δ := add_le_add_left ih _
-        _ ≤ P.slotTime (N + e + 1) := hsl (N + e)
-  have hcast : (d : Time) ≤ 4 * (((d + 3) / 4 : Nat) : Time) := by
-    exact_mod_cast (show d ≤ 4 * ((d + 3) / 4) by omega)
-  rw [shiftDelay_eq_add]
-  linarith only [hspan ((d + 3) / 4), mul_le_mul_of_nonneg_right hcast P.hΔ.le]
-
-/-- The slot-budget reset: within `resetSlots` slots of a slot `s` at or after `ḡ` and `c_z`, a
-premised run resets. With no reset by `T = t_{s + resetSlots}`, there is no advance before `T`
-(`reset_or_noAdvance`), and the slot-space leaf 3 (`exists_slotWindow_seq`) gives a slot window
-`[s₀, N + ⌈d/4⌉]` at a constant key `v = frameKey''`, where `d = O.reportDelay`,
-`N = s₀ + W + Gp + r(v)·(δt + Gp - 1)`, `W` is the warmup, and `r(v) = riseRounds HZ v`.
-At most four keys occur, so the padded attempts fit in `resetSlots` (budgeted for five). The
-proposal gap gives an honest proposal `u` in
-`[s₀ + W, s₀ + W + Gp - 1]`, at most `r(v)` rounds below `HZ + 1` (leaf 8). The rise
-(`rise_reset_rounds_at_of`) resets by `t_{u + r(v)·(δt + Gp - 1) + 1} + 2Δ + dΔ`,
-which is at most `t_N + 2Δ + dΔ ≤ t_{N + ⌈d/4⌉} + 2Δ < T`. -/
-theorem exists_reset {hold : Time} (O : ACHealing A sg runs hold) :
-    ∀ {cm βK tr H proposer dg g ΔF b Gp s},
-      βK ≤ 1 / 2 →
-      (∀ u, shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + ΔF ≤
-        P.slotTime (u + P.δt)) →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-      1 ≤ Gp →
-      gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
-      ProposalGap tr H proposer Gp s (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
-      P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ≤ b →
-      ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) := by
-  intro cm βK tr H proposer dg g ΔF b Gp s hβ hsp hrun hP hGp hgs hcs hgp hb
-  rcases reset_or_noAdvance hrun hP hb with h | hna
-  · exact h
-  have hrl := runs.run_local hrun
-  have hΔ : (1 : Time) ≤ P.Δ := P.hΔ
-  have hmono := P.slotTime_strictMono.monotone
-  have hsl := hP.slotLen
-  let pad := (O.reportDelay + 3) / 4
-  have hS : s + 1 + ∑ j ∈ Finset.range 5,
-      (O.warmup + Gp + riseRounds 0 (2 * HZ tr H g + j - 2 * HZ tr H g) * (P.δt + Gp - 1) +
-        pad + 2) <
-      s + resetSlots O.warmup Gp P.δt O.reportDelay := by
-    simp only [resetSlots, windowSlots, riseRounds, Finset.sum_range_succ, Finset.sum_range_zero,
-      Nat.add_sub_cancel_left, pad]
-    omega
-  obtain ⟨v, hv, s₀, hs₀, hN, hK, M, isTop, J, hwin⟩ := exists_slotWindow_seq hrun hP hgs hcs
-    hb hna (fun v => O.warmup + Gp + riseRounds 0 (v - 2 * HZ tr H g) * (P.δt + Gp - 1) + pad) hS
-  have hrr : riseRounds 0 (v - 2 * HZ tr H g) = riseRounds (HZ tr H g) v := by
-    simp [riseRounds]
-  rw [hrr] at hN hK hwin
-  obtain ⟨u, hul, hur, hpu, kB, B, hB, hBs⟩ := hgp (s₀ + O.warmup) (by omega) (by omega)
-  set N := s₀ + (O.warmup + Gp + riseRounds (HZ tr H g) v * (P.δt + Gp - 1)) with hNdef
-  have hs₀u : s₀ ≤ u := by omega
-  have huN : u + riseRounds (HZ tr H g) v * (P.δt + Gp - 1) + 1 ≤ N := by omega
-  have hpad := reportDeadline_le_paddedSlot hsl N O.reportDelay
-  change _ ≤ P.slotTime (N + pad) + 2 * P.Δ at hpad
-  have hNS := hsl (N + pad)
-  have hN1 : P.slotTime (N + pad + 1) ≤
-      P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) := hmono (by omega)
-  have hmb := hpad.trans (show P.slotTime (N + pad) + 2 * P.Δ ≤ b by linarith)
-  have hbase : P.slotTime N + 2 * P.Δ ≤ P.slotTime (N + pad) + 2 * P.Δ := by
-    linarith only [hmono (show N ≤ N + pad by omega)]
-  rw [← Nat.add_assoc] at hK hwin
-  have hwithin : SlotWindowWithin tr H O.reportDelay s₀ N M isTop J :=
-    ⟨fun y i hy hlo hhi => hwin.M_eq y i hy hlo (hhi.trans hpad),
-      fun y i hy hlo hhi => hwin.top_iff y i hy hlo (hhi.trans hpad),
-      fun y i hy hlo hhi => hwin.root_eq y i hy hlo (hhi.trans hpad)⟩
-  have hts := hsl s
-  have hm : gbar g + 4 * P.Δ ≤ P.slotTime s₀ := by linarith [hmono (show s + 1 ≤ s₀ by omega)]
-  have hu0 : 0 ≤ P.slotTime u := by
-    have := hmono (Nat.zero_le u)
-    rwa [P.slotTime_zero] at this
-  have huN' := hmono (show u ≤ N by omega)
-  have hwin' : FrameWindow tr H (P.slotTime s₀)
-      (P.slotTime s₀ + (P.slotTime N + 2 * P.Δ - P.slotTime s₀)) M isTop J := by
-    rw [add_sub_cancel]
-    exact ⟨fun y i hy hlo hhi => hwin.M_eq y i hy hlo (hhi.trans hbase),
-      fun y i hy hlo hhi => hwin.top_iff y i hy hlo (hhi.trans hbase),
-      fun y i hy hlo hhi => hwin.root_eq y i hy hlo (hhi.trans hbase)⟩
-  have hrise := rounds_le_warm_proposal_at_of_healing O hrun hP.noColl hwin'
-    (fun y i hy h1 h2 => hK y i hy h1 (by linarith)) hv (hmono hs₀u) (by linarith)
-    (hrl.antitone (by linarith) hpu) rfl hB hBs
-    (P.fg.faults_lt_quorum_margin (hP.faults _ hu0 (by linarith)))
-  have hend := shiftDelay_le (P := P) O.reportDelay (add_le_add_left (hmono huN) (2 * P.Δ))
-  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at_of O hβ hP.committee hwithin hrun hP.noColl
-    hP.sync hP.awake hP.faults hP.catchUp hP.noRestart hP.slotLen hsp hP.snapshot hm
-    (O.follow_le hrun hP) hGp hP.timeoutDelay (fun a h1 h2 => hgp a (by omega) (by omega)) hmb
-    hP.nonempty hb hna _ hs₀u hul huN (by linarith) hpu rfl hB hBs hrise
-  exact ⟨a, ha, hat.trans (by linarith)⟩
-
-/-- Proposal chaining after the slot-budget reset: `exists_reset` gives the reset `a` by the
-budget's end, `highCanonical` the canonical high entries by the horizon, and
-`ACHealing.heal_after_reset` chains honest proposals from `slot(a) + drain`. No confirmed-tip
-guarantee is asserted. -/
-theorem generic_healing {hold : Time} (O : ACHealing A sg runs hold) :
-    ∀ {cm βK tr H proposer dg g ΔF b Gp s},
-      βK ≤ 1 / 2 →
-      (∀ u, shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + ΔF ≤
-        P.slotTime (u + P.δt)) →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-      1 ≤ Gp →
-      gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
-      ProposalGap tr H proposer Gp s (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
-      P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ≤ b →
-      (∀ a, IsReset tr H g a →
-        a ≤ P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
-        ResetInBudget P O.deepBudget O.drain g a) →
-      ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ∧
-        HealedFrom tr H proposer (P.slotOf a + O.drain) b := by
-  intro cm βK tr H proposer dg g ΔF b Gp s hβ hsp hrun hP hGp hgs hcs hgp hb hbudget
-  obtain ⟨a, ha, hat⟩ := exists_reset O hβ hsp hrun hP hGp hgs hcs hgp hb
-  exact ⟨a, ha, hat, O.heal_after_reset hβ hrun hP ha (hat.trans hb)
-    (hbudget a ha hat) (highCanonical O hβ hrun hP ha (hat.trans hb) (hbudget a ha hat))⟩
 
 /-! ## Truncation after the horizon -/
 
@@ -775,6 +499,167 @@ theorem premises_restrict_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ}
     Premises tr (truncH H b) cm βK proposer dg sg g ΔF b hold :=
   premises_truncH h.committee h.noColl h.sync h.awake h.faults h.catchUp
     (fun y k hy hk _ => h.noRestart y k hy hk) h.timeoutDelay h.slotLen h.snapshot h.nonempty
+
+/-- Vote latency on the honest sets truncated after `b`: the signing source extends the report
+in the reporter's store, hence over the truncated honest blocks. -/
+private theorem voteLatency_truncH {hold : Time} (O : ACHealing A sg runs hold)
+    {cm proposer dg H tr} (hrun : runs.Run cm proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {D : Time} (hlat : VoteLatencyAt tr H D) (b : Time) : VoteLatencyAt tr (truncH H b) D := by
+  have hrl := runs.run_local hrun
+  refine ⟨fun y i R hR hy => ?_⟩
+  obtain ⟨k, hik, hk, C, s, hc, hh, hRC, j, hij, hjk, hC⟩ := hlat.attests y i R hR hy.1
+  have htj := (hrl.time_mono hjk).trans hk
+  have hyj := hrl.antitone htj hy.1
+  have hle : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrl.time_mono hq.le
+  have hj0 := hrl.time_nonneg j
+  have hanc := store_anc_of_honest_anc_at_from hrl hnc hj0 hle hyj hRC
+    (O.report_in_frame hrun hyj hC).1
+  exact ⟨k, hik, hk, C, s, hc, hh,
+    honest_anc_of_store_anc_at_from (H := truncH H b) hj0 hle ⟨hyj, htj.trans hy.2⟩ hanc,
+    j, hij, hjk, hC⟩
+
+/-- **The real-time reset** over the supplier `O`, on the honest sets truncated after the horizon
+`b` (`premises_truncH` supplies the premises from restarts bounded up to `b`). -/
+theorem exists_reset_within {hold : Time} (O : ACHealing A sg runs hold)
+    {cm proposer dg H tr} {βK : ℚ} {g ΔF b r D : Time} {Gp L : Nat}
+    (hβ : βK ≤ 1 / 2) (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ))
+    (hrun : runs.Run cm proposer dg H tr)
+    (hP : Premises tr (truncH H b) cm βK proposer dg sg g ΔF b hold)
+    (hlat : VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hΔF : 6 * P.Δ + (D + (O.reportDelay : Time) * P.Δ) + ΔF ≤ 4 * P.Δ * (P.δt : Time))
+    (hG : 1 ≤ Gp) (hL : O.warmup + Gp ≤ L + 1)
+    (hgr : gbar g ≤ r) (hcz : cutZ P g + P.Δ + 1 ≤ r + 4 * P.Δ)
+    (hgp : ∀ s₀ N : Nat, r + 4 * P.Δ ≤ P.slotTime s₀ →
+      P.slotTime N + 2 * P.Δ < r + (16 * (L : Time) + 24 * ((P.δt + Gp - 1 : Nat) : Time) + 52) *
+        P.Δ + 4 * (D + (O.reportDelay : Time) * P.Δ) →
+      ProposalGap tr H proposer Gp s₀ N)
+    (hb : r + (16 * (L : Time) + 24 * ((P.δt + Gp - 1 : Nat) : Time) + 52) * P.Δ +
+      4 * (D + (O.reportDelay : Time) * P.Δ) ≤ b) :
+    ∃ a, IsReset tr H g a ∧
+      a ≤ r + (16 * (L : Time) + 24 * ((P.δt + Gp - 1 : Nat) : Time) + 52) * P.Δ +
+        4 * (D + (O.reportDelay : Time) * P.Δ) := by
+  classical
+  set B := r + (16 * (L : Time) + 24 * ((P.δt + Gp - 1 : Nat) : Time) + 52) * P.Δ +
+    4 * (D + (O.reportDelay : Time) * P.Δ) with hBdef
+  set H' := truncH H b
+  have hrun' := runs.run_truncH hrun b
+  have hrl := runs.run_local hrun'
+  have hnc := hP.noColl
+  have hlat' := voteLatency_truncH O hrun hnc hlat b
+  have hΔ : (1 : Time) ≤ P.Δ := P.hΔ
+  have hGΔ : (0 : Time) ≤ (O.reportDelay : Time) * P.Δ := by positivity
+  set ρ : Nat := P.δt + Gp - 1 with hρ
+  have hρ0 : (0 : Time) ≤ (ρ : Time) := Nat.cast_nonneg _
+  have hL0 : (0 : Time) ≤ (L : Time) := Nat.cast_nonneg _
+  let lo := r + 4 * P.Δ
+  have hczlo : cutZ P g ≤ lo := by linarith
+  have hB4 : lo + 48 * P.Δ ≤ B := by
+    have h1 : (0 : Time) ≤ (L : Time) * P.Δ := by positivity
+    have h2 : (0 : Time) ≤ (ρ : Time) * P.Δ := by positivity
+    rw [hBdef]
+    nlinarith
+  have hczb : cutZ P g ≤ b := by linarith
+  have hf2 : ∀ t, 0 ≤ t → t ≤ b → (H' t)ᶜ.ncard < 2 * P.fg.q - P.n := fun t h0 htb =>
+    P.fg.faults_lt_quorum_margin (hP.faults t h0 htb)
+  -- without an advance before `B` there is no high signing
+  rcases reset_or_noAdvance hrun' hP hb with ⟨a, ha, hab⟩ | hna
+  · exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
+  -- the pigeonhole over the key, four attempts of length `len`
+  let slack := 2 * P.Δ - 1 + (D + (O.reportDelay : Time) * P.Δ)
+  let len : Nat → Time := fun v =>
+    riseLen (4 * P.Δ * ((L : Time) + 2)) (4 * P.Δ * (ρ : Time)) slack (HZ tr H' g) v
+  have hlen : ∀ v, 0 ≤ len v := fun v =>
+    Healing.riseLen_nonneg (by positivity) (by positivity) (by dsimp [slack]; linarith) _ v
+  have hsum : lo + ∑ j ∈ Finset.range 4, (len (2 * HZ tr H' g + j) + 2 * P.Δ) = B - 4 := by
+    simp only [len, Finset.sum_range_succ, Finset.sum_range_zero, Healing.riseLen_eq, riseRounds,
+      Nat.add_sub_cancel_left]
+    norm_num
+    dsimp [lo, slack]
+    rw [hBdef]
+    ring
+  obtain ⟨v, hv, hv3, a, ha, hav, hK⟩ := Healing.exists_const_window_seq_of_mem
+    (fun y i => y ∈ H' (tr.time i)) tr.time (fun y i => frameKey'' A (tr.state y i).fg)
+    (2 * HZ tr H' g) 3 len hlen (show (0 : Time) ≤ 2 * P.Δ by linarith) (lo := lo) (T := B)
+    (fun y i hy hi hiB => by
+      have hib : tr.time i ≤ b := hiB.le.trans hb
+      have hczi : cutZ P g ≤ tr.time i := hczlo.trans hi
+      have hmx : max (cutZ P g) (tr.time i) = tr.time i := max_eq_right hczi
+      obtain ⟨hsnap, hcall⟩ := snapshotCall_of_awake_at_from hrl hP.awake hy (by linarith) hib
+      exact frameKey''_bounds
+        (HZ_le_hmax_at_from hrl hnc hP.sync hP.catchUp
+          (hP.nonempty.mono (hrl.antitone hczb)) hsnap hy
+          (by rw [hmx]; exact hf2 _ (hrl.time_nonneg i) hib) hcall (by linarith))
+        (hmax_le_of_noAdvance_at_from hrl hna hy
+          (by rw [hmx]; exact faults_lt_q hP.faults (hrl.time_nonneg i) hib) hiB))
+    (fun x z i k hx hz hi _ hik hk => by
+      have hkb : tr.time k ≤ b := hk.le.trans hb
+      exact frameKey''_lag_obs_from hrl hnc hf2 hP.sync hP.catchUp hx hz (by linarith) hkb
+        (callLag_of_awake_at_from hrl hP.awake hczlo hz hi hik hkb) (by linarith))
+    (by rw [hsum]; linarith)
+  have hpart : ∑ j ∈ Finset.range (v - 2 * HZ tr H' g + 1), (len (2 * HZ tr H' g + j) + 2 * P.Δ)
+      ≤ ∑ j ∈ Finset.range 4, (len (2 * HZ tr H' g + j) + 2 * P.Δ) :=
+    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
+      (fun j _ _ => add_nonneg (hlen _) (by linarith))
+  have hend : a + len v ≤ B - 4 := by linarith
+  obtain ⟨M, isTop, J, hwin⟩ := frameWindow_of_frameKey''_eq_obs_from hrl hnc hf2
+    (show a + len v ≤ b by linarith) (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ => by
+      rw [hK y i hy hi₁ hi₂, hK z m hz hm₁ hm₂])
+  -- the first slot in the window starts the proposal gap
+  obtain ⟨s₀, hslo, hshi⟩ := exists_slot_align_of_grid (P := P) hgrid a (by
+    have : (0 : Time) ≤ lo := by
+      have : (0 : Time) ≤ gbar g := le_max_right _ _
+      linarith
+    linarith)
+  have halign := Int.le_sub_one_of_lt hshi
+  set rr := riseRounds (HZ tr H' g) v
+  set N := s₀ + L + rr * ρ + 1 with hNdef
+  have hNt : P.slotTime N + 2 * P.Δ + (D + (O.reportDelay : Time) * P.Δ) ≤ a + len v := by
+    have hlv : len v = 4 * P.Δ * ((L : Time) + 2) + (rr : Time) * (4 * P.Δ * (ρ : Time)) +
+        slack := Healing.riseLen_eq _ _ _ _ _
+    rw [hlv, hgrid N, hNdef]
+    dsimp [slack]
+    nlinarith only [halign]
+  have hmono := P.slotTime_strictMono.monotone
+  have hmb : shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b := by
+    rw [shiftDelay_eq_add]; linarith
+  have hgpN : ProposalGap tr H' proposer Gp s₀ N := by
+    intro c hc hcN
+    obtain ⟨x, hxl, hxr, hx, hQ⟩ := hgp s₀ N (by linarith) (by linarith) c hc hcN
+    have hxN : P.slotTime x + P.Δ ≤ P.slotTime N + 2 * P.Δ := by
+      linarith [hmono (show x ≤ N by omega)]
+    exact ⟨x, hxl, hxr, ⟨hx, by linarith⟩, hQ⟩
+  obtain ⟨u, hul, hur, hpu, kB, Bk, hB, hBs⟩ := hgpN (s₀ + O.warmup) (by omega) (by omega)
+  have huN : u + rr * ρ + 1 ≤ N := by omega
+  have hts₀ : P.slotTime s₀ ≤ P.slotTime u := hmono (by omega)
+  have htuN : P.slotTime u ≤ P.slotTime N := hmono (by omega)
+  have hu0 : (0 : Time) ≤ P.slotTime u := by rw [hgrid]; positivity
+  have hrise := rounds_le_warm_proposal_at_of_healing O hrun' hnc hwin
+    (fun y i hy h1 h2 => hK y i hy h1 h2) hv (hslo.trans hts₀) (by linarith)
+    (hrl.antitone (by linarith) hpu) rfl hB hBs
+    (hf2 _ hu0 (by linarith))
+  -- the rise under latency
+  have hsp : ∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt) := by
+    intro s
+    rw [shiftDelay_eq_add, hgrid, hgrid]
+    have e1 : ((s + 1 : Nat) : Time) * (4 * P.Δ) = (s : Time) * (4 * P.Δ) + 4 * P.Δ := by
+      push_cast; ring
+    have e2 : ((s + P.δt : Nat) : Time) * (4 * P.Δ) =
+        (s : Time) * (4 * P.Δ) + 4 * P.Δ * (P.δt : Time) := by
+      push_cast; ring
+    rw [e1, e2]
+    linarith
+  have hend' : shiftDelay P O.reportDelay
+      (P.slotTime (u + rr * (P.δt + Gp - 1) + 1) + 2 * P.Δ) ≤
+      P.slotTime N + 2 * P.Δ + (O.reportDelay : Time) * P.Δ := by
+    rw [shiftDelay_eq_add]
+    linarith [hmono huN]
+  obtain ⟨a', ha', hat⟩ := rise_reset_rounds_within_of O hβ
+    (hwin.mono hslo (by rw [shiftDelay_eq_add]; linarith)) hrun' hP hlat' hD hsp
+    (by linarith) (O.follow_le hrun' hP) hG hgpN hmb hb hna rr (by omega) hul huN
+    (by linarith) (by linarith) hpu rfl hB hBs hrise
+  have hab : a' ≤ B := by linarith
+  exact ⟨a', (isReset_truncH_iff hczb (hab.trans hb)).mp ha', hab⟩
 
 end Edges
 

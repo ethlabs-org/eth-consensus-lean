@@ -777,7 +777,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitne
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
@@ -792,7 +791,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassif
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
@@ -801,7 +799,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WindowRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
