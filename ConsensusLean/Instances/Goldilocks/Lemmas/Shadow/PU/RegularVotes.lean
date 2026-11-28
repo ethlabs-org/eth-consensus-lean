@@ -43,40 +43,6 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
 
-/-- The shared service proof carries counted result votes to the next reader. -/
-private theorem result_carry_service_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    {s : Nat} (hts : gbar g ≤ sp.ts s)
-    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
-    (hres : AC.ResultAt tr.projAC x c s C CV)
-    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
-    (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
-    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  exact KernelProof.result_carry_service_at hrun hnc hsvc hcatch hts
-    hx hy hres hc hes hFC
-
-/-- The shared service proof compares merged votes with the result writer. -/
-private theorem writer_merged_service_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    {s : Nat} (hm : gbar g ≤ sp.ts s)
-    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode sp)}
-    (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.projAC.state x c).pool s ∨
-        v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
-  exact KernelProof.writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs
-
 /-- Stored slow-window locks compare with the slow origin. -/
 private theorem slow_live_locks_service_at
     {K : AC.CommitteeDict sp.n}
@@ -265,9 +231,9 @@ theorem regular_slow_next_votes_of_early_witness_at
     rw [Compose.Growing.frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
   exact AC.Growing.result_transfer_anc hac hx hres hDC hy hc hs
-    (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
+    (KernelProof.result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
     (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
-    (writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
+    (KernelProof.writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
 
 /-- The shared supporter proof consumes the shadow two-case classification. -/
 theorem next_votes_of_supporter_at {s₀ s M : Nat}

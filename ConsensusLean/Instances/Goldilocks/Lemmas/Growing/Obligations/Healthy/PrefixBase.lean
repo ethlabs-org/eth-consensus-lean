@@ -15,7 +15,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

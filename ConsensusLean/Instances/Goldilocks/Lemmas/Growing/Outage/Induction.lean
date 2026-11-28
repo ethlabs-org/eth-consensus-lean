@@ -346,12 +346,14 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg ini) (hS5 : 
       · exact hinv.sources y k hk hy ℓ C h
       · exact source_compatible_at hrun D.hnc hy (hinv.locks_at_cut le_rfl hy) h
     -- 5. OB-F and (VA) at `i + 1`, counted at the node's call at `i`
-    have hnew : ∀ y (t : Time), 0 ≤ t → (∀ k < i + 1, tr.time k ≤ t) → y ∈ H t →
-        (Compatible (tr.HonestBlocksAt H) (tr.state y (i + 1)).fg.F D.P ∧
-          Compatible (tr.HonestBlocksAt H) (tr.state y (i + 1)).fg.J D.P) ∧
-        (D.P ∈ (Node.frame (tr.state y (i + 1))).tree →
-          (Node.frame (tr.state y (i + 1))).AncestorCandidate D.P) := by
-      intro y t ht0 ht hy
+    have hstate : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
+        (Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
+          Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P) ∧
+        (D.P ∈ (Node.frame (tr.state y k)).tree →
+          (Node.frame (tr.state y k)).AncestorCandidate D.P) := by
+      intro y k t hk ht0 ht hy
+      rcases Nat.le_succ_iff.1 hk with hk | rfl
+      · exact ⟨hinv.caches y k t hk ht0 ht hy, hinv.viable y k t hk ht0 ht hy⟩
       have hy' : y ∈ H (tr.time i) := hrun.antitone (ht i (Nat.lt_succ_self i)) hy
       by_cases hc : ∃ c, tr.CallAt y i c
       · exact hcand (i + 1) (tr.time i) hsrc y (hrun.time_nonneg i) (before_succ hrun i) hy'
@@ -359,28 +361,15 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg ini) (hS5 : 
       · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
         have ht' : ∀ k < i, tr.time k ≤ t := fun k hk => ht k (by omega)
         exact ⟨hinv.caches y i t le_rfl ht0 ht' hy, hinv.viable y i t le_rfl ht0 ht' hy⟩
-    have hcaches : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
-        Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
-          Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P := by
-      intro y k t hk ht0 ht hy
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.caches y k t hk ht0 ht hy
-      · exact (hnew y t ht0 ht hy).1
-    have hviable : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
-        D.P ∈ (Node.frame (tr.state y k)).tree →
-        (Node.frame (tr.state y k)).AncestorCandidate D.P := by
-      intro y k t hk ht0 ht hy
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.viable y k t hk ht0 ht hy
-      · exact (hnew y t ht0 ht hy).2
     have hcachesC : ∀ y k, k ≤ i + 1 → y ∈ H (tr.time k) →
         Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P :=
-      fun y k hk hy => (hcaches y k (tr.time k) hk (hrun.time_nonneg k)
-        (fun _ hk' => hrun.time_mono hk'.le) hy).1
+      fun y k hk hy => (hstate y k (tr.time k) hk (hrun.time_nonneg k)
+        (fun _ hk' => hrun.time_mono hk'.le) hy).1.1
     have hslot_mono : sp.slot (tr.time (i - 1)) ≤ sp.slot (tr.time i) :=
       AC.slot_mono sp (hrun.time_nonneg _) (hrun.time_mono (Nat.sub_le i 1))
     -- 6. the protections at `i + 1`
-    refine ⟨hvi, hres, hlocks, hsrc, hcaches, hviable, ?_, ?_⟩
+    refine ⟨hvi, hres, hlocks, hsrc, fun y k t hk ht0 ht hy => (hstate y k t hk ht0 ht hy).1,
+      fun y k t hk ht0 ht hy => (hstate y k t hk ht0 ht hy).2, ?_, ?_⟩
     · intro x hx c ℓ hu hbase k hck hk hxk hkK
       rcases Nat.le_succ_iff.1 hk with hk | rfl
       · exact hinv.protPrev x hx c ℓ hu hbase k hck hk hxk hkK

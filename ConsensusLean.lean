@@ -103,8 +103,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameCandidate
@@ -378,8 +376,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.UnanimousStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
@@ -499,9 +495,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
@@ -692,7 +685,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
