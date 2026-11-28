@@ -26,7 +26,7 @@ variable {sp : ACParams}
 /-- Classification and propagation are independent of the frame's root policy. -/
 theorem next_votes_of_supporter_at
     {ini : Fin sp.n → (goldilocksNode sp).State} {s : Nat}
-    {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    {X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
@@ -35,7 +35,7 @@ theorem next_votes_of_supporter_at
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     (hclass : ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
-      (Hd ∈ ell.frame.viableHeads ∨ (kindJ ∧ Hd = J) ∨
+      (Hd ∈ ell.frame.viableHeads ∨
         (Hd = AC.getAnchor sp e.readPoint ell.frame (tr.time q) ∧
           ∃ l ∈ e.readPoint.locks, l.slot = e.msg.slot ∧
           ∃ a ≤ q, ∃ D CV, z ∈ H (tr.time a) ∧
@@ -43,9 +43,6 @@ theorem next_votes_of_supporter_at
             sp.ts e.msg.slot ≤ tr.time a ∧ tr.time a < sp.ts e.msg.slot + 2 * sp.Δ ∧
             3 * sp.committeeSize ≤ 4 * (AC.voters CV).ncard ∧ ell.frame.Anc Hd D)))
     (hbase : Q ∈ ell.frame.tree → Q ∈ ell.frame.viableHeads →
-      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
-    (hcommon : kindJ → Q = J →
       ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
         AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
     (hoptimistic : Q = AC.getAnchor sp e.readPoint ell.frame (tr.time q) →
@@ -60,9 +57,8 @@ theorem next_votes_of_supporter_at
   have hEQ : Hd = Q := (Compose.Growing.honestBlocksAt_coherent hrun hnc).1
     (hPhiU hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
-  rcases hclass with hv | hj | ho
+  rcases hclass with hv | ho
   · exact hbase hHd hv
-  · exact hcommon hj.1 hj.2
   · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
     have hheads := hoptimistic hA a D CV hza (hes ▸ hop) (hQD.mono hPhiU)
     intro y i ev hy hv hesv
