@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
@@ -61,7 +62,7 @@ theorem proposal_lock_prefix_cases_window_at
   have hΔ := sp.toParams.hΔ
   have hi : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith only [hΔ]
   obtain ⟨a, hai, ellw, D, hza, ha, hD, hBA, ho⟩ :=
-    live_lock_selection_origin_at' hrun hnc hz hc hl hB hBr
+    live_lock_selection_origin_at hrun hnc hz hc hl hB hBr
   let A := ellw.frame.viableAncestor D
   have hXA : Anc (tr.HonestBlocksAt H) X A := (Anc.mono hPhi.2 hXB).trans hBA
   have hW := rc.frameIn_at hnc hza ha
@@ -103,7 +104,7 @@ theorem proposal_lock_prefix_cases_window_at
   have halo : sp.ts s₀ ≤ tr.time a := hts.trans hlw
   have hahi : tr.time a ≤ sp.ts (s + 1 : Nat) + sp.Δ := (rc.time_mono hai.le).trans hi
   rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
-  · exact Or.inl (unlocked_image_below_write_root_at' hrun hnc hz hai.le ha hc hXB hBA hbelow)
+  · exact Or.inl (unlocked_image_below_write_root_at hrun hnc hz hai.le ha hc hXB hBA hbelow)
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   have hat : tr.time a < sp.ts l.slot + 2 * sp.Δ := by
     obtain ⟨ell', A', hp, hsl, hsel, -⟩ := hop

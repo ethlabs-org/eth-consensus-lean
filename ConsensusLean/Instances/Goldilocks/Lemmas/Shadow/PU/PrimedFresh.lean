@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshNext
@@ -75,7 +76,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP h
 theorem unanimous_next_votes_primed_at' :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
-  refine Core.unanimous_next_votes_at hrun.toCore hnc hsvc hawake hf hcatch hnr
+  refine unanimous_next_votes_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK ?_
   intro y j ell e hy hc hs hjb
   have hΔ := sp.toParams.hΔ
@@ -125,7 +126,7 @@ theorem fresh_fast_lock_update_at
       P ∈ ell.frame.viableTree ell.frame.tree ∧
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
         (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  obtain ⟨k, ell, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr hmargin hTb hy
+  obtain ⟨k, ell, hu⟩ := Healing.Growing.update_call_of_awake_at hrun hnc hawake hnr hmargin hTb hy
   have hyk : y ∈ H (tr.time k) := by
     have ht : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
     have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by

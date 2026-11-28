@@ -263,27 +263,6 @@ section Anc
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
 
-/-- Along ancestry in a reachable store the state height does not decrease. -/
-theorem h_le_of_store_anc (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W) :
-    (st.σ A.root).h ≤ (st.σ W.root).h := by
-  induction h with
-  | refl => exact le_rfl
-  | tail _ hYW ih =>
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> omega
-
-/-- **Entry constancy** (G0.2 (i)): while the height stays along ancestry, the entry stays. -/
-theorem Th_eq_of_anc (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
-    (hh : (st.σ W.root).h = (st.σ A.root).h) : (st.σ W.root).Th = (st.σ A.root).Th := by
-  induction h with
-  | refl => rfl
-  | tail hAY hYW ih =>
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    have h₁ := h_le_of_store_anc hr hAY
-    rcases (Goldilocks.Store.step_fields ht).1 with ⟨he, hT⟩ | ⟨he, -⟩
-    · rw [hT]; exact ih (by omega)
-    · omega
-
 /-- **Entry-slot constancy:** while the height stays along ancestry, the entry slot stays. -/
 theorem ThSlot_eq_of_anc (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
     (hh : (st.σ W.root).h = (st.σ A.root).h) :

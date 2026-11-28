@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 
 public section
 
@@ -32,44 +31,19 @@ the justified height. -/
 theorem J_entry_of_reachable (hr : st.Reachable acp₀) {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
     ∃ E ∈ st.tree, E.root = (st.σ W.root).J ∧ st.Anc E W ∧ (E = P.genesisBlock acp₀ ∨
       ((st.σ E.root).h = (st.σ W.root).hj ∧ (st.σ E.root).Th = E.root)) := by
-  have hg := genesis_mem hr
-  have hA := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.2.2 W hW
-  clear hW
-  induction hA with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr]
-    exact ⟨_, hg, rfl, .refl, Or.inl rfl⟩
-  | tail _ hYW ih =>
-    obtain ⟨X, -, hXr, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
-    rcases (Goldilocks.Store.step_fields ht).2 with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
-    · obtain ⟨E, hE, h1, hEY, h2⟩ := ih
-      refine ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW, ?_⟩
-      rw [hj]
-      exact h2
-    · obtain ⟨⟨E, hE, h1, hEY, h2, h3⟩, -⟩ :=
-        Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
-      exact ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW, Or.inr ⟨h2.trans hj.symm, h3.trans h1.symm⟩⟩
+  obtain ⟨E, hE, hEr, hEW, hcase⟩ := Goldilocks.Store.J_entry_hj P ACP hr hW
+  exact ⟨E, hE, hEr, hEW, hcase.imp And.left id⟩
 
 /-- The block named by a justification has at least its recorded height, including genesis. -/
 theorem J_height_le (hr : st.Reachable acp₀) {W J : NodeBlock P ACP}
     (hW : W ∈ st.tree) (hJ : J ∈ st.tree) (hJr : J.root = (st.σ W.root).J) :
     (st.σ W.root).hj ≤ (st.σ J.root).h := by
-  have hA := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.2.2 W hW
-  clear hW
-  induction hA generalizing J with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr]
-    exact Nat.zero_le _
-  | tail _ hYW ih =>
-    obtain ⟨_, _, _, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
-    rcases (Goldilocks.Store.step_fields ht).2 with ⟨hroot, hh⟩ | ⟨hroot, hh⟩
-    · rw [hh]
-      exact ih hJ (hJr.trans hroot)
-    · obtain ⟨⟨E, hE, hEr, _, hEh, _⟩, _⟩ :=
-        Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
-      have he : J = E := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.1.1
-        hJ hE ((hJr.trans hroot).trans hEr.symm)
-      rw [he, hEh, hh]
+  obtain ⟨E, hE, hEr, -, hcase⟩ := Goldilocks.Store.J_entry_hj P ACP hr hW
+  obtain rfl : E = J := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.1.1
+    hE hJ (hEr.trans hJr.symm)
+  rcases hcase with ⟨-, hh⟩ | ⟨hh, -⟩
+  · rw [hh]; exact Nat.zero_le _
+  · exact hh.ge
 
 /-- **The prefix-local quorum-free core** (the counting of
 `Store.quorum_free_entries` at one store). If no honest signer has an attestation naming `E` on a
@@ -80,8 +54,7 @@ theorem entry_kept (hr : st.Reachable acp₀) {H : Set (Fin P.n)} (hq : Hᶜ.nca
     (hE : ∀ W ∈ st.tree, ∀ a ∈ W.fgPayload, a.T = E.root → a.val ∉ H)
     {A X : NodeBlock P ACP} (hAX : st.Anc A X) (hATh : (st.σ A.root).Th = E.root) :
     (st.σ X.root).h = (st.σ A.root).h ∧ (st.σ X.root).Th = E.root :=
-  Goldilocks.Store.entry_kept_with Goldilocks.Store.finalitySpec_updateFinality
-    hr.reachableWith hq hE hAX hATh
+  Goldilocks.Store.entry_kept P ACP hr hq hE hAX hATh
 
 /-- **A high `Σ.J` is compatible with `B`** when, for every high entry of
 the store that conflicts with `B`, no honest signer has an attestation naming it on a block of

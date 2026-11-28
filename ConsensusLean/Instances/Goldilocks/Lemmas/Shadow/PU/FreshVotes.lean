@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPath
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
@@ -50,7 +51,7 @@ theorem honest_vote_heads_eq_at
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hpay, hti, hparent, _, _, hpayload, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+    Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hcp hpay
   have hip : tr.time ip = sp.ts (s + 1 : Nat) := hti

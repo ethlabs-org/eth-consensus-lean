@@ -8,11 +8,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 
 public section
 
@@ -29,14 +26,13 @@ open AC (ACParams Payload)
 variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g : Time}
-variable {u frameOf}
 
 /-- A high entry left by a held chain was named by an earlier signer honest at it and at `c_z`;
 the quorum budget is read at the later of the observation and `c_z`. The source origin's
 honesty is at its write and at `c_z`, not the reader's later observation. -/
-theorem left_entry_origin_at_core
+theorem left_entry_origin_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -52,12 +48,12 @@ theorem left_entry_origin_at_core
       ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧
         ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
           Anc (tr.HonestBlocksAt H) E O := by
-  have hU := hrun.coherent hnc
-  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left_with hrun.finalitySpec
-    (hrun.reachable_at ht hy hle) hq hET hEC hlt
+  have hU := hrun.toLocalRun.coherent hnc
+  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left
+    (Compose.Growing.reachable_at hrun ht hy hle) hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases (hrun.upTo ht).tree_accepted y hy hW' with rfl | ⟨i, hik, hA⟩
+  rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨d, hdi, hs⟩ := hrun.att_unforgeable y i att
     (hrun.antitone (hle i hik) hy)
@@ -65,7 +61,7 @@ theorem left_entry_origin_at_core
     (hrun.antitone (hle i hik) haH)
   have hdk : d < k := hdi.trans hik
   have hv := hrun.antitone (hle d hdk) haH
-  obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.signAt_entry hv hs
+  obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.toLocalRun.signAt_entry hv hs
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, k, t, ht, hle, hy, h⟩
   have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
@@ -73,10 +69,10 @@ theorem left_entry_origin_at_core
       fun q hq => hrun.time_mono hq.le, hv, h⟩
   have hEq : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
   subst E'
-  have hσ := hrun.σ_eq_honest_at hnc (hrun.time_nonneg d)
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
     (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
   obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-    high_row_source_at_core hrun hnc (hrun.antitone (max_le_max le_rfl (hle d hdk)) haHz) hs
+    high_row_source_at hrun hnc (hrun.antitone (max_le_max le_rfl (hle d hdk)) haHz) hs
       (by rw [← hE'h, hσ]; exact hEh) hsnap fun D hD => (hle d hdk).trans (hqt D hD)
   have hsub₀ : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨att.val, r, tr.time r, hrun.time_nonneg r,
@@ -89,9 +85,9 @@ theorem left_entry_origin_at_core
 /-- **The deep quarantine or the high-source cover**, at a time `t ≤ b` of the reset premises:
 either `t` is inside the deep quarantine `c_z + 4DΔ` (or deep sources are off), or the bundle
 carries the high-source cover. -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.quarantine_or_cover_at
+theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.quarantine_or_cover_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {ΔF a b hold : Time}
-    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {t : Time} (htb : t ≤ b) :
     (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
       HighSourceCover tr H g a b := by
@@ -109,9 +105,9 @@ row's entry is below a member `C` of the healed family that is below a lock writ
 of label `s` by the signer itself at a cut `r` before the signing: its high origin inside the
 quarantine, or, after the drain, its own stored lock above its source report. The writer and the
 cut sharpen the member's label against later slots. -/
-theorem signed_row_lock_member_before_at_core
+theorem signed_row_lock_member_before_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -124,14 +120,15 @@ theorem signed_row_lock_member_before_at_core
   have hv := hrun.antitone (le_max_right _ _) hvz
   by_cases hq : ∀ D, sp.deepDepth = some D → tr.time d ≤ cutZ sp.toParams g + 4 * D * sp.Δ
   · obtain ⟨r, hrd, l, O, ho, E, hE, hEO, hEr, -⟩ :=
-      high_row_source_at_core hrun hnc hvz hs hh hsnap hq
+      high_row_source_at hrun hnc hvz hs hh hsnap hq
     have hO := hrun.antitone (le_max_right _ _) ho.1
     have hr0 := hrun.time_nonneg r
     have hler : ∀ q < r, tr.time q ≤ tr.time r := fun q hq => hrun.time_mono hq.le
     obtain ⟨CV, ell, D', hcl, hfl, hOD⟩ := ho.2.2.1
     have hOD' : Anc (tr.HonestBlocksAt H) O D' := by
       rw [hOD]
-      exact Anc.mono (hrun.frameIn_at hnc hO hcl).2 (AC.anc_viableAncestor _ D')
+      exact Anc.mono (Compose.Growing.frameIn_at hrun hnc hO hcl).2
+        (AC.anc_viableAncestor _ D')
     exact ⟨E, ⟨v, r, tr.time r, hr0, hler, hO, hE⟩, hEr, r, hrd, l, O, D',
       healedMemberBefore_iff.2
         (Or.inr (Or.inr ⟨v, r, hrd, (hrun.time_mono hrd.le).trans hdb, ho⟩)),
@@ -141,11 +138,11 @@ theorem signed_row_lock_member_before_at_core
   have hdrain := hc.drain_le Dd hD
   have hΔ := sp.toParams.hΔ
   obtain ⟨src, hcall⟩ := hs
-  obtain ⟨d', rfl, ℓ, hc', hto, htd, hC, hfgeq⟩ := hrun.attest_source hv hcall
+  obtain ⟨d', rfl, ℓ, hc', hto, htd, hC, hfgeq⟩ := Compose.Growing.attest_source hrun hv hcall
   have hv' : v ∈ H (tr.time d') := htd ▸ hv
   have hrep : AC.ToFGAt tr.projAC v d' ℓ src :=
     ⟨Compose.projAC_callAt.mpr hc', hto, by
-      rw [hrun.projAC_state_at hv']; exact hC⟩
+      rw [Compose.Growing.projAC_state_at hrun hv']; exact hC⟩
   have hdt : drainTime sp a ≤ tr.time d' := by rw [htd]; linarith
   have hdb' : tr.time d' ≤ b := htd ▸ hdb
   -- the source report is below the block of one of the signer's live locks, fast or slow
@@ -153,7 +150,7 @@ theorem signed_row_lock_member_before_at_core
   have hleR : ∀ q < d', tr.time q ≤ tr.time d' := fun _ hq => hrun.time_mono hq.le
   obtain ⟨-, A, ⟨hAt, l, hl, hlA⟩, hCA⟩ := AC.toFG_source_below_lock hrep.2.2
   have hU' := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hk0
-  have hr := ((hrun.upTo hk0).acRun (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hk0) (hnc.upTo _)).localRun
   have hst : (tr.upTo (tr.time d')).projAC.state v d' = tr.projAC.state v d' := by
     rw [RunTrace.upTo_projAC]
     exact Trace.upTo_state tr.projAC v hleR
@@ -201,15 +198,15 @@ theorem signed_row_lock_member_before_at_core
   -- the signed entry, below the source
   have hd0 := hrun.time_nonneg (d' + 1)
   have hle1 : ∀ q < d' + 1, tr.time q ≤ tr.time (d' + 1) := fun q hq => hrun.time_mono hq.le
-  have hreach := hrun.reachable_at hd0 hv hle1
+  have hreach := Compose.Growing.reachable_at hrun hd0 hv hle1
   set st := (tr.state v (d' + 1)).fg with hst'
   have hCst : src ∈ st.tree := by
     rw [hfgeq]
-    exact (hrun.frame_tree_subset_at hnc hv' hrep.1).2 (AC.toFG_source hrep.2.2).1.1
-  have hcut := (cutStepWith_attest_some src att).mp (hrun.cutLaw v _ _ hcall hv) |>.1
+    exact (frame_tree_subset_at hrun hnc hv' hrep.1).2 (AC.toFG_source hrep.2.2).1.1
+  have hcut := (hrun.cutLaw v _ _ hcall hv).1
   obtain ⟨-, haT⟩ := Store.createAtt_eq hcut
   obtain ⟨⟨E, hE, hEr, hEC, -, hETh⟩, -⟩ :=
-    Store.entry_state_of_source_with hrun.finalitySpec hreach src hCst
+    Store.entry_state_of_source sp.toParams (Payload sp.n) _ _ hreach src hCst
   have hETh' : (st.σ E.root).Th = E.root := by rw [hETh, hEr]
   have hEr' : E.root = att.T := by
     rw [haT]
@@ -224,9 +221,9 @@ theorem signed_row_lock_member_before_at_core
     hED, .refl, hvr, hsrc⟩
 
 /-- `signed_row_lock_member_before_at`, with the member read in the healed family. -/
-theorem signed_row_lock_member_at_core
+theorem signed_row_lock_member_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -237,15 +234,15 @@ theorem signed_row_lock_member_at_core
       Anc (tr.HonestBlocksAt H) E C ∧ Anc (tr.HonestBlocksAt H) C D ∧ v ∈ H (tr.time r) ∧
       ((∃ CV, AC.FastLockAt tr.projAC v r s D CV) ∨ AC.SlowLockAt tr.projAC v r s D) :=
   let ⟨E, hE, hEr, r, hrd, s, C, D, hC, h⟩ :=
-    signed_row_lock_member_before_at_core hrun hnc hvz hs hh hsnap hc hdb
+    signed_row_lock_member_before_at hrun hnc hvz hs hh hsnap hc hdb
   ⟨E, hE, hEr, r, hrd, s, C, D, hC.healedOrigin, h⟩
 
 /-- **A high signed row is covered before its signing under the high-source cover**: the row's
 entry is below a member of the healed family written before the signing
 (`signed_row_lock_member_before_at`), of label at most the signing's slot. -/
-theorem signed_row_covered_before_at_core
+theorem signed_row_covered_before_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -254,7 +251,7 @@ theorem signed_row_covered_before_at_core
     ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧
       CoveredBefore tr H g a b (sp.slot (tr.time d)) d E := by
   obtain ⟨E, hE, hEr, r, hrd, s, C, D, hC, hEC, -, hvr, hlock⟩ :=
-    signed_row_lock_member_before_at_core hrun hnc hvz hs hh hsnap hc hdb
+    signed_row_lock_member_before_at hrun hnc hvz hs hh hsnap hc hdb
   have hlabel : s ≤ sp.slot (tr.time r) := by
     have hupd : ∀ ell, AC.UpdateAt tr.projAC v r s ell → s ≤ sp.slot (tr.time r) := by
       intro ell hu
@@ -274,9 +271,9 @@ theorem signed_row_covered_before_at_core
 /-- **A high signed row is covered under the high-source cover**: the row's entry is below a
 member of the healed family of label at most the signing's slot
 (`signed_row_covered_before_at`). -/
-theorem signed_row_covered_at_core
+theorem signed_row_covered_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -284,15 +281,15 @@ theorem signed_row_covered_at_core
     (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧
       CoveredUpTo tr H g a b (sp.slot (tr.time d)) E :=
-  let ⟨E, hE, hEr, h⟩ := signed_row_covered_before_at_core hrun hnc hvz hs hh hsnap hc hdb
+  let ⟨E, hE, hEr, h⟩ := signed_row_covered_before_at hrun hnc hvz hs hh hsnap hc hdb
   ⟨E, hE, hEr, h.coveredUpTo⟩
 
 /-- `left_entry_origin_at` under the high-source cover: the left entry is the target of a held
 attestation whose signer is honest at the observation and at `c_z`, and it is covered up to the
 slot of the observation time. -/
-theorem left_entry_covered_before_at_core
+theorem left_entry_covered_before_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -306,12 +303,12 @@ theorem left_entry_covered_before_at_core
     (hc : HighSourceCover tr H g a b) (htb : t ≤ b) :
     ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H (max (cutZ sp.toParams g) t),
       ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧ CoveredBefore tr H g a b (sp.slot t) k E := by
-  have hU := hrun.coherent hnc
-  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left_with hrun.finalitySpec
-    (hrun.reachable_at ht hy hle) hq hET hEC hlt
+  have hU := hrun.toLocalRun.coherent hnc
+  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left
+    (Compose.Growing.reachable_at hrun ht hy hle) hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [Trace.upTo_state tr y hle]
-  rcases (hrun.upTo ht).tree_accepted y hy hW' with rfl | ⟨i, hik, hA⟩
+  rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨d, hdi, hs⟩ := hrun.att_unforgeable y i att
     (hrun.antitone (hle i hik) hy)
@@ -319,7 +316,7 @@ theorem left_entry_covered_before_at_core
     (hrun.antitone (hle i hik) haH)
   have hdk : d < k := hdi.trans hik
   have hv := hrun.antitone (hle d hdk) haH
-  obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.signAt_entry hv hs
+  obtain ⟨E', hE', hE'r, hE'h⟩ := hrun.toLocalRun.signAt_entry hv hs
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, k, t, ht, hle, hy, h⟩
   have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
@@ -327,9 +324,9 @@ theorem left_entry_covered_before_at_core
       fun q hq => hrun.time_mono hq.le, hv, h⟩
   have heq : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
   subst E'
-  have hσ := hrun.σ_eq_honest_at hnc (hrun.time_nonneg d)
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
     (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
-  obtain ⟨E₀, hE₀, hE₀r, hch⟩ := signed_row_covered_before_at_core hrun hnc
+  obtain ⟨E₀, hE₀, hE₀r, hch⟩ := signed_row_covered_before_at hrun hnc
     (hrun.antitone (max_le_max le_rfl (hle d hdk)) haHz) hs
     (by rw [← hE'h, hσ]; exact hEh) hsnap hc ((hle d hdk).trans htb)
   have heq₀ : E₀ = E := hU.1 hE₀ (hsub hE) (hE₀r.trans haT)
@@ -338,9 +335,9 @@ theorem left_entry_covered_before_at_core
     hch.mono (AC.slot_mono sp (hrun.time_nonneg d) (hle d hdk)) hdk.le⟩
 
 /-- `left_entry_covered_before_at`, with the cover read up to the label only. -/
-theorem left_entry_covered_at_core
+theorem left_entry_covered_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -355,126 +352,8 @@ theorem left_entry_covered_at_core
     ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H (max (cutZ sp.toParams g) t),
       ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧ CoveredUpTo tr H g a b (sp.slot t) E :=
   let ⟨W, hW, att, ha, v, hv, d, hdk, hs, haT, h⟩ :=
-    left_entry_covered_before_at_core hrun hnc ht hle hy hq hE hET hEh hEC hlt hsnap hc htb
+    left_entry_covered_before_at hrun hnc ht hle hy hq hE hET hEh hEC hlt hsnap hc htb
   ⟨W, hW, att, ha, v, hv, d, hdk, hs, haT, h.coveredUpTo⟩
-
-/-- Stock specialization of left-entry provenance. -/
-theorem left_entry_origin_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
-    {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
-    (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hqt : ∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H t,
-      ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧
-        ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
-          Anc (tr.HonestBlocksAt H) E O :=
-  left_entry_origin_at_core hrun.toCore hnc ht hle hy hq hE hET hEh hEC hlt hsnap hqt
-
-/-- Stock specialization of the quarantine-or-cover split. -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.quarantine_or_cover_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {ΔF a b hold : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {t : Time} (htb : t ≤ b) :
-    (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
-      HighSourceCover tr H g a b :=
-  hp.toCore.quarantine_or_cover_at htb
-
-/-- Stock specialization of the signed row's earlier lock member. -/
-theorem signed_row_lock_member_before_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧ ∃ r < d, ∃ s C D,
-      HealedMemberBefore tr H g a b C s d ∧
-      Anc (tr.HonestBlocksAt H) E C ∧ Anc (tr.HonestBlocksAt H) C D ∧ v ∈ H (tr.time r) ∧
-      ((∃ CV, AC.FastLockAt tr.projAC v r s D CV) ∨ AC.SlowLockAt tr.projAC v r s D) :=
-  signed_row_lock_member_before_at_core hrun.toCore hnc hvz hs hh hsnap hc hdb
-
-/-- Stock specialization of the signed row's healed member. -/
-theorem signed_row_lock_member_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧ ∃ r < d, ∃ s C D,
-      Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b ∧
-      Anc (tr.HonestBlocksAt H) E C ∧ Anc (tr.HonestBlocksAt H) C D ∧ v ∈ H (tr.time r) ∧
-      ((∃ CV, AC.FastLockAt tr.projAC v r s D CV) ∨ AC.SlowLockAt tr.projAC v r s D) :=
-  signed_row_lock_member_at_core hrun.toCore hnc hvz hs hh hsnap hc hdb
-
-/-- Stock specialization of the signed row's before-cut cover. -/
-theorem signed_row_covered_before_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧
-      CoveredBefore tr H g a b (sp.slot (tr.time d)) d E :=
-  signed_row_covered_before_at_core hrun.toCore hnc hvz hs hh hsnap hc hdb
-
-/-- Stock specialization of the signed row's label-bounded cover. -/
-theorem signed_row_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (hdb : tr.time d ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = att.T ∧
-      CoveredUpTo tr H g a b (sp.slot (tr.time d)) E :=
-  signed_row_covered_at_core hrun.toCore hnc hvz hs hh hsnap hc hdb
-
-/-- Stock specialization of the held left entry's before-cut cover. -/
-theorem left_entry_covered_before_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
-    {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
-    (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (htb : t ≤ b) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H (max (cutZ sp.toParams g) t),
-      ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧ CoveredBefore tr H g a b (sp.slot t) k E :=
-  left_entry_covered_before_at_core hrun.toCore hnc ht hle hy hq hE hET hEh hEC hlt hsnap hc htb
-
-/-- Stock specialization of the held left entry's label-bounded cover. -/
-theorem left_entry_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
-    {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
-    (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
-    (hc : HighSourceCover tr H g a b) (htb : t ≤ b) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H (max (cutZ sp.toParams g) t),
-      ∃ d < k, tr.SignAt v d att ∧ att.T = E.root ∧ CoveredUpTo tr H g a b (sp.slot t) E :=
-  left_entry_covered_at_core hrun.toCore hnc ht hle hy hq hE hET hEh hEC hlt hsnap hc htb
 
 end Consensus.Goldilocks.Healing.Growing.Outcome
 
