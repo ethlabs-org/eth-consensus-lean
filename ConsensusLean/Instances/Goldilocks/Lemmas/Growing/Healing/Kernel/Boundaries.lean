@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
 import ConsensusLean.Lemmas.Tactic.Linarith

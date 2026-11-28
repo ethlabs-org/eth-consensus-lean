@@ -1,16 +1,13 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 import Mathlib.Tactic.Ring
 
@@ -50,6 +47,48 @@ premises for `H` with restarts bounded only up to `b` (`NoRestartUpTo`). With
 `ACRun.run_truncH`, `HZ_truncH` and `isReset_truncH_iff` (`HealingLeaves`) it lets a finite-horizon
 consumer apply the bundled leaves on the truncation.
 -/
+
+namespace Consensus.Goldilocks.Healing
+
+/-! ## The rise window
+
+The rise round count is the milestone `riseRounds`: from `h_max − 1` a warm proposal needs
+`r(v) = 2 − ⌊(v − 2HZ)/2⌋` rounds (`2, 2, 1, 1` on `v = 2HZ + j`). The window length is
+`len(v) = d + r(v)·ρ + s` (`riseLen`), with `∑_{j<5} (len(2HZ + j) + λ) = 5(d + s + λ) + 6ρ`
+(`sum_riseLen`). The store-level key lag is `Healing.key_le_of_relay`. -/
+
+open Consensus.Goldilocks.Generic (riseRounds)
+
+/-- Unfolding equation of the milestone `riseRounds`. -/
+theorem riseRounds_eq (HZ v : Nat) : riseRounds HZ v = 2 - (v - 2 * HZ) / 2 := by
+  unfold riseRounds
+  rfl
+
+/-- The window length of key value `v`: the drain `d`, `r(v)` rounds of length `ρ`, slack `s`. -/
+def riseLen (d ρ s : Time) (HZ v : Nat) : Time := d + (riseRounds HZ v : Time) * ρ + s
+
+/-- Unfolding equation of `riseLen`. -/
+theorem riseLen_eq (d ρ s : Time) (HZ v : Nat) :
+    riseLen d ρ s HZ v = d + (riseRounds HZ v : Time) * ρ + s := by
+  unfold riseLen
+  rfl
+
+theorem riseLen_nonneg {d ρ s : Time} (hd : 0 ≤ d) (hρ : 0 ≤ ρ) (hs : 0 ≤ s) (HZ v : Nat) :
+    0 ≤ riseLen d ρ s HZ v := by
+  unfold riseLen
+  have : (0 : Time) ≤ (riseRounds HZ v : Time) := Nat.cast_nonneg _
+  positivity
+
+/-- The cumulative length of the five attempts: `5(d + s + λ) + 6ρ`. -/
+theorem sum_riseLen (d ρ s lam : Time) (HZ : Nat) :
+    ∑ j ∈ Finset.range 5, (riseLen d ρ s HZ (2 * HZ + j) + lam) =
+      5 * (d + s + lam) + 6 * ρ := by
+  simp only [Finset.sum_range_succ, Finset.sum_range_zero, riseLen, riseRounds,
+    Nat.add_sub_cancel_left]
+  norm_num
+  ring
+
+end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Generic
 
@@ -382,25 +421,8 @@ theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
       ((shiftDelay_le _ (by linarith [hmono hnext])).trans hT) hpx rfl hX hXs (by omega)
     exact ⟨a, ha, hat.trans (shiftDelay_le _ (by linarith [hmono hnext]))⟩
 
-/-- The milestone key is the stock frame key `3h + c` (`c = 2` contest, `1` clean top, `0`
-gap) under `3h + c ↦ 2h + min c 1`: a contest is a top frame. -/
-private theorem frameKey''_eq_of_frameKey (st : Store P A.Payload) :
-    frameKey'' A st = 2 * (Healing.frameKey st / 3) + min (Healing.frameKey st % 3) 1 := by
-  classical
-  have hc : st.Contest → st.hmax = st.hj + 1 := fun h => h.1
-  rw [frameKey''_eq, Healing.frameKey_def]
-  by_cases h₁ : st.Contest
-  · have := hc h₁
-    simp only [h₁, this, ite_true]
-    omega
-  · by_cases h₂ : st.hmax = st.hj + 1
-    · simp only [h₁, h₂, ite_false, ite_true]
-      omega
-    · simp only [h₁, h₂, ite_false]
-      omega
-
-/-- **The milestone key lag** between independently honest observations: the stock frame-key
-lag (`frameKey_lag_obs_from`) read through `frameKey''_eq_of_frameKey`. -/
+/-- **The milestone key lag** between independently honest observations, after a call of `z` at or
+after the relay deadline of `i` (`Healing.key_le_of_relay` at the two observations). -/
 theorem frameKey''_lag_obs_from {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
     {tr : RunTrace A} {ini : Fin P.n → A.State} {hold : Time}
@@ -413,9 +435,21 @@ theorem frameKey''_lag_obs_from {proposer : Nat → Fin P.n}
     (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
     (hcm : gbar g + κ ≤ tr.time m) :
     frameKey'' A (tr.state x i).fg ≤ frameKey'' A (tr.state z m).fg := by
-  have hk := frameKey_lag_obs_from h hnc hf hsvc hcatch hx hz him hmb hcall hcm
-  rw [frameKey''_eq_of_frameKey, frameKey''_eq_of_frameKey]
-  omega
+  have hi0 := h.time_nonneg i
+  have hm0 := h.time_nonneg m
+  have hxle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => h.time_mono hk.le
+  have hzle : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => h.time_mono hk.le
+  have hfmi : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n := by
+    rw [max_eq_right him]; exact hf _ hm0 hmb
+  rw [frameKey''_eq, frameKey''_eq]
+  exact Healing.key_le_of_relay (fg_reachable_at_from h hi0 hxle hx)
+    (fg_reachable_at_from h hm0 hzle hz) (Compose.Growing.honest_blocks_coherent_local h hnc)
+    (fun _ hX => ⟨x, i, tr.time i, hi0, hxle, hx, hX⟩)
+    (fun _ hX => ⟨z, m, tr.time m, hm0, hzle, hz, hX⟩) (hf _ hm0 hmb)
+    (held_atts_safe_at_from h hm0 hzle hz hi0 hxle hx le_rfl him)
+    (fun _ _ hBC hC => store_anc_of_honest_anc_at_from h hnc hm0 hzle hz hBC hC)
+    (fun _ hB hh => held_of_relay_le_at_from h hnc hsvc hcatch hi0 hx hz hfmi hB hh hxle hcall
+      hcm)
 
 /-- A milestone key that is constant over the cuts of `[lo, hi]` of nodes honest at them gives a
 `FrameWindow`, when `hi ≤ b`: `J` from agreement at equal `h_j`. -/
@@ -448,7 +482,7 @@ theorem frameWindow_of_frameKey''_eq_obs_from {proposer : Nat → Fin P.n}
   exact ⟨M, isTop, J, ⟨h1, h2, h3⟩⟩
 
 /-- Leaf 3 in slot space, on any schedule with `t_{s+1} ≥ t_s + 4Δ`: the sequential pigeonhole
-(`Healing.Growing.exists_const_window_seq`) run over the slots `slot(t_i)` of the cuts of nodes
+(`Healing.exists_const_window_seq_of_mem`) run over the slots `slot(t_i)` of the cuts of nodes
 honest at them, from slot `s + 1` to `S`, with a lag of two slots and window lengths `len v` in
 slots. Before `t_S` there is no advance, so the key `frameKey''` is in `[2HZ, 2HZ + 3]` (leaf 2,
 both bounds) and four attempts suffice; two slots apart, a later cut is more than `4Δ` after an
@@ -487,7 +521,7 @@ private theorem exists_slotWindow_seq {cm βK tr H proposer dg g ΔF b hold}
       (S : Time) by exact_mod_cast h4)
     push_cast at this
     exact this
-  obtain ⟨v, hv1, hv2, a, ha, hav, hK⟩ := Healing.Growing.exists_const_window_seq
+  obtain ⟨v, hv1, hv2, a, ha, hav, hK⟩ := Healing.exists_const_window_seq_of_mem
     (fun y i => y ∈ H (tr.time i)) (fun i => (P.slotOf (tr.time i) : Time))
     (fun y i => frameKey'' A (tr.state y i).fg) (2 * HZ tr H g) 3
     (fun v => (len v : Time)) (lo := ((s + 1 : Nat) : Time)) (T := (S : Time))

@@ -1,5 +1,7 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
@@ -88,7 +90,7 @@ private theorem carry_of_service_senders
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
-  have hsync := Healing.PU.service_syncACAt hrun hsvc
+  have hsync := Healing.Growing.KernelProof.service_syncACAt hrun hsvc
     (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hgg := AC.le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
@@ -161,7 +163,7 @@ private theorem relay_source_at_proposal_at
     · exact Or.inl hg
     right
     by_cases hqg : gbar g ≤ tr.time q
-    · obtain ⟨k, hki, hk, hkt⟩ := (Healing.PU.service_syncACAt hrun hsvc
+    · obtain ⟨k, hki, hk, hkt⟩ := (Healing.Growing.KernelProof.service_syncACAt hrun hsvc
         (lo := g) (hi := tr.time q) le_rfl).2 z q Q hz hq
         ((AC.le_gbar g).trans hqg) le_rfl y i ell hy hc
         (by have := hdl i le_rfl _ hqt
@@ -499,7 +501,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hFX' : Anc (tr.HonestBlocksAt H) ell.frame.F X := hFF ▸ hFX
   have hsrcQ : Q.root = sp.genesisRoot ∨ ∃ z q, z ∈ H (tr.time q) ∧
       tr.projAC.AcceptAt z q Q ∧ tr.time q < sp.ts s + 2 * sp.Δ := by
-    rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hacc⟩
+    rcases Healing.Growing.frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hacc⟩
     · exact Or.inl (congrArg Block.root hg)
     · obtain ⟨hacc', htk, -⟩ := Healing.ac_block_after
         (hrun.upTo (hrun.time_nonneg k)).toLocalRun hwk
@@ -521,10 +523,12 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hsw : AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) g (tr.time i) tr.projAC :=
     { message := fun z q v hz hsend hgq y' j ℓ hy' hcj _ hdl =>
         (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-          ((Healing.PU.service_syncACAt hrun hsvc (lo := g) (hi := tr.time q) le_rfl).1
+          ((Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) (hi := tr.time q)
+              le_rfl).1
             z q v hz hsend hgq le_rfl y' j ℓ hy' hcj hdl))
       relay := fun z q B hz hacc hgq y' j ℓ hy' hcj _ hdl hanc =>
-        (Healing.PU.service_syncACAt hrun hsvc (lo := g) (hi := tr.time q) le_rfl).2
+        (Healing.Growing.KernelProof.service_syncACAt hrun hsvc (lo := g) (hi := tr.time q)
+            le_rfl).2
           z q B hz hacc hgq le_rfl y' j ℓ hy' hcj hdl hanc }
   have hP : ∀ v ∈ CV, AC.HeldAtProposal (tr.projAC.state y i) ell.frame s v := by
     intro v hv

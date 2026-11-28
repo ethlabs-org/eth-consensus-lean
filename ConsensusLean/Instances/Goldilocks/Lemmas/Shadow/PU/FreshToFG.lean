@@ -17,27 +17,6 @@ variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
-/-- Signing at the update deadline supplies adjacent actual calls with the same frame. -/
-theorem update_toFG_calls_of_awake_at
-    {ini : Fin sp.n → (goldilocksNode sp).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g b : Time}
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hnr : NoRestartAfter tr H (gbar g)) {u : Nat}
-    (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true) :
-    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧ ell'.frame = ell.frame := by
-  apply Core.update_toFG_calls_of_awake_at hrun.toCore hnc hawake hnr hmargin hTb
-    (sign := sign) ?_ hy hsign
-  intro y hy haw hs
-  exact Goldilocks.Shadow.PU.Growing.signing_tick_toFG_cuts_at
-    hrun hcal ⟨u, rfl⟩ hy haw hs
-
 variable {hold : Time}
 
 /-- The signing read immediately follows the fresh update under the primed window. -/
