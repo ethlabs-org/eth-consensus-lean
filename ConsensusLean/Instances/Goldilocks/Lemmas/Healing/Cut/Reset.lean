@@ -230,7 +230,7 @@ private theorem cutZ_lt_blockStamp_of_high (hrun : GoldilocksRun proposer dg H t
     (hhC : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ C.root).h) :
     AC.ETime.of (cutZ sp.toParams g) < (tr.state x i).ac.blockStamp C.root := by
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-  rcases Compose.tree_cases hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
+  rcases tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
   · exact absurd rfl hg
   obtain ⟨ℓ', hc', hcall', ht'⟩ := Compose.accept_next hrun.toLocalRun hx hA
   have hk1 : k + 1 < i := by
