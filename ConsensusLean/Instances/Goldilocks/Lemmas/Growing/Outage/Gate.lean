@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
@@ -279,31 +280,13 @@ theorem gate_result_extends_at
       · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inr ⟨hw, j, e, he, hs, hext⟩)⟩
     · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inl hw)⟩
   have hmaj' : (AC.voters {v | v ∈ A.pool s}).ncard <
-      2 * AC.confirmationScore sp A ℓ.frame s B := by
-    have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
-    have h2 := Set.ncard_union_le (ExtendingCastersAt tr H B s (tr.time c))
-      (K.committee s ∩ OpponentsAt tr H B s (tr.time c))
-    have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
-    have h4 := extendingMajorityAt_iff.1 hmaj
-    change _ < 2 * (AC.supporters ℓ.frame V s B).ncard
-    omega
-  -- the confirmation is the deepest majority block, which `B` is below
-  set S := {X | X ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F X ∧
-    (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A ℓ.frame s X}
-  have hS' : S ⊆ ℓ.frame.tree := fun X hX => hX.1
-  have hcs : ∀ X, AC.confirmationScore sp A ℓ.frame s X = (AC.supporters ℓ.frame V s X).ncard :=
-    fun _ => rfl
-  have hsub : V.support ⊆ V.votes := fun _ hv => hv.1
-  have hch : ∀ X ∈ S, ∀ Y ∈ S, Compatible ℓ.frame.tree X Y := fun X hX Y hY =>
-    AC.majority_chain sp _ ℓ.frame V s X Y hΦ hsub hX.1 hY.1 (hcs X ▸ hX.2.2) (hcs Y ▸ hY.2.2)
-  have hBS : B ∈ S := ⟨hBt, hΦ.rooted.2 B hBt, hmaj'⟩
-  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hS' ⟨B, hBS⟩
-  have hBD := AC.anc_deepest hΦ hS' hch hD B hBS
-  have hD' : AC.getConfirmation sp A ℓ.frame s = some D := hD
-  refine ⟨⟨D, _, ℓ, hu, hD', rfl⟩, ?_⟩
+      2 * AC.confirmationScore sp A ℓ.frame s B :=
+    confirmation_majority_of_cover hvot (extendingMajorityAt_iff.1 hmaj) hsupp
+  obtain ⟨D, hD, hBD⟩ := getConfirmation_extends_of_majority hΦ hBt (hΦ.rooted.2 B hBt) hmaj'
+  refine ⟨⟨D, _, ℓ, hu, hD, rfl⟩, ?_⟩
   rintro C CV ⟨ℓ', hu', hC, -⟩
   obtain rfl : ℓ' = ℓ := Option.some.inj (hu'.1.2.symm.trans hu.1.2)
-  have hCD : C = D := Option.some.inj (hC.symm.trans hD')
+  have hCD : C = D := Option.some.inj (hC.symm.trans hD)
   subst hCD
   exact hBD.mono hΦU
 

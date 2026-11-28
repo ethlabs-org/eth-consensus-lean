@@ -45,14 +45,23 @@ private theorem confirmationScore_eq_zero {A : AC.ACState sp.n}
   rw [this] at hx
   exact not_top_lt hx
 
-/-- **The confirmation of slot `s` is a slot-`s` block with a strict majority**: in a well-formed
-frame `Φ`, a block `P` of slot `s` in the tree, above `Σ.F`, whose confirmation score in `A` is a
-strict majority of the slot's voters, is `getConfirmation`'s result. -/
-theorem getConfirmation_eq_of_majority {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
-    (hΦ : FrameOK Φ) {P : AC.Blk sp.n FGP} {s : Nat} (hPs : P.slot = s) (hPt : P ∈ Φ.tree)
+/-- A supporting set outnumbering the remaining voters supplies a strict majority. -/
+theorem confirmation_majority_of_cover {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
+    {s : Nat} {B : AC.Blk sp.n FGP} {support opp : Set (Fin sp.n)}
+    (hcover : AC.voters {v | v ∈ A.pool s} ⊆ support ∪ opp) (hcount : opp.ncard < support.ncard)
+    (hsupp : support ⊆ AC.supporters Φ ⟨{v | v ∈ A.pool s}, {v | v ∈ A.pool s ∧
+      AC.resolutionTime A Φ v < AC.ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s B) :
+    (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A Φ s B := by
+  have h := (Set.ncard_le_ncard hcover).trans (Set.ncard_union_le _ _)
+  have hs : support.ncard ≤ AC.confirmationScore sp A Φ s B := Set.ncard_le_ncard hsupp
+  omega
+
+/-- The confirmation extends any block above the finalized root with a strict majority. -/
+theorem getConfirmation_extends_of_majority {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
+    (hΦ : FrameOK Φ) {P : AC.Blk sp.n FGP} {s : Nat} (hPt : P ∈ Φ.tree)
     (hFP : Φ.Anc Φ.F P)
     (hmaj : (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A Φ s P) :
-    AC.getConfirmation sp A Φ s = some P := by
+    ∃ D, AC.getConfirmation sp A Φ s = some D ∧ Φ.Anc P D := by
   set S := {B | B ∈ Φ.tree ∧ Φ.Anc Φ.F B ∧
     (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A Φ s B}
   have hS : S ⊆ Φ.tree := fun X hX => hX.1
@@ -64,13 +73,21 @@ theorem getConfirmation_eq_of_majority {A : AC.ACState sp.n} {Φ : AC.Frm sp.n F
   have hch : ∀ B ∈ S, ∀ C ∈ S, Compatible Φ.tree B C := fun B hB C hC =>
     AC.majority_chain sp _ Φ V s B C hΦ hsub hB.1 hC.1 (hcs B ▸ hB.2.2) (hcs C ▸ hC.2.2)
   obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hS ⟨P, hPt, hFP, hmaj⟩
-  have hPD := AC.anc_deepest hΦ hS hch hD P ⟨hPt, hFP, hmaj⟩
-  have hDS := (AC.deepest_mem hD).1
-  change AC.deepest Φ S = some P
+  exact ⟨D, hD, AC.anc_deepest hΦ hS hch hD P ⟨hPt, hFP, hmaj⟩⟩
+
+/-- **The confirmation of slot `s` is a slot-`s` block with a strict majority**: in a well-formed
+frame `Φ`, a block `P` of slot `s` in the tree, above `Σ.F`, whose confirmation score in `A` is a
+strict majority of the slot's voters, is `getConfirmation`'s result. -/
+theorem getConfirmation_eq_of_majority {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
+    (hΦ : FrameOK Φ) {P : AC.Blk sp.n FGP} {s : Nat} (hPs : P.slot = s) (hPt : P ∈ Φ.tree)
+    (hFP : Φ.Anc Φ.F P)
+    (hmaj : (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A Φ s P) :
+    AC.getConfirmation sp A Φ s = some P := by
+  obtain ⟨D, hD, hPD⟩ := getConfirmation_extends_of_majority hΦ hPt hFP hmaj
   rw [hD]
   by_contra hne
   have h0 := confirmationScore_eq_zero (A := A) hΦ hPs hPD fun h => hne (congrArg some h.symm)
-  have := hDS.2.2
+  have := (AC.deepest_mem hD).1.2.2
   omega
 
 end Consensus.Goldilocks.Compose

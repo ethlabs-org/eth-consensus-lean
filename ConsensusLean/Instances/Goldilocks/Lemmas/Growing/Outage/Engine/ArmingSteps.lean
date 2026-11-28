@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -180,22 +181,8 @@ theorem update_result_extends_origin_at
     obtain ⟨hxj, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hv
     exact ⟨e.msg, hvp, (castAt_spec_at hrun hnc hxj ⟨hcx, hex⟩).1⟩
   have hmaj : (AC.voters {v | v ∈ A.pool s}).ncard <
-      2 * AC.confirmationScore sp A ℓ.frame s C := by
-    have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
-    have h2 := Set.ncard_union_le Hv (K.committee s ∩ (H d)ᶜ)
-    have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
-    rw [hcs]
-    omega
-  -- the result is the deepest majority block above `Σ.F`, which extends `C`
-  set S := {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-    (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A ℓ.frame s B}
-  have hS : S ⊆ ℓ.frame.tree := fun X hX => hX.1
-  have hsubV : V.support ⊆ V.votes := fun _ hv => hv.1
-  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible ℓ.frame.tree B B' := fun B hB B' hB' =>
-    AC.majority_chain sp _ ℓ.frame V s B B' hΦ hsubV hB.1 hB'.1 (hcs B ▸ hB.2.2)
-      (hcs B' ▸ hB'.2.2)
-  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hS ⟨C, hCt, hFCΦ, hmaj⟩
-  have hCD := AC.anc_deepest hΦ hS hch hD C ⟨hCt, hFCΦ, hmaj⟩
+      2 * AC.confirmationScore sp A ℓ.frame s C := confirmation_majority_of_cover hvot hcount hsupp
+  obtain ⟨D, hD, hCD⟩ := getConfirmation_extends_of_majority hΦ hCt hFCΦ hmaj
   have hDmaj := (AC.deepest_mem hD).1.2.2
   rw [hcs] at hDmaj
   refine ⟨hCt, D, hD, hCD, ?_⟩
