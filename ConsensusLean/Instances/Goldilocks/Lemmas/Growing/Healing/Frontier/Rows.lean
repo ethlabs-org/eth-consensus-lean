@@ -418,7 +418,7 @@ private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H t
         AC.slow_lock_provenance hrA hrun.vstart hvj j l₀ hl₀' hf
       obtain rfl : L' = B := hrA.coherent.1 hL' hBU (hL'r.trans hBr.symm)
       obtain ⟨ℓ', C', hu, hconf, hdeep⟩ := hsl
-      obtain ⟨hid, hu⟩ := (ac_updateAt_upTo hrun.time_mono).mp hu
+      obtain ⟨hid, hu⟩ := (AC.upTo_updateAt hrun.time_mono).mp hu
       have hst' := projAC_upTo_state hrun (y := v) hid
       exact ⟨c, hcj', B', Or.inr ⟨ℓ', C', hu, by rwa [hst'] at hconf,
         by simpa only [hst', Trace.upTo_time] using hdeep⟩, hL'B'⟩
@@ -907,7 +907,7 @@ private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H t
         ((AC.accept_new sp (acRun_upTo hrun hnc hd).localRun hy hk'').1 ℓk
           ((Trace.upTo_callAt_of_le tr.projAC hk'd).mpr hck))
   exact Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy
-    (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hs hZp
+    (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩) hs hZp
     (by
       rw [RunTrace.upTo_projAC]
       exact hacc.imp_right fun ⟨k', hk', hk't⟩ =>

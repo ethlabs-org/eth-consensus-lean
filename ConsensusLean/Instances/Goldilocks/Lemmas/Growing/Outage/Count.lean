@@ -337,7 +337,7 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
       obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
       have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
         (le_min (hmeq ▸ hj₀.1) (by rw [ht]; linarith)) hy
-        (by rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
+        (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_updateAt D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
         hx (mayVote_upTo D.hrun (mayVote_of_committee D.facts.hGate hd hx hxK))
         ⟨hw, by rw [ht]; linarith⟩
         (joinedAt_upTo hj)
@@ -428,7 +428,7 @@ theorem result_extending_vote_at (D : OutageLockPremises tr H proposer dg ini) {
       obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
       have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
         (le_min hmb (by rw [ht]; linarith)) hy
-        (by rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
+        (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_updateAt D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
         hx (mayVote_upTo D.hrun (mayVote_of_committee D.facts.hGate hd hx hxK))
         ⟨hw, by rw [ht]; linarith⟩
         (joinedAt_upTo hj)

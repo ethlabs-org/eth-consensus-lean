@@ -104,7 +104,7 @@ theorem carryAt_after_at
   -- the receiver's side is read on the prefix through `t_i`
   set T : ACTrace (AC.goldilocksAC sp (List (FG.Att sp.n))) := tr.projAC.upTo (tr.time i)
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hcT : AC.CastAt T y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt T y i ℓ e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   obtain ⟨-, -, hyj, -⟩ := castAt_spec_at hrun hnc hy hc

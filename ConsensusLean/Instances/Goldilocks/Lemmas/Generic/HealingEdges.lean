@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
@@ -351,12 +352,12 @@ theorem frameKey_lag_obs_from {proposer : Nat → Fin P.n}
   have hfmi : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n := by
     rw [max_eq_right him]; exact hf _ hm0 hmb
   rw [frameKey_eq, frameKey_eq]
-  exact Healing.key_le_of_relay (fg_reachable_at_from h hi0 hxle hx)
-    (fg_reachable_at_from h hm0 hzle hz) (Compose.Growing.honest_blocks_coherent_local h hnc)
+  exact Healing.key_le_of_relay (h.reachable_at hi0 hxle hx)
+    (h.reachable_at hm0 hzle hz) (Compose.Growing.honest_blocks_coherent_local h hnc)
     (fun _ hX => ⟨x, i, tr.time i, hi0, hxle, hx, hX⟩)
     (fun _ hX => ⟨z, m, tr.time m, hm0, hzle, hz, hX⟩) (hf _ hm0 hmb)
     (held_atts_safe_at_from h hm0 hzle hz hi0 hxle hx le_rfl him)
-    (fun _ _ hBC hC => store_anc_of_honest_anc_at_from h hnc hm0 hzle hz hBC hC)
+    (fun _ _ hBC hC => h.held_anc_at hnc hm0 hzle hz hBC hC)
     (fun _ hB hh => held_of_relay_le_at_from h hnc hsvc hcatch hi0 hx hz hfmi hB hh hxle hcall
       hcm)
 
@@ -379,8 +380,8 @@ theorem frameWindow_of_frameKey_eq_obs_from {proposer : Nat → Fin P.n}
     (P.genesisBlock A.genesisPayload) hK
     (fun y z i m hy hz _ hi _ hm he =>
       Healing.Store.J_eq_of_cache_hj_eq_of_safe
-        (fg_reachable_at_from h (h.time_nonneg i) (hle i) hy)
-        (fg_reachable_at_from h (h.time_nonneg m) (hle m) hz)
+        (h.reachable_at (h.time_nonneg i) (hle i) hy)
+        (h.reachable_at (h.time_nonneg m) (hle m) hz)
         (Compose.Growing.honest_blocks_coherent_local h hnc)
         (fun _ hX => ⟨y, i, tr.time i, h.time_nonneg i, hle i, hy, hX⟩)
         (fun _ hX => ⟨z, m, tr.time m, h.time_nonneg m, hle m, hz, hX⟩)
@@ -465,7 +466,7 @@ private theorem voteLatency_truncH {hold : Time} (O : ACHealing A sg runs hold)
   have hyj := hrl.antitone htj hy.1
   have hle : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrl.time_mono hq.le
   have hj0 := hrl.time_nonneg j
-  have hanc := store_anc_of_honest_anc_at_from hrl hnc hj0 hle hyj hRC
+  have hanc := hrl.held_anc_at hnc hj0 hle hyj hRC
     (O.report_in_frame hrun hyj hC).1
   exact ⟨k, hik, hk, C, s, hc, hh,
     honest_anc_of_store_anc_at_from (H := truncH H b) hj0 hle ⟨hyj, htj.trans hy.2⟩ hanc,

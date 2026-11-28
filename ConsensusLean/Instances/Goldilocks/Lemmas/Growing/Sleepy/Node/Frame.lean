@@ -103,9 +103,9 @@ theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun pro
       hKB.hsize hfK
       (hrun.antitone ((hm hck.le).trans hkm') hav)
       ((RunTrace.upTo_signAt tr).mpr ⟨htc.ge, hsign⟩) hT0 hz hck
-      (by rw [RunTrace.upTo_projAC]; exact (ac_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hO⟩)
+      (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hO⟩)
     rw [RunTrace.upTo_projAC] at hv'
-    obtain ⟨hjd, hv'⟩ := ac_voteAt_upTo.mp hv'
+    obtain ⟨hjd, hv'⟩ := AC.upTo_voteAt.mp hv'
     have hyK : y ∈ K.committee (s + 1) := by
       rw [← hs]
       exact (hKB.hGate (tr.time i) (hrun.time_nonneg i) y hy i (fun k hk => hm hk.le) _).1
@@ -116,7 +116,7 @@ theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun pro
     omega
   · -- at `t_{s+1} + Δ`, on the prefix through the vote
     exact Compose.held_row_late_absurd (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo _) hy
-      (by rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hs
+      (by rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩) hs
       ((RunTrace.upTo_acceptAt tr).mpr ⟨hmi', hacc⟩) hmi hkm hT
 
 end Consensus.Goldilocks.Compose.Growing

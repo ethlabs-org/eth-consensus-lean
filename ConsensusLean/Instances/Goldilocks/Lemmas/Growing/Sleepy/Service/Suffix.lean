@@ -90,7 +90,7 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
     RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hQP hfcQ, fun B hB hQB => ?_⟩
   · rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le tr.projAC hij).mpr hc
   · rw [RunTrace.upTo_projAC, projAC_upTo_state hrun hij]; exact hd
-  · rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hcy⟩
+  · rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hcy⟩
   · rw [RunTrace.upTo_projAC] at hB hc' ⊢
     obtain ⟨hid, hB⟩ := (ACTrace.upTo_acceptAt (tr := _)).mp hB
     obtain ⟨hjd, hc'⟩ := (Trace.upTo_callAt _).mp hc'
@@ -157,7 +157,7 @@ private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer
       (tr.time i)).2 = some (d, pay) := by
     rw [RunTrace.upTo_projAC, projAC_upTo_state hrun hij]; exact hd
   have hcy' : AC.CastAt (tr.upTo (tr.time j)).projAC y j ℓy e := by
-    rw [RunTrace.upTo_projAC]; exact ac_castAt_upTo.mpr ⟨le_rfl, hcy⟩
+    rw [RunTrace.upTo_projAC]; exact AC.upTo_castAt.mpr ⟨le_rfl, hcy⟩
   have hs0 : 0 < s := by
     have := Compose.head_slot_lt (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hd' hPQ
     omega

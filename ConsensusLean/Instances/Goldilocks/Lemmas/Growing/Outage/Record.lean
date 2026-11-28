@@ -67,7 +67,7 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
       exact writes_iff.mpr .refl
   · rintro C ⟨s, CV, hR | hO⟩
     · rw [hprojT] at hR
-      obtain ⟨-, hR⟩ := (ac_resultAt_upTo hm).1 hR
+      obtain ⟨-, hR⟩ := (AC.upTo_resultAt hm).1 hR
       obtain ⟨ℓ, hu, hC, -⟩ := id hR
       have ht : tr.time q = sp.ts s + 6 * sp.Δ := hu.2.2.1
       have hqi := hm hiq
@@ -80,7 +80,7 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
       exact down C (mem_upTo_of_frame D.hrun hy hqt hu.1 (AC.deepest_mem hC).1.1)
         ((hinv (q + 1)).results y q (Nat.lt_succ_self q) hyq s C CV hR (Or.inr hrs))
     · rw [hprojT] at hO
-      obtain ⟨-, hO⟩ := (ac_optimisticLockAt_upTo hm).1 hO
+      obtain ⟨-, hO⟩ := (AC.upTo_optimisticLockAt hm).1 hO
       have hfl : AC.FastLockAt tr.projAC y q s C CV := Or.inr hO
       have hCt : ∃ ℓ, tr.projAC.CallAt y q ℓ ∧ C ∈ ℓ.frame.tree := by
         obtain ⟨ℓ, A, hpt, -, hsel, -⟩ := id hO
@@ -138,9 +138,9 @@ theorem record_above_from_at (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c
     · exact hPCe ▸ hCU
     · exact (Anc.mem hPC' hPCe).1
   have hu' : AC.UpdateAt (tr.upTo t).projAC w c m ℓ := by
-    rw [hprojT]; exact (ac_updateAt_upTo hm).2 ⟨hct, hu⟩
+    rw [hprojT]; exact (AC.upTo_updateAt hm).2 ⟨hct, hu⟩
   have hR' : AC.ResultAt (tr.upTo t).projAC w c m C CV := by
-    rw [hprojT]; exact (ac_resultAt_upTo hm).2 ⟨hct, hR⟩
+    rw [hprojT]; exact (AC.upTo_resultAt hm).2 ⟨hct, hR⟩
   -- the live locks at the update are compatible with `P`, in the prefix
   have hlocks : ∀ L ∈ AC.liveLockBlocks sp ((tr.upTo t).state w c).ac.locks ℓ.frame
       ((tr.upTo t).time c), Compatible ((tr.upTo t).HonestBlocks (H t)) L D.P := by

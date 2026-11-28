@@ -154,11 +154,6 @@ theorem viableTree_voterBlockTree_subset_voteDomain {A : ACState sp.n} {Φ : Frm
     Φ.viableTree (voterBlockTree sp A Φ s) ⊆ Φ.viableTree (voteDomain sp A Φ s) :=
   viableTree_mono voterBlockTree_subset_voteDomain
 
-/-- The viable vote domain is part of the viable tree of the frame tree. -/
-theorem viableTree_voteDomain_subset_tree {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
-    Φ.viableTree (voteDomain sp A Φ s) ⊆ Φ.viableTree Φ.tree :=
-  viableTree_mono voteDomain_subset_tree
-
 /-- With a viable block in the voter block tree, the viable vote domain is the viable voter
 block tree. -/
 theorem viableTree_voteDomain_eq_of_viable {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.LocalFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
@@ -64,7 +65,7 @@ private theorem proposal_below_held_at {cm proposer dg H tr}
   have hi0 := hrl.time_nonneg i
   have hBm := proposal_mem_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc hz hB
   have hBy := mem_of_honest_anc_at_from hrl hnc hi0 hle hy hBR hR
-  exact ⟨hBy, store_anc_of_honest_anc_at_from hrl hnc hi0 hle hy hBR hR,
+  exact ⟨hBy, hrl.held_anc_at hnc hi0 hle hy hBR hR,
     σ_eq_honest_at_from hrl hnc (hrl.time_nonneg kB) (fun q hq => hrl.time_mono (by omega)) hz
       hi0 hle hy hBm hBy⟩
 
@@ -106,9 +107,9 @@ theorem report_kind_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs
   obtain ⟨-, -, hσ⟩ := proposal_below_held_at hrun hnc (ht ▸ hz) hB hy hBR hRm
   rw [hσ] at hfl hstrict
   have hzj := Healing.Store.hj_lt_hmax_of_reachable
-    (fg_reachable_at_from hrl (hrl.time_nonneg kB) (fun q hq => hrl.time_mono hq.le) hzk)
+    (hrl.reachable_at (hrl.time_nonneg kB) (fun q hq => hrl.time_mono hq.le) hzk)
   have hj := Healing.Store.hj_lt_hmax_of_reachable
-    (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hy)
+    (hrl.reachable_at (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hy)
   left
   by_cases htop : kindJ
   · have hzt := hztop.mpr htop
@@ -180,7 +181,7 @@ theorem reset_of_high_proposal_within_of_healing {hold : Time} (O : ACHealing A 
   obtain ⟨-, hBRs, hσ⟩ :=
     proposal_below_held_at hrun hP.noColl hzk hB hyi hBR (O.report_in_frame hrun hyi hR).1
   have hBR' := Healing.h_le_of_store_anc
-    (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hyi) hBRs
+    (hrl.reachable_at (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hyi) hBRs
   rw [← hσ] at hBR'
   obtain ⟨k, hk, hkb⟩ := hP.snapshot
   have hmaxb : max (cutZ P g) (tr.time i + D) ≤ b :=

@@ -105,7 +105,7 @@ theorem honest_supporter_at
         AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y ⟨hyK, hyH, hyw⟩ => by
       obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC hrun).1 hyw
       have h := awake_participant_window_before (hrun.upTo hd) (hnc.upTo _) hsvc ha hX
-        (by rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩)
+        (by rw [RunTrace.upTo_projAC]; exact (AC.upTo_updateAt hm).mpr ⟨le_rfl, hu⟩)
         (le_min hi₀ le_rfl) hyH (mayVote_upTo hrun (mayVote_of_committee hKB.hGate hd hyH hyK))
         ⟨hw, by rw [ht₀]; linarith⟩ (joinedAt_upTo hj)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
@@ -162,7 +162,7 @@ theorem honest_supporter_at
         refine ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hpt.1, ?_⟩
         rw [projAC_upTo_state hrun le_rfl]
         exact hpt.2) hv huH
-    obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+    obtain ⟨hjd, hve⟩ := AC.upTo_voteAt.mp hve
     exact ⟨_, j, e, hVoteAt_iff.2 ⟨hrun.antitone hjd huH, hve⟩, (hrun.time_mono hj).trans hi₀,
       hvs, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
 

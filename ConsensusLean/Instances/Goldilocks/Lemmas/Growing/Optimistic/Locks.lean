@@ -87,7 +87,7 @@ theorem proposal_not_conflicts_point_at {ini} (hrun : Growing.GoldilocksRun prop
   rw [AC.admitVote_locks_eq]
   have hd := hrun.time_nonneg j
   have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ℓ e :=
-    ac_castAt_upTo.mpr ⟨le_rfl, hc, he⟩
+    AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
   intro l' hl' B₀ hB₀ hB₀r
   obtain ⟨B', hB', hB'r, h⟩ :=
     AC.readPoint_locks_provenance_strict (acRun_upTo hrun hnc hd) hy hc' hpos l' hl'
