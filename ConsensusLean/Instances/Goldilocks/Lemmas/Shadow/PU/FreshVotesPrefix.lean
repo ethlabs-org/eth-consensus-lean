@@ -63,7 +63,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
   have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
-  obtain ⟨hst, _, hw⟩ := Core.proposal_walk_end_at hrun.toCore hnc hz' hcp hpay
+  obtain ⟨hst, _, hw⟩ := Healing.Growing.proposal_walk_end_at hrun hnc hz' hcp hpay
   have hSQ := hw.anc (fun X hX => hX.1) hst
   have hQt : d.head ∈ ellp.frame.tree := by
     rcases eq_or_ne d.start d.head with he | he
@@ -73,7 +73,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
     (Anc.mono hPhip.2 hSQ).tail ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
   have hPv' := hPv
   rw [← hes] at hPv'
-  have hSv := Core.frozen_viable_of_anchor_path_at hrun.toCore hnc hy hc hPv'
+  have hSv := Healing.Growing.frozen_viable_of_anchor_path_at hrun hnc hy hc hPv'
     (Anc.mono hPhi.2 haS) hSP
   rw [hes] at hSv
   have hslot := (AC.castAt_specU hri.toU hy hcast).2.1.symm.trans hes
