@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -71,7 +72,7 @@ theorem proposal_mem_at {ini}
   have hr := hrun.upTo (hrun.time_nonneg k)
   have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
-  have hm := (Coherence.accept_of_proposesAt hr (hnc.upTo _) hp hP').2.1
+  have hm := (Healing.accept_of_proposesAt hr (hnc.upTo _) hp hP').2.1
   rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
 
 /-- V-B3's induction. Unresolved through warm crossing and proposal report-follow. -/

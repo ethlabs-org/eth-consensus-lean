@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -78,7 +79,7 @@ private theorem warm_proposal_store_bounds_at {ini}
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
   have hleB : ∀ q < kP + 1, tr.time q ≤ tr.time kP :=
     fun q hq => hrun.time_mono (by omega)
-  obtain ⟨hacc, -, -⟩ := Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hP'
+  obtain ⟨hacc, -, -⟩ := Healing.accept_of_proposesAt hr (hnc.upTo _) hzk hP'
   obtain ⟨⟨⟨-, -⟩, hpos⟩, -, -⟩ := hP'
   rcases Coherence.blockCall_cases h hzk hacc with hg |
     ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, hacc', ⟨ℓ₀, h₀⟩, -, hst2⟩

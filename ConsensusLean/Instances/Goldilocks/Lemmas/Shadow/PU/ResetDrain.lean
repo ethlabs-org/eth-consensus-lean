@@ -8,6 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshNext
@@ -136,7 +135,7 @@ theorem fresh_fast_lock_update_at
     hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
   have hnv := unanimous_update_no_veto_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK hyk hu
-  obtain ⟨e, he, hlock⟩ := Core.fresh_fast_lock_of_selection_at hrun.toCore hnc hyk hu hvi.1
+  obtain ⟨e, he, hlock⟩ := fresh_fast_lock_of_selection_at hrun hnc hyk hu hvi.1
     hconf hnv hfast hva
   refine ⟨k, ell, hu, hconf, hnv, hfast, hva, hvi, e, he, hlock, ?_⟩
   simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock

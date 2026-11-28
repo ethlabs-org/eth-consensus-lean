@@ -4,13 +4,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -206,7 +206,7 @@ theorem reset_of_high_proposal_within_at
   have hr := hrun.upTo (hrun.time_nonneg kP)
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  have hPm := (Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hP').2.1
+  have hPm := (Healing.accept_of_proposesAt hr (hnc.upTo _) hzk hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
   have hRm : R ∈ (tr.state y i).fg.tree := by
     have hsource := (AC.toFG_source hR.2.2).1.1
@@ -312,7 +312,7 @@ theorem round_of_warm_within_at
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
+  have hPm := (Healing.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) (htimeP ▸ hz0) hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
   have hPH : P ∈ tr.HonestBlocksAt H :=
