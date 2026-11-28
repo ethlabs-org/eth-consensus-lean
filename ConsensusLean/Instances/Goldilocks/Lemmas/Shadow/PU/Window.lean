@@ -93,9 +93,9 @@ variable {sp : ACParams}
 or top-status case split. -/
 theorem fcRoot_mono (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i) :
-    Anc (tr.HonestBlocks H) (Node.frame (tr.state y a)).fcRoot
-      (Node.frame (tr.state y i)).fcRoot := by
-  rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
+    Anc (tr.HonestBlocks H) (Node.frame (tr.state y a)).F
+      (Node.frame (tr.state y i)).F := by
+  rw [Node.frame_eq, Node.frame_eq, Store.toFrame_F]
   exact run_F_mono hrun.toLocalRun hy hai
 
 /-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
@@ -111,7 +111,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     Q ∈ (Node.frame (tr.state y i)).tree ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F Q ∧
       Q ∈ (Node.frame (tr.state y i)).viableHeads := by
   have htime := hrun.time_mono hai
   rw [Compose.frame_of_projAC hrun hy hc, Node.frame_eq,
@@ -146,7 +146,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
     exact ⟨hQi, hFQ⟩
   refine ⟨?_, ?_, ?_⟩
   · rwa [Node.frame_eq]
-  · rw [Node.frame_eq, Store.toFrame_fcRoot]
+  · rw [Node.frame_eq, Store.toFrame_F]
     change Anc (tr.state y i).fg.toFrame.tree _ _
     rw [Store.toFrame_tree]
     exact Anc.restrict .refl hFQ
@@ -169,7 +169,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
     (hat : tr.time a < AC.freeze sp e.msg.slot)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot) :
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
+      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.F Q := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hR := Compose.fg_reachable hrun.toLocalRun hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR

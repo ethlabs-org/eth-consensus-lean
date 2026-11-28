@@ -26,7 +26,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 /-- The frame of every honest state is a frame inside the honest blocks. -/
 private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) :=
-  ⟨(Store.frame_realization P _ _ _ (fg_reachable h hy k)).1, fun _ hX => ⟨y, hy, k, hX.1⟩⟩
+  ⟨Store.frame_realization P _ _ _ (fg_reachable h hy k), fun _ hX => ⟨y, hy, k, hX.1⟩⟩
 
 private theorem callAt_unique {y : Fin P.n} {i : Nat} {c c' : Cut A} (hc : tr.CallAt y i c)
     (hc' : tr.CallAt y i c') : c = c' :=
@@ -117,7 +117,7 @@ private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
       rw [hst]
       exact fg_reachable h hy j
     have hR' := ACInterface.ReachableAtFrom.step .tick hR (ht₀.trans hstep.1)
-      ⟨⟨(Store.frame_realization P _ _ _ hfg).1, fun _ hX => hX.1⟩, rfl⟩
+      ⟨⟨Store.frame_realization P _ _ _ hfg, fun _ hX => hX.1⟩, rfl⟩
     rw [← hst] at hdp
     have hts : tr.time i' = P.slotTime (P.slotOf (tr.time i')) := hp.2.1
     refine hpay y hy _ hcoh _ _ _ hR' (P.slotOf (tr.time i')) hts.le d p ?_ _ rfl rfl

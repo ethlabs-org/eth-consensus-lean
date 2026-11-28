@@ -53,13 +53,13 @@ separately. The live-lock arm requires no majority or service before GST. -/
 theorem anchor_compatible_of_live_candidates
     {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
     {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hcomp : ∀ X ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Compatible Φ.tree X R) :
+    (hcomp : ∀ X ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.F}, Compatible Φ.tree X R) :
     Compatible Φ.tree (AC.getAnchor sp A Φ t) R := by
-  have hsub : AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+  have hsub : AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.mp hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hsub ⟨Φ.fcRoot, Or.inr rfl⟩
+    · exact (Set.mem_singleton_iff.mp hX) ▸ hΦ.rooted.1
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hsub ⟨Φ.F, Or.inr rfl⟩
   have ha : AC.getAnchor sp A Φ t = D := by
     simp only [AC.getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   rw [ha]

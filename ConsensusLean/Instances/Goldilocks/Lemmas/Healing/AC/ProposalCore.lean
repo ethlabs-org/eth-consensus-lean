@@ -247,7 +247,7 @@ theorem proposal_walkU
     {L : Set Lock}
     (hprop : (acProposalWith sp L (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
     {B : Blk sp.n FGP}
-    (hV : B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot)
+    (hV : B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F)
     (hlocks : ∀ C ∈ liveLockBlocks sp L ℓ.frame (tr.time i),
       Compatible U C B)
     (hbest : ∀ X Cx : Blk sp.n FGP, Cx ∈ ℓ.frame.viableTree ℓ.frame.tree →
@@ -275,7 +275,7 @@ theorem proposal_walk (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {x : Fi
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
     {B : Blk sp.n FGP}
-    (hV : B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot)
+    (hV : B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F)
     (hlocks : ∀ C ∈ liveLockBlocks sp (unlock sp (tr.state x i).locks ℓ.frame (tr.time i) σ
       (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤))) ℓ.frame (tr.time i),
       Compatible U C B)
@@ -393,7 +393,7 @@ theorem batch_proposalU
     (hL : UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
       (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) L)
     (hV : B ∈ ℓ.frame.tree ∧
-      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
+      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
@@ -454,7 +454,7 @@ theorem batch_proposal (hrun : ACRun proposer tr H U ini) {K : CommitteeDict sp.
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
     (hV : B ∈ ℓ.frame.tree ∧
-      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
+      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :

@@ -495,7 +495,7 @@ theorem lock_write_witness (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
       tr.CallAt x j ℓ ∧ D ∈ ℓ.frame.tree ∧ A = ℓ.frame.viableAncestor D ∧
       ((∃ CV, OptimisticLockAt tr x j l.slot D CV) ∨ ∃ ℓ', UpdateAt tr x j l.slot ℓ') ∧
       (∃ L ∈ U, L.root = l.block ∧ Anc U L A) ∧
-      (ℓ.frame.Anc A ℓ.frame.fcRoot ∨
+      (ℓ.frame.Anc A ℓ.frame.F ∨
         ∃ Q ∈ ℓ.frame.tree, Q ∈ ℓ.frame.viableHeads ∧ ℓ.frame.Anc A Q) := by
   obtain ⟨j, hj, ℓ, D, hc, hD, ho, hA⟩ := lock_candidate_provenance hr hini hx i l hl
   refine ⟨j, hj, ℓ, D, ℓ.frame.viableAncestor D, hc, hD, rfl, ho, hA, ?_⟩

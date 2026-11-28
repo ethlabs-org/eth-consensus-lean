@@ -127,7 +127,7 @@ variable {s₀ : A.State}
 
 private theorem frameIn_store {st : NodeState A} (hr : st.fg.Reachable A.genesisPayload) :
     A.FrameIn st.fg.tree (frame st) :=
-  ⟨(Store.frame_realization P _ _ _ hr).1, fun _ h => h.1⟩
+  ⟨Store.frame_realization P _ _ _ hr, fun _ h => h.1⟩
 
 private theorem reachableAt_mono {U U' : Set A.Blk} (hUU : U ⊆ U') {s : A.State} {Φ : A.Frm}
     {t : Time} (h : A.ReachableAtFrom s₀ self U s Φ t) : A.ReachableAtFrom s₀ self U' s Φ t := by

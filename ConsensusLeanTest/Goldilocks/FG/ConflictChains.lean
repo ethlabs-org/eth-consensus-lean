@@ -191,10 +191,6 @@ theorem updateFinality_JF (st : Store P ACP) (σ : ChainState P.n) {X Y : NodeBl
 theorem mem_tree {st : Store P ACP} {B : NodeBlock P ACP} (h : st.blocks B.root = some B) :
     B ∈ st.tree := h
 
-theorem headHeightFloor_le (st : Store P ACP) : st.headHeightFloor ≤ st.hmax := by
-  unfold Store.headHeightFloor
-  split_ifs <;> omega
-
 end Steps
 
 /-! ## The stores of one chain -/

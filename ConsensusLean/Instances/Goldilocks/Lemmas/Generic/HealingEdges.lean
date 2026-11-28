@@ -252,7 +252,7 @@ private theorem le_originCapTime {P : Params} {budget : Option Nat} {g b t : Tim
     exact ⟨h.trans (min_le_left _ _), fun m' hm' => by cases hm'; exact h.trans (min_le_right _ _)⟩
 
 /-- Canonical high entries by the capped horizon of a premised reset within the budget, field by
-field from leaves 13, 12 and 14 over the supplier `O`. -/
+field from leaves 12 and 14 over the supplier `O`. -/
 theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
     ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
       runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
@@ -262,9 +262,7 @@ theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
   have hacap : OriginInCap P O.deepBudget g a := by
     obtain ⟨y, k, att, -, -, -, hk⟩ := hr.1
     exact originInCap_of_resetInBudget (hk ▸ (runs.run_local hrun).time_nonneg k) hbudget
-  refine ⟨fun _ _ hp hib => no_high_contest_at_of_healing O hβ hrun hP hr hab hacap hp
-      (le_originCapTime hib).1 (le_originCapTime hib).2,
-    fun _ _ _ hy hs hkb hh => ?_, ?_⟩
+  refine ⟨fun _ _ _ hy hs hkb hh => ?_, ?_⟩
   · obtain ⟨r, hrk, l, Og, ⟨hyr, hO, hOh⟩, E, hE, hEO, hEr, hEh, hET⟩ :=
       high_row_source_at_of_healing O hβ hrun hP hr hab hy (le_originCapTime hkb).1
         (le_originCapTime hkb).2 hs hh

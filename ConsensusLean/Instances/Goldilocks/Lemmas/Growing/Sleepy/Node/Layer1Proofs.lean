@@ -46,7 +46,7 @@ theorem goldilocks_output_provenance :
   obtain ⟨hy, ⟨hi, -⟩, ht0, htb⟩ := hread
   have hr := hrun.upTo ht0
   have hs := Trace.upTo_state tr y hi
-  have hΦ := (Store.frame_realization _ _ _ _ (Compose.fg_reachable hr.toLocalRun hy i)).1
+  have hΦ := Store.frame_realization _ _ _ _ (Compose.fg_reachable hr.toLocalRun hy i)
   rw [hs] at hΦ
   have hsub : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, i, t, ht0, hi, hy, hX.1⟩

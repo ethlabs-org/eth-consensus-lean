@@ -36,9 +36,6 @@ namespace ChainFrame
 
 variable {Φ : N1.Frm} {f j τ : Nat}
 
-theorem fcRoot_mem' (h : ChainFrame Φ f j τ) : Φ.fcRoot ∈ Φ.tree := by
-  rw [h.fcRoot]; exact h.mem le_rfl (h.fj.trans h.jτ)
-
 theorem eq_of_mem (h : ChainFrame Φ f j τ) {B : N1.Blk} (hB : B ∈ Φ.tree) :
     ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m := (h.tree B).1 hB
 
@@ -91,7 +88,7 @@ theorem viableAncestor_eq (h : ChainFrame Φ f j τ) {m : Nat} (h1 : f ≤ m) (h
     Φ.viableAncestor (blk m) = blk m := by
   have hcand : Φ.AncestorCandidate (blk m) := by
     right
-    refine ⟨h.mem h1 h2, by rw [h.fcRoot]; exact h.anc le_rfl h1 h2, blk τ,
+    refine ⟨h.mem h1 h2, by rw [h.F]; exact h.anc le_rfl h1 h2, blk τ,
       h.mem (h.fj.trans h.jτ) le_rfl, h.head_mem h.jτ le_rfl, h.anc h1 h2 le_rfl⟩
   have hv : Φ.IsViableAncestor (blk m) (blk m) :=
     ⟨Relation.ReflTransGen.refl, hcand, fun _ hA' _ => hA'⟩
@@ -127,7 +124,7 @@ theorem liveLockBlocks_le (h : ChainFrame Φ f j τ) {L : Set Lock} {b : Nat} (h
   obtain ⟨⟨m, hm, hr'⟩, -⟩ := hL l hlL
   exact ⟨m, hm, (h.eq_of_root hBt (hr.symm.trans hr')).1⟩
 
-/-- The anchor is the latest live lock block (or `fc_root = Σ.F`). -/
+/-- The anchor is the latest live lock block (or `Φ.F`). -/
 theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp1.n} {t : Time} {b : Nat}
     (hL : LocksLe A.locks b) (hjb : f ≤ b) (hb : blk b ∈ liveLockBlocks sp1 A.locks Φ t ∨ b = f) :
     getAnchor sp1 A Φ t = blk b := by
@@ -136,24 +133,24 @@ theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp1.n} {t : Time} {
   rcases hb with hb | hbf
   · have hbt := h.mem_iff.1 (hS hb)
     rw [h.deepest_eq hS hb (fun B hB => h.liveLockBlocks_le hL hB)]
-    change (if depth Φ Φ.fcRoot < depth Φ (blk b) then blk b else Φ.fcRoot) = blk b
+    change (if depth Φ Φ.F < depth Φ (blk b) then blk b else Φ.F) = blk b
     by_cases hfb : f < b
     · rw [ite_eq_left]
-      rw [h.fcRoot, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hbt.1 hbt.2]
+      rw [h.F, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hbt.1 hbt.2]
       omega
     · have hbf : b = f := by omega
       subst b
-      simp [h.fcRoot]
+      simp [h.F]
   · subst b
     cases hH : deepest Φ (liveLockBlocks sp1 A.locks Φ t) with
-    | none => exact h.fcRoot
+    | none => exact h.F
     | some H =>
       have hHS := (deepest_mem hH).1
       obtain ⟨m, hmf, rfl⟩ := h.liveLockBlocks_le hL hHS
       have hmt := h.mem_iff.1 (hS hHS)
-      change (if depth Φ Φ.fcRoot < depth Φ (blk m) then blk m else Φ.fcRoot) = blk f
-      rw [ite_eq_right, h.fcRoot]
-      rw [h.fcRoot, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hmt.1 hmt.2]
+      change (if depth Φ Φ.F < depth Φ (blk m) then blk m else Φ.F) = blk f
+      rw [ite_eq_right, h.F]
+      rw [h.F, h.depth_eq le_rfl (h.fj.trans h.jτ), h.depth_eq hmt.1 hmt.2]
       omega
 
 end ChainFrame

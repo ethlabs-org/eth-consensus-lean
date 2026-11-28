@@ -49,7 +49,7 @@ theorem confirmed_read_on_chain_at {b : Time} (hinv : SleepyInvariantUpTo tr H b
         ((goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u) b := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hi hy)).1
+    Store.frame_realization _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hi hy)
   have hsub : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => tree_subset_at ht0 hi hy hX.1
   have hanc : ∀ {A B}, A ∈ tr.HonestBlocksAt H → Anc (tr.HonestBlocksAt H) A B →
@@ -117,7 +117,7 @@ private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo 
           Anc (tr.HonestBlocksAt H) C (tr.state y m).fg.F)) := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hR := Healing.Growing.fg_reachable_at hrun ht0 hm hy
-  have hΦ : FrameOK (Node.frame (tr.state y m)) := (Store.frame_realization _ _ _ _ hR).1
+  have hΦ : FrameOK (Node.frame (tr.state y m)) := Store.frame_realization _ _ _ _ hR
   have hts := tree_subset_at ht0 hm hy
   have hΦU : (Node.frame (tr.state y m)).tree ⊆ tr.HonestBlocksAt H := fun X hX => hts hX.1
   obtain ⟨C, hC, hCr, hgo⟩ := hinv.record y m t ht0 hm htb hy
@@ -132,11 +132,10 @@ private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo 
       hCc (hinv.caches y m t ht0 hm htb hy).1).resolve_right fun h =>
         AC.lookup_eq_none hl ⟨C, ⟨hC, ?_⟩, hCr⟩
     obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree sp.toParams (Payload sp.n) _ _ hR
-    have hΦg : FrameOK (⟨(tr.state y m).fg.tree, _, _, ∅⟩ :
+    have hΦg : FrameOK (⟨(tr.state y m).fg.tree, _, ∅⟩ :
         Frame sp.n (List (FG.Att sp.n)) (Payload sp.n)) :=
-      { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩, fcRoot_mem := hgm
-        F_anc_fcRoot := Relation.ReflTransGen.refl, viableHeads_subset := Set.empty_subset _
-        fcRoot_anc_viableHeads := fun _ h => h.elim }
+      { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩
+        viableHeads_subset := Set.empty_subset _ }
     exact AC.anc_tree_of_anc_U hU hΦg hts hFt h hC
   · obtain ⟨hX, hXr⟩ := AC.lookup_eq_some hl
     obtain rfl : X = C := hU.1 (hΦU hX) hCU (hXr.trans hCr.symm)
@@ -206,7 +205,7 @@ theorem ready_read_record_at {ΔF b : Time} {ini} (hrun : Growing.GoldilocksRun 
         Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
   have hy : y ∈ H t := hready.1
   have hΦ : FrameOK (Node.frame (tr.state y j)) :=
-    (Store.frame_realization _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hrp.1 hy)).1
+    Store.frame_realization _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hrp.1 hy)
   by_cases hin : ∃ R ∈ (Node.frame (tr.state y j)).tree,
       R.root = (tr.state y j).ac.latestConfirmed
   · obtain ⟨R, hR, hRr⟩ := hin

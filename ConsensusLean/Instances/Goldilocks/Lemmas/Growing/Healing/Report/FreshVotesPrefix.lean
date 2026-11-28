@@ -44,7 +44,7 @@ theorem actual_proposal_start_live_origin_at
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hpay : (AC.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
       some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
-    d.start = ell.frame.fcRoot ∨
+    d.start = ell.frame.F ∨
       ∃ l ∈ AC.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
           B.root = l.block ∧ ell.frame.Anc d.start B := by
@@ -146,7 +146,7 @@ theorem honest_prefix_of_finality_before_at
     (fun x hx j ev hv hs R hR hRr => by
       obtain ⟨R', hR', hR'r, hBR⟩ := hheads' x hx j ev hv hs
       have he : R' = R := hS.run.localRun.coherent.1 hR' hR (hR'r.trans hRr.symm)
-      exact (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hB.2.1)).trans (he ▸ hBR))
+      exact (Anc.mono hPhi.2 hB.2.1).trans (he ▸ hBR))
   have hex := AC.honest_votes_in_slot_before hS hm
     (by rw [hstep] at hstart; linarith [sp.toParams.hΔ])
     (fun x hx r ht hrs => by

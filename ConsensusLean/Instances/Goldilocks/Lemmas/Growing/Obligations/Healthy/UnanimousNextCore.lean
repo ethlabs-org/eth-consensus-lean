@@ -255,20 +255,20 @@ theorem unanimous_next_vote_viable_core_at
   have hΔ := sp.toParams.hΔ
   obtain ⟨hPhi, hPhiU⟩ := Compose.Growing.frameIn_at hrun hnc hy hcast.1
   have hfr := Outcome.frame_of_call hrun hy hcast.1
-  have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := hfr.symm ▸ hroot
+  have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P := by
+    rw [hfr]
+    exact hroot
   -- the cast is at `t_{u+1}` or later
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time j := by
     have h := (Compose.Growing.castAt_spec_at hrun hnc hy hcast).2.1
     change e.msg.slot = sp.slot (tr.time j) at h
     exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega)
-  have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
-    (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootFrame
   -- the caster accepts `P` before the freeze
   obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hrun hnc hsvc hc hP hslot hu
     hun hg hy hcast.1 (by linarith [AC.ts_succ (sp := sp) u]) hjb hnr hvote hanc
   have hPt := accepted_voter_tree_of_accept_at hrun hnc hy hcast hs hk'j ha' hk't hanc
   have hroot' := AC.anc_tree_of_anc_U (Compose.Growing.honest_blocks_coherent hrun hnc)
-    hPhi hPhiU hPhi.fcRoot_mem hrootFrame hPt.1
+    hPhi hPhiU hPhi.rooted.1 hanc hPt.1
   refine ⟨hanc, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
   rw [hfr] at hmem ⊢

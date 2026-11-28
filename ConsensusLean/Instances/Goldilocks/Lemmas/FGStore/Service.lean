@@ -163,11 +163,6 @@ private theorem afterJustification_eq (st : Store P ACP) (σ : FG.ChainState P.n
   split <;> (try split) <;> first | exact ⟨rfl, rfl, rfl, rfl, Or.inl rfl⟩ |
     exact ⟨rfl, rfl, rfl, rfl, Or.inr rfl⟩
 
-/-- The head height floor is `h_max` or `h_max − 1`. -/
-theorem headHeightFloor_bounds (st : Store P ACP) :
-    st.hmax - 1 ≤ st.headHeightFloor ∧ st.headHeightFloor ≤ st.hmax := by
-  unfold headHeightFloor; split <;> omega
-
 /-- A viable block's state height is at least `h_max − 1`: every `h ≤ h_max` is at most one above
 it. -/
 theorem height_le_of_isViable {st : Store P ACP} {B : NodeBlock P ACP} {h : Nat}

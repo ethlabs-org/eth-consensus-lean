@@ -17,7 +17,7 @@ concrete run, so none of the three proved milestones is vacuous. The parameters 
 The static witness is used with the constant honest family `H := fun _ => Set.univ`.
 
 The frame of every call is `Φ₁`: tree `{g, B1}` with `B1` the slot-`1` block on `g` (root `1`,
-empty payloads), `F = fc_root = g`, viable heads `{B1}`. The coherent set is `U₁ = {g, B1}`, the
+empty payloads), `F = g`, viable heads `{B1}`. The coherent set is `U₁ = {g, B1}`, the
 honest set all of `Fin 1`, the slot proposer `v0`. `v0` is awake throughout and never restarts.
 The run `trW` (each post-state the call's literal output, threaded):
 
@@ -43,8 +43,8 @@ def B1 : Blk sp1.n Unit := ⟨1, some 0, 1, v0, 0, (), ([], [])⟩
 /-- The coherent set of the run: genesis and `B1`. -/
 def U₁ : Set (Blk sp1.n Unit) := {g, B1}
 
-/-- The frame of every call: tree `{genesis, B1}`, `F = fc_root = genesis`, viable heads `{B1}`. -/
-def Φ₁ : Frm sp1.n Unit := ⟨U₁, g, g, {B1}⟩
+/-- The frame of every call: tree `{genesis, B1}`, `F = genesis`, viable heads `{B1}`. -/
+def Φ₁ : Frm sp1.n Unit := ⟨U₁, g, {B1}⟩
 
 theorem g_ne_B1 : g ≠ B1 := fun h => absurd (congrArg Block.root h) (by simp [g, B1])
 
@@ -88,10 +88,7 @@ theorem frameOK_Φ₁ : FrameOK Φ₁ where
   finite := (Set.finite_singleton B1).insert g
   coherent := coherent_U₁
   rooted := ⟨g_mem, fun _ hC => anc_g_of_mem hC⟩
-  fcRoot_mem := g_mem
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := Set.singleton_subset_iff.2 B1_mem
-  fcRoot_anc_viableHeads := fun W hW => by rw [Set.mem_singleton_iff.1 hW]; exact anc_g_B1
 
 /-- The genesis frame steps to `Φ₁` by accepting `B1`. -/
 theorem frameStep_Φ₁ : FrameStep Φ₀ B1 Φ₁ where
@@ -186,7 +183,7 @@ theorem not_conflicts {L : Set Lock} {t : Time} {B : Blk sp1.n Unit} (hB : B ∈
 
 theorem getAnchor_mem (A : ACState sp1.n) (t : Time) : getAnchor sp1 A Φ₁ t ∈ U₁ := by
   rw [getAnchor_eq_deepest_union frameOK_Φ₁]
-  cases h : deepest Φ₁ (liveLockBlocks sp1 A.locks Φ₁ t ∪ {Φ₁.fcRoot}) with
+  cases h : deepest Φ₁ (liveLockBlocks sp1 A.locks Φ₁ t ∪ {Φ₁.F}) with
   | none => exact g_mem
   | some D =>
     rcases (deepest_mem h).1 with hD | hD

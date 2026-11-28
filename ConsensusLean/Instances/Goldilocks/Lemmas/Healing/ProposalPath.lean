@@ -36,7 +36,7 @@ every common block. For `X` on the walk strictly below `d.head`, above the voter
 best eligible child `C` of `X` in `Φp` is the best eligible child of `X` in the voter's tree,
 given
 
-* `hrefl`: a child other than `P`, in the voter's tree, of a block of `Φp` above `Φp.fcRoot` is in
+* `hrefl`: a child other than `P`, in the voter's tree, of a block of `Φp` above `Φp.F` is in
   `Φp`'s viable tree;
 * `hviable`: a block of `Φp.tree` that is a viable head of `Φy` is a viable head of `Φp`.
 
@@ -48,7 +48,7 @@ theorem suffix_best_of_proposal_walk {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))
     (hΦpU : Φp.tree ⊆ U) (hΦy : FrameOK Φy) (hΦyU : Φy.tree ⊆ U) {R : AC.ACState sp.n}
     {ti tj : Time} {s : Nat} (hslot : sp.slot ti = s + 1)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.fcRoot d.start ∧
+    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.F d.start ∧
       AC.WalkEnd (sp := sp) (Φp.viableTree Φp.tree)
         (AC.headScore sp Φp (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
         (AC.headEligible sp Φp ti (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
@@ -63,7 +63,7 @@ theorem suffix_best_of_proposal_walk {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))
       ∀ X ∈ Φp.tree, X ∈ Φy.tree →
         AC.supporters Φp (AC.View.ofLists pay) s X =
           AC.supporters Φy (AC.mergedVoteView sp R Φy (s + 1)) s X)
-    (hrefl : ∀ X B, X ∈ Φp.tree → Φp.Anc Φp.fcRoot X → B.parent = some X.root → B ≠ P →
+    (hrefl : ∀ X B, X ∈ Φp.tree → Φp.Anc Φp.F X → B.parent = some X.root → B ≠ P →
       B ∈ Φy.viableTree (AC.voterBlockTree sp R Φy (s + 1)) → B ∈ Φp.viableTree Φp.tree)
     (hviable : ∀ X ∈ Φp.tree, X ∈ Φy.viableHeads → X ∈ Φp.viableHeads)
     {X C : AC.Blk sp.n (List (FG.Att sp.n))} (hstartX : Φp.Anc d.start X)
@@ -96,15 +96,15 @@ theorem suffix_best_of_proposal_walk {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))
   have hfX := ((AC.fcRoot_anc_getAnchor hΦy R tj).mono hΦyU).trans hanchorX
   have hfC := hfX.trans hXC
   have hCt := AC.frame_mem_of_between sp hU hΦy hΦyU hPv.1.1 hCP
-    ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfC)
+    (hfC)
   have hCPy := AC.anc_tree_of_anc_U hU hΦy hΦyU hCt hCP hPv.1.1
   have hCy : C ∈ Φy.viableTree (AC.voterBlockTree sp R Φy (s + 1)) :=
     ⟨⟨hCt, Or.inr ⟨P, hPv.1.1, hPs, hCPy⟩⟩,
-      AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfC hCt,
+      AC.anc_tree_of_anc_U hU hΦy hΦyU hΦy.rooted.1 hfC hCt,
       hPv.2.2.choose, hPv.2.2.choose_spec.1, hPv.2.2.choose_spec.2.1,
       hCPy.trans hPv.2.2.choose_spec.2.2⟩
   have hXy := AC.frame_mem_of_between sp hU hΦy hΦyU hCt hXC
-    ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfX)
+    (hfX)
   have hsc : ∀ B ∈ Φp.tree, B ∈ Φy.tree →
       AC.headScore sp Φy (AC.mergedVoteView sp R Φy (s + 1)) s B =
         AC.headScore sp Φp (AC.View.ofLists pay) s B := by
@@ -138,7 +138,7 @@ theorem getHead_eq_of_proposal_path {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hΦy : FrameOK Φy) (hΦyU : Φy.tree ⊆ U) {R : AC.ACState sp.n} {ti tj : Time} {s : Nat}
     (hslot : sp.slot ti = s + 1)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.fcRoot d.start ∧
+    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.F d.start ∧
       AC.WalkEnd (sp := sp) (Φp.viableTree Φp.tree)
         (AC.headScore sp Φp (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
         (AC.headEligible sp Φp ti (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
@@ -212,7 +212,7 @@ theorem getHead_eq_of_proposal_path {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (AC.walkEnd_iff.2 ⟨f + 1, hfollow, hstop⟩)
 
 /-- **A voter anchor below the proposal reaches the proposer's walk.** The proposer's walk in
-`Φp` runs from `d.start` (above `Φp.fcRoot`) to `d.head`, the parent of `P ∈ Φy.tree`; both frames
+`Φp` runs from `d.start` (above `Φp.F`) to `d.head`, the parent of `P ∈ Φy.tree`; both frames
 lie in a coherent `U`. If the voter's anchor is below `P` in `U`, then either it is `P`, or some
 `X` on the proposer's walk lies on the voter's walk between its anchor and its head: `d.start`
 when the anchor is below it (given `hprefix`), the anchor itself otherwise. -/
@@ -221,7 +221,7 @@ theorem anchor_on_proposal_path {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hΦpU : Φp.tree ⊆ U) (hΦy : FrameOK Φy) (hΦyU : Φy.tree ⊆ U) {R : AC.ACState sp.n}
     {ti tj : Time} {s : Nat}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.fcRoot d.start ∧
+    (hwalk : d.start ∈ Φp.tree ∧ Φp.Anc Φp.F d.start ∧
       AC.WalkEnd (sp := sp) (Φp.viableTree Φp.tree)
         (AC.headScore sp Φp (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
         (AC.headEligible sp Φp ti (AC.View.ofLists pay) ((sp.slot ti : Int) - 1))
@@ -244,8 +244,8 @@ theorem anchor_on_proposal_path {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
   have hQP : Anc U d.head P := .single ⟨hΦpU hQt, hΦyU hPy, hparent⟩
   let A := AC.getAnchor sp R Φy tj
   have hAt : A ∈ Φy.tree := by
-    by_cases he : Φy.fcRoot = A
-    · exact he ▸ hΦy.fcRoot_mem
+    by_cases he : Φy.F = A
+    · exact he ▸ hΦy.rooted.1
     · exact (Anc.mem (AC.fcRoot_anc_getAnchor hΦy R tj) he).2
   by_cases he : A = P
   · exact Or.inl he
@@ -259,11 +259,11 @@ theorem anchor_on_proposal_path {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
   rcases Anc.total hU hAQ (Anc.mono hΦpU hstartQ) with hAS | hSA
   · have hSt := AC.frame_mem_of_between sp hU hΦy hΦyU hPy
       ((Anc.mono hΦpU hstartQ).trans hQP)
-      ((Anc.mono hΦyU (hΦy.F_anc_fcRoot.trans (AC.fcRoot_anc_getAnchor hΦy R tj))).trans hAS)
+      ((Anc.mono hΦyU (AC.fcRoot_anc_getAnchor hΦy R tj)).trans hAS)
     have hASf := AC.anc_tree_of_anc_U hU hΦy hΦyU hAt hAS hSt
     exact ⟨d.start, .refl, hstartQ, hASf, hprefix hASf⟩
   · have hApt := AC.frame_mem_of_between sp hU hΦp hΦpU hQt hAQ
-      ((Anc.mono hΦpU (hΦp.F_anc_fcRoot.trans hroot)).trans hSA)
+      ((Anc.mono hΦpU hroot).trans hSA)
     refine ⟨A, AC.anc_tree_of_anc_U hU hΦp hΦpU hst hSA hApt,
       AC.anc_tree_of_anc_U hU hΦp hΦpU hApt hAQ hQt, .refl, ?_⟩
     unfold AC.getHead

@@ -141,7 +141,7 @@ theorem goldilocksRunMap_honestChainReads :
     · exact .refl
     all_goals
       rw [outTip_finalized, outTip_confirmed]
-      have hΦ := (Store.frame_realization _ _ _ _ hR).1
+      have hΦ := Store.frame_realization _ _ _ _ hR
       have ha := hΦ.rooted.2 _ (Regimes.ac_tips (A := (((simTraceAt S rho hn).state
         (rho.ownKey v) (cutMap S rho hn i))).ac) hΦ
         ((goldilocksRunMap S rho hn hv).clock (rho.stateBefore i v).st.1)).1

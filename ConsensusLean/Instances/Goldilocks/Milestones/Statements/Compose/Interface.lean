@@ -14,7 +14,7 @@ tips are nested. Each statement assumes only its one interface requirement: requ
 (`ReqSource`) for sources. This is stronger than assuming all requirements 1–3 and 5
 (`ACInterface.Requirements`, claims A0.6 with A0.9). These are frame-level consequences under
 a well-formed frame
-(`FrameIn`: `FrameOK` inside `U`, so `fc_root ∈ Φ.tree` and the tree is rooted at `Φ.F`); they
+(`FrameIn`: `FrameOK` inside `U`, so `Φ.F ∈ Φ.tree` and the tree is rooted at `Φ.F`); they
 mention no node and no particular AC. `Statements/Compose/Node` instantiates them at the node's
 AC states (C0.5).
 
@@ -34,7 +34,7 @@ def TipsNested : Prop :=
 
 /-- **The parent of a proposal is held.** At a reachable AC state with frame `Φ`, the parent
 that `ac_proposal` returns at a slot start not before its last call is a block of `Φ.tree`
-that extends `Φ.F` (requirement 1, `Φ.Anc Φ.fcRoot d.head`, under a well-formed frame;
+that extends `Φ.F` (requirement 1, `Φ.Anc Φ.F d.head`, under a well-formed frame;
 requirement 5 says the rest about a proposal, directly). -/
 def ProposalParentHeld : Prop :=
   A.ReqHeads → A.AtReachable fun _ _ s Φ t₀ => ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p,

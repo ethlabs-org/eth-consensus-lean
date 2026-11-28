@@ -65,12 +65,12 @@ structure Clean (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
     (Store.namers sp.toParams (Payload sp.n) H tr.projFG (sp.ts (s + 1 : Nat) + sp.Δ) E').ncard <
       sp.toParams.fg.q
   /-- (K2) Height lead: at each honest vote of a slot in `(s, m]`, the voter block tree holds a
-  descendant of `B` (or `B`) whose state height is at least the voter's head height floor, or
-  `B ⪯ fc_root` at the voter (block order inside the honest blocks, as in (i)). -/
+  viable descendant of `B` (possibly `B` itself), or `B ⪯ Σ.F` at the voter
+  (block order inside the honest blocks, as in (i)). -/
   heightLead : ∀ y ∈ H, ∀ i ℓ e, AC.CastAt tr.projAC y i ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
     (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y i).fg.IsViable D) ∨
-    Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
+    Anc (tr.HonestBlocks H) B ℓ.frame.F
 
 /-- **A stored fast lock** (claims C1.1, HR.4: "the stored block after the move back"): `x`
 writes a fast lock of slot `s` at cut `i` (fast test or optimistic confirmation) that selects `D`

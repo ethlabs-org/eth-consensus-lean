@@ -54,7 +54,7 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot :=
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.F :=
   seeded_vote_frame_of hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib
     (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw hK hKB
 

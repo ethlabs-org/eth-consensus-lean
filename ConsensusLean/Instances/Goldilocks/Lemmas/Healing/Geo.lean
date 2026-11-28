@@ -302,19 +302,19 @@ theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
 /-- The anchor of a walk is in the viable tree of the whole frame tree when `fc_root` is: it is
 `fc_root` or the deepest live lock block, a candidate at least as deep as `fc_root`. -/
 theorem getAnchor_viable {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp.n) (t : Time)
-    (hfc : Φ.fcRoot ∈ Φ.viableTree Φ.tree) : AC.getAnchor sp A Φ t ∈ Φ.viableTree Φ.tree := by
+    (hfc : Φ.F ∈ Φ.viableTree Φ.tree) : AC.getAnchor sp A Φ t ∈ Φ.viableTree Φ.tree := by
   rw [AC.getAnchor_eq_deepest_union hΦ]
-  rcases hD : AC.deepest Φ (AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
+  rcases hD : AC.deepest Φ (AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.F}) with _ | D
   · exact hfc
   · obtain ⟨hDS, hmax⟩ := AC.deepest_mem hD
     change D ∈ Φ.viableTree Φ.tree
-    by_cases he : D = Φ.fcRoot
+    by_cases he : D = Φ.F
     · exact he ▸ hfc
     rcases hDS with hDl | hDf
     · rcases AC.liveLockBlock_candidate hΦ hDl with h | h
       · exact h
-      · have h1 := AC.depth_lt_of_anc hΦ h he hΦ.fcRoot_mem
-        rcases hmax Φ.fcRoot (Or.inr rfl) (Ne.symm he) with h2 | ⟨h2, -⟩ <;> omega
+      · have h1 := AC.depth_lt_of_anc hΦ h he hΦ.rooted.1
+        rcases hmax Φ.F (Or.inr rfl) (Ne.symm he) with h2 | ⟨h2, -⟩ <;> omega
     · exact absurd (Set.mem_singleton_iff.1 hDf) he
 
 /-- **The parent of an honest proposal is a viable head** of the proposer's frame when `fc_root`
@@ -326,7 +326,7 @@ theorem proposal_head_viable {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .proposal) {σ : Nat}
     (hk : tr.time k = sp.toParams.slotTime σ) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n} (hp : (AC.acProposal sp (tr.state y k) ℓ.frame (tr.time k)).2 =
-      some (d, pay)) (hfc : ℓ.frame.fcRoot ∈ ℓ.frame.viableTree ℓ.frame.tree) :
+      some (d, pay)) (hfc : ℓ.frame.F ∈ ℓ.frame.viableTree ℓ.frame.tree) :
     d.head ∈ ℓ.frame.viableHeads := by
   obtain ⟨Φp, tp, hreach, htp, hok⟩ := Compose.pre_reachable hr hy hc
   have hΦp : ℓ.frame = Φp := by

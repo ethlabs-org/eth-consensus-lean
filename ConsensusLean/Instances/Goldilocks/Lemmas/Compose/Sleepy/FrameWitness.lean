@@ -60,7 +60,7 @@ theorem vote_frame_of_witnesses {ini} (hrun : GoldilocksRun proposer dg H tr ini
     (hw : Anc (tr.HonestBlocks H) ℓ.frame.F B →
       ∃ W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1), Anc (tr.HonestBlocks H) B W) :
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
+      Anc (tr.HonestBlocks H) B ℓ.frame.F := by
   have hfr := frame_of_projAC hrun hy hc.1
   have hTa := AC.voterBlockTree_ancU (goldilocks_ac_projection_from hrun hnc).localRun.toU
     hrun.vstart hy hc

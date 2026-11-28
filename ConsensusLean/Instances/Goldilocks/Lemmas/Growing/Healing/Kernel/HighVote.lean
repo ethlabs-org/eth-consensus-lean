@@ -37,7 +37,7 @@ theorem high_vote_extends_of_domain_at
     (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hkb : tr.time k ≤ b) (hj : j < e.msg.slot)
-    (hvi : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+    (hvi : Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
     (hprior : ∀ z q e', q < k → Compose.Growing.HVoteAt tr H z q e' →
       j < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :

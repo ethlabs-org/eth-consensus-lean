@@ -72,10 +72,10 @@ def CallStep (self : Fin P.n) (U : Set A.Blk) (p : A.State × A.Frm × Time) (c 
     (q : A.State × A.Frm × Time) : Prop :=
   p.2.2 ≤ q.2.2 ∧ A.CallOK U p.2.1 q.2.2 c q.2.1 ∧ q.1 = (A.step self p.1 q.2.1 q.2.2 c).1
 
-/-- A duty head is good at frame `Φ` (requirement 1): it extends `fc_root`, and, when its walk
+/-- A duty head is good at frame `Φ` (requirement 1): it extends `Φ.F`, and, when its walk
 starts in the viable tree of its domain, it is in `viable_heads`. -/
 def HeadOK (Φ : A.Frm) (d : DutyHead P.n FGP A.Payload) : Prop :=
-  Φ.Anc Φ.fcRoot d.head ∧ (d.start ∈ Φ.viableTree d.dom → d.head ∈ Φ.viableHeads)
+  Φ.Anc Φ.F d.head ∧ (d.start ∈ Φ.viableTree d.dom → d.head ∈ Φ.viableHeads)
 
 /-- `Q` holds at every reachable state (with the frame and time of its last call) of every
 validator, inside every coherent set. -/
@@ -83,7 +83,7 @@ def AtReachable (Q : Fin P.n → Set A.Blk → A.State → A.Frm → Time → Pr
   ∀ (self : Fin P.n) (U : Set A.Blk), Coherent U →
     ∀ s Φ t₀, A.ReachableAt self U s Φ t₀ → Q self U s Φ t₀
 
-/-- **Requirement 1.** Every head of a duty extends `fc_root`, and one whose walk starts in the
+/-- **Requirement 1.** Every head of a duty extends `Φ.F`, and one whose walk starts in the
 viable tree of its domain is in `viable_heads`: the parent of a proposal (at a slot start) and
 the head of every emitted vote of every lawful next call (at that call's frame). -/
 def ReqHeads : Prop :=
@@ -98,11 +98,11 @@ def ReqSource : Prop :=
   A.AtReachable fun _ _ s Φ t₀ => ∀ t, t₀ ≤ t → ∀ C,
     (A.toFG s Φ t).2 = some C → C ∈ Φ.viableTree Φ.tree
 
-/-- **Requirement 3.** The output of `ac_head` extends `fc_root`, and the confirmed tip extends
+/-- **Requirement 3.** The output of `ac_head` extends `Φ.F`, and the confirmed tip extends
 `Φ.F` and is an ancestor of that output. -/
 def ReqOutputs : Prop :=
   A.AtReachable fun _ _ s Φ t₀ => ∀ t, t₀ ≤ t →
-    Φ.Anc Φ.fcRoot (A.head s Φ t) ∧ Φ.Anc Φ.F (A.confirmed s Φ t) ∧
+    Φ.Anc Φ.F (A.head s Φ t) ∧ Φ.Anc Φ.F (A.confirmed s Φ t) ∧
       Φ.Anc (A.confirmed s Φ t) (A.head s Φ t)
 
 /-- **Requirement 5** (claims A0.9). The payload of a proposal at the start of slot `σ` passes

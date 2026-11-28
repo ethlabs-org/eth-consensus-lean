@@ -19,7 +19,7 @@ inside the run's honest blocks (the blocks of its accepted trees).
 * `runFrame_seq`: at every cut the frame stays or takes one frame step. An AC cut, a refused
   block and an `fg_attest` cut leave `Σ` unchanged; `fg_on_attestation` writes only the pool,
   which the frame does not read; an accepted block is a frame step (`Store.accept_is_frame_step`).
-  So `fc_root` and `viable_heads` move only at accepted blocks, where `FrameStep` leaves them
+  So the viable heads move only at accepted blocks, where `FrameStep` leaves them
   free.
 * `runFrame_rooted` (every frame is well formed, `runFrame_ok`), `runFrame_subset` and
   `honestBlocks_coherent` (`NoColl`), bundled in `tickRun_frameSeqIn`.
@@ -50,7 +50,7 @@ theorem state_fg_reachable (i : Nat) :
 
 /-- Every frame of the run is well formed. -/
 theorem runFrame_ok (i : Nat) : FrameOK (runFrame i) :=
-  (Store.frame_realization _ _ _ _ (state_fg_reachable i)).1
+  Store.frame_realization _ _ _ _ (state_fg_reachable i)
 
 /-! ## The premise -/
 

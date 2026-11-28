@@ -29,7 +29,7 @@ theorem mem_liveLockBlocks {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock}
 /-- A live lock block is viable or at or below `fc_root`. -/
 theorem liveLockBlock_candidate {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock} {t : Time}
     {B : Blk sp.n FGP} (hB : B ∈ liveLockBlocks sp L Φ t) :
-    B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot := by
+    B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F := by
   obtain ⟨-, -, B₀, hB₀, -, -, rfl⟩ := mem_liveLockBlocks hΦ hB
   exact (viableAncestor_spec hΦ hB₀).2.1.symm
 
@@ -74,22 +74,22 @@ theorem anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n} 
     (hch : ∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
       Compatible Φ.tree B C) :
     getAnchor sp A Φ t ∈ Φ.tree ∧
-      ∀ X ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Φ.Anc X (getAnchor sp A Φ t) := by
-  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+      ∀ X ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.F}, Φ.Anc X (getAnchor sp A Φ t) := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.F} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
-  have hfc : ∀ B ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree B Φ.fcRoot := fun B hB =>
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.rooted.1
+  have hfc : ∀ B ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree B Φ.F := fun B hB =>
     (liveLockBlock_candidate hΦ hB).elim (fun h => Or.inr h.2.1) Or.inl
-  have hch' : ∀ B ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot},
-      ∀ C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Compatible Φ.tree B C := by
+  have hch' : ∀ B ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.F},
+      ∀ C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.F}, Compatible Φ.tree B C := by
     rintro B (hB | hB) C (hC | hC)
     · exact hch B hB C hC
     · exact (Set.mem_singleton_iff.1 hC) ▸ hfc B hB
     · exact (Set.mem_singleton_iff.1 hB) ▸ (hfc C hC).symm
     · rw [Set.mem_singleton_iff.1 hB, Set.mem_singleton_iff.1 hC]
       exact Or.inl Relation.ReflTransGen.refl
-  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.F, Or.inr rfl⟩
   have hA : getAnchor sp A Φ t = D := by
     rw [getAnchor_eq_deepest_union hΦ, hD]; rfl
   rw [hA]

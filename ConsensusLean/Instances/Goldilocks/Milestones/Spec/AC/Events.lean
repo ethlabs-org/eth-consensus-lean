@@ -41,11 +41,11 @@ def CastAt (tr : GTrace sp FGP) (y : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilo
   tr.CallAt y i ℓ ∧ e ∈ ℓ.emits
 
 /-- At the vote of emission `e` (a call with frame `ℓ.frame`), `B` is in the viable tree of the
-voter block tree of slot `σ`, or at or below `fc_root`. -/
+voter block tree of slot `σ`, or at or below `ℓ.frame.F`. -/
 def ViableAtVote (ℓ : ACLabel (goldilocksAC sp FGP)) (e : Em sp FGP) (σ : Nat)
     (B : Blk sp.n FGP) :
     Prop :=
-  B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame σ) ∨ ℓ.frame.Anc B ℓ.frame.fcRoot
+  B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame σ) ∨ ℓ.frame.Anc B ℓ.frame.F
 
 /-- Every honest vote of slot `σ` at a cut before `i` extends `B`. -/
 def EarlierVotesExtend (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))

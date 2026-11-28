@@ -58,7 +58,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact AC.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.rooted.1
   -- The selected honest batch supplies supporters of `B` at `y`.
   have hsupp : SX ⊆
       AC.supporters ℓ.frame (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s B := by

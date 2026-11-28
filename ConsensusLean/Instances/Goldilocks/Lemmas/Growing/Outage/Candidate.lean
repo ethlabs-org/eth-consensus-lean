@@ -31,7 +31,7 @@ theorem held_candidate_of_rows {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   apply FrameGeometry.held_candidate_of_rows hrun.toLocalRun (projFG_localRun hrun hnc)
     hf hy i _ hGB hBt
@@ -100,7 +100,7 @@ theorem held_candidate_of_rows_by
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hst := Trace.upTo_state tr y ht
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt.1⟩

@@ -220,7 +220,7 @@ structure ReadInvWith (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
   caches : Ch (tr.state y i).fg.F ∧ Ch (tr.state y i).fg.J
   origin : ∀ C s, OriginBefore tr H C s i → O C s
   viable : ∀ m ≤ i, ∀ C s, O C s → C ∈ (Node.frame (tr.state y m)).tree →
-    (Node.frame (tr.state y m)).Anc C (Node.frame (tr.state y m)).fcRoot ∨
+    (Node.frame (tr.state y m)).Anc C (Node.frame (tr.state y m)).F ∨
       C ∈ (Node.frame (tr.state y m)).viableTree (Node.frame (tr.state y m)).tree
   vote_extends : ∀ C s, O C s → ∀ x ∈ H, ∀ k < i, ∀ e, AC.VoteAt tr.projAC x k e →
     s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg C
@@ -532,7 +532,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
     {y : Fin sp.n} (hy : y ∈ H) {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (m : Nat)
     (hOO : ∀ k < m, ∀ C s CV, AC.OptimisticLockAt tr.projAC y k s C CV → O C s)
     (hvi : ∀ k < m, ∀ C s, O C s → C ∈ (Node.frame (tr.state y k)).tree →
-      (Node.frame (tr.state y k)).Anc C (Node.frame (tr.state y k)).fcRoot ∨
+      (Node.frame (tr.state y k)).Anc C (Node.frame (tr.state y k)).F ∨
         C ∈ (Node.frame (tr.state y k)).viableTree (Node.frame (tr.state y k)).tree) :
     (tr.projAC.state y m).latestConfirmed = sp.genesisRoot ∨
       ∃ k < m, ∃ ℓk, tr.projAC.CallAt y k ℓk ∧ ∃ C ∈ ℓk.frame.tree,
@@ -567,7 +567,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
     have hΦ := (AC.frameIn_of_callAt hr hy hc).1
     have hframe : ℓ.frame = Node.frame (tr.state y m) := frame_of_projAC hrun hy hc
     have hcand : ∀ C ∈ ℓ.frame.tree, ∀ s, O C s →
-        C ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc C ℓ.frame.fcRoot := by
+        C ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc C ℓ.frame.F := by
       intro C hC s hO
       rw [hframe] at hC ⊢
       exact (hvi m (Nat.lt_succ_self m) C s hO hC).symm
@@ -603,7 +603,7 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
     (hle : ∀ k < i, tr.time k ≤ t) {R : AC.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
-    (hRf : ¬ (Node.frame (tr.state y i)).Anc R (Node.frame (tr.state y i)).fcRoot) :
+    (hRf : ¬ (Node.frame (tr.state y i)).Anc R (Node.frame (tr.state y i)).F) :
     0 ≤ t ∧ (R ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∨
       ∃ j, O R j ∧ (j : Int) <
         (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) := by
@@ -611,7 +611,7 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+    Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hst := projAC_state hrun.toLocalRun hy i
   have hts1 : ∀ a : Nat, sp.ts ((a + 1 : Nat) : Int) = sp.ts (a : Int) + 4 * sp.Δ := fun a => by
@@ -632,7 +632,7 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       rw [hRg]
       exact (hanc _ hΦ.rooted.1.1).mono fun X hX => ⟨y, hy, i, hX⟩
     rw [hRF]
-    exact hΦ.F_anc_fcRoot
+    exact Relation.ReflTransGen.refl
   all_goals
     have hCU : C ∈ tr.HonestBlocks H := (AC.frameIn_of_callAt hr hy hck).2 hCk
     obtain rfl : R = C := hU.1 (hΦU hR.1) hCU (hR.2.trans (hst ▸ hCr.symm))
@@ -717,7 +717,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
   have hac := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hac.coherent
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+    Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
     fun X hX => ⟨y, hy, i, hX.1⟩
   -- the record's block, the live lock blocks and `fc_root` are on the origin chain
@@ -726,7 +726,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
     obtain rfl : R = C₀ := hU.1 (hΦU hR.1) ⟨y, hy, i, hC₀⟩ (hR.2.trans hC₀r.symm)
     exact hgo
   set Φ := Node.frame (tr.state y i) with hΦdef
-  set S := AC.liveLockBlocks sp (tr.state y i).ac.locks Φ t ∪ {Φ.fcRoot}
+  set S := AC.liveLockBlocks sp (tr.state y i).ac.locks Φ t ∪ {Φ.F}
   have hSc : ∀ X ∈ S, X ∈ Φ.tree ∧ Ch X := by
     rintro X (⟨hX, l, ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩, hXr⟩ | hX)
     · obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
@@ -735,7 +735,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
       obtain rfl : B = L := hU.1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)
       exact ⟨hX, hI.anc _ _ (hΦU hX) (hva.mono hΦU) hLc⟩
     · rw [Set.mem_singleton_iff.1 hX]
-      refine ⟨hΦ.fcRoot_mem, ?_⟩
+      refine ⟨hΦ.rooted.1, ?_⟩
       change Ch (tr.state y i).fg.F
       exact hI.caches.1
   have hcomp : ∀ X Y, X ∈ Φ.tree → Y ∈ Φ.tree → Ch X → Ch Y →
@@ -744,7 +744,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
       (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
       fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hY h hX
   have hSsub : S ⊆ Φ.tree := fun X hX => (hSc X hX).1
-  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hSsub ⟨Φ.fcRoot, Or.inr rfl⟩
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hSsub ⟨Φ.F, Or.inr rfl⟩
   have ha : AC.getAnchor sp (tr.state y i).ac Φ t = D := by
     simp only [AC.getAnchor_eq_deepest_union hΦ, S, hD, Option.getD_some]
   have hDS := (AC.deepest_mem hD).1
@@ -752,7 +752,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
     (fun X hX Y hY => hcomp X Y (hSc X hX).1 (hSc Y hY).1 (hSc X hX).2 (hSc Y hY).2) hD
   refine ⟨ha ▸ hcomp D R (hSc D hDS).1 hR.1 (hSc D hDS).2 hRc, ?_⟩
   rw [ha]
-  by_cases hRf : Φ.Anc R Φ.fcRoot
+  by_cases hRf : Φ.Anc R Φ.F
   · exact Or.inl (hRf.trans (hdom _ (Or.inr rfl)))
   obtain ⟨ht0, hl | ⟨j, hO, hjl⟩⟩ := record_label_or_lock hrun hnc hy hI hle hR hRf
   · exact Or.inl (hdom R (Or.inl hl))

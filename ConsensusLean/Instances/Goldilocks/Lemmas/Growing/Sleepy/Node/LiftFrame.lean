@@ -79,7 +79,7 @@ theorem held_origin_viable_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocksAt H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hd := hrun.time_nonneg i
   have hst := RunTrace.upTo_state_of_le (y := y) hrun.time_mono (le_refl (tr.time i))

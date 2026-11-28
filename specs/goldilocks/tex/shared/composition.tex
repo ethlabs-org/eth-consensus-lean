@@ -120,13 +120,13 @@ The FG frame is what the FG gives to the AC.  It is derived from the FG
 state when used, and every AC call reads $\Call{fg\_to\_ac}{\Sigma}$ of the
 FG state at that call:
 \[
- \Fr=\Call{fg\_to\_ac}{\Sigma}=(\tree,\fcroot,\allowed).
+ \Fr=\Call{fg\_to\_ac}{\Sigma}=(\tree,F,\allowed).
 \]
 \begin{itemize}
 \item $\Fr.\tree$ is the set of the accepted blocks that
-  extend~$\Sigma.F$.  Write $\Fr.F$ for its root, the block~$\Sigma.F$.
-\item $\Fr.\fcroot$ is a block of $\Fr.\tree$: the root of the fork
-  choice.
+  extend~$\Sigma.F$.
+\item $\Fr.F=\Sigma.F$ is the sole root of the frame and the root of the fork
+  choice. The notation $\Fr.\fcroot$ denotes the same block, not a separate field.
 \item $\Fr.\allowed$ is a set of blocks of $\Fr.\tree$ that
   extend~$\Fr.\fcroot$: the blocks on which a head walk may stop.
 \end{itemize}

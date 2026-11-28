@@ -107,8 +107,8 @@ theorem vote_anchor_below_of_earlier_heads_at
   have hPhi := AC.frameIn_of_callAt hri.localRun hy hci
   have hPv := (KernelProof.proposal_viable_at_cast_primed_at' hframe hrun hnc hsvc hf hnr
     (by linarith [sp.toParams.hΔ]) hsp hp0 hpb hz hdes hP hPs hy hc hes).1
-  have hfP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P :=
-    Anc.mono hPhi.2 (hPhi.1.fcRoot_anc_viableHeads P hPv)
+  have hfP : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
+    Anc.mono hPhi.2 (hPhi.1.rooted.2 P (hPhi.1.viableHeads_subset hPv))
   have hlk : ∀ B ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Anc (tr.HonestBlocksAt H) B P := by
     intro B hB
@@ -121,7 +121,7 @@ theorem vote_anchor_below_of_earlier_heads_at
     exact (Anc.mono hPhi.2 (AC.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
   rw [AC.getAnchor_eq_deepest_union hPhi.1]
   rcases hD : AC.deepest ell.frame
-      (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot})
+      (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.F})
       with _ | D
   · exact hfP
   · rcases (AC.deepest_mem hD).1 with h | h

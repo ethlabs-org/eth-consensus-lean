@@ -61,7 +61,7 @@ def acOf (d : Nat) (hd : 0 < d) : NodeAC (P d hd) where
   proposal s _ _ := (s, none)
   toFG s _ _ := (s, none)
   confirmed _ Φ _ := Φ.F
-  head _ Φ _ := Φ.fcRoot
+  head _ Φ _ := Φ.F
   restart _ s _ _ := (s, [])
 
 /-- The attestation of validator `0` (the faulty one). -/

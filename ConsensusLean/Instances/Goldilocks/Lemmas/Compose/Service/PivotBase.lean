@@ -80,7 +80,7 @@ theorem anc_parent {U : Set (AC.Blk sp.n FGP)} (hU : Coherent U)
 
 /-- The anchor is a live lock block or `fc_root`. -/
 theorem anchor_mem (Φ : AC.Frm sp.n FGP) (A : AC.ACState sp.n) (t : Time) :
-    AC.getAnchor sp A Φ t ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} := by
+    AC.getAnchor sp A Φ t ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.F} := by
   unfold AC.getAnchor
   cases hd : AC.highestLiveLock sp A.locks Φ t with
   | none => exact Or.inr rfl
@@ -95,7 +95,7 @@ theorem anchor_tree {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp
     (t : Time) : AC.getAnchor sp A Φ t ∈ Φ.tree := by
   rcases anchor_mem Φ A t with h | h
   · exact h.1
-  · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
+  · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.rooted.1
 
 /-- The duty head of a proposal is the walk of the full viable tree from its start, the anchor
 after the proposal's unlocking. -/
@@ -403,8 +403,8 @@ theorem fcRoot_of_rows_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
     {R : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
     (hsrc : HonestRowsSourced tr H R y j) :
-    (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
-      R (Node.frame (tr.state y j)).fcRoot := by
+    (Node.frame (tr.state y j)).F.root = sp.genesisRoot ∨
+      R (Node.frame (tr.state y j)).F := by
   have hU : Coherent (tr.HonestBlocks H) :=
     (goldilocks_ac_projection_from hrun hnc).localRun.coherent
   have hR := fg_reachable hrun.toLocalRun hy j
@@ -432,8 +432,8 @@ theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hn
     (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) (hyK : y ∈ K.committee s) :
-    ℓ.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O := by
+    ℓ.frame.F.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.F O := by
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ := sp.toParams.hΔ

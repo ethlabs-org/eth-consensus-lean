@@ -74,7 +74,7 @@ theorem read_eq_record_of_current_votes_at
     (hrecord : ∀ R, AC.lookup (Node.frame (tr.state y i))
         (tr.state y i).ac.latestConfirmed = some R →
       (∀ X ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∪
-          {(Node.frame (tr.state y i)).fcRoot},
+          {(Node.frame (tr.state y i)).F},
         Goldilocks.Compatible (Node.frame (tr.state y i)).tree X R) ∧
       ((Node.frame (tr.state y i)).Anc R
           (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
@@ -120,7 +120,7 @@ theorem read_source_of_recent_result_at
             tr.time q ≤ b → s < e.msg.slot →
             (∀ w p e', p < q → Compose.Growing.HVoteAt tr H w p e' →
               s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg R) →
-            Anc (tr.HonestBlocksAt H) R ell.frame.fcRoot ∨
+            Anc (tr.HonestBlocksAt H) R ell.frame.F ∨
               R ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) ∧
           (∀ z q ell e, z ∈ H (tr.time q) → AC.CastAt tr.projAC z q ell e →
             tr.time q ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state z q).locks,

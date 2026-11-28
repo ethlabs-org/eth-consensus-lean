@@ -54,8 +54,8 @@ theorem frame_realized
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     FrameOK ell.frame := by
   rw [frame_of_call hrun hy hc]
-  exact (Store.frame_realization _ _ _ _ (fg_reachable_at hrun (hrun.time_nonneg i)
-    (fun k hk => hrun.time_mono hk.le) hy)).1
+  exact Store.frame_realization _ _ _ _ (fg_reachable_at hrun (hrun.time_nonneg i)
+    (fun k hk => hrun.time_mono hk.le) hy)
 
 /-- Proposal uniqueness before the proposer can be compromised uses only a local prefix. -/
 theorem proposal_unique_before_hold

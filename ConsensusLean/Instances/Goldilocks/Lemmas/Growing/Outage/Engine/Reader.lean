@@ -210,13 +210,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
       | some B => exact (AC.lookup_eq_some he).1
     exact hA.trans ((hΦ.rooted.2 _ hR).mono hΦU)
   -- Case B: `Σ.F` is below the tip
-  have hFt : Anc U st.fg.F B := by
-    have hFfc : Anc U st.fg.F (Node.frame st).fcRoot := hΦ.F_anc_fcRoot.mono hΦU
-    rcases hfc with h | h
-    · exact hFfc.trans h
-    · rcases Anc.total hU hFfc h with h' | h'
-      · exact h'
-      · exact absurd h' hA
+  have hFt : Anc U st.fg.F B := hfc.resolve_right hA
   -- `Σ.F` grows along the reader's cuts
   have hFc : ∀ c, c ≤ j → Anc U (tr.state ŵ c).fg.F st.fg.F :=
     fun c hc => Compose.Growing.F_mono_at hrun ht0 hŵ hjt hc
@@ -332,7 +326,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
         rcases hX with hX | hX
         · exact compatible_tree hΦ hU hΦU hX.1 hBtree (hlocks X hX)
         · rw [Set.mem_singleton_iff.1 hX]
-          exact compatible_tree hΦ hU hΦU hΦ.fcRoot_mem hBtree hfc
+          exact compatible_tree hΦ hU hΦU hΦ.rooted.1 hBtree hfc
     exact anc_acHead_of_current_certificate hΦ hΦU
       (Or.inr ⟨hBtree, hanchor, (hviab hBtree).imp_right fun h => ⟨h, hL3⟩⟩)
 

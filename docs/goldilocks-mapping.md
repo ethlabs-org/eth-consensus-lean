@@ -147,12 +147,12 @@ digests `(parent root, slot, attestations, AC payload)` without the proposer (in
 §"Goldilocks model choices"); its collision-freedom is about the two blocks' contents, not the whole digest. `Block.input : Nat` is the engine's header input
 (`encodeTxs mempool`), which the spec folds into the AC payload (the AC fixes its payload's encoding): it is
 digested, compared by F.3 and `NoCollOn`, written by the proposer's tick and read by no handler
-(`docs/decisions.md` §"Goldilocks model choices"). `Frame` carries `F` as a field (composition.tex derives it
-as the root of the tree; under `FrameOK` it is that root). `FrameOK` adds "roots injective on the tree", which
+(`docs/decisions.md` §"Goldilocks model choices"). `Frame` and composition.tex both carry `F` in the frame
+tuple as its sole root. `FrameOK` adds "roots injective on the tree", which
 `fg_on_block`'s duplicate-root test gives. The sequence statements of G0.3 (frame) assume that the trees lie in
 one coherent set `U` (at a node, the accepted tree): frames alone allow a block that left the tree to come back
 under a reused root. Witnesses in `ConsensusLeanTest/Goldilocks/Frame/Statements.lean`,
-all kind (a): `frameOK_Φ₀`, `frameOK_Φ₁`, `step_Φ₀_Φ₁`, `step_Φ₁_Φ₂`, `seq_hyps`.
+all kind (a): `frameOK_Φ₀`, `step_Φ₀_Φ₁`, `step_Φ₁_Φ₂`, `seq_hyps`.
 
 ## FGStore
 
@@ -166,7 +166,7 @@ lemma (`Store.CacheAcceptance`, `Store.cache_acceptance`). The static bundles ar
 |---|---|---|---|---|
 | — | SPEC `shared/fg.tex` §Attestations (`δ_t`, proposer, genesis) | FG parameters from the shared ones; node block; FG view; genesis | — | `Consensus.Goldilocks.Params.fg`, `Consensus.Goldilocks.NodeBlock`, `Consensus.Goldilocks.Block.fgView`, `Consensus.Goldilocks.Params.genesisBlock` |
 | — | SPEC `shared/composition.tex` §State | `Σ` (tree and chain states by root), its tree, ancestry, initial state | — | `Consensus.Goldilocks.Store`, `Consensus.Goldilocks.Store.tree`, `Consensus.Goldilocks.Store.Anc`, `Consensus.Goldilocks.Store.init` |
-| — | SPEC `shared/fg.tex` §Finality caches and frame | `is_viable`, `has_viable_descendant`, `fg_to_ac` (fork-choice root `Σ.F`); the analysis notions `fg_contest`, head height floor and the former `get_fc_root` (not read by the protocol) | — | `Consensus.Goldilocks.Store.Contest`, `Consensus.Goldilocks.Store.headHeightFloor`, `Consensus.Goldilocks.Store.fcRoot`, `Consensus.Goldilocks.Store.IsViable`, `Consensus.Goldilocks.Store.HasViableDescendant`, `Consensus.Goldilocks.Store.toFrame` |
+| — | SPEC `shared/fg.tex` §Finality caches and frame | `is_viable`, `has_viable_descendant`, `fg_to_ac` (sole root `Σ.F`) | — | `Consensus.Goldilocks.Store.IsViable`, `Consensus.Goldilocks.Store.HasViableDescendant`, `Consensus.Goldilocks.Store.toFrame` |
 | — | SPEC `shared/fg.tex` Figure "FG: handlers, finality caches and frame" | `fg_on_attestation`, `update_finality`, `fg_on_block`; store steps; reachable states | — | `Consensus.Goldilocks.Store.onAttestation`, `Consensus.Goldilocks.Store.addAtts`, `Consensus.Goldilocks.Store.LexLt`, `Consensus.Goldilocks.Store.updateFinality`, `Consensus.Goldilocks.Store.onBlock`, `Consensus.Goldilocks.Store.Step`, `Consensus.Goldilocks.Store.Reachable` |
 | — | SPEC `shared/fg.tex` Figure "FG: handlers, finality caches and frame" | `fg_attest`, `proposal_attestations` | — | `Consensus.Goldilocks.Store.attest`, `Consensus.Goldilocks.Store.OnChain`, `Consensus.Goldilocks.Store.proposalAttestations` |
 | G0.1 (store) | CLAIMS G0.1 (store) | `Σ.σ[B]` is the fold over `B`'s chain | FGStore | `Consensus.Goldilocks.Store.LinkedFromGenesis`, `Consensus.Goldilocks.Store.ChainStateOfChain` |
@@ -174,7 +174,7 @@ lemma (`Store.CacheAcceptance`, `Store.cache_acceptance`). The static bundles ar
 | G0.3 | CLAIMS G0.3 | cache invariants | FGStore | `Consensus.Goldilocks.Store.CacheInvariants` |
 | C0.2 | CLAIMS C0.2 (the `Σ` half) | the finalized tip moves only to descendants; not certified on its own: it follows from `AcceptIsFrameStep` and `TreeGrows`, and the definition is in `Lemmas/FGStore/Frame` | FGStore | `Consensus.Goldilocks.Store.FinalizedMonotone` |
 | G0.3 (frame) | CLAIMS G0.3 (frame) | an acceptance is a frame step | FGStore | `Consensus.Goldilocks.Store.AcceptIsFrameStep` |
-| G0.4 (height) | CLAIMS G0.4 (height) | `fg_to_ac(Σ)` is well formed; the head height floor | FGStore | `Consensus.Goldilocks.Store.FrameRealization` |
+| G0.4 (height) | CLAIMS G0.4 (height) | `fg_to_ac(Σ)` is well formed | FGStore | `Consensus.Goldilocks.Store.FrameRealization` |
 | G0.2 (c), (h) | CLAIMS G0.2 (c), (h) at the store; the `M₁` refinement obligation on `(h_c, T_c)` | the entry, finalized and justified roots of `σ[B]` name accepted ancestors; the entry state has `B`'s height and entry | FGStore | `Consensus.Goldilocks.Store.EntryStateOfSource` |
 | — | the bundle | all of the above | FGStore | `Consensus.Goldilocks.Store.FGStoreLocalAt`, `Consensus.Goldilocks.Store.FGStoreLocal` |
 | — | CLAIMS C0.4, C0.5 (c) | FG state with the record; the execution law of an FG call; an FG trace; the FG trace contract (initial state, execution, trees in `U`, time order, signing at public times, own proposal first and from the pool, attest before receipts, unforgeability) | — | `Consensus.Goldilocks.FGState`, `Consensus.Goldilocks.FGLabel.Step`, `Consensus.Goldilocks.FGLabel.processed`, `Consensus.Goldilocks.FGTrace`, `Consensus.Goldilocks.FGTrace.SignAt`, `Consensus.Goldilocks.FGTrace.AcceptAt`, `Consensus.Goldilocks.FGTrace.ProcessAt`, `Consensus.Goldilocks.FGLocalRun` |
@@ -318,8 +318,8 @@ Modelling choices:
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
   lock of a slot `s'` with `slot(t) ≤ s' + 2` that the node wrote at a cut after `τ` (a lock moves only back).
 - **A1.9** follows the claims. The calling node `x` either (i) cast its
-  slot-`(s+1)` vote before the call, with `Φ.F` compatible with `B` at that vote's call (its unlocking; the
-  claims also ask `fc_root`), or (ii) restarted after `t_s`. It is not a vacuous "at each unlocking": that earlier form
+  slot-`(s+1)` vote before the call, with `Φ.F` compatible with `B` at that vote's call (its unlocking;
+  `fc_root` denotes the same `Φ.F`), or (ii) restarted after `t_s`. It is not a vacuous "at each unlocking": that earlier form
   is false. C1.1 discharges the disjunction by C0.4.
 - **A1.2** follows the claims' text without a writer-pool hypothesis. That condition (A1.8 (d)) follows from
   `Sync`: a declared head vote counts at the voter only when its pool holds the vote or two distinct votes of

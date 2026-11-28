@@ -7,8 +7,8 @@ public section
 /-! # Goldilocks Compose/AnyAC: the interface at any AC
 
 Each frame-level consequence uses only requirement 1, 2 or 3 at a reachable state, whose frame
-is well formed (`FrameIn`, from the call law): a block above `fc_root` is in the tree and extends
-`Φ.F`, since `Φ.F ⪯ fc_root ∈ Φ.tree` and the tree is rooted at `Φ.F`. -/
+is well formed (`FrameIn`, from the call law): a block above `Φ.F` is in the tree
+because `Φ.F` is in it. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -28,10 +28,10 @@ private theorem mem_of_anc_mem {S : Set A.Blk} {X Y : A.Blk} (h : Anc S X Y) (hX
   · exact he ▸ hX
   · exact (Anc.mem h he).2
 
-/-- A block above `fc_root` in a well-formed frame is in the tree and extends `Φ.F`. -/
-private theorem held_of_fcRoot_anc {Φ : A.Frm} (hΦ : FrameOK Φ) {X : A.Blk} (h : Φ.Anc Φ.fcRoot X) :
+/-- A block above the finalized tip of a well-formed frame is in its tree. -/
+private theorem held_of_fcRoot_anc {Φ : A.Frm} (hΦ : FrameOK Φ) {X : A.Blk} (h : Φ.Anc Φ.F X) :
     X ∈ Φ.tree ∧ Φ.Anc Φ.F X :=
-  ⟨mem_of_anc_mem h hΦ.fcRoot_mem, hΦ.F_anc_fcRoot.trans h⟩
+  ⟨mem_of_anc_mem h hΦ.rooted.1, h⟩
 
 variable (A)
 
@@ -51,9 +51,8 @@ theorem proposal_parent_held : ProposalParentHeld A := by
 /-- **The source is held.** -/
 theorem source_held : SourceHeld A := by
   intro hreq self U hU s Φ t₀ hr t ht C hC
-  have hΦ := (frameIn_of_reachableAt hr).1
   obtain ⟨hCt, hfC, -⟩ := hreq self U hU s Φ t₀ hr t ht C hC
-  exact ⟨hCt, hΦ.F_anc_fcRoot.trans hfC⟩
+  exact ⟨hCt, hfC⟩
 
 /-- **Duty heads are held.** -/
 theorem duty_heads_held : DutyHeadsHeld A := by

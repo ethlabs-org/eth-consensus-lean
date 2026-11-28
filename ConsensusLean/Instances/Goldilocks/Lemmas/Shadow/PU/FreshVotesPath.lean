@@ -129,7 +129,7 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
-    (hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot d.head)
+    (hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.F d.head)
     (hK : CommitteeHalfUpTo tr H K g b) :
     (P ∈ {B | B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some d.head.root ∧ AC.headEligible sp ell.frame (tr.time i)
@@ -166,7 +166,7 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
   have hQP : Anc (tr.HonestBlocksAt H) d.head P :=
     .single ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
   have hQy := AC.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2 hPv.1.1 hQP
-    ((hPhi.1.F_anc_fcRoot.mono hPhi.2).trans hrootQ)
+    hrootQ
   have hiplo : sp.ts s₀ ≤ tr.time ip := by
     rw [hti]; exact (AC.ts_le_iff sp).2 (by exact_mod_cast hs₀)
   have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
@@ -239,7 +239,7 @@ theorem vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s M : Nat}
   have hcp' : (tr.projAC.upTo (tr.time ip)).CallAt z ip ellp :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hcp⟩
   have hPhip := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg ip)).localRun hz' hcp'
-  have hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot d.head :=
+  have hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.F d.head :=
     (Anc.mono hPhi.2 ((AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)).trans haX)).trans
       (hXQ.mono hPhip.2)
   obtain ⟨hstepP, hstopP⟩ := proposal_stop_before_at hframe hrun hnc hsvc hawake hf hcatch
