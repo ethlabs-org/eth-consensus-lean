@@ -352,7 +352,7 @@ theorem high_J_root_of_held_before_quarantine_at {cm : Time → Finset (Fin sp.n
     change 3 * (H (tr.time k))ᶜ.ncard ≤ sp.toParams.n - 1 at hf
     change (H (tr.time k))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     clear * - hn hf; omega
-  exact LocalSources.high_frame_root_before (goldilocksNode sp).genesisPayload
+  exact (LocalSources.high_roots_before (goldilocksNode sp).genesisPayload
     (fun v i => (tr.state v i).fg) tr.time (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
     (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) (tr.time k) hU
     hrun.time_mono
@@ -360,8 +360,8 @@ theorem high_J_root_of_held_before_quarantine_at {cm : Time → Finset (Fin sp.n
       fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) hv, hX⟩)
     (Outcome.local_observations hrun hnc _ _ (tr.time k))
     (Outcome.local_sources hrun hnc g (tr.time k) (hp.snapshot.imp fun _ h => h.1) hpre)
-    y k B (Node.frame (tr.state y k)) hyz le_rfl hreach hgB hq hhigh
-    (fun v r l O hrk _ ho => hcompare v r l O hrk ho) rfl
+    y k B hyz le_rfl hreach hgB hq hhigh
+    (fun v r l O hrk _ ho => hcompare v r l O hrk ho)).2
 
 /-- A cut of a node honest at it, with a high justified height, has its store's finalized-chain
 root compatible with every held block compatible with the earlier origins: the high origins, and

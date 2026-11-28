@@ -85,23 +85,6 @@ def HighRootsBefore (acp₀ : ACP) (st : Fin P.n → Nat → Store P ACP) (time 
     (∀ v r l O, r < k → time r ≤ b → Origin v r l O → Compatible U B O) →
     Compatible U (st y k).J B ∧ Compatible U (st y k).F B
 
-/-- Call-facing contract: the instance must supply the actual frame equality, not merely
-an arbitrary frame with a compatible root. No call or engine semantics is assumed here. -/
-def HighFrameRootBefore (acp₀ : ACP) (st : Fin P.n → Nat → Store P ACP) (time : Nat → Time)
-    (H : Time → Set (Fin P.n)) (Sign : Fin P.n → Nat → FG.Att P.n → Prop)
-    (Origin : Fin P.n → Nat → Nat → NodeBlock P ACP → Prop)
-    (Joined : Fin P.n → Time → Prop) (U : Set (NodeBlock P ACP))
-    (Hz : Nat) (b : Time) : Prop :=
-  Coherent U → Monotone time →
-  (∀ v i, v ∈ H (time i) → time i ≤ b → (st v i).tree ⊆ U) →
-  Observations st time H Sign Hz b → Sources st time H Sign Origin Joined U Hz b →
-  ∀ y k B (frame : Frame P.n (List (FG.Att P.n)) ACP),
-    y ∈ H (time k) → time k ≤ b → (st y k).Reachable acp₀ →
-    Anc U (P.genesisBlock acp₀) B → (H (time k))ᶜ.ncard < P.fg.q →
-    Hz + 1 ≤ (st y k).hj →
-    (∀ v r l O, r < k → time r ≤ b → Origin v r l O → Compatible U B O) →
-    frame = (st y k).toFrame → Compatible U frame.F B
-
 end Consensus.Goldilocks.LocalSources
 
 end
