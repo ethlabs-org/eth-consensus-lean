@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -73,28 +74,6 @@ private theorem deadline_eq {y : Fin sp.n} {c : Nat} {τ : Time}
   · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_eq_coe hw
     simp [Option.elim, max_eq_left (h k hk hrk)]
 
-private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat} {ini}
-    (hr : ACLocalRun (goldilocksAC sp FGP) K U tr ini)
-    {Y : Fin sp.n} (hY : Y ∈ K) {s : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP)} (hu : UpdateAt tr Y c s ℓ) :
-    ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
-  obtain ⟨hc, hcall, ht, hj⟩ := hu
-  have hΔ := sp.toParams.hΔ
-  have he := hr.exec c ℓ hc.2 (hc.1 ▸ hY)
-  rw [hc.1, hcall] at he
-  have hpost : joined sp (tr.post c) (tr.time c) := by
-    unfold joined at hj ⊢
-    rw [show tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 from
-      (congrArg Prod.fst he).symm, onTick_restartTime]
-    exact hj
-  have hsl : sp.slot (tr.time c) = s + 1 :=
-    CompatibleSides.slot_of_lt (s := s + 1)
-      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
-      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
-  intro k hk hrk
-  have h := (AC.joined_awakeU sp FGP _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
-  rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
-
 /-- A result's counted seats have genuine releases by its writer, even after compromise. -/
 theorem result_side {ini} (hrun : ACRun proposer tr H U ini)
     {Y : Fin sp.n} {c s : Nat} (hY : Y ∈ H (tr.time c))
@@ -114,7 +93,7 @@ theorem result_side {ini} (hrun : ACRun proposer tr H U ini)
   obtain ⟨ℓ, hu, _, rfl⟩ := hR
   have hu' := (upTo_updateAt hm).mpr ⟨le_rfl, hu⟩
   obtain ⟨_, hΦU⟩ := frameIn_of_callU hr.localRun.toU hY hu'.1
-  have hrs := update_restarts hr.localRun hY hu'
+  have hrs := Compose.update_restarts hr.localRun hY hu'
   refine ⟨ℓ, _, hu.1, hu.2.2.1, ?_, hmaj, ?_, ?_⟩
   · intro k hk hkr
     exact hrs k hk ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP)).mpr ⟨hm hk, hkr⟩)

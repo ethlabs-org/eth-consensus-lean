@@ -1,36 +1,19 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks under `Sleepy`: the restarts of a joined updater
-
-`update_restarts`: the restarts of an honest node up to its update of slot `s` (joined) are at or
-before `t_s`. -/
+/-! # Goldilocks under `Sleepy`: the restarts of a joined updater -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams Payload)
+open AC (ACParams)
 
 variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP}
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/

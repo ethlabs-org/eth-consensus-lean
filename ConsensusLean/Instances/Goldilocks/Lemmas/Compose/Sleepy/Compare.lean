@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 
 public section
 
@@ -55,38 +56,8 @@ private theorem acOnTick_votes (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp
 private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
   add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
 
-private theorem add_mul_delta_lt {x a b : Time} (h : a < b) : x + a * sp.Δ < x + b * sp.Δ :=
-  add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right h sp.toParams.hΔ)
-
 private theorem add_delta_add_delta (x : Time) : x + sp.Δ + sp.Δ = x + 2 * sp.Δ := by
   rw [add_assoc, ← two_mul]
-
-/-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
-`t_s`. -/
-private theorem update_restarts {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
-    {Y : Fin sp.n}
-    (hY : Y ∈ H) {c s : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hu : UpdateAt tr Y c s ℓ) :
-    ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
-  obtain ⟨hc, hcall, ht, hj⟩ := hu
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have he := hr.exec c ℓ hc.2 (hc.1 ▸ hY)
-  rw [hc.1, hcall] at he
-  have hpost : joined sp (tr.post c) (tr.time c) := by
-    have : tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 :=
-      (congrArg Prod.fst he).symm
-    unfold joined at hj ⊢
-    rw [this, show (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1.restartTime =
-      (tr.state Y c).restartTime from step_restartTime Y _ _ _ .tick nofun]
-    exact hj
-  have hsl : sp.slot (tr.time c) = s + 1 :=
-    CompatibleSides.slot_of_lt (s := s + 1)
-      (by
-        rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_add, add_zero]
-        exact add_mul_delta_le (by norm_num))
-      (by rw [ht, ts_add, add_assoc, ← add_mul]; exact add_mul_delta_lt (by norm_num))
-  intro k hk hrk
-  have := (joined_awakeU sp FGP H U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
-  rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
@@ -112,7 +83,7 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
   have hmaj := result_majority hR
   obtain ⟨ℓ, hu, -, rfl⟩ := hR
   obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hY hu.1
-  refine ⟨ℓ, _, hu.1, hu.2.2.1, update_restarts hr hY hu, hmaj, ?_, ?_⟩
+  refine ⟨ℓ, _, hu.1, hu.2.2.1, Compose.update_restarts hr hY hu, hmaj, ?_, ?_⟩
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvs := state_pool_slotU sp hr.toU (fun _ => voteStart_initial _) hY c s v hvp
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
@@ -298,7 +269,7 @@ theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg 
       (AC.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
   have := AC.sync_window_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
     (ha.trans hsk) hkb hX hu.1
-    (fun k' hk' hr' => (AC.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    (fun k' hk' hr' => (update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
       have : sp.slot t = s := AC.slot_of_mem sp s (hsk.trans h₁) (by
@@ -339,7 +310,7 @@ theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini
       (AC.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
   have := AC.sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy
     ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ ((ts_nonneg s).trans hsk) hkb hX hu.1
-    (fun k' hk' hr' => (AC.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    (fun k' hk' hr' => (update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
       have : sp.slot t = s := AC.slot_of_mem sp s (hsk.trans h₁) (by

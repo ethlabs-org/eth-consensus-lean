@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -58,28 +58,6 @@ private theorem cast_time_le {K : Set (Fin sp.n)}
     change (acRestart sp y A ℓ.frame (tr.time i)).2 ≠ [] at hne
     exact absurd ((restart_state sp) FGP y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1 hne
 
-private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
-    (hr : ACLocalRun (goldilocksAC sp FGP) K U tr ini)
-    {Y : Fin sp.n} (hY : Y ∈ K) {s : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP)} (hu : UpdateAt tr Y c s ℓ) :
-    ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
-  obtain ⟨hc, hcall, ht, hj⟩ := hu
-  have hΔ := sp.toParams.hΔ
-  have he := hr.exec c ℓ hc.2 (hc.1 ▸ hY)
-  rw [hc.1, hcall] at he
-  have hpost : joined sp (tr.post c) (tr.time c) := by
-    unfold joined at hj ⊢
-    rw [show tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 from
-      (congrArg Prod.fst he).symm, onTick_restartTime]
-    exact hj
-  have hsl : sp.slot (tr.time c) = s + 1 :=
-    CompatibleSides.slot_of_lt (s := s + 1)
-      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
-      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
-  intro k hk hrk
-  have h := (AC.joined_awakeU sp FGP _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
-  rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
-
 theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : Nat}
     (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksAC sp FGP)}
     (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
@@ -113,7 +91,7 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
     rwa [Trace.upTo_time, hsi, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
   have hrsX : ∀ j ≤ i₀, tr.RestartAt X j → tr.time j ≤ sp.ts s := by
     intro j hj hjr
-    exact update_restarts hrX.localRun hX hup' j hj
+    exact Compose.update_restarts hrX.localRun hX hup' j hj
       ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP)).mpr ⟨hm hj, hjr⟩)
   intro v hv
   have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
