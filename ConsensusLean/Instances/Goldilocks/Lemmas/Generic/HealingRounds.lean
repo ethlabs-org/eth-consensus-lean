@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
@@ -139,7 +139,9 @@ section HighProposal
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
 
+open AC (gbar)
 open Healing (cutZ)
+open Healing.Growing (HZ IsReset)
 
 /-- The fault bound up to the horizon gives fewer than `q` faulty nodes there. -/
 theorem faults_lt_q {H : Time → Set (Fin P.n)} {b : Time}
@@ -162,35 +164,57 @@ theorem shiftDelay_le {P : Params} (d : Nat) {t t' : Time} (h : t ≤ t') :
     shiftDelay P d t ≤ shiftDelay P d t' := by
   simp only [shiftDelay_eq_add, add_le_add_iff_right, h]
 
-/-- Leaf 10: a warm high honest proposal forces a reset by the next slot's report deadline. The
-leaf's premises are `Premises`; `ACHealing.report_follow` gives a report above the proposal by an
-observer honest at the horizon, which is honest at `c_z` and at the report, and the report is at
-least as high as the proposal in the reader's store; leaf 6 gives the reset. -/
-theorem reset_of_high_proposal_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
-    reset_of_high_proposal_at A sg O := by
-  intro cm proposer dg H tr βK g ΔF b s₀ u N floor kindJ J B z kB hβ hcom hframe hrun hnc hsvc
-    hawake hf hcatch hnr hsl htd hsnap hm hs₀ hwarm hN hmb hH hz hdes hB hBs hh
+/-- **Leaf 10 under vote latency `D`**: a warm high honest proposal forces a reset by `D` after
+the next slot's report deadline. `ACHealing.report_follow` gives a report above the proposal by
+an observer honest at the horizon, which is honest at `c_z` and `D` after the report, and the
+report is at least as high as the proposal in the reader's store; leaf 6 under latency
+(`reset_of_high_report_within_from`) gives the reset. -/
+theorem reset_of_high_proposal_within_of_healing {hold : Time} (O : ACHealing A sg runs hold)
+    {cm proposer dg H tr} {βK : ℚ} {g ΔF b D : Time} {s₀ u N M : Nat} {isTop : Prop}
+    {J B : A.Blk} {z : Fin P.n} {kB : Nat}
+    (hβ : βK ≤ 1 / 2) (hframe : SlotWindowWithin tr H O.reportDelay s₀ N M isTop J)
+    (hrun : runs.Run cm proposer dg H tr) (hP : Premises tr H cm βK proposer dg sg g ΔF b hold)
+    (hlat : VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hm : gbar g + 4 * P.Δ ≤ P.slotTime s₀) (hwarm : s₀ + O.warmup ≤ u) (hN : u + 1 ≤ N)
+    (hmb : shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b)
+    (hDb : shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + D ≤ b)
+    (hz : z ∈ H (P.slotTime u + P.Δ)) (hdes : z = proposer u) (hB : tr.ProposesAt z kB B)
+    (hBs : B.slot = u) (hh : HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h) :
+    ∃ a, IsReset tr H g a ∧
+      a ≤ shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + D := by
   have hrl := runs.run_local hrun
   have hΔ := P.hΔ
-  obtain ⟨y, hy⟩ := hH
-  have hP : Premises tr H cm βK proposer dg sg g ΔF b hold :=
-    ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, ⟨y, hy⟩⟩
+  obtain ⟨y, hy⟩ := hP.nonempty
   have hu1N : P.slotTime (u + 1) ≤ P.slotTime N := P.slotTime_strictMono.monotone hN
   have hdeadline := shiftDelay_le (P := P) O.reportDelay (add_le_add_left hu1N (2 * P.Δ))
   obtain ⟨i, R, hyi, hR, -, hti, hBR, -⟩ := O.report_follow hβ hrun hP hframe hm hwarm hN hmb
     ⟨hz, hdes, hB, hBs⟩ y (hrl.antitone (hdeadline.trans hmb) hy)
   have hzk : z ∈ H (tr.time kB) := hrl.antitone (by rw [hB.2.2, hBs]; linarith) hz
   obtain ⟨-, hBRs, hσ⟩ :=
-    proposal_below_held_at hrun hnc hzk hB hyi hBR (O.report_in_frame hrun hyi hR).1
+    proposal_below_held_at hrun hP.noColl hzk hB hyi hBR (O.report_in_frame hrun hyi hR).1
   have hBR' := Healing.h_le_of_store_anc
     (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hyi) hBRs
   rw [← hσ] at hBR'
-  obtain ⟨k, hk, hkb⟩ := hsnap
-  have hmaxb : max (cutZ P g) (tr.time i) ≤ b :=
-    max_le (hk.2.le.trans hkb) (hti.trans (hdeadline.trans hmb))
-  obtain ⟨a, ha, hat⟩ := reset_of_high_report_at_from hrl (hrl.antitone hmaxb hy)
-    (faults_lt_q hf ((hrl.time_nonneg i).trans (le_max_right _ _)) hmaxb) hR (hh.trans hBR')
-  exact ⟨a, ha, hat.trans hti⟩
+  obtain ⟨k, hk, hkb⟩ := hP.snapshot
+  have hmaxb : max (cutZ P g) (tr.time i + D) ≤ b :=
+    max_le (hk.2.le.trans hkb) (by linarith)
+  obtain ⟨a, ha, hat⟩ := reset_of_high_report_within_from hrl hlat (hrl.antitone hmaxb hy)
+    (faults_lt_q hP.faults ((add_nonneg (hrl.time_nonneg i) hD).trans (le_max_right _ _)) hmaxb)
+    hR (hh.trans hBR')
+  exact ⟨a, ha, by linarith⟩
+
+/-- Leaf 10 is the latency-`0` case of `reset_of_high_proposal_within_of_healing`: every node
+run meets latency `0` (`voteLatency_zero_from`). -/
+theorem reset_of_high_proposal_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
+    reset_of_high_proposal_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b s₀ u N floor kindJ J B z kB hβ hcom hframe hrun hnc hsvc
+    hawake hf hcatch hnr hsl htd hsnap hm hs₀ hwarm hN hmb hH hz hdes hB hBs hh
+  have hu1N : P.slotTime (u + 1) ≤ P.slotTime N := P.slotTime_strictMono.monotone hN
+  have hdeadline := shiftDelay_le (P := P) O.reportDelay (add_le_add_left hu1N (2 * P.Δ))
+  simpa only [add_zero] using reset_of_high_proposal_within_of_healing O hβ hframe hrun
+    ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, hH⟩
+    (voteLatency_zero_from (runs.run_local hrun)) le_rfl hm hwarm hN hmb
+    (by rw [add_zero]; exact hdeadline.trans hmb) hz hdes hB hBs hh
 
 end HighProposal
 

@@ -36,8 +36,8 @@ reads a reset:
 * `unanimous_carry_votes_core_at`: the slot-`u` votes of nodes honest at their casts are carried
   to a slot-`(u+1)` cast;
 * `unanimous_next_vote_viable_core_at`: the unanimous proposal `P` is in the frozen viable tree of
-  a slot-`(u+1)` cast, given the caster's own slot-`u` vote by `t_u + Δ`, its fork-choice root
-  below `P`, and its head-height floor at or below `P`;
+  a slot-`(u+1)` cast, given the caster's own slot-`u` vote by `t_u + Δ`, its finalized tip
+  below `P`, and viability of `P`;
 * `unanimous_next_votes_extend_core_at`: every slot-`(u+1)` vote extends `P`, by strong induction
   on the vote's cut, with the batch counted at the voter's cut (every validator honest at
   `t_{u+1}` voted in slot `u` by `t_u + Δ`, and the fault bound at the cut);
@@ -268,7 +268,7 @@ theorem unanimous_head_accepted_core_at
 
 /-- **The unanimous proposal is in the frozen viable tree of a slot-`(u+1)` cast** of a node
 honest at it, given a slot-`u` vote by `t_u + Δ` of some node honest at it, the caster's
-fork-choice root below `P`, and its head-height floor at or below `P` once `P` is held. The
+fork-choice root below `P`, and viability of `P` once `P` is held. The
 caster accepts `P` before the freeze `t_u + 3Δ` (`unanimous_head_accepted_core_at`). Only the
 caster's own restarts before the cast are bounded. -/
 theorem unanimous_next_vote_viable_core_at
@@ -286,33 +286,21 @@ theorem unanimous_next_vote_viable_core_at
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g)
     (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
       tr.time q ≤ sp.ts u + sp.Δ)
-    (hroot : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
-    (hfloor : P ∈ (tr.state y j).fg.tree →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h) :
+    (hroot : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P)
+    (hviable : P ∈ (tr.state y j).fg.tree →
+      (tr.state y j).fg.IsViable P) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
   have hm := hrun.time_mono
   have hd := hrun.time_nonneg j
   have hΔ := sp.toParams.hΔ
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
   have hr := (acRun_upTo_time hrun hnc j).localRun
   have hc' := castAt_upTo_of_le le_rfl hcast
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
-  have hj : ∀ k < j, tr.time k ≤ tr.time j := fun _ h => hm h.le
-  have hreach := fg_reachable_at hrun hd hj hy
-  have hcache := Store.cache_invariants _ _ _ _ hreach
-  have hFroot : (tr.state y j).fg.Anc (tr.state y j).fg.F (tr.state y j).fg.fcRoot := by
-    unfold Store.fcRoot
-    split_ifs
-    · exact hcache.2.2.1
-    · exact .refl
-  have hFrootU := hFroot.mono fun X hX =>
-    (⟨y, j, tr.time j, hd, hj, hy, hX⟩ : X ∈ tr.HonestBlocksAt H)
-  have hFPu := hFrootU.trans hroot
   have hrootFrame : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
     rw [Outcome.frame_of_call hrun hy hcast.1]
-    exact hFPu
+    exact hroot
   -- the cast is at `t_{u+1}` or later
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time j := by
     have h := (AC.castAt_specU hr.toU hy hc').2.1
@@ -343,38 +331,11 @@ theorem unanimous_next_vote_viable_core_at
     have hmem := hPt.1
     rw [hfr, hst] at hmem
     exact hmem.1
-  have hfl := hfloor hstore
   have hroot' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hrootp hPt.1
   refine ⟨Anc.mono hsub hFP, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
-  rw [hfr, hst] at hmem hroot' ⊢
-  refine ⟨hmem.1, hmem.2, ?_⟩
-  have hrootStore := Store.anc_of_anc_universe hreach hU
-    (fun X hX => ⟨y, j, tr.time j, hd, hj, hy, hX⟩) hroot hstore
-  by_cases hh : (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ P.root).h
-  · exact Or.inl hh
-  have hpred : ((tr.state y j).fg.σ P.root).h + 1 = (tr.state y j).fg.hmax := by
-    have hb : (tr.state y j).fg.hmax - 1 ≤ (tr.state y j).fg.headHeightFloor := by
-      unfold Store.headHeightFloor
-      split_ifs <;> omega
-    omega
-  refine Or.inr ⟨hpred, ?_⟩
-  by_cases hgap : (tr.state y j).fg.hj + 1 < (tr.state y j).fg.hmax
-  · exact Or.inl hgap
-  right
-  have htop : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 := by
-    obtain ⟨C, hC, -, hCh⟩ := hcache.2.2.2.1
-    have := Store.hj_lt_h hreach hC
-    have := hcache.2.2.2.2.1 C hC
-    omega
-  have hnc : ¬ (tr.state y j).fg.Contest := by
-    intro hc
-    have hf : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax := by
-      simp only [Store.headHeightFloor, ite_eq_left hc]
-    omega
-  simpa only [Store.fcRoot, ite_eq_left (show
-    (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest from
-      ⟨htop, hnc⟩)] using hrootStore
+  rw [hfr, hst] at hmem ⊢
+  exact ⟨hmem.1, hmem.2, hviable hstore⟩
 
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/
@@ -399,7 +360,7 @@ strong induction on the vote's cut. The batch is counted at the voter's cut amon
 committee: its members honest at `t_{u+1}` voted in slot `u` by `t_u + Δ` (`hvotes`), and CS at the
 cut (`hfault`) leaves more than half of the committee honest then; CS2 bounds the slot-`(u+1)`
 committee (`hcs2`). One slot-`u` vote by `t_u + Δ` (`hwit`) puts `P` in every caster's frame. The
-fork-choice root and the head-height floor of each cast (`hroot`, `hfloor`) are inputs. -/
+finalized tip and proposal viability of each cast (`hroot`, `hviable`) are inputs. -/
 theorem unanimous_next_votes_extend_core_at
     {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -423,10 +384,10 @@ theorem unanimous_next_votes_extend_core_at
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hroot : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
-    (hfloor : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P)
+    (hviable : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b → P ∈ (tr.state y j).fg.tree →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h) :
+      (tr.state y j).fg.IsViable P) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
@@ -447,7 +408,7 @@ theorem unanimous_next_votes_extend_core_at
         hg hy hcast hs hjb
         (fun r hrj hrs => hnr y r (hrun.antitone (hrun.time_mono hrj) hy) hrs
           ((hrun.time_mono hrj).trans hjb)) hwit (hroot y j ell e hy hcast hs hjb)
-        (hfloor y j ell e hy hcast hs hjb)
+        (hviable y j ell e hy hcast hs hjb)
       have hcarry := unanimous_carry_votes_core_at hrun hnc hsvc hc hP hun hg hy hcast hs hjb hFP
       have hf := hfault j htime hjb
       have hhalf : sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time j) ∧ ∃ q e', x ∈ H (tr.time q) ∧
@@ -546,10 +507,10 @@ theorem unanimous_next_optimistic_compatible_core_at
       2 * (K.committee (u + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hroot : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
-        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P)
-    (hfloor : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P)
+    (hviable : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b → P ∈ (tr.state y j).fg.tree →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h)
+      (tr.state y j).fg.IsViable P)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hopt : AC.OptimisticLockAt tr.projAC y j (u + 1) D CV)
     (hjb : tr.time j ≤ b) :
@@ -563,7 +524,7 @@ theorem unanimous_next_optimistic_compatible_core_at
   obtain ⟨z, q, e, hqj, hz, hv, hs, Hd, hHd, he, hDH⟩ :=
     optimistic_supporter_at hrun hnc hPK hy hopt (hcs2 j htime hjb)
   obtain ⟨Hd', hHd', he', hPH⟩ := unanimous_next_votes_extend_core_at hrun hnc hsvc hc hP hslot
-    hu hun hg hPK hTK hsize hnr hwit hvotes hfault hcs2 hroot hfloor z q e hz hv ((hrun.time_mono
+    hu hun hg hPK hTK hsize hnr hwit hvotes hfault hcs2 hroot hviable z q e hz hv ((hrun.time_mono
       hqj).trans hjb) hs
   obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)
   exact AC.anc_total hU hDH hPH
