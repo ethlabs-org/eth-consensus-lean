@@ -64,17 +64,12 @@ extends~$\Sigma.F$, and $\Sigma.\hmax$ is the greatest accepted state
 height.  With the tree, the chain states and the pool, these caches are the FG
 state.  The FG frame is derived from it when used.
 
-\emph{Frontier contest.}  The FG state is \emph{contested} when
-$\Sigma.\hmax=\Sigma.h_j+1$ and some accepted block that
-extends~$\Sigma.F$, with state height~$\Sigma.\hmax$, does not
-extend~$\Sigma.J$.  The test reads the whole tree and the finality caches,
-never the tree of a voter.  The fork-choice root is~$\Sigma.F$.  A block~$B$
+The fork-choice root is~$\Sigma.F$.  A block~$B$
 is \emph{viable} when $\Sigma.\sigma[B].h\geq\Sigma.\hmax$, or
 $\Sigma.\sigma[B].h=\Sigma.\hmax-1$ and ($\Sigma.h_j+1<\Sigma.\hmax$ or
 $\Sigma.J\preceq B$).  The viable heads are the viable blocks of the tree.
 Finality acceptance uses the same test: $\Sigma.F$ advances only to a block
-with a viable descendant.  The contest test and the head height floor are
-notions of the analysis; the protocol does not read them.
+with a viable descendant.
 
 \captionof{figure}{FG: handlers, finality caches and frame}\label{alg:fg-store}
 \nopagebreak
@@ -124,15 +119,6 @@ notions of the analysis; the protocol does not read them.
   \EndIf
 \EndFunction
 \vspace{1pt}
-\Function{fg\_contest}{$\Sigma$}
-  \Comment{analysis only; the protocol does not read it}
-  \If{$\Sigma.\hmax\neq\Sigma.h_j+1$} \State \Return $\mathsf{false}$ \EndIf
-  \State $\mathit{hmax\_blocks}\gets\{B\in\Sigma.\T:\Sigma.F\preceq B,\
-    \Sigma.\sigma[B].h=\Sigma.\hmax\}$
-  \Comment{the whole tree, never the tree of a voter}
-  \State \Return $\exists B\in\mathit{hmax\_blocks},\ \Sigma.J\not\preceq B$
-\EndFunction
-\vspace{1pt}
 \Function{is\_viable}{$\Sigma,B$}
   \State \Return $\Sigma.\sigma[B].h\geq\Sigma.\hmax$ \textbf{or}
     ($\Sigma.\sigma[B].h+1=\Sigma.\hmax$ \textbf{and}
@@ -146,10 +132,9 @@ notions of the analysis; the protocol does not read them.
 \vspace{1pt}
 \Function{fg\_to\_ac}{$\Sigma$}
   \State $\mathit{tree}\gets\{B\in\Sigma.\T:\Sigma.F\preceq B\}$
-  \State $\mathit{fc\_root}\gets\Sigma.F$
   \State $\mathit{viable\_heads}\gets\{B\in\mathit{tree}:
     \Call{is\_viable}{\Sigma,B}\}$
-  \State \Return $(\mathit{tree},\mathit{fc\_root},\mathit{viable\_heads})$
+  \State \Return $(\mathit{tree},\Sigma.F,\mathit{viable\_heads})$
 \EndFunction
 \vspace{1pt}
 \Function{proposal\_attestations}{$\Sigma,H$}

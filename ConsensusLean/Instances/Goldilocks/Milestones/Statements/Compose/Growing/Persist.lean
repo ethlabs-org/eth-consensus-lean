@@ -59,7 +59,7 @@ structure Clean (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
     e.msg.slot ≤ m →
     (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable D) ∨
-    Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot
+    Anc (tr.HonestBlocksAt H) B ℓ.frame.F
 
 end Consensus.Goldilocks.Compose.Growing
 

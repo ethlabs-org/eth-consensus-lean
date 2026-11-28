@@ -43,7 +43,7 @@ private theorem unanimous_next_votes_extend_at
       (by have := (AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega)
           linarith [sp.toParams.hΔ]) (hti.trans hib) (hp.run.time_nonneg i) hib)
     (fun _ _ _ _ hy hcast hs hjb => by
-      have hF := congrArg Frame.fcRoot (Outcome.frame_of_call hp.run hy hcast.1)
+      have hF := congrArg Frame.F (Outcome.frame_of_call hp.run hy hcast.1)
       change _ = (tr.state _ _).fg.F at hF
       exact hF ▸ hp.reset_vote_finality_below_bound_at hR hP hbound
         (fun _ C s hC hs => hcovered C s hC.healedOrigin hs) hy hcast hs hjb)

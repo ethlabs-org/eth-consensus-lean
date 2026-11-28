@@ -84,7 +84,7 @@ def prop (r : Nat) (p : Payload sp3.n) : Blk sp3.n Unit := ⟨r, some 1, 2, v2, 
 
 /-- The frame whose tree is `g`, `X`, `Y` and the proposals `ps`. -/
 def frm (ps : List (Blk sp3.n Unit)) : Frm sp3.n Unit :=
-  ⟨{B | B = g ∨ B = X ∨ B = Y ∨ B ∈ ps}, g, g, ∅⟩
+  ⟨{B | B = g ∨ B = X ∨ B = Y ∨ B ∈ ps}, g, ∅⟩
 
 /-- A reader holding the slot-`1` votes `f` stamped `5` and `l` stamped `8`. -/
 def st (f l : List (Vote sp3.n)) : ACState sp3.n :=

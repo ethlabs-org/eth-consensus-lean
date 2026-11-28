@@ -136,7 +136,7 @@ theorem castAt_head_of_viableU
 theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} {σ : Nat}
     {B : Blk sp.n FGP} (h : ViableAtVote ℓ e σ B) :
     B ∈ ℓ.frame.viableTree (AC.voteDomain sp e.readPoint ℓ.frame σ) ∨
-      ℓ.frame.Anc B ℓ.frame.fcRoot :=
+      ℓ.frame.Anc B ℓ.frame.F :=
   h.imp_left fun h => viableTree_voterBlockTree_subset_voteDomain h
 
 /-- The vote domain of an honest vote is closed under ancestors in the frame, from starts up to the

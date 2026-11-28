@@ -29,7 +29,7 @@ theorem proposal_start_root_or_clean_lock {Φ : AC.Frm sp.n (List (FG.Att sp.n))
     (hR : drainTime sp a ≤ sp.ts u) (ht : t = sp.ts u)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp A Φ t).2 = some (d, pay)) :
-    d.start = Φ.fcRoot ∨ ∃ l ∈ A.locks, cleanLabel sp a + sp.k + 2 ≤ l.slot ∧
+    d.start = Φ.F ∨ ∃ l ∈ A.locks, cleanLabel sp a + sp.k + 2 ≤ l.slot ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc d.start B := by
   obtain ⟨A₁, hA₁, hstart, _⟩ := Compose.acProposal_walk hd
   rw [hstart]

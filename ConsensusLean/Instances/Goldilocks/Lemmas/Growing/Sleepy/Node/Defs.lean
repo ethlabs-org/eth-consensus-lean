@@ -177,7 +177,7 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
   its `fc_root`, or in its full viable tree. -/
   viable : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t → ∀ C s,
     OriginWithin tr H C s b → C ∈ (Node.frame (tr.state y i)).tree →
-    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).F ∨
       C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
 
 variable {tr H}
@@ -356,7 +356,7 @@ theorem SleepyInvariantUpTo.locks_at_cut : ∀ l ∈ (tr.state y i).ac.locks,
 
 theorem SleepyInvariantUpTo.viable_at_cut : ∀ C s, OriginWithin tr H C s b →
     C ∈ (Node.frame (tr.state y i)).tree →
-    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).F ∨
       C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   have ⟨t, h0, hit, htb, hyt⟩ := exists_read_time hrun hb hy hi
   hinv.viable y i t h0 hit htb hyt

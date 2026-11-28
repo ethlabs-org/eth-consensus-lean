@@ -49,7 +49,7 @@ theorem frontier_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
         AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
       B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
+        Anc (tr.HonestBlocksAt H) B ℓ.frame.F)
     (hseed : HealedOriginsBelow tr H g rL rO s₀ b ∧ HealedVotesBelow tr H g rL rO s₀ b) :
     ∀ s, HealedOriginsBelow tr H g rL rO s b ∧ HealedVotesBelow tr H g rL rO s b := by
   have ha : a ≤ sp.ts s₀ := (le_add_of_nonneg_right hsync.kappa).trans hsa
@@ -82,7 +82,7 @@ private theorem held_origin_viable_read {ini} (hrun : Growing.GoldilocksRun prop
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocksAt H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
   have hst := Trace.upTo_state tr y (d := t) hi
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt.1⟩

@@ -104,7 +104,7 @@ theorem operational_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hroot := hp.reset_vote_root_below_proposal_at hpH hactual hPs hR hci hcall hd hti hib
       hPQ hy hcy hes hjb
     have hPy := hp.reset_proposal_frame_at hpH hdesignated hactual hPs (by omega) hy hcy hes
-      hjb hgj (hjoin.trans hjt) ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
+      hjb hgj (hjoin.trans hjt) (hroot)
     have hPv := hp.reset_proposal_viable_at hpH hactual hPs hR hci hcall hd hti hib hPQ
       hy hcy hes hjb hPy
     obtain ⟨hstep, hP₀⟩ := hp.reset_stop_at_parent_at hpH hdesignated hactual hPs hR

@@ -73,7 +73,7 @@ private theorem effective_record_frame_of_run_at
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hit : ∀ k < i, tr.time k ≤ t := fun k hk => hjt k (by omega)
   have hreach := Healing.Growing.fg_reachable_at hrun ht0 hjt hy
-  have hΨ := (Store.frame_realization _ _ _ _ hreach).1
+  have hΨ := Store.frame_realization _ _ _ _ hreach
   have hFF := hrun.toLocalRun.finalized_mono_on_prefix ht0 hy hij hjt
   apply effective_record_frame_of_compatible hU (Φ := Node.frame (tr.state y i)) hΨ
     (fun X hX => Compose.Growing.tree_subset_at ht0 hit hy hX.1)
@@ -84,11 +84,10 @@ private theorem effective_record_frame_of_run_at
     rw [Trace.upTo_state tr y hit, Trace.upTo_state tr y hjt] at h
     exact h hC.1
   obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree _ _ _ _ hreach
-  have hfull : FrameOK (⟨(tr.state y j).fg.tree, _, _, ∅⟩ :
+  have hfull : FrameOK (⟨(tr.state y j).fg.tree, _, ∅⟩ :
       Frame sp.n (List (FG.Att sp.n)) (AC.Payload sp.n)) :=
-    { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩, fcRoot_mem := hgm
-      F_anc_fcRoot := .refl, viableHeads_subset := Set.empty_subset _
-      fcRoot_anc_viableHeads := fun _ h => h.elim }
+    { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩
+      viableHeads_subset := Set.empty_subset _ }
   exact ⟨hCj, AC.anc_tree_of_anc_U hU hfull
     (fun X hX => Compose.Growing.tree_subset_at ht0 hjt hy hX) hΨ.rooted.1.1 hFC hCj⟩
 

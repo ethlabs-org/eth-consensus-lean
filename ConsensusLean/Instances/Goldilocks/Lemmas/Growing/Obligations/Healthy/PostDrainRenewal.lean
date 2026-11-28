@@ -795,7 +795,7 @@ theorem viable_head_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hkT : tr.time k ≤ T) (hPy : P ∈ (tr.state y k).fg.tree) :
     HigherReportBy tr H g P T ∨
       (P ∈ (Node.frame (tr.state y k)).tree ∧
-        (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).fcRoot P ∧
+        (Node.frame (tr.state y k)).Anc (Node.frame (tr.state y k)).F P ∧
         P ∈ (Node.frame (tr.state y k)).viableHeads) := by
   have hrun := hp.run
   have hm := hrun.time_mono

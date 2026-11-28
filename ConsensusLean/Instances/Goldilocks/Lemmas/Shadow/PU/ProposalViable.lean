@@ -68,7 +68,7 @@ theorem proposal_window_witness
   have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
-    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
+    ⟨(AC.frameIn_of_callAt hac hzk hc).1.rooted.1, .refl, Q, hQ, hv, hroot⟩
   rw [hfr, Node.frame_eq, Store.toFrame_viableHeads] at hvd
   obtain ⟨hDm, _, hDv⟩ := hvd
   have hBm : B ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree :=
@@ -137,7 +137,7 @@ theorem proposal_viable_at_call_with_early_at
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u ≤ tr.time i) (hhi : tr.time i ≤ hi)
     (hearly : tr.time i < sp.ts u + sp.Δ → P ∈ ell.frame.tree) :
-    P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
+    P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F P ∧ P ∈ ell.frame.viableHeads := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have htime : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
@@ -207,7 +207,7 @@ theorem proposal_viable_at_call_with_early_at
   have hstore := store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg i)
     (fun q hq => hrun.time_mono hq.le) hy hFP hPyi
   refine ⟨hPy, ?_, ?_⟩
-  · rw [hfi, Node.frame_eq, Store.toFrame_fcRoot]
+  · rw [hfi, Node.frame_eq, Store.toFrame_F]
     change Anc (tr.state y i).fg.toFrame.tree _ _
     rw [Store.toFrame_tree]
     exact Anc.restrict .refl hstore
@@ -230,7 +230,7 @@ theorem proposal_viable_at_call_primed_at'
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u + sp.Δ ≤ tr.time i) (hhi : tr.time i ≤ hi) :
-    P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
+    P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F P ∧ P ∈ ell.frame.viableHeads := by
   exact proposal_viable_at_call_with_early_at hframe hrun hnc hsvc hf hnr hgu hphi hib
     hz hdes hP hPs hy hc (by linarith [sp.toParams.hΔ]) hhi
     (fun h => absurd h (not_lt.mpr hlo))

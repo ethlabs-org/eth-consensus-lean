@@ -171,8 +171,8 @@ def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) 
           BlockFinality.ChainAtts M.trace z j Y,
           a.val = v ∧ FG.slashable a b
 
-/-- Canonical-high assembly from `high_row_source_at`, `no_high_contest_at`
-and `high_entry_eq_at`, with reset premises at the same horizon. This supplies
+/-- Canonical-high assembly from `high_row_source_at` and
+`high_entry_eq_at`, with reset premises at the same horizon. This supplies
 prerequisites of `heal_after_reset`, never by invoking that field itself. The premises are at `C`'s
 release hold and FG delay `ΔF` (default `E.ΔFG`). -/
 def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq) {fgHold : Time}

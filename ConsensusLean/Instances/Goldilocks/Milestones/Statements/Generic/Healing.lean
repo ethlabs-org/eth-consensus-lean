@@ -177,18 +177,6 @@ def high_row_source_at (O : ACHealing A sg runs hold) : Prop :=
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- Leaf 13: no high contest, for a reset and an observation within the supplier's origin cap.
-Its proof uses the supplier's `report_origin`, `report_in_frame` and
-`origins_comparable`. Proved over any supplier by `no_high_contest_at_of_healing`
-(Lemmas/Generic/HealingRounds). -/
-def no_high_contest_at (O : ACHealing A sg runs hold) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
-    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
-    OriginInCap P O.deepBudget g a →
-    p ∈ H (tr.time i) → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
-    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
-
 /-- Leaf 14: independently bounded historical readers, not event-only readers. Proved over any
 supplier by `high_entry_eq_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def high_entry_eq_at (O : ACHealing A sg runs hold) : Prop :=

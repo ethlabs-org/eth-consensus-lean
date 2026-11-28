@@ -132,11 +132,11 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
       · exact (Anc.mem h he).1
     exact ⟨hPt, held_anc_at D.hrun D.hnc hd hw ht hFP hPt⟩
   -- `fc_root = Σ.F ≺ P`, and every viable head is strictly above `P`
-  have hfc : Φ.fcRoot = st.F := rfl
+  have hfc : Φ.F = st.F := rfl
   have hvh : ∀ W ∈ Φ.viableHeads, Anc (tr.HonestBlocksAt H) D.P W ∧ W.root ≠ D.P.root :=
     fun W hW => hi_viable_head_above hU (fun Z hZ => tree_held_at hd hw ht hZ) hjm hPJ hJP above
       hW.1 hW.2.2
-  have hFΦ : st.F ∈ Φ.tree := hfc ▸ hΦ.fcRoot_mem
+  have hFΦ : st.F ∈ Φ.tree := hfc ▸ hΦ.rooted.1
   -- a viable head in the domain, strictly above `P`
   obtain ⟨W, hWd, hWv⟩ : ∃ W ∈ dom, W ∈ Φ.viableHeads := by
     rcases hne with ⟨X, -, -, W, hWd, hWv, -⟩ | hsub

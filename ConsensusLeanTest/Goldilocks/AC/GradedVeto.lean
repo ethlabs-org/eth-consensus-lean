@@ -127,8 +127,8 @@ theorem coherent_U : Coherent U := by
   rcases hB with rfl | rfl | rfl | rfl <;> rcases hC with rfl | rfl | rfl | rfl <;>
     simp [g, B1, Bc, Bv] at h ⊢
 
-/-- The frame: `F = fc_root = g`, both children of `B1` viable. -/
-def Φ : Frm sp.n Unit := ⟨U, g, g, {Bc, Bv}⟩
+/-- The frame: `F = g`, both children of `B1` viable. -/
+def Φ : Frm sp.n Unit := ⟨U, g, {Bc, Bv}⟩
 
 theorem finite_U : U.Finite := by
   simp only [U]
@@ -138,10 +138,7 @@ theorem frameOK_Φ : FrameOK Φ where
   finite := finite_U
   coherent := coherent_U
   rooted := ⟨g_mem, anc_g⟩
-  fcRoot_mem := g_mem
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by rintro W (rfl | rfl); exacts [Bc_mem, Bv_mem]
-  fcRoot_anc_viableHeads := by rintro W (rfl | rfl); exacts [anc_g _ Bc_mem, anc_g _ Bv_mem]
 
 /-- Every block is its own viable ancestor. -/
 theorem viableAncestor_Φ {B : Blk sp.n Unit} (hB : B ∈ U) : Φ.viableAncestor B = B := by
@@ -981,7 +978,7 @@ theorem old_live_at_j0k :
   rintro ⟨rfl, h⟩
   exact absurd h (by decide)
 
-/-- Under the old rule the anchor at slot `14` falls back to `fc_root = g`. -/
+/-- Under the old rule the anchor at slot `14` falls back to `F = g`. -/
 theorem old_anchor_at_j0k :
     getAnchor sp (acRestart sp v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1 Φ 56 = g := by
   rw [getAnchor_eq_deepest_union frameOK_Φ]

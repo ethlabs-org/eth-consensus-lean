@@ -148,7 +148,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P) :
     (P ∈ (Node.frame (tr.state y i)).tree ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot P ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).F P ∧
       P ∈ (Node.frame (tr.state y i)).viableHeads) ∨
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧

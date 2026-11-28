@@ -110,7 +110,7 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
       (rO := Healing.Growing.healedOriginFloor sp D.resetTime)
       (fun _ => Compose.Growing.healedVotesBelow_iff.mpr
         (fun B s hB z q e hv hqb hs _ => hc.s2 B s hB z q e hv hqb hs)) C.time_bound
-    by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
+    by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).F
     · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
         (Or.inr rfl)))
     rcases healthy_current_mature_or_anchor_at D C hupd hR with
@@ -123,7 +123,7 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
     exact Or.inr ⟨healthy_current_record_viable_at D C hx hr hRB hrb hs hL hfc hR,
       x, r, s, B, CV, hx, hr, hRB, hrb, hfloor, hL⟩
   apply read_source_of_recent_result_at D.reset C.time_bound
-  by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
+  by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).F
   · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
       (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor_at D C hupd hR with
@@ -159,7 +159,7 @@ theorem current_record_read_of_healed_context_at
       ⟨healthy_current_live_candidates_at D C hR, ?_⟩)
       D.reset.committeeFacts C.label_le C.fault
   apply read_source_of_healed_result_at D.reset hV C.time_bound
-  by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
+  by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).F
   · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
       (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor_at D C hupd hR with

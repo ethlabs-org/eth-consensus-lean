@@ -72,23 +72,23 @@ theorem viableAncestorExists_iff : ViableAncestorExists ↔
 viable or at or below `fc_root` is its own viable ancestor. -/
 def ViableAncestorSelf : Prop :=
   ∀ (n : Nat) (FGP ACP : Type) (Φ : Frame n FGP ACP) (B : Block n FGP ACP),
-    FrameOK Φ → (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot) → Φ.viableAncestor B = B
+    FrameOK Φ → (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F) → Φ.viableAncestor B = B
 
 theorem viableAncestorSelf_iff : ViableAncestorSelf ↔
     ∀ (n : Nat) (FGP ACP : Type) (Φ : Frame n FGP ACP) (B : Block n FGP ACP),
-      FrameOK Φ → (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot) → Φ.viableAncestor B = B := by rfl
+      FrameOK Φ → (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.F) → Φ.viableAncestor B = B := by rfl
 
 /-- **G0.4 (frame), the viable tree is closed under ancestors down to `fc_root`.** An ancestor,
 in `S`, of a block of the viable tree of `S` that extends `fc_root` is in that viable tree. -/
 def ViableTreeAncestorClosed : Prop :=
   ∀ (n : Nat) (FGP ACP : Type) (Φ : Frame n FGP ACP) (S : Set (Block n FGP ACP))
     (A B : Block n FGP ACP),
-    B ∈ Φ.viableTree S → A ∈ S → Φ.Anc Φ.fcRoot A → Φ.Anc A B → A ∈ Φ.viableTree S
+    B ∈ Φ.viableTree S → A ∈ S → Φ.Anc Φ.F A → Φ.Anc A B → A ∈ Φ.viableTree S
 
 theorem viableTreeAncestorClosed_iff : ViableTreeAncestorClosed ↔
     ∀ (n : Nat) (FGP ACP : Type) (Φ : Frame n FGP ACP) (S : Set (Block n FGP ACP))
       (A B : Block n FGP ACP),
-      B ∈ Φ.viableTree S → A ∈ S → Φ.Anc Φ.fcRoot A → Φ.Anc A B → A ∈ Φ.viableTree S := by rfl
+      B ∈ Φ.viableTree S → A ∈ S → Φ.Anc Φ.F A → Φ.Anc A B → A ∈ Φ.viableTree S := by rfl
 
 /-- **G0.4 (frame), parent-closed down to `Φ.F`.** In a well-formed frame, every block of the
 tree other than `Φ.F` has its parent in the tree, at a smaller slot. -/

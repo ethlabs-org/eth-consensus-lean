@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep

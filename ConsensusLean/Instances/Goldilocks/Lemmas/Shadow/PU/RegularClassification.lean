@@ -83,7 +83,7 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
     (hlabel : s₀ ≤ l.slot) (hold : l.slot < e.msg.slot)
     {L : AC.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
-    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
+    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.F) :
     ∃ a < i, ∃ ell₀ D Q,
       tr.projAC.CallAt y a ell₀ ∧ sp.ts s₀ ≤ tr.time a ∧
       tr.time a < AC.freeze sp e.msg.slot ∧
@@ -159,7 +159,7 @@ private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
     {l : AC.Lock} (hl : l ∈ AC.liveLocks sp e.readPoint.locks ell.frame (tr.time i))
     (hold : l.slot < e.msg.slot)
     {L : AC.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
-    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
+    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.F) :
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
@@ -181,7 +181,7 @@ private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
       (AC.viableAncestor_anc hPhi.1 hB).1 (hLr.trans (congrArg AC.Lock.block heq))
     rw [he]; exact (AC.viableAncestor_anc hPhi.1 hB).2
   have hlabel : s₀ ≤ l₁.slot := by rw [← hs₁, ← hsl]; rw [← hs] at hrecent; omega
-  have hstrictC : ¬ Anc (tr.HonestBlocks H) C ell.frame.fcRoot := by
+  have hstrictC : ¬ Anc (tr.HonestBlocks H) C ell.frame.F := by
     intro h
     exact hstrict ((Anc.mono hPhi.2 (hLB.trans hBC)).trans h)
   obtain ⟨a, hai, ell₀, D, Q, -, -, -, -, -, hCQ, hvQ, hQv⟩ :=
@@ -198,10 +198,10 @@ private theorem vote_head_classification_core
     (hc : AC.CastAt tr.projAC y i ell e)
     (hpos : 0 < e.msg.slot)
     (hrootWitness : ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q)
+      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.F Q)
     (holdWitness : ∀ l ∈ AC.liveLocks sp e.readPoint.locks ell.frame (tr.time i),
       l.slot < e.msg.slot → ∀ L ∈ ell.frame.tree, L.root = l.block →
-      ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot →
+      ¬ Anc (tr.HonestBlocks H) L ell.frame.F →
       ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q) :
     ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
@@ -232,7 +232,7 @@ private theorem vote_head_classification_core
   · exact Or.inl (hwalk.1 hd)
   have hHd : Hd = A := hwalk.2 hd
   apply Or.inr
-  by_cases heq : A = ell.frame.fcRoot
+  by_cases heq : A = ell.frame.F
   · exfalso
     obtain ⟨Q, hQ, hv, hrQ⟩ := hrootWitness
     exact hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩
@@ -240,7 +240,7 @@ private theorem vote_head_classification_core
     unfold A
     rw [AC.getAnchor_eq_deepest_union hPhi.1]
     cases hh : AC.deepest ell.frame
-        (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
+        (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.F}) with
     | none => exact (heq (by
         unfold A
         rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]
@@ -253,7 +253,7 @@ private theorem vote_head_classification_core
           rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]
           exact h)).elim
   obtain ⟨hA, l, hl, hlr⟩ := hAm
-  have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.fcRoot := by
+  have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.F := by
     intro h
     apply heq
     exact Anc.antisymm hr.coherent h (hroot.mono hPhi.2)

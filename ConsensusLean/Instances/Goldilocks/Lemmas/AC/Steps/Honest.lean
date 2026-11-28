@@ -27,12 +27,12 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
     getHead sp A Φ t T V σ ∈ Φ.tree := by
   have ha : getAnchor sp A Φ t ∈ Φ.tree := by
     rw [getAnchor_eq_deepest_union hΦ]
-    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
-    | none => exact hΦ.fcRoot_mem
+    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.F}) with
+    | none => exact hΦ.rooted.1
     | some D =>
       rcases (deepest_mem hd).1 with h | h
       · exact h.1
-      · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
+      · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.rooted.1
   obtain h | h := eq_or_ne (getAnchor sp A Φ t) (getHead sp A Φ t T V σ)
   · exact h ▸ ha
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2

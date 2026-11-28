@@ -52,7 +52,7 @@ theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (hframe : (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
         AC.VoteExtends (tr.HonestBlocksAt H) e'.msg C) →
       C ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-        Anc (tr.HonestBlocksAt H) C ℓ.frame.fcRoot)
+        Anc (tr.HonestBlocksAt H) C ℓ.frame.F)
     (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C) :
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hrun' := goldilocks_ac_projection_from hrun hnc

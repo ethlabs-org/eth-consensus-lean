@@ -163,7 +163,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
         s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B) →
-      Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocks H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) :
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, AC.CastAt tr.projAC y i ell e →
       s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B := by

@@ -230,7 +230,7 @@ theorem seeded_stale_record_viable_at (hrun : Growing.GoldilocksRun proposer dg 
     (htb : t ≤ b) (hdt : sp.ts (r + sp.k : Nat) ≤ t) (hy : y ∈ H t)
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R)
-    (hRf : ¬ (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).fcRoot) :
+    (hRf : ¬ (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).F) :
     R ∈ (Node.frame (tr.state y j)).viableTree (Node.frame (tr.state y j)).tree := by
   have hcall := seeded_reader_called_at hrun hseed.toHandoverCore hy hdt hrp.2
   have hRc : OnHealedChain tr H g r (r + sp.k - 1) R b := by
@@ -256,7 +256,7 @@ theorem seeded_stale_record_votes_at (hrun : Growing.GoldilocksRun proposer dg H
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) (ht₁ : t₁ + 8 * sp.Δ ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R)
-    (hRf : ¬ (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).fcRoot)
+    (hRf : ¬ (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).F)
     {q s : Nat} {CV : Set (Vote sp.n)} (hRq : R ∈ (tr.state y q).fg.tree)
     (hrest : ∀ m, q < m → m ≤ j → (tr.state y m).ac.latestConfirmed = R.root)
     (hC : AC.ResultAt tr.projAC y q s R CV ∨ AC.OptimisticLockAt tr.projAC y q s R CV)
@@ -329,7 +329,7 @@ theorem seeded_stale_record_votes_at (hrun : Growing.GoldilocksRun proposer dg H
     apply hRf
     have hFF := F_mono_at hrun ht0 hy hrp.1 hnj
     rw [← hRF] at hFF
-    exact (AC.anc_tree_of_anc_U hU hΦ hΦU hRm hFF hΦ.rooted.1).trans hΦ.F_anc_fcRoot
+    exact (AC.anc_tree_of_anc_U hU hΦ hΦU hRm hFF hΦ.rooted.1)
   -- the member's label is below `L`
   have hs₀L : s₀ < L := by
     have hlo := (origin_time_bounds (hrun.time_nonneg q₀) hC₀).1
@@ -434,7 +434,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       (R ∈ (Node.frame (tr.state y j)).viableTree (Node.frame (tr.state y j)).tree ∧
         ∀ z q e, HVoteAt tr H z q e → tr.time q ≤ t → e.msg.slot = L →
           AC.VoteExtends (tr.HonestBlocksAt H) e.msg R) := by
-    by_cases hRf : (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).fcRoot
+    by_cases hRf : (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).F
     · exact Or.inl (hRf.trans (hanc.2 _ (Or.inr rfl)))
     by_cases hgen : R.root = sp.genesisRoot
     · -- genesis is below `Σ.F`
@@ -447,7 +447,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       have hRF : Anc (tr.HonestBlocksAt H) R (tr.state y j).fg.F := by
         rw [heq]
         exact (htree.2.2.2 _ hΦ.rooted.1.1).mono fun X hX => ⟨y, j, t, ht0, hrp.1, hy, hX⟩
-      exact (AC.anc_tree_of_anc_U hU hΦ hΦU hRm hRF hΦ.rooted.1).trans hΦ.F_anc_fcRoot
+      exact (AC.anc_tree_of_anc_U hU hΦ hΦU hRm hRF hΦ.rooted.1)
     obtain ⟨q, hqj, ell, hcall, hRq, hrest, hwriter⟩ :=
       Obligations.Growing.last_record_writer_at hrun hnc ht0 hrp.1 hy hR hgen
     have hqt : tr.time q ≤ t := hrp.1 q hqj
@@ -537,8 +537,8 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     rcases hsrc with h | ⟨hv, -⟩
     · have hfc := hanc.2 _ (Or.inr rfl)
       exact (Anc.total hU (hfc.mono hΦU) (h.mono hΦU)).imp
-        (fun h' => AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem h' hRm)
-        (fun h' => AC.anc_tree_of_anc_U hU hΦ hΦU hRm h' hΦ.fcRoot_mem)
+        (fun h' => AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 h' hRm)
+        (fun h' => AC.anc_tree_of_anc_U hU hΦ hΦU hRm h' hΦ.rooted.1)
     · exact Or.inl hv.2.1
 
 /-- Readiness with a longer catch-up implies readiness with a shorter one. -/

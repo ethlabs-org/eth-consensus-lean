@@ -300,15 +300,6 @@ def high_row_source_atNoHold (O : ACHealing A sg runs) : Prop :=
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- `no_high_contest_at` as stated before the release hold. -/
-def no_high_contest_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
-    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    OriginInCap P O.deepBudget g a →
-    p ∈ H (tr.time i) → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
-    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
-
 /-- `high_entry_eq_at` as stated before the release hold. -/
 def high_entry_eq_atNoHold (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
@@ -358,12 +349,11 @@ theorem healing_contracts_zero_iff (O : ACHealing A sg runs) :
     (reset_of_high_proposal_at A sg O ↔ reset_of_high_proposal_atNoHold A sg O) ∧
     (round_of_warm_at A sg O ↔ round_of_warm_atNoHold A sg O) ∧
     (high_row_source_at A sg O ↔ high_row_source_atNoHold A sg O) ∧
-    (no_high_contest_at A sg O ↔ no_high_contest_atNoHold A sg O) ∧
     (high_entry_eq_at A sg O ↔ high_entry_eq_atNoHold A sg O) ∧
     (rise_reset_rounds_at A sg O ↔ rise_reset_rounds_atNoHold A sg O) := by
   simp only [reset_of_high_proposal_at, reset_of_high_proposal_atNoHold, round_of_warm_at,
-    round_of_warm_atNoHold, high_row_source_at, high_row_source_atNoHold, no_high_contest_at,
-    no_high_contest_atNoHold, high_entry_eq_at, high_entry_eq_atNoHold, rise_reset_rounds_at,
+    round_of_warm_atNoHold, high_row_source_at, high_row_source_atNoHold,
+    high_entry_eq_at, high_entry_eq_atNoHold, rise_reset_rounds_at,
     rise_reset_rounds_atNoHold, service_zero_iff, premises_zero_iff, and_self]
 
 end Healing

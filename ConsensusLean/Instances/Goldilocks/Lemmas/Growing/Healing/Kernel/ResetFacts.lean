@@ -45,7 +45,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
         s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
         B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
     (hstored : ∀ y i ell e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ell e →
       tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,
@@ -147,7 +147,7 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before_of_quarantine_at
       ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
       Compatible (tr.HonestBlocksAt H) O O')
     (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   exact KernelProof.held_target_vote_domain_before_of_quarantine_at hp hx hy hBx hrb hcast hib
     hheld hS hqb hm hBS hcompare hseedCompare hpair hpre

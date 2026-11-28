@@ -184,10 +184,10 @@ theorem unlockNoFallback_equivocation :
 noncomputable abbrev GA : ACInterface sp.toParams Unit := goldilocksAC sp Unit
 
 /-- The genesis frame. -/
-def Φ₀ : Frm sp.n Unit := ⟨{g}, g, g, {g}⟩
+def Φ₀ : Frm sp.n Unit := ⟨{g}, g, {g}⟩
 
 /-- The frame after `B1`: `g` and `B1`, `B1` the viable head. -/
-def Φ₁ : Frm sp.n Unit := ⟨insert B1 {g}, g, g, {B1}⟩
+def Φ₁ : Frm sp.n Unit := ⟨insert B1 {g}, g, {B1}⟩
 
 theorem tree₁_sub : Φ₁.tree ⊆ U := by
   rintro B (rfl | rfl)
@@ -198,11 +198,7 @@ theorem frameOK_Φ₀ : FrameOK Φ₀ where
   coherent := ⟨coherent_U.1.mono (by rintro B rfl; exact g_mem),
     fun B hB C hC h => coherent_U.2 B (by rw [hB]; exact g_mem) C (by rw [hC]; exact g_mem) h⟩
   rooted := ⟨rfl, fun C hC => by rw [Set.mem_singleton_iff.mp hC]; exact Relation.ReflTransGen.refl⟩
-  fcRoot_mem := rfl
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := le_rfl
-  fcRoot_anc_viableHeads := fun W hW => by
-    rw [Set.mem_singleton_iff.mp hW]; exact Relation.ReflTransGen.refl
 
 theorem B1_mem₁ : B1 ∈ Φ₁.tree := Set.mem_insert _ _
 theorem g_mem₁ : g ∈ Φ₁.tree := Set.mem_insert_of_mem _ rfl
@@ -230,10 +226,7 @@ theorem frameOK_Φ₁ : FrameOK Φ₁ where
   coherent := ⟨coherent_U.1.mono tree₁_sub,
     fun B hB C hC h => coherent_U.2 B (tree₁_sub hB) C (tree₁_sub hC) h⟩
   rooted := ⟨g_mem₁, fun _ hC => anc₁_g hC⟩
-  fcRoot_mem := g_mem₁
-  F_anc_fcRoot := Relation.ReflTransGen.refl
   viableHeads_subset := by rintro W rfl; exact B1_mem₁
-  fcRoot_anc_viableHeads := by rintro W rfl; exact anc₁_g_B1
 
 /-- `B1` is in the viable tree of `Φ₁`. -/
 theorem B1_viable₁ : B1 ∈ Φ₁.viableTree Φ₁.tree :=
@@ -469,7 +462,7 @@ theorem liveLocksChain_witness :
     (∀ t, 8 ≤ t →
       (∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, ∀ C ∈ liveLockBlocks sp S2.locks Φ₁ t,
         Compatible Φ₁.tree B C) ∧
-      ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.fcRoot) ∧
+      ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.F) ∧
     liveLockBlocks sp S2.locks Φ₁ 8 = {B1} := by
   refine ⟨coherent_U, reachable_S2, fun t _ => ⟨fun B hB C hC => ?_, fun B hB => ?_⟩, ?_⟩
   · rw [(mem_liveLockBlocks_S2.1 hB).1, (mem_liveLockBlocks_S2.1 hC).1]
@@ -676,7 +669,7 @@ theorem unlockNoFallback_applies (h : UnlockNoFallback sp) :
 theorem liveLocksChain_applies (h : LiveLocksChain sp) : ∀ t, 8 ≤ t →
     (∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, ∀ C ∈ liveLockBlocks sp S2.locks Φ₁ t,
       Compatible Φ₁.tree B C) ∧
-    ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.fcRoot :=
+    ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.F :=
   fun t _ => h Unit v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 theorem candidatesChain_applies (h : CandidatesChain sp) : ∀ t, 8 ≤ t →

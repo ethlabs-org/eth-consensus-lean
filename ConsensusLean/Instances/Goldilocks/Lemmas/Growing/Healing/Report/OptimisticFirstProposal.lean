@@ -38,7 +38,7 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → ACState sp.n}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
     (hV : B ∈ ℓ.frame.tree ∧
-      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
+      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.F))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
     Anc U B d.head := by

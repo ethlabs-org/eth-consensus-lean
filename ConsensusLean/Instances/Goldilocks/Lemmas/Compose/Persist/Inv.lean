@@ -22,7 +22,7 @@ once honest finality passes `B`). -/
 def VoteInv (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
   ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
     (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) ∧
+      Anc (tr.HonestBlocks H) B ℓ.frame.F) ∧
     AC.VoteExtends (tr.HonestBlocks H) e.msg B
 
 /-- G1.10 at the scope of C1.1 at an honest call at cut `k` in `[t_s, t_m + 2Δ)`: the caches
@@ -47,7 +47,7 @@ theorem voteInv_iff {s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} {k : Nat}
     VoteInv tr H s m B k ↔
     ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
       (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) ∧
+        Anc (tr.HonestBlocks H) B ℓ.frame.F) ∧
       AC.VoteExtends (tr.HonestBlocks H) e.msg B :=
   Iff.rfl
 

@@ -172,7 +172,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
     · have hem' := hemit hem
       obtain ⟨ℓ, hc, e, he, hev⟩ := hem'
       have hΦ : FrameOK ℓ.frame := (hpref.cutLaw y hy k _ hc).1 ▸
-        (Store.frame_realization _ _ _ _ (Compose.fg_reachable hpref.toLocalRun hy k)).1
+        Store.frame_realization _ _ _ _ (Compose.fg_reachable hpref.toLocalRun hy k)
       have hsign := AC.step_emission_signer y
         (((simTrace S rho hn).upTo ((simTrace S rho hn).time k)).state y k).ac
         ℓ.frame _ ℓ.call hΦ (hr.time_nonneg k)

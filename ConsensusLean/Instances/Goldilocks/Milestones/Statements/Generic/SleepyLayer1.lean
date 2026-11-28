@@ -45,10 +45,10 @@ def ViableAt (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     Compatible (tr.HonestBlocksAt H) B B') →
   ∀ B, B ∈ (Node.frame (tr.state y i)).tree →
     (∀ B', EventWithin D tr H b t B' → Compatible (tr.HonestBlocksAt H) B B') →
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).F ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
 
-/-- At every honest read point within `b`, each finalized, justified and frame-root block is
+/-- At every honest read point within `b`, each finalized and justified block is
 genesis or an ancestor of a confirmation by that read time; the conditional full-tree viability
 property `ViableAt` also holds. -/
 def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
@@ -56,7 +56,6 @@ def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
   ∀ y i t, HonestReadPoint tr H b y i t →
     Anchored D tr H b t (tr.state y i).fg.F ∧
     Anchored D tr H b t (tr.state y i).fg.J ∧
-    Anchored D tr H b t (Node.frame (tr.state y i)).fcRoot ∧
     ViableAt D tr H b y i t
 
 /-- Committee counts at every time `t ≥ 0`, using the committee look-ahead: in each nonempty

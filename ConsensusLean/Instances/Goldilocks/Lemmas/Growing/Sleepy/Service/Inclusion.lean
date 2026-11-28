@@ -157,7 +157,7 @@ theorem read_extends_of_record_at
     swap
     · exact h
     have hΦ : FrameOK (Node.frame (tr.state y j)) :=
-      (Store.frame_realization _ _ _ _ hreach).1
+      Store.frame_realization _ _ _ _ hreach
     obtain ⟨C, hC, hCr, hCo⟩ := hinv.record y j t ht0 hj.1 htb hy
     obtain rfl : C = E := hcoh.1 (hmem hC) hE (hCr.trans hEr.symm)
     have hF : (tr.state y j).fg.F ∈ (tr.state y j).fg.tree := hΦ.rooted.1.1
@@ -169,11 +169,10 @@ theorem read_extends_of_record_at
     · exact hPE.trans h
     -- `Σ.F ⪯ C` inside the blocks held while honest would put `C` in the frame
     obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree sp.toParams (Payload sp.n) _ _ hreach
-    have hΦg : FrameOK (⟨(tr.state y j).fg.tree, _, _, ∅⟩ :
+    have hΦg : FrameOK (⟨(tr.state y j).fg.tree, _, ∅⟩ :
         Frame sp.n (List (FG.Att sp.n)) (Payload sp.n)) :=
-      { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩, fcRoot_mem := hgm
-        F_anc_fcRoot := Relation.ReflTransGen.refl, viableHeads_subset := Set.empty_subset _
-        fcRoot_anc_viableHeads := fun _ h => h.elim }
+      { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩
+        viableHeads_subset := Set.empty_subset _ }
     exact (hin ⟨C, ⟨hC, AC.anc_tree_of_anc_U hcoh hΦg (fun X hX => hmem hX) hF h hC⟩,
       hCr⟩).elim
 

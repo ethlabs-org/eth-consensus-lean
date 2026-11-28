@@ -101,7 +101,7 @@ theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hpb : sp.ts (s + 1 : Nat) ≤ b)
     {X B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ ellp.frame.tree) (hrootX : ellp.frame.Anc ellp.frame.fcRoot X)
+    (hX : X ∈ ellp.frame.tree) (hrootX : ellp.frame.Anc ellp.frame.F X)
     (hBX : B.parent = some X.root) (hne : B ≠ P)
     (hB : B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by

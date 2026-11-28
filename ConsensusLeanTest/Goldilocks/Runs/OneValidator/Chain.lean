@@ -753,7 +753,6 @@ theorem payload_mem_attList (τ : Nat) : ∀ a ∈ (blk (τ + 1)).fgPayload, a �
 structure ChainFrame (Φ : N1.Frm) (f j τ : Nat) : Prop where
   tree : ∀ B, B ∈ Φ.tree ↔ ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m
   F : Φ.F = blk f
-  fcRoot : Φ.fcRoot = blk f
   heads : ∀ B, B ∈ Φ.viableHeads ↔ ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m
   fj : f ≤ j
   jτ : j ≤ τ
@@ -789,7 +788,7 @@ theorem head_mem (h : ChainFrame Φ f j τ) {m : Nat} (h1 : j ≤ m) (h2 : m ≤
 fork-choice root to the tip. -/
 theorem mem_viableTree (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : blk τ ∈ S)
     {m : Nat} (h1 : j ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
-  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
+  ⟨hm, by rw [h.F]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
     h.head_mem h.jτ le_rfl,
     h.anc (by have := h.fj; omega) h2 le_rfl⟩
 
@@ -797,7 +796,7 @@ theorem mem_viableTree (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : blk τ 
 tree in the domain: the fork-choice root is `Σ.F`. -/
 theorem mem_viableTree' (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : blk τ ∈ S)
     {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
-  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl h1 h2, blk τ, hS, h.head_mem h.jτ le_rfl,
+  ⟨hm, by rw [h.F]; exact h.anc le_rfl h1 h2, blk τ, hS, h.head_mem h.jτ le_rfl,
     h.anc h1 h2 le_rfl⟩
 
 theorem viableTree_sub (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : S ⊆ Φ.tree) {B : N1.Blk}
@@ -829,7 +828,7 @@ theorem fgGood_frame {fg : Store sp1.toParams N1.Payload} {τ : Nat} (h : FGGood
     unfold Store.IsViable
     rw [hJ, (h.sigma m hm).h, h.hmax, h.hj]
     unfold hexp jexp; split_ifs <;> constructor <;> intro <;> omega
-  refine ⟨f, ⟨htree, hFe, hFe, fun B => ?_, hf, jexp_le τ⟩⟩
+  refine ⟨f, ⟨htree, hFe, fun B => ?_, hf, jexp_le τ⟩⟩
   change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.IsViable B) ↔ _
   rw [hFe]
   constructor

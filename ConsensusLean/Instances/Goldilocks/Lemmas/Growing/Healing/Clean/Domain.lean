@@ -43,7 +43,7 @@ theorem clean_source_proposal_domain_before_at {cm : Time → Finset (Fin sp.n)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+    Anc (tr.HonestBlocksAt H) B ell.frame.F ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
   have hm := hp.run.time_mono
   have hxU : (tr.state x r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hm hq.le, hx, h⟩

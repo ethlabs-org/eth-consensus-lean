@@ -42,7 +42,7 @@ theorem votes_below_succ_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
       (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
         AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
       B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
+        Anc (tr.HonestBlocksAt H) B ℓ.frame.F)
     (hP : HealedOriginsBelow tr H g rL rO (s + 1) b) (hV : HealedVotesBelow tr H g rL rO s b) :
     HealedVotesBelow tr H g rL rO (s + 1) b := by
   have hcomp : ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s →
