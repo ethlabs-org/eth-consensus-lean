@@ -54,7 +54,6 @@ public import ConsensusLeanTest.Goldilocks.Growing.FG
 public import ConsensusLeanTest.Goldilocks.Growing.Hold
 public import ConsensusLeanTest.Goldilocks.Growing.ReportCover
 public import ConsensusLeanTest.Goldilocks.Growing.ServiceHold
-public import ConsensusLeanTest.Goldilocks.Healing.PhaseCount
 public import ConsensusLeanTest.Goldilocks.Healing.Settled
 public import ConsensusLeanTest.Goldilocks.Healing.Statements
 public import ConsensusLeanTest.Goldilocks.Healing.TickRun

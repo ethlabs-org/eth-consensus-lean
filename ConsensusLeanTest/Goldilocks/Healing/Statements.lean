@@ -1,20 +1,13 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
-public import ConsensusLeanTest.Goldilocks.FGStore.Statements
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import Mathlib.Tactic.Ring
 @[expose] public section
 
-/-! # Witnesses for the Goldilocks run-level healing statements (HR.1–HR.4)
+/-! # Witnesses for Goldilocks run-level healing premises and constants
 
 Labelled by kind (CONTRIBUTING "Statements"):
 
-* (a) `idle_phaseCount_premises`: the idle FG trace of
-  `ConsensusLeanTest/Goldilocks/FGStore/Statements` (one honest validator, no FG call) is an
-  `FGLocalRun` with `f < 2q − n`: the hypotheses of `PhaseCount` (HR.2) hold together.
-* (a) `idle_phaseAt`: on that trace the effective phase is defined at every cut: frontier `1`,
-  the top-`J` case with `J = genesis` (so `PhaseAt` is inhabited, and HR.2 (b) is not vacuous in
-  its phase hypothesis).
 * (a) `oneTickRun_catch_noRestart`: the one-tick run of
   `ConsensusLeanTest/Goldilocks/Run/Statements` is a `Node.LocalRun` that satisfies `CatchRun` (for
   every `g`, `κ`; vacuously: no acceptance) and `NoRestartAfter` (for every time), over `idleAC`,
@@ -43,47 +36,6 @@ periodic run above and the tick run are.
 which would apply those premise witnesses together. -/
 
 namespace Consensus.Goldilocks.Healing.Test
-
-/-- (a) The idle FG trace is an `FGLocalRun` for the honest set `{0}` with `f < 2q − n` (here
-`f = 0`, `n = 1`, `q = 1`). -/
-theorem idle_phaseCount_premises :
-    FGLocalRun () {⟨0, Nat.one_pos⟩} {Store.Test.P₁.genesisBlock ()} Store.Test.idleTrace ∧
-      ({⟨0, Nat.one_pos⟩} : Set (Fin Store.Test.P₁.n))ᶜ.ncard <
-        2 * Store.Test.P₁.fg.q - Store.Test.P₁.n := by
-  refine ⟨Store.Test.idle_localRun, ?_⟩
-  have hc : ({⟨0, Nat.one_pos⟩} : Set (Fin Store.Test.P₁.n))ᶜ = ∅ := by
-    ext y; simp only [Set.mem_compl_iff, Set.mem_singleton_iff, Set.mem_empty_iff_false,
-      iff_false, not_not]; exact Fin.ext (Nat.lt_one_iff.mp y.isLt)
-  rw [hc, Set.ncard_empty]
-  decide
-
-/-- A block of the initial FG state's tree is genesis. -/
-theorem init_tree {B : NodeBlock Store.Test.P₁ Unit}
-    (hB : B ∈ (Store.init (P := Store.Test.P₁) ()).tree) : B = Store.Test.P₁.genesisBlock () := by
-  change (Store.init (P := Store.Test.P₁) ()).blocks B.root = some B at hB
-  simp only [Store.init] at hB
-  split at hB
-  · exact (Option.some_inj.mp hB).symm
-  · exact absurd hB (by simp)
-
-/-- Genesis is in the initial FG state's tree. -/
-theorem genesis_mem_init :
-    Store.Test.P₁.genesisBlock () ∈ (Store.init (P := Store.Test.P₁) ()).tree := by
-  change (Store.init (P := Store.Test.P₁) ()).blocks _ = some _
-  simp [Store.init, Params.genesisBlock]
-
-/-- (a) At every cut of the idle trace, the effective phase is frontier `1`, top `J = genesis`. -/
-theorem idle_phaseAt (i : Nat) :
-    PhaseAt Store.Test.idleTrace {⟨0, Nat.one_pos⟩} i 1 (.top (Store.Test.P₁.genesisBlock ())) := by
-  have hs : ∀ y, Store.Test.idleTrace.store y i = Store.init () := fun y => by
-    rw [FGTrace.store, Store.Test.idleTrace_state]
-  refine ⟨⟨⟨⟨0, Nat.one_pos⟩, rfl, by rw [hs]; rfl⟩, fun y _ => by rw [hs]; exact le_rfl⟩,
-    ⟨⟨0, Nat.one_pos⟩, rfl, by rw [hs]; exact genesis_mem_init,
-      Store.Test.P₁.genesisBlock (), by rw [hs]; exact genesis_mem_init, by rw [hs]; rfl,
-      by rw [hs]; rfl⟩, ?_⟩
-  rintro ⟨y, -, B, hB, -, hanc⟩
-  rw [hs] at hB hanc
-  exact hanc (by rw [init_tree hB]; exact Relation.ReflTransGen.refl)
 
 /-- (a) The one-tick run is a `Node.LocalRun` with `CatchRun` and `NoRestartAfter`: it accepts no
 block and has no restart (its cuts are `ac_on_tick` and `ac_to_fg`). -/
